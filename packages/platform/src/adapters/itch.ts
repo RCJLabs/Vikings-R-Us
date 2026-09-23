@@ -1,5 +1,15 @@
 import type { Platform } from '../index';
 import { shareWithFallback } from '../share';
+import { openStore } from '../storage';
 
-/** itch.io build: embedded in an iframe, no service worker. A textarea copy fallback lands with the Daily share in M2. */
-export const platform: Platform = { kind: 'itch', share: shareWithFallback };
+/**
+ * itch.io build: embedded in an iframe on another origin, no service worker.
+ * The iframe's own URL isn't the game page, so shares carry no link until the
+ * itch page exists; copying falls back to a textarea when the clipboard API is blocked.
+ */
+export const platform: Platform = {
+  kind: 'itch',
+  share: shareWithFallback,
+  shareUrl: () => undefined,
+  openStore: () => openStore(),
+};

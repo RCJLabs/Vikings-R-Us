@@ -93,7 +93,7 @@ describe('content compiler', () => {
 describe('gameplay content lints', () => {
   const core = (files: Record<string, string>, strings: Record<string, string> = {}): PackFixture => ({
     yaml: 'id: core\ndependsOn: []\n',
-    strings: { 'core.title': 'Chooser', 'rule.hel': 'Hel', ...strings },
+    strings: { 'core.title': 'Chooser', 'rule.hel': 'Hel', 'dest.HEL': 'Hel', ...strings },
     files: {
       'facts.yaml': '- { id: cause, domain: { enum: [battle, sickness] } }\n',
       'rules.yaml': '- { id: rule.hel, order: 999, since: 1, when: { always: true }, then: HEL, text: rule.hel }\n',
@@ -140,6 +140,21 @@ describe('gameplay content lints', () => {
       'rules.yaml': '- { id: rule.hel, order: 999, since: 1, when: { always: true }, then: HEL, text: rule.missing }\n',
     });
     expect(() => compile({ core: noText, demo: day('arch.liar') })).toThrow(/missing string "rule.missing"/);
+    // Every sign needs chip text for each value it can show.
+    const sign = core({
+      'archetypes.yaml': archetype(''),
+      'observations.yaml': '- { key: cause, view: front, since: 1, salience: 3, cost: 1, from: { fact: cause } }\n',
+    });
+    expect(() => compile({ core: sign, demo: day('arch.liar') })).toThrow(/missing string "obs.cause.sickness"/);
+  });
+
+  it('rejects strings that are not valid ICU messages', () => {
+    expect(() =>
+      compile({
+        core: core({ 'archetypes.yaml': archetype('') }, { 'core.bad': '{n, plural, one {x}' }),
+        demo: day('arch.liar'),
+      }),
+    ).toThrow(/Invalid ICU message:\n"core.bad"/);
   });
 
   const dailyPack = (archetype: string): PackFixture => {

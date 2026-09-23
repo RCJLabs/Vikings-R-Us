@@ -394,6 +394,11 @@ export function shiftScore(state: ShiftState): ShiftScore {
   };
 }
 
+/** One mark per soul: right, wrong, or not judged before dusk. */
+export function shareMarks(state: ShiftState): string {
+  return state.verdicts.map((v) => (v.stamped === null ? '⬛' : v.correct ? '🟩' : '🟥')).join('');
+}
+
 const clockText = (ms: number): string => {
   const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -407,12 +412,13 @@ const clockText = (ms: number): string => {
 export function shareText(
   state: ShiftState,
   content: Content,
-  opts: { title: string; decree?: string; url?: string },
+  opts: { title: string; label?: string; decree?: string; url?: string },
 ): string {
   const score = shiftScore(state);
-  const marks = state.verdicts.map((v) => (v.stamped === null ? '⬛' : v.correct ? '🟩' : '🟥')).join('');
+  const marks = shareMarks(state);
   const label =
-    state.config.mode === 'daily' ? `Daily #${state.config.dailyNumber ?? '?'}` : `Day ${state.config.day} practice`;
+    opts.label ??
+    (state.config.mode === 'daily' ? `Daily #${state.config.dailyNumber ?? '?'}` : `Day ${state.config.day} practice`);
   const tail = state.endedBy === 'dusk' ? 'sun set' : `${clockText(score.spareMs)} to spare`;
   return [
     `${opts.title} · ${label} (g${content.genVersion})`,

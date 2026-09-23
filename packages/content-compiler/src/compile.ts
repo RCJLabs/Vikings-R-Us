@@ -11,6 +11,7 @@ import {
   type TargetDef,
 } from '@cots/content-schema';
 import { type Content, fnv1a32 } from '@cots/engine';
+import { parse as parseIcu } from '@formatjs/icu-messageformat-parser';
 import { LineCounter, parseDocument } from 'yaml';
 import { z } from 'zod';
 import { idsOf, lintContent, loadPackContent, mergeContent, type PackContent } from './gameplay';
@@ -66,11 +67,25 @@ export function loadPacks(packsDir: string): Map<PackId, LoadedPack> {
     const strings = existsSync(stringsFile)
       ? parseWith(StringTableSchema, JSON.parse(readFileSync(stringsFile, 'utf8')), stringsFile)
       : {};
+    checkMessages(strings, stringsFile);
     const content = loadPackContent(dir, readYaml, parseWith);
     packs.set(manifest.id, { manifest, strings, content, dir });
   }
   validatePacks(packs);
   return packs;
+}
+
+/** Every string must be valid ICU MessageFormat (plurals, selects, `{name}` arguments). */
+export function checkMessages(strings: StringTable, file: string): void {
+  const problems: string[] = [];
+  for (const [key, text] of Object.entries(strings)) {
+    try {
+      parseIcu(text);
+    } catch (e) {
+      problems.push(`"${key}": ${(e as Error).message}`);
+    }
+  }
+  if (problems.length > 0) throw new ContentError(`${file}\nInvalid ICU message:\n${problems.join('\n')}`);
 }
 
 /** Checks the rules that keep campaign content out of demo builds. */

@@ -6,6 +6,7 @@
   },
   "include": [
     "packages/engine/src/**/*.test.ts",
+    "packages/art-placeholder/src/**/*.test.ts",
     "packages/content-schema/src",
     "packages/content-compiler/src",
     "packages/testkit/src",

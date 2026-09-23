@@ -1,7 +1,8 @@
 /**
- * Placeholder art. The real body-art provider contract (docs/tech-spec.md §6.5)
- * lands in M1-M2; for now this only draws the title sigil.
+ * Placeholder art: the procedural SVG body-art provider (docs/tech-spec.md
+ * §6.5) and the title sigil.
  */
+export * from './body';
 export const PLACEHOLDER_ART_ID = 'placeholder';
 
 /** Stamp ring and quill. Deliberately avoids runes and symbols that extremists have appropriated. */

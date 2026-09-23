@@ -1113,13 +1113,58 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - A statement about a derived fact (Huginn's "watched this one run") narrows that fact but isn't pushed back to its inputs.
 - The partial-evidence oracle test only checks that the solver is never *more* certain than brute force.
 - In days 1–5 every decisive fact can be seen on the body, so a confession never decides a case. The reveal path is implemented and tested; it starts to matter with identity and registry mechanics (day 6+).
-- Daily golden hashes wait for the Daily mode (M2). Day summaries are pinned in `tests/golden/days-1-5.json`.
+- Day summaries are pinned in `tests/golden/days-1-5.json`; Daily checksums arrived with M2 (§14).
 
 **Tooling**
 - `pnpm sim sweep --seeds N [--days 1-5]` prints acceptance, attempts, fallbacks, timing, destination mix and bot scores, and fails on the §3.8 thresholds. CI runs 200 seeds as a test; `nightly.yml` runs 10,000.
 - `pnpm exec tsx tools/sim/dump.ts <day> <seed> [index]` prints souls with evidence, lies, proof and question answers.
 - `pnpm golden:update` rewrites the golden summaries after an intended generator change. Bump `genVersion` too.
 - The Case Lab (`pnpm dev`) shows a soul's truth, evidence, solver beliefs and support, rule evaluation, questions and generation log, plus a 100-seed sweep.
+
+## 14. M2 implementation notes (the playable core loop as built)
+
+**Where things live**
+- Shift engine: `packages/engine/src/shift/shift.ts` (state machine, scoring, share text, `queueChecksum`).
+- The Daily's spec: `content/packs/daily/daily.yaml`, compiled to `generated/<target>/daily.json`.
+- UI: `packages/ui/src/store.ts` (time, persistence, session), `screens.tsx` (title, briefing, summary) and `shift/` (the shift screen, keyboard map, evidence text).
+- Body art: `packages/art-placeholder/src/body.ts`. Storage and sharing: `packages/platform/src/{storage,share}.ts`.
+- Tests: `packages/engine/src/shift/shift.test.ts`, `packages/art-placeholder/src/body.test.ts`, `tests/golden/dailies.test.ts`, `tests/e2e/daily.spec.ts`.
+
+**Decisions**
+- **The shift is a pure state machine**, `stepShift(state, action, ctx) → {state, events}`.
+  - Every action carries `at`, integer ms from the UI's monotonic clock; the engine never reads a clock.
+  - Sun time is real time minus pauses plus penalties.
+  - Penalties: the first turn-over of each soul 2 s, the feather 10 s, a compare that finds nothing 10 s, a question 20 s.
+  - After dusk the soul at the gate can still be judged for 60 s. Then every soul left is recorded as unjudged.
+- **The solver referees Compare.** A compare catches a lie only if the solver, run on the fields the player has looked at, shows that pair contradicts (the lie, plus a field in its support). Questioning needs a caught lie.
+- **What counts as looking.** The body needs an explicit look: tap a region or its chip. Papers are implicit: showing a paper marks its lines as seen. A citation lists the proof fields the player never looked at.
+- **The Daily has its own content bundle.** `dailyContent` is built from the core and daily packs only, so the demo and full builds play the same Daily. `queueChecksum` values for Dailies #1–#180 are pinned in `tests/golden/dailies.json`.
+- **Tuning the Daily's mix.**
+  - RETURN is 0–2 per Daily, so finding one living soul doesn't tell you the rest are dead.
+  - The mix leans towards HEL, which puts the testimony-trusting bot at 59.1% over 10,000 Dailies (the gate is 65%).
+- **Preview Dailies.** Before `DAILY_EPOCH`, the title offers an unnumbered "Daily preview · date" (seed `daily:<n>`, n ≤ 0) so testers can play now. Its share text says "Daily preview <date>".
+- **Saving a Daily in progress.**
+  - The action log is saved after every action (not the state). A reload replays it and resumes paused on the same timeline.
+  - Leaving the page (hidden, blurred or unloaded) pauses the sun, and the desk is blurred while paused.
+  - One ranked attempt per Daily; replays don't count. The streak counts consecutive Dailies played to the end.
+- **Strings are ICU MessageFormat.** The UI uses intl-messageformat. The compiler checks every message parses, and requires chip text for every sign value, tool and destination.
+- **Storage** is an IndexedDB key-value store with an in-memory fallback. The first finished Daily asks for persistent storage. Electron and Android use the same store until their shells (M6, M9).
+- **Body art contract (§6.5), simplified to** `draw(scene) → SVG`, `hotspots(scene)`, `conformance` and `views`. Contract tests check that:
+  - every value of every sign draws differently;
+  - every sign sits under a hotspot on its view;
+  - conformance meets the gameplay salience;
+  - hotspots stay inside the frame and don't overlap.
+- **Hold-to-send** (300 ms) applies to touch and pen; mouse clicks and Enter send at once. A setting turns it off.
+
+**Deferred and known limits**
+- Desk papers sit in a fixed grid. Dragging, "Tidy desk" and saved positions are deferred to the M5 UI pass.
+- No gamepad or focus graph yet (M6, with the Deck). Keyboard play uses native focus plus the keymap.
+- Landscape phones get the drawer, not the side sheet from §6.3.
+- Blur-to-pause also fires when a desktop player clicks another window. That's intended.
+- If the browser crashes, the time between the last action and the crash isn't counted: the pause is saved on `pagehide`, which a crash skips.
+- No runtime Daily checksum guard yet (M3). Checksums are only checked in CI.
+- Only the web build's share text carries a link. The itch, Steam and Android builds share text alone.
+- Web demo JS is 47.7 KB gzipped (budget 250 KB).
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

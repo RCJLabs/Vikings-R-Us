@@ -267,7 +267,25 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     fact(l.then.fact, `law ${l.id}`);
     key(l.text, `law ${l.id}`);
   }
-  for (const c of content.cues) fact(c.hint.fact, `cue ${c.key}`);
+  for (const c of content.cues) {
+    fact(c.hint.fact, `cue ${c.key}`);
+    key(`cue.${c.key}`, `cue ${c.key}`);
+  }
+  // The shift UI shows every sign as a text chip: `obs.<key>.<value>`, or `obs.<key>` with an {n} plural.
+  const factById = new Map(content.facts.map((f) => [f.id, f]));
+  for (const o of content.observations) {
+    const values =
+      'map' in o.from
+        ? [...o.from.map.map((m) => m.value), o.from.otherwise]
+        : (() => {
+            const d = factById.get(o.from.fact)?.domain;
+            return d?.kind === 'enum' ? d.values : d?.kind === 'bool' ? [false, true] : null;
+          })();
+    if (values === null) key(`obs.${o.key}`, `observation ${o.key}`);
+    else for (const v of values) key(`obs.${o.key}.${String(v)}`, `observation ${o.key}`);
+  }
+  for (const tool of content.tools) key(`tool.${tool.id}`, `tool ${tool.id}`);
+  for (const d of new Set(content.rules.map((r) => r.then))) key(`dest.${d}`, `destination ${d}`);
   for (const w of content.world) {
     pred(w.if, `world ${w.id}`);
     pred(w.then, `world ${w.id}`);

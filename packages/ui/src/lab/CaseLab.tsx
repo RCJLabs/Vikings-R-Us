@@ -1,4 +1,5 @@
 import { gameContent } from 'virtual:content';
+import { placeholderBody } from '@cots/art-placeholder';
 import {
   type CaseSpec,
   createDayContext,
@@ -10,16 +11,29 @@ import {
   planDay,
   questionResponse,
   revealsOf,
+  type SoulState,
   solve,
 } from '@cots/engine';
 import { useMemo, useState } from 'preact/hooks';
 import { t } from '../i18n';
+import { sceneFor } from '../shift/evidence';
 
 /**
  * Case Lab v1 (text only), dev-full builds only. The leak check requires this
  * marker in dev-full and forbids it everywhere else.
  */
 export const CASE_LAB_MARKER = 'cots-case-lab';
+
+/** Draws the body as the player sees it, with the feather's reading showing. */
+const FRESH_SOUL: SoulState = {
+  seen: [],
+  view: 'front',
+  flipped: false,
+  tools: [],
+  flagged: [],
+  questioned: [],
+  stamp: null,
+};
 
 const describeField = (f: Field, c: CaseSpec): string => {
   if (f.obs) return `${f.obs.key} = ${String(f.obs.value)}`;
@@ -128,6 +142,18 @@ export function CaseLab() {
         {c.archetype} · {c.evidence.persona} · rule {c.expect.rule} · difficulty {c.meta.difficulty} · proof{' '}
         {c.meta.proofCostS}s · {c.meta.tier} tier, {c.meta.attempts} attempt(s){c.meta.fallback ? ' · FALLBACK' : ''}
       </p>
+
+      <div class="lab__bodies">
+        {(['front', 'back'] as const).map((view) => (
+          <div
+            key={view}
+            class="lab__body"
+            dangerouslySetInnerHTML={{
+              __html: placeholderBody.draw({ ...sceneFor(c, { ...FRESH_SOUL, view }), tools: ['feather'] }),
+            }}
+          />
+        ))}
+      </div>
 
       <h4>Truth</h4>
       <table>

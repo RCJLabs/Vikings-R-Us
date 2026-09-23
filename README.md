@@ -4,7 +4,7 @@ A Papers, Please-style judgment game: you're a new Valkyrie with 20 battle-days 
 
 - **Plan:** [`docs/build-plan.md`](docs/build-plan.md): design, 20-day campaign, milestones, risks.
 - **Technical spec:** [`docs/tech-spec.md`](docs/tech-spec.md): types, the case-fairness system, content formats, platform shells.
-- **Status:** M1 (fairness engine): case generator, three-valued solver, the fairness validator and the Case Lab for days 1–5. No playable shift screen yet (M2).
+- **Status:** M2 (playable core loop): the Daily Shift and practice Days 1–3 (1–5 in full builds) are playable in the browser, on phones (drawer layout) and desktops (desk layout), with placeholder art. Next is M3, the public Daily alpha.
 
 ## Getting started
 
@@ -18,9 +18,10 @@ pnpm typecheck           # engine (no DOM), Node tooling, browser code
 pnpm test                # Vitest + fast-check
 pnpm build:all           # all six targets into dist/<target>
 pnpm leak-check          # demo builds contain no campaign content; full builds do
-pnpm e2e                 # Playwright smoke test against dist/web-demo
+pnpm e2e                 # Playwright: smoke tests and full Daily playthroughs against dist/web-demo
 pnpm sim sweep --seeds 200   # generator sweep with the CI thresholds (nightly runs 10,000)
-pnpm golden:update       # refresh tests/golden after an intended generator change
+pnpm sim sweep --daily --seeds 200   # the same for Dailies #1-#200
+pnpm golden:update       # refresh tests/golden (day summaries, Daily checksums) after an intended generator change
 ```
 
 ## Layout
@@ -32,11 +33,11 @@ pnpm golden:update       # refresh tests/golden after an intended generator chan
 | `packages/content-compiler` | Compiles `content/packs` into per-target bundles and leak tokens |
 | `packages/ui` | Preact UI (desk layout for desktop/Deck, drawer layout for phones) |
 | `packages/platform` | Web, itch, Electron and Android adapters, chosen at build time |
-| `packages/art-placeholder` | Procedural placeholder art, swapped for final art at the vertical slice |
+| `packages/art-placeholder` | Procedural SVG body art behind a swappable provider contract; final art arrives at the vertical slice |
 | `apps/web` | The single Vite entry for every target |
 | `apps/electron`, `apps/android` | Steam (M6) and Google Play (M9) shells |
-| `content/packs` | `core`, `daily`, `demo` (days 1–3) and `campaign` (days 4–20) |
-| `tools` | Leak check, boundary lint, icon renderer |
+| `content/packs` | `core`, `daily` (the Daily Shift spec), `demo` (days 1–3) and `campaign` (days 4–20) |
+| `tools` | Leak check, boundary lint, generator sweeps, icon renderer |
 
 ## Build targets
 

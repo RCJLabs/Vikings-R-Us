@@ -358,6 +358,9 @@ describe('share text', () => {
       ['Chooser of the Slain · Daily #97 (g1)', 'Whim', '🟩🟥⬛⬛⬛⬛⬛⬛ 1/8 · sun set', 'https://x.test/'].join('\n'),
     );
     for (const d of DESTINATIONS) expect(text.toUpperCase()).not.toContain(d);
+    expect(shareText(s, daily, { title: 'T', label: 'Daily preview 2026-09-23' }).split('\n')[0]).toBe(
+      'T · Daily preview 2026-09-23 (g1)',
+    );
   });
 
   it('reports the sun left over when the queue is done', () => {
