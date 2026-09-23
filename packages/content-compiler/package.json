@@ -11,7 +11,9 @@
   "dependencies": {
     "@cots/content-schema": "workspace:*",
     "@cots/engine": "workspace:*",
+    "@cots/story": "workspace:*",
     "@formatjs/icu-messageformat-parser": "3.5.20",
+    "inkjs": "2.4.0",
     "yaml": "2.9.1",
     "zod": "4.6.5"
   }

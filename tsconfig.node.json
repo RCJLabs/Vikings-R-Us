@@ -14,6 +14,7 @@
     "packages/content-schema/src",
     "packages/content-compiler/src",
     "packages/testkit/src",
+    "packages/story/src",
     "tools",
     "tests/e2e",
     "vitest.config.ts",

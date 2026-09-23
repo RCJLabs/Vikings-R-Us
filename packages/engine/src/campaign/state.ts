@@ -44,6 +44,8 @@ export interface DayLedger {
     readonly medicine: number;
     readonly upgrades: number;
     readonly draupnir: number;
+    /** Rings gained or lost to story effects today (scenes and story souls). */
+    readonly story: number;
     readonly rings: number;
   };
 }
@@ -71,6 +73,8 @@ export interface RunState {
   readonly ledger: readonly DayLedger[];
   /** Scenes whose effects were applied today; each applies once. */
   readonly scenes: readonly string[];
+  /** Rings gained or lost to story effects today, for the night's accounts. */
+  readonly storyRings: number;
   /** Tonight's bills as the player has set them (night only). */
   readonly bills: Bills | null;
   /** Rings spent in the shop tonight. */

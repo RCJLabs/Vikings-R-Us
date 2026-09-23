@@ -14,4 +14,6 @@ declare module 'virtual:content' {
   export const dailyContent: import('@cots/engine').Content | null;
   /** Checksums every Daily should have, for the runtime guard. */
   export const dailyChecks: import('@cots/engine').DailyChecks | null;
+  /** Compiled Ink scenes by id, for the days this build ships. */
+  export const scenes: Readonly<Record<string, object>>;
 }

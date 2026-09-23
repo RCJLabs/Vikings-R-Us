@@ -1,14 +1,15 @@
 import type { ArchetypeDef, Destination, Knobs } from '../content/types';
 import { DESTINATIONS } from '../content/types';
 import type { DayCtx } from '../logic/context';
-import { judge } from '../logic/judge';
+import { type Judgment, judge } from '../logic/judge';
+import type { Truth } from '../logic/pred';
 import { Rng } from '../rng/rng';
 import { pickLies } from './lies';
 import { makeLook } from './look';
 import { ceilDiv, weightedPick } from './pick';
 import { planRavens, planSpeech, render } from './render';
 import { sampleTruth } from './sample';
-import type { CaseSpec, GenAttempt, GenLog, RejectCode } from './types';
+import type { CaseMeta, CaseSpec, Evidence, Field, GenAttempt, GenLog, Look, RejectCode } from './types';
 import { decisiveFacts, validateCase } from './validate';
 
 type TierId = 'strict' | 'widenBand' | 'anyArchetype' | 'retarget';
@@ -104,6 +105,41 @@ function attemptCase(
     return { code: 'DEST_MISMATCH', detail: `${expected.dest} instead of ${target}`, archetype: arch.id };
   }
 
+  const look = makeLook(truth, ctx, runSeed, procIndex, opts.lookSeed);
+  const dressed = dressCase(arch, truth, expected, look, [], ctx, knobs, rng);
+  if ('code' in dressed) return { ...dressed, archetype: arch.id };
+  return {
+    case: {
+      id: `${runSeed}:${ctx.day}:${procIndex}`,
+      day: ctx.day,
+      procIndex,
+      archetype: arch.id,
+      truth,
+      lies: dressed.lies,
+      evidence: dressed.evidence,
+      expect: expected,
+      meta: { seed, tier, ...dressed.meta },
+    },
+  };
+}
+
+/**
+ * Everything after the truth is sampled: lies, speech, ravens and cues, the
+ * rendered evidence (plus any scripted `lines`), and the F1-F8 validator.
+ * Shared by generated and scripted souls so both meet the same contract.
+ */
+export function dressCase(
+  arch: ArchetypeDef,
+  truth: Truth,
+  expected: Judgment,
+  look: Look,
+  lines: readonly string[],
+  ctx: DayCtx,
+  knobs: Knobs,
+  rng: Rng,
+):
+  | (Pick<CaseSpec, 'lies' | 'evidence'> & { meta: Omit<CaseMeta, 'seed' | 'tier'> })
+  | { code: RejectCode; detail: string } {
   const decisive = decisiveFacts(truth, expected, ctx);
   const planned = pickLies(arch, truth, ctx, knobs, rng.fork('lies'));
   const planRng = rng.fork('plan');
@@ -114,36 +150,44 @@ function attemptCase(
     if (truth[c.hint.fact] === c.hint.value) return [{ key: c.key, decoy: false }];
     return planRng.chance(knobs.decoyRate, 100) ? [{ key: c.key, decoy: true }] : [];
   });
-  const look = makeLook(truth, ctx, runSeed, procIndex, opts.lookSeed);
   const rendered = render({ truth, lies: planned, speech, ravens, cues, look, persona }, ctx, rng.fork('dialog'));
-  if (rendered.unspoken > 0) return { code: 'LIE_UNSPOKEN', detail: 'no template for a lie', archetype: arch.id };
+  if (rendered.unspoken > 0) return { code: 'LIE_UNSPOKEN', detail: 'no template for a lie' };
+  const evidence = lines.length > 0 ? withLines(rendered.evidence, lines) : rendered.evidence;
 
-  const v = validateCase(rendered.evidence, truth, rendered.lies, expected, decisive, ctx, knobs);
-  if (!v.ok) return { code: v.code, detail: v.detail, archetype: arch.id };
-
+  const v = validateCase(evidence, truth, rendered.lies, expected, decisive, ctx, knobs);
+  if (!v.ok) return { code: v.code, detail: v.detail };
   return {
-    case: {
-      id: `${runSeed}:${ctx.day}:${procIndex}`,
-      day: ctx.day,
-      procIndex,
-      archetype: arch.id,
-      truth,
-      lies: rendered.lies,
-      evidence: rendered.evidence,
-      expect: expected,
-      meta: {
-        seed,
-        tier,
-        attempts: 0,
-        fallback: false,
-        decisive,
-        proof: v.proof.fields,
-        proofCostS: v.proof.costS,
-        difficulty: v.difficulty,
-        decoys: rendered.decoys,
-      },
+    lies: rendered.lies,
+    evidence,
+    meta: {
+      attempts: 0,
+      fallback: false,
+      decisive,
+      proof: v.proof.fields,
+      proofCostS: v.proof.costS,
+      difficulty: v.difficulty,
+      decoys: rendered.decoys,
     },
   };
+}
+
+/** Scripted lines join the soul's testimony after its generated lines. */
+function withLines(evidence: Evidence, lines: readonly string[]): Evidence {
+  const said = evidence.fields.filter((f) => f.item === 'testimony').length;
+  const extra: Field[] = lines.map((msg, i) => ({
+    id: `testimony.${said + i}`,
+    item: 'testimony',
+    salience: 3,
+    cost: 2,
+    text: { msg, params: { name: evidence.look.name, patronym: evidence.look.patronym, gender: evidence.look.gender } },
+  }));
+  let at = evidence.fields.length;
+  evidence.fields.forEach((f, i) => {
+    if (f.item === 'testimony') at = i + 1;
+  });
+  const fields = evidence.fields.slice();
+  fields.splice(at, 0, ...extra);
+  return { ...evidence, fields };
 }
 
 /**

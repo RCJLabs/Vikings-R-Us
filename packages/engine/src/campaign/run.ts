@@ -1,5 +1,7 @@
 import type { CampaignDef, Content, Destination, Economy, Effect, Faction, UpgradeDef } from '../content/types';
 import { FACTIONS } from '../content/types';
+import { generateDay } from '../gen/generate';
+import { scriptedCase } from '../gen/scripted';
 import type { CaseSpec } from '../gen/types';
 import type { DayCtx } from '../logic/context';
 import { eval2 } from '../logic/pred';
@@ -28,7 +30,13 @@ export type RunAction =
   | { readonly t: 'endAudit' }
   | { readonly t: 'bills'; readonly bills: Bills }
   | { readonly t: 'buy'; readonly item: string }
-  | { readonly t: 'scene'; readonly id: string; readonly effects: readonly Effect[] }
+  | {
+      readonly t: 'scene';
+      readonly id: string;
+      /** The choices made, for replays and reports; the engine applies only `effects`. */
+      readonly choices?: readonly number[];
+      readonly effects: readonly Effect[];
+    }
   | { readonly t: 'endNight' };
 
 export type RunEvent =
@@ -76,6 +84,7 @@ export function newRun(content: Content, seed: string, opts: { story?: boolean }
     flags: {},
     ledger: [],
     scenes: [],
+    storyRings: 0,
     bills: null,
     spent: 0,
     ending: null,
@@ -134,6 +143,38 @@ export function defaultBills(run: RunState): Bills {
 }
 
 const matches = (want: Destination | '*', got: Destination) => want === '*' || want === got;
+
+/**
+ * Today's queue: the generated souls, with the day's story souls placed among
+ * them. Generated souls are the same with or without the story souls, which
+ * only appear when their `when` holds as the shift begins.
+ */
+export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
+  const cases = generateDay(run.seed, env.ctx).cases.slice();
+  const slots = [...(env.ctx.spec.queue.scripted ?? [])].sort((a, b) => a.at - b.at);
+  for (const slot of slots) {
+    const def = env.content.scripted?.find((d) => d.id === slot.case);
+    if (!def || (def.when && !evalState(def.when, run))) continue;
+    // The compiler proves shipped story souls can be made; if one can't, the day goes on without it.
+    const made = scriptedCase(def, env.ctx, run.seed, slot.at);
+    if (made.ok) cases.splice(Math.min(slot.at, cases.length), 0, made.case);
+  }
+  return cases;
+}
+
+/** The story consequences of how today's story souls were stamped. */
+function storyEffects(shift: ShiftState, content: Content): Effect[] {
+  const out: Effect[] = [];
+  for (const v of shift.verdicts) {
+    const c = shift.cases[v.index];
+    if (!c?.script || v.stamped === null) continue;
+    const def = content.scripted?.find((d) => d.id === c.script);
+    for (const rule of def?.onStamp ?? []) {
+      if (matches(rule.stamped, v.stamped)) out.push(...rule.effects);
+    }
+  }
+  return out;
+}
 
 /** Pay, fines, standing and einherjar for a finished shift. */
 function audit(
@@ -198,7 +239,7 @@ function audit(
 function applyEffects(run: RunState, effects: readonly Effect[], events: RunEvent[]): RunState {
   let r = run;
   for (const e of effects) {
-    if ('rings' in e) r = { ...r, rings: r.rings + e.rings };
+    if ('rings' in e) r = { ...r, rings: r.rings + e.rings, storyRings: r.storyRings + e.rings };
     else if ('standing' in e) r = { ...r, standing: { ...r.standing, [e.standing]: r.standing[e.standing] + e.by } };
     else if ('flag' in e) {
       const now = r.flags[e.flag] ?? 0;
@@ -255,7 +296,10 @@ function night(run: RunState, env: RunEnv, events: RunEvent[]): RunState {
   const last = run.ledger[run.ledger.length - 1];
   const ledger =
     last?.day === run.day
-      ? [...run.ledger.slice(0, -1), { ...last, night: { ...cost, upgrades: run.spent, draupnir, rings } }]
+      ? [
+          ...run.ledger.slice(0, -1),
+          { ...last, night: { ...cost, upgrades: run.spent, draupnir, story: run.storyRings, rings } },
+        ]
       : run.ledger;
   return {
     ...run,
@@ -298,7 +342,7 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         ...(run.story ? { untimed: true } : {}),
         mods: shiftMods(run, env.content),
       };
-      const { state } = startShift(env.content, config, env.queue);
+      const { state } = startShift(env.content, config, env.queue ?? campaignQueue(run, env));
       const begun = stepShift(state, { t: 'begin', at: action.at }, env.ctx);
       return {
         state: { ...run, phase: 'shift', shift: begun.state },
@@ -312,7 +356,12 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       if (r.state.phase !== 'done') return { state: { ...run, shift: r.state }, events };
       const a = audit({ ...run, shift: r.state }, r.state, env);
       events.push({ e: 'audited', ledger: a.ledger });
-      return { state: { ...a.run, flags: a.flags, phase: 'audit' }, events };
+      const audited = applyEffects(
+        { ...a.run, flags: a.flags, phase: 'audit' },
+        storyEffects(r.state, env.content),
+        events,
+      );
+      return { state: audited, events };
     }
     case 'endAudit': {
       if (run.phase !== 'audit') return reject(run, 'nothing to audit');
@@ -350,7 +399,16 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       }
       events.push({ e: 'dayBegins', day: run.day + 1 });
       return {
-        state: { ...after, day: run.day + 1, phase: 'morning', shift: null, scenes: [], bills: null, spent: 0 },
+        state: {
+          ...after,
+          day: run.day + 1,
+          phase: 'morning',
+          shift: null,
+          scenes: [],
+          storyRings: 0,
+          bills: null,
+          spent: 0,
+        },
         events,
       };
     }

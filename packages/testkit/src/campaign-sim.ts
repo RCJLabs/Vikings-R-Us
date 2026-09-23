@@ -125,7 +125,7 @@ export function simulateRun(content: Content, seed: string, judging: Judging, st
     const n = l?.night;
     if (!l || !n) ledgerOk = false;
     else {
-      const delta = l.pay + l.bonus - l.fines - n.hearth - n.food - n.medicine - n.upgrades + n.draupnir;
+      const delta = l.pay + l.bonus - l.fines - n.hearth - n.food - n.medicine - n.upgrades + n.draupnir + n.story;
       if (start + delta !== n.rings) ledgerOk = false;
     }
     lowest = Math.min(lowest, run.rings);

@@ -7,6 +7,7 @@ economy:
   warnings: 2
   fines: [3, 6, 10]
   costs: { hearth: 6, food: 3, medicine: 10 }
+scenes: { morning: scene.d2.morning, night: scene.d2.night }
 queue:
   count: [7, 8]
   teachFirst: arch.fled_coward

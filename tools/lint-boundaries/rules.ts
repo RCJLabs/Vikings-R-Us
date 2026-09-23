@@ -74,6 +74,9 @@ export function checkClientSource(file: string, source: string): Violation[] {
     if (spec === '@cots/content-compiler' || spec.startsWith('node:')) {
       out.push({ file, line, rule: `browser code may not import "${spec}"` });
     }
+    if (spec.startsWith('inkjs/')) {
+      out.push({ file, line, rule: `browser code plays compiled Ink with "inkjs" only (found "${spec}")` });
+    }
   }
   return out;
 }

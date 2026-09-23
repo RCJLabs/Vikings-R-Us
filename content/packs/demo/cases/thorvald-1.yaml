@@ -1,0 +1,19 @@
+# DRAFT writing. Thorvald Ketilsson, "the Unlucky": the first of about six
+# visits (docs/build-plan.md §2, Day 3). He isn't dead, which is the joke and
+# the lesson: the feather stirs, and he goes back.
+id: case.thorvald1
+personas: [confused]
+truth:
+  alive: { is: true }
+  cause: { is: battle }
+  grip: { is: weapon }
+  woundsFront: { is: 2 }
+  woundsBack: { is: 0 }
+lies: []
+look: { gender: m, name: Thorvald, patronym: Ketilsson, age: 31, build: broad, beard: braided }
+lines: [case.thorvald1.hall, case.thorvald1.luck]
+expect: RETURN
+onStamp:
+  - { stamped: '*', effects: [{ flag: thorvald_met }] }
+  - { stamped: RETURN, effects: [{ flag: thorvald_returned }] }
+  - { stamped: VALHALLA, effects: [{ flag: thorvald_valhalla }] }

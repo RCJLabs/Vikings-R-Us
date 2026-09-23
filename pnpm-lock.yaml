@@ -108,9 +108,15 @@ importers:
       '@cots/engine':
         specifier: workspace:*
         version: link:../engine
+      '@cots/story':
+        specifier: workspace:*
+        version: link:../story
       '@formatjs/icu-messageformat-parser':
         specifier: 3.5.20
         version: 3.5.20
+      inkjs:
+        specifier: 2.4.0
+        version: 2.4.0
       yaml:
         specifier: 2.9.1
         version: 2.9.1
@@ -130,6 +136,15 @@ importers:
   packages/engine: {}
 
   packages/platform: {}
+
+  packages/story:
+    dependencies:
+      '@cots/engine':
+        specifier: workspace:*
+        version: link:../engine
+      inkjs:
+        specifier: 2.4.0
+        version: 2.4.0
 
   packages/testkit:
     dependencies:
@@ -1821,6 +1836,10 @@ packages:
 
   idb@7.1.1:
     resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
+
+  inkjs@2.4.0:
+    resolution: {integrity: sha512-EoPCYESIbMtfI8SqEDZCJwn+A5is0QozMLw250iic1ReJCgZpRKIezWj0VqgRUzAx0f3MmEbsUjY/ILe2815JQ==}
+    hasBin: true
 
   internal-slot@1.1.0:
     resolution: {integrity: sha512-4gd7VpWNQNB4UKKCFFVcp1AVv+FMOgs9NKzjHKusc8jTMhd5eL1NqQqOpE0KzMds804/yHlglp3uxgluOqAPLw==}
@@ -4286,6 +4305,8 @@ snapshots:
   he@1.2.0: {}
 
   idb@7.1.1: {}
+
+  inkjs@2.4.0: {}
 
   internal-slot@1.1.0:
     dependencies:

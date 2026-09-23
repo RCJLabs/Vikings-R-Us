@@ -23,7 +23,9 @@ try {
   for (const id of targets) {
     if (!isTargetId(id)) usage();
     const result = compileTarget(id, TARGETS[id], packs, outRoot);
-    console.log(`content: ${id} <- ${result.packs.join(', ')} (hash ${result.contentHash})`);
+    const drafts = result.drafts > 0 ? `, ${result.drafts} draft` : '';
+    const story = result.scenes > 0 ? `; ${result.scenes} scenes${drafts}, ~${result.sceneWords} words` : '';
+    console.log(`content: ${id} <- ${result.packs.join(', ')} (hash ${result.contentHash}${story})`);
   }
 } catch (error) {
   if (error instanceof ContentError) {

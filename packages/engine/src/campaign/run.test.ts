@@ -1,9 +1,11 @@
 import { loadContent } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
 import type { Content, Destination } from '../content/types';
+import { generateDay } from '../gen/generate';
 import type { DayCtx } from '../logic/context';
 import {
   campaignOf,
+  campaignQueue,
   defaultBills,
   newRun,
   type RunAction,
@@ -310,6 +312,59 @@ describe('the shop and scenes', () => {
     expect(once.state.standing.freyja).toBe(2);
     expect(once.state.family.find((m) => m.id === 'sister')?.status).toBe('sick');
     expect(stepRun(once.state, { t: 'scene', id: 'scene.test', effects }, env).state).toBe(once.state);
+  });
+});
+
+describe('story souls', () => {
+  /** A run on the morning of Day 3, where Thorvald waits. */
+  function dayThree(content: Content, seed: string) {
+    let run = newRun(content, seed);
+    for (let d = 1; d < 3; d++) run = playDay(content, run).run;
+    const ctx = runContext(content, run);
+    return { run, ctx, queue: campaignQueue(run, { content, ctx }) };
+  }
+
+  it('places Thorvald among the generated souls, the same soul in every run', () => {
+    const a = dayThree(demo, 'story-a');
+    const b = dayThree(demo, 'story-b');
+    const generated = generateDay(a.run.seed, a.ctx).cases;
+    expect(a.queue).toHaveLength(generated.length + 1);
+    expect(a.queue.filter((c) => !c.script)).toEqual(generated);
+    const [ta, tb] = [a.queue[4], b.queue[4]];
+    expect(ta?.script).toBe('case.thorvald1');
+    expect(ta?.expect.dest).toBe('RETURN');
+    expect(ta?.evidence.look).toMatchObject({ name: 'Thorvald', patronym: 'Ketilsson' });
+    expect(ta?.evidence.fields.filter((f) => f.text?.msg.startsWith('case.thorvald1.'))).toHaveLength(2);
+    expect(ta?.id).not.toBe(tb?.id);
+    expect({ ...ta, id: '' }).toEqual({ ...tb, id: '' });
+  });
+
+  it('leaves a story soul out when its condition fails', () => {
+    const scripted = demo.scripted?.map((d) => ({ ...d, when: { state: 'flags.never', is: 1 } }));
+    const gated: Content = { ...demo, ...(scripted ? { scripted } : {}) };
+    expect(dayThree(gated, 'story-a').queue.some((c) => c.script)).toBe(false);
+  });
+
+  it('remembers how the story soul was stamped', () => {
+    const { run } = dayThree(demo, 'story-stamp');
+    const right = drive(demo, run, shiftActions(run, demo)).run;
+    expect(right.flags).toMatchObject({ thorvald_met: 1, thorvald_returned: 1 });
+    expect(right.flags.thorvald_valhalla).toBeUndefined();
+    const wrong = drive(demo, run, shiftActions(run, demo, { wrong: (i) => i === 4 })).run;
+    expect(wrong.flags).toMatchObject({ thorvald_met: 1 });
+    expect(wrong.flags.thorvald_returned).toBeUndefined();
+  });
+
+  it('counts story rings in the night’s accounts', () => {
+    const run = newRun(demo, 'story-rings');
+    const scene: RunAction = { t: 'scene', id: 'scene.d1.night', effects: [{ rings: -5 }, { rings: 2 }] };
+    const day = drive(demo, run, [...shiftActions(run, demo), { t: 'endAudit' }, scene, { t: 'endNight' }]);
+    const l = day.run.ledger[0];
+    expect(l?.night?.story).toBe(-3);
+    expect(day.run.storyRings).toBe(0);
+    const n = l?.night;
+    if (!l || !n) throw new Error('no ledger');
+    expect(run.rings + l.pay + l.bonus - l.fines - n.hearth - n.food - n.medicine - n.upgrades + n.story).toBe(n.rings);
   });
 });
 

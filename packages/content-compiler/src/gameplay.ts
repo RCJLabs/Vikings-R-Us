@@ -14,6 +14,7 @@ import {
   QuestionTemplateSchema,
   RavenTemplateSchema,
   RuleSchema,
+  ScriptedCaseSchema,
   SpeechSlotSchema,
   TestimonyTemplateSchema,
   ToolSchema,
@@ -35,13 +36,14 @@ import type {
   QuestionTemplate,
   RavenTemplate,
   RuleDef,
+  ScriptedCaseDef,
   SignLaw,
   SpeechSlotDef,
   TestimonyTemplate,
   ToolDef,
   WorldConstraint,
 } from '@cots/engine';
-import { STATE_PATHS, type StatePred } from '@cots/engine';
+import { createDayContext, type Effect, STATE_PATHS, type StatePred, scriptedCase } from '@cots/engine';
 import { z } from 'zod';
 
 /** The gameplay content one pack defines. Every list is optional in the pack's folder. */
@@ -68,6 +70,8 @@ export interface PackContent {
   primer?: DaySpec;
   /** This pack's part of the campaign (`campaign.yaml`). */
   campaign?: CampaignPart;
+  /** Story souls (`cases/*.yaml`, one per file). */
+  scripted: ScriptedCaseDef[];
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -83,13 +87,16 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
   const dailyFile = join(dir, 'daily.yaml');
   const primerFile = join(dir, 'primer.yaml');
   const campaignFile = join(dir, 'campaign.yaml');
-  const daysDir = join(dir, 'days');
-  const days = existsSync(daysDir)
-    ? readdirSync(daysDir)
-        .filter((f) => f.endsWith('.yaml'))
-        .sort()
-        .map((f) => parse(DaySpecSchema, readYaml(join(daysDir, f)), join(daysDir, f)))
-    : [];
+  const each = <T>(sub: string, schema: z.ZodType<T, unknown>): T[] => {
+    const folder = join(dir, sub);
+    return existsSync(folder)
+      ? readdirSync(folder)
+          .filter((f) => f.endsWith('.yaml'))
+          .sort()
+          .map((f) => parse(schema, readYaml(join(folder, f)), join(folder, f)))
+      : [];
+  };
+  const days = each('days', DaySpecSchema);
   return {
     facts: list('facts.yaml', FactSchema),
     observations: list('observations.yaml', ObservationSchema),
@@ -107,6 +114,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     questions: list('templates/questions.yaml', QuestionTemplateSchema),
     pools: existsSync(poolsFile) ? parse(PoolsSchema, readYaml(poolsFile) ?? {}, poolsFile) : {},
     days,
+    scripted: each('cases', ScriptedCaseSchema),
     ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
     ...(existsSync(primerFile) ? { primer: parse(DaySpecSchema, readYaml(primerFile), primerFile) } : {}),
     ...(existsSync(campaignFile) ? { campaign: parse(CampaignPartSchema, readYaml(campaignFile), campaignFile) } : {}),
@@ -168,6 +176,7 @@ export function emptyPackContent(): PackContent {
     questions: [],
     pools: {},
     days: [],
+    scripted: [],
   };
 }
 
@@ -183,6 +192,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
   const daily = one('daily');
   const primer = one('primer');
   const campaign = mergeCampaign(parts.flatMap((p) => (p.campaign ? [p.campaign] : [])));
+  const scripted = cat('scripted');
   return {
     genVersion,
     facts: cat('facts'),
@@ -204,6 +214,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     ...(daily ? { daily } : {}),
     ...(primer ? { primer } : {}),
     ...(campaign ? { campaign } : {}),
+    ...(scripted.length > 0 ? { scripted } : {}),
   };
 }
 
@@ -225,6 +236,7 @@ export function idsOf(c: PackContent): string[] {
     ...Object.values(c.primer?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
     ...(c.campaign?.shop ?? []).map((u) => u.id),
     ...(c.campaign?.endings ?? []).map((e) => e.id),
+    ...c.scripted.map((x) => x.id),
     ...c.days.flatMap((d) => Object.values(d.params ?? {}).flatMap((p) => p.pool.map((x) => x.id))),
   ];
 }
@@ -395,6 +407,7 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
   }
 
   if (content.campaign) problems.push(...lintCampaign(content, strings));
+  problems.push(...lintScripted(content, strings));
 
   const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
   if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
@@ -482,5 +495,72 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (!spec) problems.push(`Campaign day ${d} has no day spec.`);
     else if (!spec.economy) problems.push(`Campaign day ${d} has no economy.`);
   }
+  return problems;
+}
+
+/** Every combination of a day's param choices (Freyja's whim and the like), by choice id. */
+function paramCombos(content: Content, day: number): Record<string, string>[] {
+  const spec = content.days.find((d) => d.day === day);
+  let combos: Record<string, string>[] = [{}];
+  for (const [name, param] of Object.entries(spec?.params ?? {})) {
+    combos = combos.flatMap((c) => param.pool.map((choice) => ({ ...c, [name]: choice.id })));
+  }
+  return combos;
+}
+
+/**
+ * Story souls: references, and proof that each one can be made on every day
+ * that places it, under every param choice that day can have.
+ */
+function lintScripted(content: Content, strings: Readonly<Record<string, string>>): string[] {
+  const problems: string[] = [];
+  const defs = new Map<string, ScriptedCaseDef>();
+  const facts = new Set(content.facts.map((f) => f.id));
+  const family = new Set((content.campaign?.family ?? []).map((m) => m.id));
+  const walk = (p: StatePred, where: string): void => {
+    if ('all' in p) for (const q of p.all) walk(q, where);
+    else if ('any' in p) for (const q of p.any) walk(q, where);
+    else if ('not' in p) walk(p.not, where);
+    else if (!STATE_PATHS.test(p.state)) problems.push(`${where} reads unknown run state "${p.state}".`);
+  };
+  const effect = (e: Effect, where: string) => {
+    if ('family' in e && !family.has(e.family)) problems.push(`${where} changes unknown family member "${e.family}".`);
+  };
+  for (const def of content.scripted ?? []) {
+    const where = `story soul ${def.id}`;
+    if (defs.has(def.id)) problems.push(`Duplicate story soul "${def.id}".`);
+    defs.set(def.id, def);
+    for (const f of [...Object.keys(def.truth), ...def.lies.map((l) => l.fact)]) {
+      if (!facts.has(f)) problems.push(`${where} refers to unknown fact "${f}".`);
+    }
+    for (const k of def.lines ?? []) if (!(k in strings)) problems.push(`${where} uses missing string "${k}".`);
+    if (def.when) walk(def.when, where);
+    for (const rule of def.onStamp ?? []) for (const e of rule.effects) effect(e, where);
+  }
+  const placed = new Set<string>();
+  for (const spec of [content.daily, content.primer]) {
+    if (spec?.queue.scripted) problems.push('The Daily and the primer have no story souls.');
+  }
+  for (const d of content.days) {
+    for (const slot of d.queue.scripted ?? []) {
+      const def = defs.get(slot.case);
+      if (!def) {
+        problems.push(`day ${d.day} places unknown story soul "${slot.case}".`);
+        continue;
+      }
+      placed.add(def.id);
+      if (slot.at > d.queue.count[1]) problems.push(`day ${d.day} places ${def.id} past the end of its queue.`);
+      for (const choose of paramCombos(content, d.day)) {
+        const ctx = createDayContext(content, d.day, 'lint', undefined, choose);
+        const made = scriptedCase(def, ctx, 'lint', slot.at);
+        if (!made.ok) {
+          const params = Object.entries(choose).map(([k, v]) => `${k}=${v}`);
+          problems.push(`day ${d.day}: ${made.why}${params.length > 0 ? ` with ${params.join(', ')}` : ''}.`);
+          break;
+        }
+      }
+    }
+  }
+  for (const id of defs.keys()) if (!placed.has(id)) problems.push(`No day places story soul "${id}".`);
   return problems;
 }

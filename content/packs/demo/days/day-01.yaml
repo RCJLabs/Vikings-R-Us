@@ -7,6 +7,7 @@ economy:
   warnings: 2
   fines: [3, 6, 10]
   costs: { hearth: 6, food: 3, medicine: 10 }
+scenes: { morning: scene.d1.morning, night: scene.d1.night }
 queue:
   count: [6, 6]
   teachFirst: arch.honest_warrior

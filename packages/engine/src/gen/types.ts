@@ -64,7 +64,10 @@ export interface CaseMeta {
 export interface CaseSpec {
   readonly id: string;
   readonly day: number;
+  /** Position in the generated queue; scripted souls keep the position they were placed at. */
   readonly procIndex: number;
+  /** The ScriptedCaseDef this soul was made from, if it is a story soul. */
+  readonly script?: string;
   readonly archetype: string;
   readonly truth: Truth;
   readonly lies: readonly Lie[];

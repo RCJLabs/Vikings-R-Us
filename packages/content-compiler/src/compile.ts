@@ -14,16 +14,18 @@ import { buildDailyChecks, type Content, type DailyChecks, fnv1a32 } from '@cots
 import { parse as parseIcu } from '@formatjs/icu-messageformat-parser';
 import { LineCounter, parseDocument } from 'yaml';
 import { z } from 'zod';
+import { ContentError } from './errors';
 import { idsOf, lintContent, loadPackContent, mergeContent, type PackContent } from './gameplay';
+import { type CompiledScene, lintScenes, loadScenes } from './scenes';
 
-export class ContentError extends Error {
-  override name = 'ContentError';
-}
+export { ContentError };
 
 export interface LoadedPack {
   manifest: PackManifest;
   strings: StringTable;
   content: PackContent;
+  /** Compiled Ink scenes (`scenes/*.ink`). */
+  scenes: CompiledScene[];
   dir: string;
 }
 
@@ -69,7 +71,8 @@ export function loadPacks(packsDir: string): Map<PackId, LoadedPack> {
       : {};
     checkMessages(strings, stringsFile);
     const content = loadPackContent(dir, readYaml, parseWith);
-    packs.set(manifest.id, { manifest, strings, content, dir });
+    const scenes = loadScenes(dir);
+    packs.set(manifest.id, { manifest, strings, content, scenes, dir });
   }
   validatePacks(packs);
   return packs;
@@ -109,6 +112,11 @@ export function validatePacks(packs: Packs): void {
       if (owner) problems.push(`String key "${key}" is defined in both "${owner}" and "${id}".`);
       else keyOwner.set(key, id);
     }
+    for (const scene of pack.scenes) {
+      const owner = keyOwner.get(scene.id);
+      if (owner) problems.push(`Scene "${scene.id}" is defined in both "${owner}" and "${id}".`);
+      else keyOwner.set(scene.id, id);
+    }
   }
   if (problems.length > 0) throw new ContentError(problems.join('\n'));
 }
@@ -118,8 +126,11 @@ const sortedObject = (table: StringTable): StringTable =>
 
 const hex = (n: number): string => n.toString(16).padStart(8, '0');
 
-/** The merged gameplay content and strings a target ships. */
-export function buildTarget(target: TargetDef, packs: Packs): { content: Content; strings: StringTable } {
+/** The merged gameplay content, strings and scenes a target ships. */
+export function buildTarget(
+  target: TargetDef,
+  packs: Packs,
+): { content: Content; strings: StringTable; scenes: CompiledScene[] } {
   const included = target.packs.map((id) => {
     const pack = packs.get(id);
     if (!pack) throw new ContentError(`Target needs missing pack "${id}".`);
@@ -131,7 +142,8 @@ export function buildTarget(target: TargetDef, packs: Packs): { content: Content
     genVersion,
   );
   const strings: StringTable = Object.assign({}, ...included.map((p) => p.strings));
-  return { content, strings };
+  const scenes = included.flatMap((p) => p.scenes).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return { content, strings, scenes };
 }
 
 /**
@@ -171,6 +183,11 @@ export interface CompileResult {
   packs: readonly PackId[];
   contentHash: string;
   outDir: string;
+  /** Scenes the target ships, and how many are still marked `# draft`. */
+  scenes: number;
+  drafts: number;
+  /** Rough word count of the target's scenes, for the writing budget. */
+  sceneWords: number;
 }
 
 /** Writes `<outRoot>/<targetId>/` with only the packs that target is allowed to ship. */
@@ -189,8 +206,8 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
     }
   }
 
-  const { content, strings } = buildTarget(target, packs);
-  const problems = lintContent(content, strings);
+  const { content, strings, scenes } = buildTarget(target, packs);
+  const problems = [...lintContent(content, strings), ...lintScenes(content, scenes, strings)];
   const daily = included.has('daily') ? buildDaily(packs) : null;
   if (daily) {
     // The Daily may only use core and daily strings, like its content.
@@ -210,12 +227,14 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
   writeFileSync(join(outDir, 'content.json'), `${JSON.stringify(content)}\n`);
   writeFileSync(join(outDir, 'daily.json'), `${JSON.stringify(daily)}\n`);
   writeFileSync(join(outDir, 'daily-checks.json'), `${JSON.stringify(daily ? dailyChecksFor(daily) : null)}\n`);
+  const sceneTable = Object.fromEntries(scenes.map((sc) => [sc.id, sc.json]));
+  writeFileSync(join(outDir, 'scenes.json'), `${JSON.stringify(sceneTable)}\n`);
 
   const canaries = target.packs.flatMap((id) => {
     const canary = (packs.get(id) as LoadedPack).manifest.canary;
     return canary ? [canary] : [];
   });
-  const contentHash = hex(fnv1a32(JSON.stringify([target.packs, tables, content, daily])));
+  const contentHash = hex(fnv1a32(JSON.stringify([target.packs, tables, content, daily, sceneTable])));
   const manifest = {
     target: targetId,
     edition: target.edition,
@@ -237,6 +256,7 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
       `import daily from './daily.json';`,
       `import dailyChecksData from './daily-checks.json';`,
       `import manifest from './manifest.json';`,
+      `import scenesData from './scenes.json';`,
       ...imports,
       '',
       'export { manifest };',
@@ -245,12 +265,22 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
       'export const dailyContent = daily as unknown as Content | null;',
       '/** Checksums every Daily should have, for the runtime guard. */',
       'export const dailyChecks = dailyChecksData as DailyChecks | null;',
+      '/** Compiled Ink scenes by id (day specs name them in `scenes`). */',
+      'export const scenes = scenesData as Readonly<Record<string, object>>;',
       `export const strings: Readonly<Record<string, string>> = { ${spread} };`,
       '',
     ].join('\n'),
   );
 
-  return { target: targetId, packs: target.packs, contentHash, outDir };
+  return {
+    target: targetId,
+    packs: target.packs,
+    contentHash,
+    outDir,
+    scenes: scenes.length,
+    drafts: scenes.filter((sc) => sc.draft).length,
+    sceneWords: scenes.reduce((n, sc) => n + sc.words, 0),
+  };
 }
 
 export interface LeakTokens {
@@ -273,7 +303,9 @@ export function writeLeakTokens(packs: Packs, outRoot: string): void {
       canary: pack.manifest.canary ?? null,
       tokens: [
         ...(pack.manifest.canary ? [pack.manifest.canary] : []),
-        ...[...new Set([...Object.keys(pack.strings), ...idsOf(pack.content)])].sort(),
+        ...[
+          ...new Set([...Object.keys(pack.strings), ...idsOf(pack.content), ...pack.scenes.map((sc) => sc.id)]),
+        ].sort(),
       ],
     };
     writeFileSync(join(dir, `${id}.tokens.json`), `${JSON.stringify(file, null, 2)}\n`);

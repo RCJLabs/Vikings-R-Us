@@ -18,5 +18,10 @@
   "ending.alone.title": "An empty house",
   "ending.alone.text": "No one is left at home to write to. You judge the dead, and no one waits for you.",
   "ending.demoEnd.title": "The demo ends here",
-  "ending.demoEnd.text": "Three days at the gate. Freyja is coming, the sea is rising, and Ragnarök is seventeen days away. The full game continues the story."
+  "ending.demoEnd.text": "Three days at the gate. Freyja is coming, the sea is rising, and Ragnarök is seventeen days away. The full game continues the story.",
+  "speaker.skogul": "Skögul",
+  "speaker.stranger": "A stranger",
+  "speaker.ulf": "Ulf",
+  "case.thorvald1.hall": "Is this Valhalla? I thought it would be taller.",
+  "case.thorvald1.luck": "They call me Thorvald the Unlucky. I've never understood why."
 }

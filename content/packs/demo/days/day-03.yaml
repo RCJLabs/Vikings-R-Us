@@ -7,9 +7,12 @@ economy:
   warnings: 2
   fines: [5, 10, 15]
   costs: { hearth: 6, food: 3, medicine: 10 }
+scenes: { morning: scene.d3.morning, night: scene.d3.night }
 queue:
   count: [7, 9]
   teachFirst: arch.not_quite_dead
+  scripted:
+    - { case: case.thorvald1, at: 4 }
   archetypes:
     - { id: arch.honest_warrior, w: 4 }
     - { id: arch.disarmed_warrior, w: 2 }

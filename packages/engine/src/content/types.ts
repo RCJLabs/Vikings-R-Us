@@ -7,6 +7,8 @@
  * never needs floating-point math.
  */
 
+import type { Look } from '../gen/types';
+
 export type Value = string | number | boolean;
 
 export type Destination = 'VALHALLA' | 'FOLKVANGR' | 'HEL' | 'RAN' | 'RETURN' | 'DETAIN' | 'TRANSFER';
@@ -262,6 +264,8 @@ export interface DaySpec {
   readonly decree: string;
   /** Campaign days only. */
   readonly economy?: Economy;
+  /** Campaign days only: the Ink scenes played before the shift and at night. */
+  readonly scenes?: { readonly morning?: string; readonly night?: string };
   readonly params?: Readonly<Record<string, DayParam>>;
   readonly queue: {
     readonly count: readonly [number, number];
@@ -269,6 +273,8 @@ export interface DaySpec {
     readonly teachFirst?: string;
     /** A fixed queue (the primer): each slot's archetype and destination, in order. Overrides count and mix. */
     readonly script?: readonly { readonly id: string; readonly dest: Destination }[];
+    /** Campaign only: story souls added to the generated queue, each at its position (0-based). */
+    readonly scripted?: readonly { readonly case: string; readonly at: number }[];
     readonly archetypes: readonly { readonly id: string; readonly w: number }[];
     /** Percent [min, max] share of the queue per destination. */
     readonly mix: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
@@ -282,6 +288,30 @@ export type StatePred =
   | { readonly all: readonly StatePred[] }
   | { readonly any: readonly StatePred[] }
   | { readonly not: StatePred };
+
+/**
+ * A soul written for the story (docs/tech-spec.md §4, "Scripted cases"). It is
+ * generated like any other soul, from its own truth constraints and lies, but
+ * with a fixed identity and a seed of its own, so it is the same soul in every
+ * run; then it must pass the same F1-F8 validator. The compiler proves that
+ * for every day that places it.
+ */
+export interface ScriptedCaseDef {
+  readonly id: string;
+  readonly personas: readonly string[];
+  readonly truth: Readonly<Record<string, TruthConstraint>>;
+  readonly require?: readonly Pred[];
+  readonly lies: readonly LieSpec[];
+  readonly look: Look;
+  /** Extra lines the soul says (string keys). They claim nothing, so they can't change a judgment. */
+  readonly lines?: readonly string[];
+  /** Where the soul belongs; the compiler checks the generated case agrees. */
+  readonly expect: Destination;
+  /** Only in the queue when this holds as the shift begins. */
+  readonly when?: StatePred;
+  /** Story consequences at the audit, by the stamp used (`*` matches any stamp; unjudged souls do nothing). */
+  readonly onStamp?: readonly { readonly stamped: Destination | '*'; readonly effects: readonly Effect[] }[];
+}
 
 /** What a story scene (or a scripted soul) does to the run, applied once. */
 export type Effect =
@@ -379,4 +409,6 @@ export interface Content {
   readonly primer?: DaySpec;
   /** Campaign rules, in builds that ship campaign days. */
   readonly campaign?: CampaignDef;
+  /** Story souls that campaign days place in their queues. */
+  readonly scripted?: readonly ScriptedCaseDef[];
 }

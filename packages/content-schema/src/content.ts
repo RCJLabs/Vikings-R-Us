@@ -15,6 +15,7 @@ import type {
   QuestionTemplate,
   RavenTemplate,
   RuleDef,
+  ScriptedCaseDef,
   SignLaw,
   SpeechSlotDef,
   StandingRule,
@@ -167,6 +168,15 @@ const TruthConstraintSchema = z.union([
   z.strictObject({ gte: Int.optional(), lte: Int.optional() }),
 ]);
 
+const LieSpecSchema = z.strictObject({
+  fact: z.string(),
+  claim: ValueSchema,
+  p: Percent,
+  motive: z.enum(['wantsValhalla', 'avoidHel', 'hideFaith', 'evadeRegistry', 'mistaken', 'mischief']),
+  onQuestion: z.partialRecord(QuestionKindSchema, Weight),
+  since: Day.optional(),
+});
+
 export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   id: Id,
   since: Day,
@@ -174,16 +184,7 @@ export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   personas: z.array(Id).min(1),
   truth: z.record(z.string(), TruthConstraintSchema),
   require: z.array(PredSchema).optional(),
-  lies: z.array(
-    z.strictObject({
-      fact: z.string(),
-      claim: ValueSchema,
-      p: Percent,
-      motive: z.enum(['wantsValhalla', 'avoidHel', 'hideFaith', 'evadeRegistry', 'mistaken', 'mischief']),
-      onQuestion: z.partialRecord(QuestionKindSchema, Weight),
-      since: Day.optional(),
-    }),
-  ),
+  lies: z.array(LieSpecSchema),
 });
 
 const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'back', 'flavor']);
@@ -248,6 +249,7 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
   sunS: Int.positive(),
   decree: Key,
   economy: EconomySchema.optional(),
+  scenes: z.strictObject({ morning: Id.optional(), night: Id.optional() }).optional(),
   params: z
     .record(z.string(), z.strictObject({ pool: z.array(z.strictObject({ id: Id, text: Key, is: PredSchema })).min(1) }))
     .optional(),
@@ -256,6 +258,10 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
     teachFirst: Id.optional(),
     script: z
       .array(z.strictObject({ id: Id, dest: DestinationSchema }))
+      .min(1)
+      .optional(),
+    scripted: z
+      .array(z.strictObject({ case: Id, at: Int.min(0) }))
       .min(1)
       .optional(),
     archetypes: z.array(z.strictObject({ id: Id, w: Int.positive() })).min(1),
@@ -293,6 +299,38 @@ export const EffectSchema: z.ZodType<Effect> = z.union([
   z.strictObject({ flag: z.string().regex(/^[A-Za-z0-9_]+$/), set: Int.optional(), inc: Int.optional() }),
   z.strictObject({ family: z.string(), becomes: z.enum(['sick', 'well']) }),
 ]);
+
+const LookSchema = z.strictObject({
+  gender: z.enum(['m', 'f']),
+  name: z.string().min(1),
+  patronym: z.string().min(1),
+  // The dead are adults only (docs/build-plan.md §1, content rules).
+  age: Int.min(18).max(85),
+  build: z.enum(['lean', 'broad', 'heavy']),
+  beard: z.enum(['none', 'short', 'long', 'braided']),
+});
+
+/** A story soul (`cases/*.yaml`, one per file). */
+export const ScriptedCaseSchema: z.ZodType<ScriptedCaseDef> = z.strictObject({
+  id: Id,
+  personas: z.array(Id).min(1),
+  truth: z.record(z.string(), TruthConstraintSchema),
+  require: z.array(PredSchema).optional(),
+  lies: z.array(LieSpecSchema),
+  look: LookSchema,
+  lines: z.array(Key).min(1).optional(),
+  expect: DestinationSchema,
+  when: StatePredSchema.optional(),
+  onStamp: z
+    .array(
+      z.strictObject({
+        stamped: z.union([DestinationSchema, z.literal('*')]),
+        effects: z.array(EffectSchema).min(1),
+      }),
+    )
+    .min(1)
+    .optional(),
+});
 
 const FamilyDefSchema: z.ZodType<FamilyDef> = z.strictObject({ id: z.string(), name: Key, adult: z.boolean() });
 

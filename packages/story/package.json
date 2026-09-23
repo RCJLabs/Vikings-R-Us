@@ -1,0 +1,15 @@
+{
+  "name": "@cots/story",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Ink scene playback for the campaign: lines, choices and effects from compiled Ink JSON.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "inkjs": "2.4.0",
+    "@cots/engine": "workspace:*"
+  }
+}
