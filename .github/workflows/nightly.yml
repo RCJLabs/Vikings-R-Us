@@ -1,0 +1,29 @@
+name: Nightly sweep
+
+# The full-size generator checks (docs/tech-spec.md §9): 10k seeds x every
+# playable day, plus a deeper run of the fairness property tests.
+# Scheduled workflows run from the default branch.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm sim sweep --seeds 10000 --prefix nightly
+      - run: pnpm exec vitest run packages/engine/src/gen
+        env:
+          FAIRNESS_RUNS: '2000'

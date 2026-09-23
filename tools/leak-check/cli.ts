@@ -41,7 +41,9 @@ for (const id of requested) {
   }
 
   if (target.edition === 'demo') {
-    for (const f of findTokens(dist, campaign.tokens)) failures.push(`${id}: campaign token "${f.token}" in ${f.file}`);
+    const ids = campaign.tokens.filter((t) => t !== campaign.canary);
+    const leaks = [...findTokens(dist, [campaign.canary]), ...findTokens(dist, ids, { quoted: true })];
+    for (const f of leaks) failures.push(`${id}: campaign token "${f.token}" in ${f.file}`);
     for (const map of listFiles(dist).filter((file) => file.endsWith('.map'))) {
       failures.push(`${id}: source map ${relative(dist, map)} in a public build`);
     }

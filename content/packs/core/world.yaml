@@ -1,0 +1,10 @@
+# Holds in every generated truth. The laws above rely on these.
+- id: world.battleWounds
+  if: { fact: cause, is: battle }
+  then: { any: [{ fact: woundsFront, gte: 1 }, { fact: woundsBack, gte: 1 }] }
+- id: world.strawUnwounded
+  if: { fact: cause, in: [sickness, oldAge] }
+  then: { all: [{ fact: woundsFront, is: 0 }, { fact: woundsBack, is: 0 }] }
+- id: world.aliveFromBattle
+  if: { fact: alive, is: true }
+  then: { fact: cause, is: battle }

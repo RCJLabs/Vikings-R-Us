@@ -489,6 +489,8 @@ replayDay(k): restore snapshot k (confirm: discards later days), as in Papers, P
 
 ### 5.2 YAML examples (unlock days match build-plan §2)
 
+> These sketches predate the implementation. The real files live in `content/packs/*`, and §13 lists where M1 differs (for example, `alive` is its own fact and there's no `cause: none`).
+
 ```yaml
 # content/packs/core/facts.yaml
 - { id: cause, domain: { enum: [battle, sickness, oldAge, drowned, accident, none] }, since: 1, inert: battle }
@@ -1084,6 +1086,40 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - Service workers only in `web-demo`; never in itch, Electron or Capacitor builds.
 
 ---
+
+## 13. M1 implementation notes (the fairness engine as built)
+
+**Where things live**
+- Engine: `packages/engine/src/{logic,gen,narrative}`.
+- Content: `content/packs/{core,demo,campaign}`.
+- Tests: `packages/*/src/**/*.test.ts` and `tests/golden`.
+
+**Decisions that differ from the sketches above**
+- **The engine owns the content types.** They live in `packages/engine/src/content/types.ts`, and the engine imports nothing. `content-schema` parses YAML into exactly those types; its `z.ZodType<EngineType>` annotations turn any drift into a type error.
+- **`alive` is its own fact**, presumed false. There is no `cause: none`: a not-quite-dead soul still has `cause: battle`.
+- **Two kinds of laws.** *Signs* (`kind: sign`) read an observation, e.g. a fever flush means sickness. *Customs* (`kind: fact`) relate facts, e.g. no wounds anywhere means no battle death. Observations declared `from: { fact }` are read directly, with no law.
+- **Facts that don't exist yet are known.** A fact before its `since` day is pinned and known to the solver at level 4 ("world"). On day 1 there are no back wounds, so the front of the body decides; the flip arrives with the rule on day 2.
+- **Body evidence is complete.** Every observation active that day is rendered. The planner only decides testimony, raven lines, cues and decoys. So channel "redundancy" became `ravenRate`, and the knobs are `lieRate` (a percent multiplier on archetype lie chances), `maxLies`, `decoyRate`, `ravenRate`, `forgetRate`, `proofCostS`, `maxTools`, `maxDocs` and `salienceFloor`.
+- **Archetype `require` predicates** (e.g. Freyja's whim, or its negation) compile into sampling constraints, so targeted destinations don't depend on rejection sampling.
+- **Smaller changes:**
+  - `teachFirst` names an archetype, not a rule.
+  - Each dialogue pool (place, foe, weapon) is drawn once per soul, so all of a soul's lines agree. A mismatch would look like a lie.
+  - Names come from a per-day shuffle, so they are unique within a day and each soul stays a pure function of (seed, day, index).
+- **Leak tokens** now include every content id a pack owns. Ids and string keys are matched as quoted literals; the canary is matched raw.
+- **dependency-cruiser was dropped** (it doesn't support TypeScript 7 yet). `tools/lint-boundaries` enforces engine purity and content imports.
+
+**Known limits**
+- A derived fact's trust level is the lowest level among its inputs, which is conservative.
+- A statement about a derived fact (Huginn's "watched this one run") narrows that fact but isn't pushed back to its inputs.
+- The partial-evidence oracle test only checks that the solver is never *more* certain than brute force.
+- In days 1–5 every decisive fact can be seen on the body, so a confession never decides a case. The reveal path is implemented and tested; it starts to matter with identity and registry mechanics (day 6+).
+- Daily golden hashes wait for the Daily mode (M2). Day summaries are pinned in `tests/golden/days-1-5.json`.
+
+**Tooling**
+- `pnpm sim sweep --seeds N [--days 1-5]` prints acceptance, attempts, fallbacks, timing, destination mix and bot scores, and fails on the §3.8 thresholds. CI runs 200 seeds as a test; `nightly.yml` runs 10,000.
+- `pnpm exec tsx tools/sim/dump.ts <day> <seed> [index]` prints souls with evidence, lies, proof and question answers.
+- `pnpm golden:update` rewrites the golden summaries after an intended generator change. Bump `genVersion` too.
+- The Case Lab (`pnpm dev`) shows a soul's truth, evidence, solver beliefs and support, rule evaluation, questions and generation log, plus a 100-seed sweep.
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

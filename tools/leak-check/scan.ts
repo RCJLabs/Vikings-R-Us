@@ -20,13 +20,18 @@ export interface Finding {
  * Every (token, file) pair where a token's UTF-8 bytes appear in a file under
  * `dir`. Files are compared as raw bytes, so nothing hides in binary assets.
  */
-export function findTokens(dir: string, tokens: readonly string[]): Finding[] {
-  const needles = tokens.map((token) => ({ token, bytes: Buffer.from(token, 'utf8').toString('latin1') }));
+export function findTokens(dir: string, tokens: readonly string[], opts: { quoted?: boolean } = {}): Finding[] {
+  const latin1 = (s: string) => Buffer.from(s, 'utf8').toString('latin1');
+  // Quoted matching finds ids and string keys as whole string literals, so `arch.x` never matches `arch.x_y`.
+  const needles = tokens.map((token) => ({
+    token,
+    forms: opts.quoted ? [`"${token}"`, `'${token}'`, `\`${token}\``].map(latin1) : [latin1(token)],
+  }));
   const found: Finding[] = [];
   for (const file of listFiles(dir)) {
     const haystack = readFileSync(file).toString('latin1');
-    for (const { token, bytes } of needles) {
-      if (haystack.includes(bytes)) found.push({ token, file: relative(dir, file) });
+    for (const { token, forms } of needles) {
+      if (forms.some((f) => haystack.includes(f))) found.push({ token, file: relative(dir, file) });
     }
   }
   return found;

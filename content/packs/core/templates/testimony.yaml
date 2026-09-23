@@ -1,0 +1,24 @@
+- { id: tm.identity.1, slot: identity, msg: tm.identity.1, weight: 2 }
+- { id: tm.identity.2, slot: identity, personas: [braggart], msg: tm.identity.2, weight: 3 }
+- { id: tm.identity.3, slot: identity, msg: tm.identity.3 }
+
+- { id: tm.death.battle.1, slot: death, asserts: { fact: cause, value: battle }, msg: tm.death.battle.1, params: { place: pool.places, foe: pool.foes }, weight: 3 }
+- { id: tm.death.battle.2, slot: death, asserts: { fact: cause, value: battle }, personas: [braggart], msg: tm.death.battle.2, params: { place: pool.places, foe: pool.foes }, weight: 3 }
+- { id: tm.death.battle.3, slot: death, asserts: { fact: cause, value: battle }, personas: [confused], msg: tm.death.battle.3, params: { place: pool.places }, weight: 5 }
+- { id: tm.death.battle.4, slot: death, asserts: { fact: cause, value: battle }, personas: [veteran], msg: tm.death.battle.4, params: { place: pool.places }, weight: 2 }
+- { id: tm.death.sickness.1, slot: death, asserts: { fact: cause, value: sickness }, msg: tm.death.sickness.1, weight: 2 }
+- { id: tm.death.sickness.2, slot: death, asserts: { fact: cause, value: sickness }, personas: [honest], msg: tm.death.sickness.2 }
+- { id: tm.death.oldAge.1, slot: death, asserts: { fact: cause, value: oldAge }, msg: tm.death.oldAge.1 }
+- { id: tm.death.drowned.1, slot: death, asserts: { fact: cause, value: drowned }, msg: tm.death.drowned.1, params: { place: pool.places } }
+
+- { id: tm.weapon.yes.1, slot: weapon, asserts: { fact: grip, value: weapon }, msg: tm.weapon.yes.1, params: { weapon: pool.weapons }, weight: 2 }
+- { id: tm.weapon.yes.2, slot: weapon, asserts: { fact: grip, value: weapon }, personas: [braggart], msg: tm.weapon.yes.2, params: { weapon: pool.weapons }, weight: 2 }
+- { id: tm.weapon.no.1, slot: weapon, asserts: { fact: grip, value: none }, msg: tm.weapon.no.1, params: { weapon: pool.weapons } }
+
+- { id: tm.back.no.1, slot: back, asserts: { fact: fled, value: false }, msg: tm.back.no.1, weight: 2 }
+- { id: tm.back.no.2, slot: back, asserts: { fact: fled, value: false }, personas: [braggart], msg: tm.back.no.2, params: { foe: pool.foes }, weight: 2 }
+- { id: tm.back.yes.1, slot: back, asserts: { fact: fled, value: true }, msg: tm.back.yes.1 }
+
+- { id: tm.flavor.confused, slot: flavor, personas: [confused], msg: tm.flavor.confused }
+- { id: tm.flavor.braggart, slot: flavor, personas: [braggart], msg: tm.flavor.braggart }
+- { id: tm.flavor.coward, slot: flavor, personas: [coward], msg: tm.flavor.coward }

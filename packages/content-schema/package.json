@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@cots/engine": "workspace:*",
     "zod": "4.6.5"
   }
 }

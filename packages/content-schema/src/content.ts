@@ -1,0 +1,255 @@
+import type {
+  ArchetypeDef,
+  CueDef,
+  DaySpec,
+  FactDef,
+  FactLaw,
+  NamedPredicate,
+  ObservationDef,
+  ObsPattern,
+  Pred,
+  QuestionTemplate,
+  RavenTemplate,
+  RuleDef,
+  SignLaw,
+  SpeechSlotDef,
+  TestimonyTemplate,
+  ToolDef,
+  WorldConstraint,
+} from '@cots/engine';
+import { z } from 'zod';
+
+/**
+ * YAML schemas for gameplay content. Each one parses into the engine's own
+ * content types (packages/engine/src/content/types.ts); the explicit
+ * `z.ZodType<...>` annotations make any drift between the two a type error.
+ */
+
+const Id = z.string().regex(/^[a-z][a-zA-Z0-9_.-]*$/, 'ids are dotted lower-camel words');
+const Key = z.string().regex(/^[a-z][a-z0-9]*(\.[a-zA-Z0-9_-]+)+$/, 'string keys look like `core.title`');
+const Int = z.number().int();
+const Day = Int.min(1).max(20);
+const Percent = Int.min(0).max(100);
+const Weight = Int.min(0);
+
+export const ValueSchema = z.union([z.string(), Int, z.boolean()]);
+export const DestinationSchema = z.enum(['VALHALLA', 'FOLKVANGR', 'HEL', 'RAN', 'RETURN', 'DETAIN', 'TRANSFER']);
+export const ToolIdSchema = z.enum(['flip', 'feather', 'runeLens', 'clippers']);
+const ViewSchema = z.enum(['front', 'back']);
+const SalienceSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+const QuestionKindSchema = z.enum(['confess', 'excuse', 'insist', 'deflect']);
+
+export const PredSchema: z.ZodType<Pred> = z.lazy(() =>
+  z.union([
+    z.strictObject({ fact: z.string(), is: ValueSchema }),
+    z.strictObject({ fact: z.string(), in: z.array(ValueSchema).min(1) }),
+    z.strictObject({ fact: z.string(), gte: Int.optional(), lte: Int.optional() }),
+    z.strictObject({ all: z.array(PredSchema).min(1) }),
+    z.strictObject({ any: z.array(PredSchema).min(1) }),
+    z.strictObject({ not: PredSchema }),
+    z.strictObject({ ref: Id }),
+    z.strictObject({ param: z.string() }),
+    z.strictObject({ always: z.literal(true) }),
+  ]),
+);
+
+const ObsPatternSchema: z.ZodType<ObsPattern> = z.lazy(() =>
+  z.union([
+    z.strictObject({ obs: z.string(), is: ValueSchema }),
+    z.strictObject({ obs: z.string(), in: z.array(ValueSchema).min(1) }),
+    z.strictObject({ all: z.array(ObsPatternSchema).min(1) }),
+  ]),
+);
+
+const DomainSchema = z.union([
+  z.strictObject({ enum: z.array(z.string()).min(1) }).transform((d) => ({ kind: 'enum' as const, values: d.enum })),
+  z.strictObject({ bool: z.literal(true) }).transform(() => ({ kind: 'bool' as const })),
+  z
+    .strictObject({ int: z.tuple([Int, Int]) })
+    .transform((d) => ({ kind: 'int' as const, min: d.int[0], max: d.int[1] })),
+]);
+
+export const FactSchema: z.ZodType<FactDef, unknown> = z
+  .strictObject({
+    id: Id,
+    domain: DomainSchema,
+    since: Day.default(1),
+    inert: ValueSchema.optional(),
+    valueSince: z.record(z.string(), Day).optional(),
+    prior: z.record(z.string(), Weight).optional(),
+    presumption: ValueSchema.optional(),
+    derived: PredSchema.optional(),
+  })
+  .transform(({ inert, ...f }) => {
+    const d = f.domain;
+    const first = d.kind === 'enum' ? (d.values[0] as string) : d.kind === 'int' ? d.min : false;
+    return { ...f, inert: inert ?? first };
+  });
+
+export const ObservationSchema: z.ZodType<ObservationDef> = z.strictObject({
+  key: z.string(),
+  view: ViewSchema,
+  tool: ToolIdSchema.optional(),
+  since: Day,
+  salience: SalienceSchema,
+  cost: Int.min(0),
+  from: z.union([
+    z.strictObject({ fact: z.string() }),
+    z.strictObject({
+      map: z.array(z.strictObject({ when: PredSchema, value: ValueSchema })).min(1),
+      otherwise: ValueSchema,
+    }),
+  ]),
+  when: PredSchema.optional(),
+});
+
+const FactConstraintSchema = z.strictObject({ fact: z.string(), in: z.array(ValueSchema).min(1) });
+
+export const LawSchema = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('sign'),
+    id: Id,
+    since: Day,
+    text: Key,
+    if: ObsPatternSchema,
+    then: FactConstraintSchema,
+  }),
+  z.strictObject({
+    kind: z.literal('fact'),
+    id: Id,
+    since: Day,
+    text: Key,
+    if: PredSchema,
+    then: FactConstraintSchema,
+  }),
+]);
+export type LawYaml = z.infer<typeof LawSchema>;
+export const toSignLaw = ({ kind: _, ...l }: Extract<LawYaml, { kind: 'sign' }>): SignLaw => l;
+export const toFactLaw = ({ kind: _, ...l }: Extract<LawYaml, { kind: 'fact' }>): FactLaw => l;
+
+export const CueSchema: z.ZodType<CueDef> = z.strictObject({
+  key: z.string(),
+  view: ViewSchema,
+  since: Day,
+  salience: SalienceSchema,
+  hint: z.strictObject({ fact: z.string(), value: ValueSchema }),
+});
+
+export const WorldSchema: z.ZodType<WorldConstraint> = z.strictObject({ id: Id, if: PredSchema, then: PredSchema });
+
+export const NamedPredicateSchema: z.ZodType<NamedPredicate> = z.strictObject({
+  id: Id,
+  versions: z.array(z.strictObject({ since: Day, is: PredSchema })).min(1),
+});
+
+export const RuleSchema: z.ZodType<RuleDef> = z.strictObject({
+  id: Id,
+  order: Int.min(0),
+  since: Day,
+  until: Day.optional(),
+  when: PredSchema,
+  then: DestinationSchema,
+  text: Key,
+});
+
+export const ToolSchema: z.ZodType<ToolDef> = z.strictObject({ id: ToolIdSchema, since: Day, cost: Int.min(0) });
+
+const TruthConstraintSchema = z.union([
+  z.strictObject({ is: ValueSchema }),
+  z.strictObject({ in: z.array(ValueSchema).min(1) }),
+  z.strictObject({ gte: Int.optional(), lte: Int.optional() }),
+]);
+
+export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
+  id: Id,
+  since: Day,
+  until: Day.optional(),
+  personas: z.array(Id).min(1),
+  truth: z.record(z.string(), TruthConstraintSchema),
+  require: z.array(PredSchema).optional(),
+  lies: z.array(
+    z.strictObject({
+      fact: z.string(),
+      claim: ValueSchema,
+      p: Percent,
+      motive: z.enum(['wantsValhalla', 'avoidHel', 'hideFaith', 'evadeRegistry', 'mistaken', 'mischief']),
+      onQuestion: z.partialRecord(QuestionKindSchema, Weight),
+      since: Day.optional(),
+    }),
+  ),
+});
+
+const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'back', 'flavor']);
+
+export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
+  slot: SpeechSlotNameSchema,
+  fact: z.string().optional(),
+  chance: Percent,
+  since: Day,
+});
+
+const Asserts = z.strictObject({ fact: z.string(), value: ValueSchema });
+const Params = z.record(z.string(), z.string());
+
+export const TestimonyTemplateSchema: z.ZodType<TestimonyTemplate> = z.strictObject({
+  id: Id,
+  slot: SpeechSlotNameSchema,
+  asserts: Asserts.optional(),
+  personas: z.array(Id).min(1).optional(),
+  msg: Key,
+  params: Params.optional(),
+  weight: Weight.default(1),
+});
+
+export const RavenTemplateSchema: z.ZodType<RavenTemplate> = z.strictObject({
+  id: Id,
+  raven: z.enum(['huginn', 'muninn']),
+  tag: z.string().optional(),
+  asserts: Asserts.optional(),
+  msg: Key,
+  params: Params.optional(),
+  weight: Weight.default(1),
+});
+
+export const QuestionTemplateSchema: z.ZodType<QuestionTemplate> = z.strictObject({
+  id: Id,
+  on: z.strictObject({
+    fact: z.string(),
+    claimed: ValueSchema.optional(),
+    truth: z.array(ValueSchema).min(1).optional(),
+    persona: z.array(Id).min(1).optional(),
+    kind: QuestionKindSchema,
+  }),
+  msgs: z.array(Key).min(1),
+  weight: Weight.default(1),
+});
+
+export const PoolsSchema = z.record(Key, z.array(z.string().min(1)).min(1));
+
+const Pair = z.tuple([Int.min(0), Int.min(0)]);
+
+export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
+  day: Day,
+  sunS: Int.positive(),
+  decree: Key,
+  params: z
+    .record(z.string(), z.strictObject({ pool: z.array(z.strictObject({ id: Id, text: Key, is: PredSchema })).min(1) }))
+    .optional(),
+  queue: z.strictObject({
+    count: Pair,
+    teachFirst: Id.optional(),
+    archetypes: z.array(z.strictObject({ id: Id, w: Int.positive() })).min(1),
+    mix: z.partialRecord(DestinationSchema, z.tuple([Percent, Percent])),
+    knobs: z.strictObject({
+      lieRate: Int.min(0).max(200),
+      maxLies: Int.min(0).max(3),
+      decoyRate: Percent,
+      ravenRate: Percent,
+      forgetRate: Percent,
+      proofCostS: Pair,
+      maxTools: Int.min(0),
+      maxDocs: Int.min(1),
+      salienceFloor: SalienceSchema,
+    }),
+  }),
+});

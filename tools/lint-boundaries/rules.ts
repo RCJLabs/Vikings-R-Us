@@ -23,13 +23,14 @@ const ENGINE_PATTERNS: readonly PatternRule[] = [
   { rule: 'no ** operator (floating-point pow)', pattern: /\*\*/ },
   { rule: 'no Date (the engine never reads a clock)', pattern: /\bDate\b/ },
   { rule: 'no Intl or localeCompare (locale-dependent)', pattern: /\bIntl\b|\.localeCompare\s*\(/ },
+  // Globals only: `x.require` (property access) and `require?: ...` / `{ require: ... }` (property names) are fine.
   {
     rule: 'no timers or clocks',
-    pattern: /\b(setTimeout|setInterval|requestAnimationFrame|performance)\b/,
+    pattern: /(?<![.\w$])(setTimeout|setInterval|requestAnimationFrame|performance)\b(?!\s*\??:)/,
   },
   {
     rule: 'no DOM or host globals',
-    pattern: /\b(window|document|navigator|localStorage|indexedDB|globalThis|process|require)\b/,
+    pattern: /(?<![.\w$])(window|document|navigator|localStorage|indexedDB|globalThis|process|require)\b(?!\s*\??:)/,
   },
 ];
 

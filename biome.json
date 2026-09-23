@@ -1,6 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
   "files": {
     "includes": ["**", "!**/dist", "!**/generated", "!**/node_modules", "!docs", "!LICENSE"]
   },
@@ -11,13 +15,35 @@
     "lineWidth": 120
   },
   "javascript": {
-    "formatter": { "quoteStyle": "single", "semicolons": "always", "trailingCommas": "all" }
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
   },
   "linter": {
     "enabled": true,
-    "rules": { "preset": "recommended" }
+    "rules": {
+      "preset": "recommended"
+    }
   },
   "assist": {
-    "actions": { "source": { "organizeImports": "on" } }
-  }
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["packages/content-schema/src/content.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noThenProperty": "off"
+          }
+        }
+      }
+    }
+  ]
 }

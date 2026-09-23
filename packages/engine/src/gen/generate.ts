@@ -1,0 +1,293 @@
+import type { ArchetypeDef, Destination, Knobs } from '../content/types';
+import { DESTINATIONS } from '../content/types';
+import type { DayCtx } from '../logic/context';
+import { judge } from '../logic/judge';
+import { Rng } from '../rng/rng';
+import { pickLies } from './lies';
+import { makeLook } from './look';
+import { ceilDiv, weightedPick } from './pick';
+import { planRavens, planSpeech, render } from './render';
+import { sampleTruth } from './sample';
+import type { CaseSpec, GenAttempt, GenLog, RejectCode } from './types';
+import { decisiveFacts, validateCase } from './validate';
+
+type TierId = 'strict' | 'widenBand' | 'anyArchetype' | 'retarget';
+const TIERS: readonly { readonly id: TierId; readonly n: number }[] = [
+  { id: 'strict', n: 24 },
+  { id: 'widenBand', n: 12 },
+  { id: 'anyArchetype', n: 12 },
+  { id: 'retarget', n: 8 },
+];
+
+/** Which destinations each archetype can reach today, from a fixed sample (cached per context). */
+const reachCache = new WeakMap<DayCtx, Map<string, Set<Destination>>>();
+export function reachOf(ctx: DayCtx): Map<string, Set<Destination>> {
+  const cached = reachCache.get(ctx);
+  if (cached) return cached;
+  const out = new Map<string, Set<Destination>>();
+  for (const { def } of ctx.queueArchetypes) {
+    const dests = new Set<Destination>();
+    const rng = new Rng(`${ctx.content.genVersion}|reach|${ctx.day}|${def.id}`);
+    for (let i = 0; i < 48; i++) {
+      const s = sampleTruth(def, ctx, rng);
+      if (s.ok) dests.add(judge(s.truth, ctx).dest);
+    }
+    out.set(def.id, dests);
+  }
+  reachCache.set(ctx, out);
+  return out;
+}
+
+function pickArchetype(
+  ctx: DayCtx,
+  target: Destination,
+  tier: TierId,
+  rng: Rng,
+  teach: string | undefined,
+): ArchetypeDef | null {
+  const reach = reachOf(ctx);
+  if (teach && tier === 'strict') {
+    const def = ctx.archetypes.get(teach);
+    if (def && reach.get(teach)?.has(target)) return def;
+  }
+  const loose = tier === 'anyArchetype' || tier === 'retarget';
+  const options = ctx.queueArchetypes.filter(({ def }) => loose || reach.get(def.id)?.has(target));
+  if (options.length === 0) return null;
+  return weightedPick(
+    options.map((o) => o.def),
+    options.map((o) => o.w),
+    rng,
+  );
+}
+
+/** The knobs a tier validates against: later tiers relax the effort band and visibility floor. */
+export function tierKnobs(tier: string, knobs: Knobs): Knobs {
+  if (tier === 'strict') return knobs;
+  return { ...knobs, proofCostS: [0, 999], salienceFloor: 1 };
+}
+
+export interface GenerateOptions {
+  /** Archetype to try first (the day's teaching soul). */
+  readonly teach?: string;
+  /** Replaces the cosmetic look stream (metamorphic tests). */
+  readonly lookSeed?: string;
+  /** Overrides the day's knobs (fallback construction, adversarial tests). */
+  readonly knobs?: Knobs;
+}
+
+export interface Generated {
+  readonly case: CaseSpec;
+  readonly log: GenLog;
+}
+
+function attemptCase(
+  runSeed: string,
+  ctx: DayCtx,
+  procIndex: number,
+  target: Destination,
+  tier: TierId,
+  attempt: number,
+  opts: GenerateOptions,
+): { case: CaseSpec } | { code: RejectCode; detail: string; archetype: string | null } {
+  const gen = ctx.content.genVersion;
+  const seed = `${gen}|${runSeed}|${ctx.day}|${procIndex}|${tier}|${attempt}`;
+  const rng = new Rng(seed);
+  const knobs = tierKnobs(tier, opts.knobs ?? ctx.spec.queue.knobs);
+
+  const arch = pickArchetype(ctx, target, tier, rng.fork('arch'), opts.teach);
+  if (!arch) return { code: 'NO_ARCHETYPE', detail: `nothing reaches ${target}`, archetype: null };
+  const sampled = sampleTruth(arch, ctx, rng.fork('truth'));
+  if (!sampled.ok) return { code: 'TRUTH_UNSAT', detail: sampled.why, archetype: arch.id };
+  const truth = sampled.truth;
+  const expected = judge(truth, ctx);
+  if (tier !== 'retarget' && expected.dest !== target) {
+    return { code: 'DEST_MISMATCH', detail: `${expected.dest} instead of ${target}`, archetype: arch.id };
+  }
+
+  const decisive = decisiveFacts(truth, expected, ctx);
+  const planned = pickLies(arch, truth, ctx, knobs, rng.fork('lies'));
+  const planRng = rng.fork('plan');
+  const persona = planRng.pick(arch.personas);
+  const speech = planSpeech(truth, planned, ctx, planRng);
+  const ravens = planRavens(truth, decisive, ctx, knobs, planRng);
+  const cues = ctx.cues.flatMap((c) => {
+    if (truth[c.hint.fact] === c.hint.value) return [{ key: c.key, decoy: false }];
+    return planRng.chance(knobs.decoyRate, 100) ? [{ key: c.key, decoy: true }] : [];
+  });
+  const look = makeLook(truth, ctx, runSeed, procIndex, opts.lookSeed);
+  const rendered = render({ truth, lies: planned, speech, ravens, cues, look, persona }, ctx, rng.fork('dialog'));
+  if (rendered.unspoken > 0) return { code: 'LIE_UNSPOKEN', detail: 'no template for a lie', archetype: arch.id };
+
+  const v = validateCase(rendered.evidence, truth, rendered.lies, expected, decisive, ctx, knobs);
+  if (!v.ok) return { code: v.code, detail: v.detail, archetype: arch.id };
+
+  return {
+    case: {
+      id: `${runSeed}:${ctx.day}:${procIndex}`,
+      day: ctx.day,
+      procIndex,
+      archetype: arch.id,
+      truth,
+      lies: rendered.lies,
+      evidence: rendered.evidence,
+      expect: expected,
+      meta: {
+        seed,
+        tier,
+        attempts: 0,
+        fallback: false,
+        decisive,
+        proof: v.proof.fields,
+        proofCostS: v.proof.costS,
+        difficulty: v.difficulty,
+        decoys: rendered.decoys,
+      },
+    },
+  };
+}
+
+/**
+ * Generates one soul. A pure function of (seed, day, index, target): it tries
+ * archetype-targeted attempts in widening tiers and falls back to a plain,
+ * honest soul (logged) if every attempt is rejected.
+ */
+export function generateCase(
+  runSeed: string,
+  ctx: DayCtx,
+  procIndex: number,
+  target: Destination,
+  opts: GenerateOptions = {},
+): Generated {
+  const attempts: GenAttempt[] = [];
+  for (const tier of TIERS) {
+    for (let a = 0; a < tier.n; a++) {
+      const r = attemptCase(runSeed, ctx, procIndex, target, tier.id, a, opts);
+      if ('case' in r) {
+        attempts.push({ tier: tier.id, attempt: a, archetype: r.case.archetype, code: 'ACCEPTED' });
+        const c: CaseSpec = { ...r.case, meta: { ...r.case.meta, attempts: attempts.length } };
+        return { case: c, log: { day: ctx.day, procIndex, target, attempts, fallback: false } };
+      }
+      attempts.push({ tier: tier.id, attempt: a, archetype: r.archetype, code: r.code, detail: r.detail });
+    }
+  }
+  const fb = fallbackCase(runSeed, ctx, procIndex, target, opts);
+  return { case: fb, log: { day: ctx.day, procIndex, target, attempts, fallback: true } };
+}
+
+/** An honest soul with no lies, ravens or decoys. Throws if even that can't reach the target (a content bug). */
+function fallbackCase(
+  runSeed: string,
+  ctx: DayCtx,
+  procIndex: number,
+  target: Destination,
+  opts: GenerateOptions,
+): CaseSpec {
+  const base = opts.knobs ?? ctx.spec.queue.knobs;
+  const plain: Knobs = { ...base, lieRate: 0, decoyRate: 0, ravenRate: 0, forgetRate: 0 };
+  for (let a = 0; a < 256; a++) {
+    const r = attemptCase(`${runSeed}|fallback`, ctx, procIndex, target, 'widenBand', a, { ...opts, knobs: plain });
+    if ('case' in r)
+      return { ...r.case, id: `${runSeed}:${ctx.day}:${procIndex}`, meta: { ...r.case.meta, fallback: true } };
+  }
+  throw new Error(`No fallback soul reaches ${target} on day ${ctx.day}`);
+}
+
+export interface DayPlan {
+  readonly count: number;
+  readonly targets: readonly Destination[];
+  readonly teach?: string;
+  /** Problems the day-level checks could not fix (logged, not fatal). */
+  readonly softFails: readonly string[];
+}
+
+function longestRun(targets: readonly Destination[]): number {
+  let best = 0;
+  let run = 0;
+  for (let i = 0; i < targets.length; i++) {
+    run = i > 0 && targets[i] === targets[i - 1] ? run + 1 : 1;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+
+/** The day's queue: how many souls and which destination each one targets (a shuffled bag). */
+export function planDay(runSeed: string, ctx: DayCtx): DayPlan {
+  const rng = new Rng(`${ctx.content.genVersion}|${runSeed}|${ctx.day}|day`);
+  const { count, mix, teachFirst } = ctx.spec.queue;
+  const n = rng.int(count[0], count[1]);
+  const softFails: string[] = [];
+
+  const dests = DESTINATIONS.filter((d) => mix[d] !== undefined && ctx.destinations.has(d));
+  const counts = new Map<Destination, number>();
+  let used = 0;
+  for (const d of dests) {
+    const [lo] = mix[d] as readonly [number, number];
+    const c = ceilDiv(n * lo, 100);
+    counts.set(d, c);
+    used += c;
+  }
+  if (used > n) softFails.push(`mix minimums need ${used} souls but the day has ${n}`);
+  for (let i = used; i < n; i++) {
+    const open = dests.filter(
+      (d) => (counts.get(d) ?? 0) < Math.floor((n * ((mix[d] as readonly [number, number])[1] ?? 0)) / 100),
+    );
+    const pool = open.length > 0 ? open : dests;
+    const d = weightedPick(
+      pool,
+      pool.map((x) => {
+        const [lo, hi] = mix[x] as readonly [number, number];
+        return Math.max(1, hi - lo);
+      }),
+      rng,
+    );
+    counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+
+  const bag: Destination[] = [];
+  for (const d of dests) for (let i = 0; i < (counts.get(d) ?? 0); i++) bag.push(d);
+  let targets = rng.shuffle(bag).slice(0, n);
+  for (let i = 0; i < 20 && longestRun(targets) > 3; i++) targets = rng.shuffle(targets);
+  if (longestRun(targets) > 3) softFails.push('more than 3 souls in a row share a destination');
+
+  if (teachFirst) {
+    const reach = reachOf(ctx).get(teachFirst);
+    const j = targets.findIndex((d) => reach?.has(d));
+    if (j > 0) {
+      const t = targets.slice();
+      const first = t[0] as Destination;
+      t[0] = t[j] as Destination;
+      t[j] = first;
+      targets = t;
+    } else if (j < 0) softFails.push(`the teaching archetype ${teachFirst} has no slot today`);
+  }
+  return { count: n, targets, ...(teachFirst ? { teach: teachFirst } : {}), softFails };
+}
+
+/** The case at position `procIndex` of the day, exactly as generateDay would produce it. */
+export function generateCaseAt(runSeed: string, ctx: DayCtx, procIndex: number, opts: GenerateOptions = {}): Generated {
+  const plan = planDay(runSeed, ctx);
+  const target = plan.targets[procIndex];
+  if (!target) throw new RangeError(`Day ${ctx.day} has no soul ${procIndex}`);
+  return generateCase(runSeed, ctx, procIndex, target, {
+    ...opts,
+    ...(procIndex === 0 && plan.teach ? { teach: plan.teach } : {}),
+  });
+}
+
+export interface GeneratedDay {
+  readonly plan: DayPlan;
+  readonly cases: readonly CaseSpec[];
+  readonly logs: readonly GenLog[];
+}
+
+export function generateDay(runSeed: string, ctx: DayCtx): GeneratedDay {
+  const plan = planDay(runSeed, ctx);
+  const cases: CaseSpec[] = [];
+  const logs: GenLog[] = [];
+  plan.targets.forEach((target, i) => {
+    const g = generateCase(runSeed, ctx, i, target, i === 0 && plan.teach ? { teach: plan.teach } : {});
+    cases.push(g.case);
+    logs.push(g.log);
+  });
+  return { plan, cases, logs };
+}

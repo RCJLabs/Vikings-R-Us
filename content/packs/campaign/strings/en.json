@@ -1,4 +1,9 @@
 {
   "campaign.days": "Days 4 to 20: the Long Winter and Fimbulwinter.",
-  "campaign.endings": "Eight endings wait at Ragnarok."
+  "campaign.endings": "Eight endings wait at Ragnarok.",
+  "decree.d4": "Freyja has claimed her share of the slain. Each day she names a whim; the worthy who match it go to Fólkvangr.",
+  "decree.d5": "A sea battle. The drowned belong to Rán, whatever they tell you.",
+  "whim.leftHanded": "Freyja claims the left-handed today.",
+  "whim.redHair": "Freyja claims the red-haired today.",
+  "whim.amber": "Freyja claims whoever wears amber today."
 }

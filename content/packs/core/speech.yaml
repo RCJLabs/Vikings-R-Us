@@ -1,0 +1,6 @@
+# What a soul talks about. Lies are always spoken; true lines appear by chance.
+- { slot: identity, chance: 70, since: 1 }
+- { slot: death, fact: cause, chance: 85, since: 1 }
+- { slot: weapon, fact: grip, chance: 45, since: 1 }
+- { slot: back, fact: fled, chance: 35, since: 2 }
+- { slot: flavor, chance: 30, since: 1 }

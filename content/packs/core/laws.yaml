@@ -1,0 +1,19 @@
+# Signs: what an observation tells you.
+- { kind: sign, id: law.fever, since: 1, text: law.fever, if: { obs: skin, is: feverFlush }, then: { fact: cause, in: [sickness] } }
+- { kind: sign, id: law.foam, since: 5, text: law.foam, if: { obs: lips, is: seaFoam }, then: { fact: cause, in: [drowned] } }
+- { kind: sign, id: law.dryLips, since: 5, text: law.dryLips, if: { obs: lips, is: normal }, then: { fact: cause, in: [battle, sickness, oldAge] } }
+- { kind: sign, id: law.breath, since: 3, text: law.breath, if: { obs: breath, is: stirs }, then: { fact: alive, in: [true] } }
+- { kind: sign, id: law.noBreath, since: 3, text: law.noBreath, if: { obs: breath, is: still }, then: { fact: alive, in: [false] } }
+# Customs: how facts relate.
+- kind: fact
+  id: law.wounded
+  since: 1
+  text: law.wounded
+  if: { any: [{ fact: woundsFront, gte: 1 }, { fact: woundsBack, gte: 1 }] }
+  then: { fact: cause, in: [battle, drowned] }
+- kind: fact
+  id: law.unwounded
+  since: 1
+  text: law.unwounded
+  if: { all: [{ fact: woundsFront, is: 0 }, { fact: woundsBack, is: 0 }] }
+  then: { fact: cause, in: [sickness, oldAge, drowned] }

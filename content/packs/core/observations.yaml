@@ -1,0 +1,32 @@
+# What the body shows. `from: { fact }` is read directly; `map` signs need a taught law.
+- { key: grip, view: front, since: 1, salience: 3, cost: 1, from: { fact: grip } }
+- key: gripHand
+  view: front
+  since: 1
+  salience: 2
+  cost: 1
+  from: { fact: gripHand }
+  when: { fact: grip, is: weapon }
+- { key: woundsFront, view: front, since: 1, salience: 3, cost: 1, from: { fact: woundsFront } }
+- key: skin
+  view: front
+  since: 1
+  salience: 3
+  cost: 1
+  from: { map: [{ when: { fact: cause, is: sickness }, value: feverFlush }], otherwise: normal }
+- key: lips
+  view: front
+  since: 5
+  salience: 2
+  cost: 1
+  from: { map: [{ when: { fact: cause, is: drowned }, value: seaFoam }], otherwise: normal }
+- { key: hair, view: front, since: 1, salience: 3, cost: 1, from: { fact: hair } }
+- { key: ornament, view: front, since: 1, salience: 2, cost: 1, from: { fact: ornament } }
+- { key: woundsBack, view: back, since: 2, salience: 3, cost: 1, from: { fact: woundsBack } }
+- key: breath
+  view: front
+  tool: feather
+  since: 3
+  salience: 3
+  cost: 0
+  from: { map: [{ when: { fact: alive, is: true }, value: stirs }], otherwise: still }

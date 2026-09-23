@@ -26,7 +26,9 @@
     "typecheck": "tsc -p packages/engine/tsconfig.json && tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
     "test": "vitest run",
     "e2e": "playwright test -c tests/e2e/playwright.config.ts",
-    "icons": "tsx tools/icons/make-icons.ts"
+    "icons": "tsx tools/icons/make-icons.ts",
+    "sim": "tsx tools/sim/cli.ts",
+    "golden:update": "UPDATE_GOLDEN=1 vitest run tests/golden"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -36,7 +38,10 @@
   "devDependencies": {
     "@babel/core": "7.29.7",
     "@biomejs/biome": "2.5.14",
+    "@cots/content-compiler": "workspace:*",
     "@cots/content-schema": "workspace:*",
+    "@cots/engine": "workspace:*",
+    "@cots/testkit": "workspace:*",
     "@fast-check/vitest": "0.5.0",
     "@playwright/test": "1.56.1",
     "@preact/preset-vite": "2.10.6",

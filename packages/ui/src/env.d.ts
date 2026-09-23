@@ -9,4 +9,5 @@ declare module 'virtual:content' {
     readonly contentHash: string;
   };
   export const strings: Readonly<Record<string, string>>;
+  export const gameContent: import('@cots/engine').Content;
 }

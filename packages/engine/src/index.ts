@@ -1,11 +1,26 @@
+export * from './calendar';
+export * from './content/types';
+export * from './gen/generate';
+export { makeLook } from './gen/look';
+export { weightedPick } from './gen/pick';
+export { compileRequirements, sampleTruth } from './gen/sample';
+export * from './gen/types';
 export {
-  type CivilDate,
-  DAILY_EPOCH,
-  dailyNumber,
-  dailySeed,
-  daysFromCivil,
-  isValidCivilDate,
-} from './calendar';
+  decisiveFacts,
+  difficultyOf,
+  docsFor,
+  minimalProof,
+  type Proof,
+  revealsOf,
+  toolsFor,
+  type Validation,
+  validateCase,
+} from './gen/validate';
+export * from './logic/context';
+export * from './logic/judge';
+export * from './logic/pred';
+export * from './logic/solver';
+export * from './narrative/questions';
 export { fnv1a32, hashParts } from './rng/hash';
 export { Rng } from './rng/rng';
 

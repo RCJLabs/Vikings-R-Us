@@ -1,0 +1,21 @@
+- id: q.cause.braggart.confess
+  on: { fact: cause, claimed: battle, truth: [sickness, oldAge], persona: [braggart], kind: confess }
+  msgs: [q.cause.braggart.confess.1, q.cause.braggart.confess.2]
+  weight: 2
+- id: q.cause.confess
+  on: { fact: cause, claimed: battle, truth: [sickness, oldAge], kind: confess }
+  msgs: [q.cause.confess.1]
+- id: q.cause.drowned.confess
+  on: { fact: cause, claimed: battle, truth: [drowned], kind: confess }
+  msgs: [q.cause.drowned.confess.1]
+- id: q.grip.confess
+  on: { fact: grip, claimed: weapon, truth: [none], kind: confess }
+  msgs: [q.grip.confess.1]
+- id: q.fled.confess
+  on: { fact: fled, claimed: false, truth: [true], kind: confess }
+  msgs: [q.fled.confess.1]
+- id: q.fled.coward.excuse
+  on: { fact: fled, persona: [coward], kind: excuse }
+  msgs: [q.fled.coward.excuse.1]
+- { id: q.any.excuse, on: { fact: '*', kind: excuse }, msgs: [q.any.excuse.1] }
+- { id: q.any.confess, on: { fact: '*', kind: confess }, msgs: [q.any.confess.1] }

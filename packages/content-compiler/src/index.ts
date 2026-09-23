@@ -1,4 +1,5 @@
 export {
+  buildTarget,
   type CompileResult,
   ContentError,
   compileTarget,
@@ -9,3 +10,4 @@ export {
   validatePacks,
   writeLeakTokens,
 } from './compile';
+export { lintContent, mergeContent, type PackContent } from './gameplay';

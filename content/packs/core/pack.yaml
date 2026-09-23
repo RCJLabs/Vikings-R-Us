@@ -1,3 +1,5 @@
 id: core
 description: Rules, systems and UI text shared by every build.
 dependsOn: []
+# Bump when a change alters generated cases (and therefore the Dailies).
+genVersion: 1

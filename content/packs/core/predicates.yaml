@@ -1,0 +1,4 @@
+- id: pred.worthy
+  versions:
+    - { since: 1, is: { all: [{ fact: cause, is: battle }, { fact: grip, is: weapon }] } }
+    - { since: 2, is: { all: [{ fact: cause, is: battle }, { fact: grip, is: weapon }, { fact: fled, is: false }] } }

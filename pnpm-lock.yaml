@@ -14,9 +14,18 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.14
         version: 2.5.14
+      '@cots/content-compiler':
+        specifier: workspace:*
+        version: link:packages/content-compiler
       '@cots/content-schema':
         specifier: workspace:*
         version: link:packages/content-schema
+      '@cots/engine':
+        specifier: workspace:*
+        version: link:packages/engine
+      '@cots/testkit':
+        specifier: workspace:*
+        version: link:packages/testkit
       '@fast-check/vitest':
         specifier: 0.5.0
         version: 0.5.0(vitest@5.0.1(@types/node@22.20.4)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
@@ -98,6 +107,9 @@ importers:
 
   packages/content-schema:
     dependencies:
+      '@cots/engine':
+        specifier: workspace:*
+        version: link:../engine
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -108,6 +120,15 @@ importers:
 
   packages/testkit:
     dependencies:
+      '@cots/content-compiler':
+        specifier: workspace:*
+        version: link:../content-compiler
+      '@cots/content-schema':
+        specifier: workspace:*
+        version: link:../content-schema
+      '@cots/engine':
+        specifier: workspace:*
+        version: link:../engine
       fast-check:
         specifier: 4.10.2
         version: 4.10.2

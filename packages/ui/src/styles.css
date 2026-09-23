@@ -109,3 +109,66 @@ dd {
     transition: none !important;
   }
 }
+
+/* Case Lab (dev-full only) */
+.lab {
+  grid-column: 1 / -1;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  font-size: 0.85rem;
+  overflow-x: auto;
+}
+
+.lab h2,
+.lab h3,
+.lab h4 {
+  color: var(--accent);
+  margin: 1rem 0 0.4rem;
+}
+
+.lab__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+
+.lab input,
+.lab select,
+.lab button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+}
+
+.lab__queue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.lab__queue .is-current,
+.lab tr.is-proof td:first-child {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.lab table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.lab td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.2rem 0.5rem;
+  vertical-align: top;
+}
+
+.lab__rule {
+  margin-right: 0.75rem;
+}

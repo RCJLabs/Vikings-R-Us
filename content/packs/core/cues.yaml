@@ -1,0 +1,2 @@
+# Hints that tell a careful player to reach for a tool. They prove nothing.
+- { key: breathFog, view: front, since: 3, salience: 2, hint: { fact: alive, value: true } }

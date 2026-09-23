@@ -4,7 +4,7 @@ A Papers, Please-style judgment game: you're a new Valkyrie with 20 battle-days 
 
 - **Plan:** [`docs/build-plan.md`](docs/build-plan.md): design, 20-day campaign, milestones, risks.
 - **Technical spec:** [`docs/tech-spec.md`](docs/tech-spec.md): types, the case-fairness system, content formats, platform shells.
-- **Status:** M0 (foundations): workspace, tooling, CI, all six build targets building a hello-world.
+- **Status:** M1 (fairness engine): case generator, three-valued solver, the fairness validator and the Case Lab for days 1–5. No playable shift screen yet (M2).
 
 ## Getting started
 
@@ -19,6 +19,8 @@ pnpm test                # Vitest + fast-check
 pnpm build:all           # all six targets into dist/<target>
 pnpm leak-check          # demo builds contain no campaign content; full builds do
 pnpm e2e                 # Playwright smoke test against dist/web-demo
+pnpm sim sweep --seeds 200   # generator sweep with the CI thresholds (nightly runs 10,000)
+pnpm golden:update       # refresh tests/golden after an intended generator change
 ```
 
 ## Layout

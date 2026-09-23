@@ -1,0 +1,2 @@
+- { id: flip, since: 2, cost: 2 }
+- { id: feather, since: 3, cost: 10 }

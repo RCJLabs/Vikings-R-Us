@@ -20,3 +20,9 @@ it('finds tokens in nested text and binary files, and reports nothing when clean
   ]);
   expect(findTokens(dir, ['absent'])).toEqual([]);
 });
+
+it('quoted matching finds whole string literals only', () => {
+  dir = mkdtempSync(join(tmpdir(), 'cots-leak-'));
+  writeFileSync(join(dir, 'a.js'), `const x = {"arch.drowned_raider": 1, k: 'decree.d4'};`);
+  expect(findTokens(dir, ['arch.drowned', 'decree.d4'], { quoted: true }).map((f) => f.token)).toEqual(['decree.d4']);
+});

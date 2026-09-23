@@ -12,6 +12,7 @@
     "tools",
     "tests/e2e",
     "vitest.config.ts",
-    "apps/web/vite.config.ts"
+    "apps/web/vite.config.ts",
+    "tests/golden"
   ]
 }

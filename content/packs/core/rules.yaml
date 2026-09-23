@@ -1,0 +1,11 @@
+# The Order of Judgment: the first rule that holds decides.
+- { id: rule.return, order: 100, since: 3, when: { fact: alive, is: true }, then: RETURN, text: rule.return }
+- { id: rule.ran, order: 500, since: 5, when: { fact: cause, is: drowned }, then: RAN, text: rule.ran }
+- id: rule.folkvangr
+  order: 600
+  since: 4
+  when: { all: [{ ref: pred.worthy }, { param: freyjaWhim }] }
+  then: FOLKVANGR
+  text: rule.folkvangr
+- { id: rule.valhalla, order: 700, since: 1, when: { ref: pred.worthy }, then: VALHALLA, text: rule.valhalla }
+- { id: rule.hel, order: 999, since: 1, when: { always: true }, then: HEL, text: rule.hel }

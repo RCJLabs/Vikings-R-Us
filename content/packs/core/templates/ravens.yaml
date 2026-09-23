@@ -1,0 +1,11 @@
+# Huginn (thought) saw how they died. Muninn (memory) knows who they were. Ravens never lie.
+- { id: rv.huginn.battle, raven: huginn, asserts: { fact: cause, value: battle }, msg: rv.huginn.battle, params: { place: pool.places } }
+- { id: rv.huginn.sickness, raven: huginn, asserts: { fact: cause, value: sickness }, msg: rv.huginn.sickness }
+- { id: rv.huginn.oldAge, raven: huginn, asserts: { fact: cause, value: oldAge }, msg: rv.huginn.oldAge }
+- { id: rv.huginn.drowned, raven: huginn, asserts: { fact: cause, value: drowned }, msg: rv.huginn.drowned }
+- { id: rv.huginn.fledTrue, raven: huginn, asserts: { fact: fled, value: true }, msg: rv.huginn.fledTrue }
+- { id: rv.huginn.fledFalse, raven: huginn, asserts: { fact: fled, value: false }, msg: rv.huginn.fledFalse }
+- { id: rv.huginn.weapon, raven: huginn, asserts: { fact: grip, value: weapon }, msg: rv.huginn.weapon }
+- { id: rv.huginn.noWeapon, raven: huginn, asserts: { fact: grip, value: none }, msg: rv.huginn.noWeapon }
+- { id: rv.muninn.identity, raven: muninn, tag: identity, msg: rv.muninn.identity }
+- { id: rv.muninn.forgot, raven: muninn, tag: forgot, msg: rv.muninn.forgot }

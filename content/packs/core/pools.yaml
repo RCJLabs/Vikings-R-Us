@@ -1,0 +1,5 @@
+names.m: [Ketil, Bjorn, Ulf, Hallvard, Gunnar, Eyvind, Thorstein, Hrafn, Asbjorn, Sigurd, Orm, Halfdan, Grim, Einar, Kolbein, Arnbjorn, Svein, Thorir, Egil, Hauk, Starkad, Toki, Vagn, Skeggi]
+names.f: [Astrid, Gudrun, Thora, Sigrid, Ragnhild, Hallgerd, Thorunn, Helga, Ingrid, Freydis, Aud, Gunnhild, Asa, Bergthora, Yrsa, Tofa, Vigdis, Jorunn, Hervor, Sigrun]
+pool.places: [the black ford, the ship-bridge, the hill fort, the frozen lake, the long beach, the burning hall, the river mouth, the stone circle]
+pool.foes: [Jarl Sigtrygg Bent-Nose, the Wendish raiders, the king's housecarls, Hrolf's sea-wolves, the men of the eastern fjord, a very large Dane]
+pool.weapons: [axe, sword, spear, seax, bearded axe]

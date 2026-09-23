@@ -1,0 +1,80 @@
+- id: arch.honest_warrior
+  since: 1
+  personas: [veteran, honest]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  require:
+    - { not: { param: freyjaWhim } }
+  lies: []
+
+- id: arch.freyja_pick
+  since: 4
+  personas: [veteran, honest, braggart]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  require:
+    - { param: freyjaWhim }
+  lies: []
+
+- id: arch.disarmed_warrior
+  since: 1
+  personas: [veteran, braggart]
+  truth:
+    cause: { is: battle }
+    grip: { is: none }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: grip, claim: weapon, p: 85, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 1 } }
+
+- id: arch.straw_braggart
+  since: 1
+  personas: [braggart, veteran]
+  truth:
+    cause: { in: [sickness, oldAge] }
+    woundsFront: { is: 0 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: cause, claim: battle, p: 90, motive: wantsValhalla, onQuestion: { confess: 3, excuse: 1 } }
+
+- id: arch.fled_coward
+  since: 2
+  personas: [coward, braggart]
+  truth:
+    cause: { is: battle }
+    woundsBack: { gte: 1 }
+    woundsFront: { lte: 1 }
+    alive: { is: false }
+  lies:
+    - { fact: fled, claim: false, p: 90, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 2 } }
+
+- id: arch.not_quite_dead
+  since: 3
+  personas: [confused]
+  truth:
+    alive: { is: true }
+    cause: { is: battle }
+    woundsFront: { in: [1, 2] }
+    woundsBack: { is: 0 }
+  lies: []
+
+- id: arch.drowned_raider
+  since: 5
+  personas: [veteran, braggart]
+  truth:
+    cause: { is: drowned }
+    woundsFront: { lte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: cause, claim: battle, p: 85, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 1 } }

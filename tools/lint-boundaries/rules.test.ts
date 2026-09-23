@@ -22,6 +22,15 @@ describe('engine purity', () => {
     expect(rules('/** Date and Math.random in a comment */\nconst x = Math.imul(3, 5) >>> 0; // Math.pow')).toEqual([]);
   });
 
+  it('allows property names that look like globals', () => {
+    expect(
+      rules(
+        'interface A { readonly require?: string[] }\nconst a = { require: [], performance: 1 };\nuse(arch.require);',
+      ),
+    ).toEqual([]);
+    expect(rules("const fs = require('fs');").map((f) => f.split(':')[0])).toEqual(['1']);
+  });
+
   it('allows only relative imports', () => {
     expect(rules("import { a } from './a';\nexport { b } from '../b';")).toEqual([]);
     expect(rules("import { z } from 'zod';")).toEqual(['1:engine may only import its own files (found "zod")']);

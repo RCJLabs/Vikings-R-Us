@@ -1,0 +1,34 @@
+# The hidden truth about each soul. A fact is pinned to `inert` before its `since` day.
+- id: cause
+  domain: { enum: [battle, sickness, oldAge, drowned] }
+  valueSince: { drowned: 5 }
+  prior: { battle: 6, sickness: 2, oldAge: 2, drowned: 3 }
+- id: grip
+  domain: { enum: [weapon, none] }
+  prior: { weapon: 3, none: 1 }
+- id: gripHand
+  domain: { enum: [right, left] }
+  prior: { right: 3, left: 1 }
+- id: woundsFront
+  domain: { int: [0, 3] }
+- id: woundsBack
+  domain: { int: [0, 3] }
+  since: 2
+  inert: 0
+- id: alive
+  domain: { bool: true }
+  since: 3
+  inert: false
+  presumption: false
+  # Only archetypes that ask for it are alive.
+  prior: { 'false': 1, 'true': 0 }
+- id: hair
+  domain: { enum: [dark, fair, red, grey] }
+  prior: { dark: 3, fair: 3, red: 1, grey: 1 }
+- id: ornament
+  domain: { enum: [none, amber, silver] }
+  prior: { none: 4, amber: 1, silver: 1 }
+# Derived: a wound in the back means they fled (day 2 onward).
+- id: fled
+  domain: { bool: true }
+  derived: { fact: woundsBack, gte: 1 }
