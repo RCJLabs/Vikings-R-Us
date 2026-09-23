@@ -4,7 +4,7 @@ A Papers, Please-style judgment game: you're a new Valkyrie with 20 battle-days 
 
 - **Plan:** [`docs/build-plan.md`](docs/build-plan.md): design, 20-day campaign, milestones, risks.
 - **Technical spec:** [`docs/tech-spec.md`](docs/tech-spec.md): types, the case-fairness system, content formats, platform shells.
-- **Status:** M2 (playable core loop): the Daily Shift and practice Days 1–3 (1–5 in full builds) are playable in the browser, on phones (drawer layout) and desktops (desk layout), with placeholder art. Next is M3, the public Daily alpha.
+- **Status:** M3 (public Daily alpha, built): the Daily Shift, a three-soul primer and practice days, with "Report this soul", feedback forms, a Daily checksum guard and opt-in telemetry. To launch it, follow [`docs/alpha-launch.md`](docs/alpha-launch.md). Privacy: [`docs/privacy.md`](docs/privacy.md).
 
 ## Getting started
 
@@ -36,6 +36,7 @@ pnpm golden:update       # refresh tests/golden (day summaries, Daily checksums)
 | `packages/art-placeholder` | Procedural SVG body art behind a swappable provider contract; final art arrives at the vertical slice |
 | `apps/web` | The single Vite entry for every target |
 | `apps/electron`, `apps/android` | Steam (M6) and Google Play (M9) shells |
+| `apps/telemetry` | Opt-in alpha telemetry: a Cloudflare Worker and D1 schema |
 | `content/packs` | `core`, `daily` (the Daily Shift spec), `demo` (days 1–3) and `campaign` (days 4–20) |
 | `tools` | Leak check, boundary lint, generator sweeps, icon renderer |
 

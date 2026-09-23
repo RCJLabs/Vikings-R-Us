@@ -1,0 +1,24 @@
+name: Report a soul
+description: A judgment in the game looks wrong or unfair. Opened from "Report this soul" in the game.
+title: "Soul report: "
+labels: [soul-report, alpha]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The game fills in the report below; it lets us rebuild the exact soul and check the judgment in the Case Lab.
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: Filled in by the game. If it's empty, press "Copy the report" in the game and paste it here.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What seems wrong?
+      description: For example "the citation says I missed the fever flush, but I couldn't see it on my phone".
+    validations:
+      required: true

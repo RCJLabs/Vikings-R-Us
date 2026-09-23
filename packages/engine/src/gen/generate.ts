@@ -196,6 +196,8 @@ export interface DayPlan {
   readonly count: number;
   readonly targets: readonly Destination[];
   readonly teach?: string;
+  /** Scripted days: the archetype for each slot. */
+  readonly script?: readonly string[];
   /** Problems the day-level checks could not fix (logged, not fatal). */
   readonly softFails: readonly string[];
 }
@@ -212,6 +214,10 @@ function longestRun(targets: readonly Destination[]): number {
 
 /** The day's queue: how many souls and which destination each one targets (a shuffled bag). */
 export function planDay(runSeed: string, ctx: DayCtx): DayPlan {
+  const script = ctx.spec.queue.script;
+  if (script) {
+    return { count: script.length, targets: script.map((s) => s.dest), script: script.map((s) => s.id), softFails: [] };
+  }
   const rng = new Rng(`${ctx.content.genVersion}|${runSeed}|${ctx.day}|day`);
   const { count, mix, teachFirst } = ctx.spec.queue;
   const n = rng.int(count[0], count[1]);
@@ -263,15 +269,18 @@ export function planDay(runSeed: string, ctx: DayCtx): DayPlan {
   return { count: n, targets, ...(teachFirst ? { teach: teachFirst } : {}), softFails };
 }
 
+/** The archetype a slot is meant to teach, if any: the script's, or the day's first-soul teacher. */
+function teachFor(plan: DayPlan, procIndex: number): string | undefined {
+  return plan.script?.[procIndex] ?? (procIndex === 0 ? plan.teach : undefined);
+}
+
 /** The case at position `procIndex` of the day, exactly as generateDay would produce it. */
 export function generateCaseAt(runSeed: string, ctx: DayCtx, procIndex: number, opts: GenerateOptions = {}): Generated {
   const plan = planDay(runSeed, ctx);
   const target = plan.targets[procIndex];
   if (!target) throw new RangeError(`Day ${ctx.day} has no soul ${procIndex}`);
-  return generateCase(runSeed, ctx, procIndex, target, {
-    ...opts,
-    ...(procIndex === 0 && plan.teach ? { teach: plan.teach } : {}),
-  });
+  const teach = teachFor(plan, procIndex);
+  return generateCase(runSeed, ctx, procIndex, target, { ...opts, ...(teach ? { teach } : {}) });
 }
 
 export interface GeneratedDay {
@@ -285,7 +294,8 @@ export function generateDay(runSeed: string, ctx: DayCtx): GeneratedDay {
   const cases: CaseSpec[] = [];
   const logs: GenLog[] = [];
   plan.targets.forEach((target, i) => {
-    const g = generateCase(runSeed, ctx, i, target, i === 0 && plan.teach ? { teach: plan.teach } : {});
+    const teach = teachFor(plan, i);
+    const g = generateCase(runSeed, ctx, i, target, teach ? { teach } : {});
     cases.push(g.case);
     logs.push(g.log);
   });

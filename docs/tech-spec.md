@@ -1164,9 +1164,50 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - Landscape phones get the drawer, not the side sheet from §6.3.
 - Blur-to-pause also fires when a desktop player clicks another window. That's intended.
 - A crash or reload refunds up to 5 s of sun (the heartbeat interval).
-- No runtime Daily checksum guard yet (M3). Checksums are only checked in CI.
+- The runtime Daily checksum guard arrived in M3 (§15).
 - Only the web build's share text carries a link. The itch, Steam and Android builds share text alone.
 - Web demo JS is 47.7 KB gzipped (budget 250 KB).
+
+## 15. M3 implementation notes (the public Daily alpha as built)
+
+**Where things live**
+- Primer: `content/packs/daily/primer.yaml` (three scripted souls) and `packages/ui/src/shift/coach.ts` (the coach steps).
+- Checksum guard: `packages/engine/src/shift/checks.ts`; the compiler writes `generated/<target>/daily-checks.json`.
+- Traces: `packages/engine/src/shift/trace.ts` rebuilds what happened to each soul from the action log.
+- Reports and feedback: `packages/ui/src/report.ts`, `links.ts`, `.github/ISSUE_TEMPLATE/`.
+- Telemetry: `packages/ui/src/telemetry*.ts` (client) and `apps/telemetry` (Cloudflare Worker + D1).
+- Deploys: `.github/workflows/deploy-itch.yml`, `deploy-telemetry.yml`. What only the owner can do is in `docs/alpha-launch.md`.
+
+**Decisions**
+- **The primer is a scripted day.** `queue.script` fixes each slot's archetype and destination. `lieRate: 200` makes the coward's lie certain. It plays untimed with a fixed seed, so everyone gets the same three souls:
+  1. an honest warrior (look, read the rules, stamp);
+  2. a coward who claims he never fled (turn over, catch the lie);
+  3. a not-quite-dead soul (the mist cue, then the feather).
+  - Sea-foam and Freyja's whim are explained in text afterwards.
+  - Coach steps end when the player does the thing, or presses Next for reading steps. `data-coach` on the shift root drives the highlight in CSS, so nothing extra lands in the DOM (no marker for the lie).
+- **The checksum guard.**
+  - Each build ships a table of the checksum every Daily from −120 to 400 should have (8 hex characters each, about 2 KB gzipped), computed once per compile from the Daily content.
+  - On starting a Daily, the device computes its own checksum and compares: `ok`, `mismatch` or `unchecked` (outside the table, or another generator version).
+  - A mismatch shows a warning with a report button and marks the share text "unverified". The result keeps the guard value. With telemetry on, the mismatch is also sent.
+- **"Report this soul"** opens a dialog with the report as text, a copy button and a GitHub issue-form link with the report pre-filled. The form's text fields are filled by their ids; dropdowns and checkboxes can't be. The GitHub mobile app drops the pre-fill, hence the copy button.
+  - The report holds the build, mode, seed, day, soul index, the queue checksum, the verdict, this soul's actions (times relative to its first action) and the browser, screen and language.
+  - The Case Lab reads a pasted report and jumps to that soul. It can also open the Daily and primer specs.
+- **Telemetry is opt-in and off by default.**
+  - The question is asked once, after the first finished Daily, and only in builds with `VITE_TELEMETRY_URL`. Without that variable there is no telemetry UI at all.
+  - One record per finished shift is sent as a text/plain `fetch` with `keepalive` and no credentials. For each soul it holds the rule, archetype, stamp, sun used, penalties, tools, and the kinds of sign looked at or missed (keys, not values).
+  - The Worker validates the record against a strict zod schema (bounded identifiers, enums, no free text), checks the origin, gets a random id per shift and keeps only the date.
+  - The Worker's tests validate a record the game's own code builds from a played Daily, and the e2e tests validate the browser's real POST against the same schema.
+- **PWA updates** use `registerType: 'prompt'`, and the web adapter registers the worker itself. The update is offered only on the title screen. Builds without the PWA get a no-op `virtual:pwa-register`.
+- **Settings are mirrored to localStorage** like Daily progress and results. The mirror wins on load, because it's written synchronously.
+- **A telemetry base URL may carry a path.** `new URL('/v1/…', base)` would have dropped it; the e2e test caught this.
+
+**Deferred and known limits**
+- The checksum table covers Dailies −120 to 400. Later Dailies report "unchecked" until the range is extended and a build shipped.
+- The telemetry Worker has validation and an origin check but no rate limit. Anyone can post well-formed junk from outside a browser. D1's free tier caps writes (about 100k rows a day).
+- Players need a GitHub account to file reports and feedback. Otherwise they can copy the report text and paste it into the community channel.
+- The primer covers turning over, the feather and one lie. Sea-foam and the whim are text only.
+- Web demo JS is 56.9 KB gzipped (budget 250 KB), up from 48 KB. Most of that is the checksum table, the new strings and the new UI; the service-worker update client is about 1 KB.
+- Telemetry exists only in the web and itch builds. The Steam and Play builds ignore a telemetry URL even if one is set, which matches Play's "no data collected".
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

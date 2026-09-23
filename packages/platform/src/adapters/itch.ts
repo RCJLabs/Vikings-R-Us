@@ -1,5 +1,5 @@
 import type { Platform } from '../index';
-import { shareWithFallback } from '../share';
+import { noUpdates, shareWithFallback } from '../share';
 import { openStore } from '../storage';
 
 /**
@@ -12,4 +12,5 @@ export const platform: Platform = {
   share: shareWithFallback,
   shareUrl: () => undefined,
   openStore: () => openStore(),
+  watchForUpdate: noUpdates,
 };

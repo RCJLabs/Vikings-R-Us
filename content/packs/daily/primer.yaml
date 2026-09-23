@@ -1,0 +1,33 @@
+# The primer: three scripted souls that teach the Daily's tools, with no sun.
+# Everyone gets the same souls (the UI plays it with a fixed seed). The coach
+# text is in strings (primer.*); the steps that show it live in the UI.
+day: 5
+sunS: 360
+decree: primer.decree
+params:
+  freyjaWhim:
+    pool:
+      - { id: primer.whim.amber, text: primer.whim.amber, is: { fact: ornament, is: amber } }
+queue:
+  count: [3, 3]
+  script:
+    - { id: arch.honest_warrior, dest: VALHALLA }
+    - { id: arch.fled_coward, dest: HEL }
+    - { id: arch.not_quite_dead, dest: RETURN }
+  archetypes:
+    - { id: arch.honest_warrior, w: 1 }
+    - { id: arch.fled_coward, w: 1 }
+    - { id: arch.not_quite_dead, w: 1 }
+  mix: {}
+  knobs:
+    # 200% makes every archetype lie it can tell a sure thing: the coward always
+    # claims he never fled.
+    lieRate: 200
+    maxLies: 1
+    decoyRate: 0
+    ravenRate: 0
+    forgetRate: 0
+    proofCostS: [0, 60]
+    maxTools: 2
+    maxDocs: 3
+    salienceFloor: 2

@@ -4,6 +4,8 @@ export {
   type CompileResult,
   ContentError,
   compileTarget,
+  DAILY_CHECK_RANGE,
+  dailyChecksFor,
   type LeakTokens,
   type LoadedPack,
   loadPacks,

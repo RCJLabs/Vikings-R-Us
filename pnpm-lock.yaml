@@ -79,6 +79,12 @@ importers:
 
   apps/electron: {}
 
+  apps/telemetry:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
   apps/web:
     dependencies:
       '@cots/ui':

@@ -238,6 +238,10 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
   queue: z.strictObject({
     count: Pair,
     teachFirst: Id.optional(),
+    script: z
+      .array(z.strictObject({ id: Id, dest: DestinationSchema }))
+      .min(1)
+      .optional(),
     archetypes: z.array(z.strictObject({ id: Id, w: Int.positive() })).min(1),
     mix: z.partialRecord(DestinationSchema, z.tuple([Percent, Percent])),
     knobs: z.strictObject({

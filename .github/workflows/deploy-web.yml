@@ -29,6 +29,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:web-demo
+        env:
+          # Optional links (Settings -> Secrets and variables -> Actions -> Variables).
+          VITE_TELEMETRY_URL: ${{ vars.TELEMETRY_URL }}
+          VITE_COMMUNITY_URL: ${{ vars.COMMUNITY_URL }}
+          VITE_STEAM_URL: ${{ vars.STEAM_URL }}
       - run: pnpm leak-check --targets web-demo
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

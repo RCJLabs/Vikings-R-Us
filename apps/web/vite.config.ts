@@ -25,6 +25,16 @@ function contentPlugin(targetId: string): Plugin {
   };
 }
 
+/** Builds without the PWA still import the registration module; give them a no-op. */
+function noPwaPlugin(): Plugin {
+  const id = '\0virtual:pwa-register';
+  return {
+    name: 'cots-no-pwa',
+    resolveId: (source) => (source === 'virtual:pwa-register' ? id : null),
+    load: (source) => (source === id ? 'export const registerSW = () => async () => {};' : null),
+  };
+}
+
 // One config, six build targets: `vite build --mode <target>` (docs/build-plan.md §3).
 export default defineConfig(({ mode }) => {
   if (!isTargetId(mode)) {
@@ -40,11 +50,13 @@ export default defineConfig(({ mode }) => {
     plugins: [
       contentPlugin(mode),
       preact(),
+      !target.pwa && noPwaPlugin(),
       target.pwa &&
         VitePWA({
-          // Updates wait for the player; the prompt UI (title and night screens only) lands in M2.
+          // Updates wait for the player: the web adapter registers the worker and the
+          // title screen offers the update (never mid-shift).
           registerType: 'prompt',
-          injectRegister: 'script-defer',
+          injectRegister: false,
           manifest: {
             name: 'Chooser of the Slain (Demo)',
             short_name: 'Chooser',

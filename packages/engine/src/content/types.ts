@@ -248,6 +248,8 @@ export interface DaySpec {
     readonly count: readonly [number, number];
     /** Archetype for the first soul of the day, to teach the new rule. */
     readonly teachFirst?: string;
+    /** A fixed queue (the primer): each slot's archetype and destination, in order. Overrides count and mix. */
+    readonly script?: readonly { readonly id: string; readonly dest: Destination }[];
     readonly archetypes: readonly { readonly id: string; readonly w: number }[];
     /** Percent [min, max] share of the queue per destination. */
     readonly mix: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
@@ -275,4 +277,6 @@ export interface Content {
   readonly days: readonly DaySpec[];
   /** The Daily Shift: same souls for everyone on a date. `day` is the mechanics day it plays with. */
   readonly daily?: DaySpec;
+  /** The primer: a short scripted shift that teaches the Daily's tools. */
+  readonly primer?: DaySpec;
 }

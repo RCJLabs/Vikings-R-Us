@@ -105,6 +105,9 @@ test('a careful player judges the whole Daily and shares a spoiler-free result',
     ),
   );
   for (const d of stamps) expect(share.toUpperCase()).not.toContain(d);
+  // The summary and the share text agree on the sun left.
+  const spare = /(\d:\d\d) to spare/.exec(share)?.[1];
+  await expect(page.getByText(`${spare} of sun to spare`)).toBeVisible();
 
   // The result is kept: the title shows it, and a replay won't count.
   await page.getByTestId('home').click();

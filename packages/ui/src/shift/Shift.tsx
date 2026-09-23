@@ -1,12 +1,15 @@
 import { type Hotspot, placeholderBody } from '@cots/art-placeholder';
 import { type CaseSpec, currentCase, type Field, PENALTY, stampsFor, sunLeft, type Verdict } from '@cots/engine';
+import { copyText } from '@cots/platform';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { clockText, listText, t } from '../i18n';
+import { openReport, reportFor, reportTitle, reportUrl, type SoulReport } from '../report';
 import {
   act,
   answer,
   citation,
   clock,
+  coachAcks,
   compareFirst,
   comparing,
   drawerTab,
@@ -17,7 +20,10 @@ import {
   settings,
   stampSheet,
   toast,
+  toTitle,
+  updateSettings,
 } from '../store';
+import { coachStep } from './coach';
 import { fieldText, regionFields, regionSeen, sceneFor } from './evidence';
 import { RulesPanel } from './Rules';
 
@@ -503,14 +509,107 @@ function CitationBox({ s, v }: { s: Session; v: Verdict }) {
         <p>{t('ui.citation.should', { name: c?.evidence.look.name ?? '', dest: t(`dest.${v.expected}`) })}</p>
         {rule ? <p class="dialog__rule">{t(rule.text)}</p> : null}
         {missed.length > 0 ? <p>{t('ui.citation.missed', { fields: listText(missed) })}</p> : null}
+        <div class="row">
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-testid="citation-close"
+            ref={focus}
+            onClick={() => (citation.value = null)}
+          >
+            {t('ui.citation.close')}
+          </button>
+          <button
+            type="button"
+            class="btn btn--quiet"
+            data-testid="citation-report"
+            onClick={() => openReport(s, v.index)}
+          >
+            {t('ui.report.dispute')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** "Report this soul": the report as text, a copy button and the pre-filled GitHub form. */
+export function ReportDialog() {
+  const r = reportFor.value;
+  return r ? <ReportBox r={r} /> : null;
+}
+
+function ReportBox({ r }: { r: SoulReport }) {
+  const focus = useAutoFocus<HTMLButtonElement>();
+  const [copied, setCopied] = useState<boolean | null>(null);
+  const json = JSON.stringify(r);
+  const url = reportUrl(r);
+  return (
+    <div class="overlay overlay--top" role="dialog" aria-modal="true" aria-labelledby="report-title">
+      <div class="dialog">
+        <h2 id="report-title">{t('ui.report.title')}</h2>
+        <p>{t('ui.report.body')}</p>
+        <p class="muted">{reportTitle(r)}</p>
+        <textarea class="share share--small" readOnly rows={4} value={json} data-testid="report-text" />
+        <div class="row">
+          {url ? (
+            <a class="btn btn--primary" href={url} target="_blank" rel="noopener noreferrer" data-testid="report-open">
+              {t('ui.report.open')}
+            </a>
+          ) : null}
+          <button
+            type="button"
+            class="btn"
+            data-testid="report-copy"
+            onClick={async () => setCopied(await copyText(json))}
+          >
+            {t(copied === true ? 'ui.report.copied' : copied === false ? 'ui.report.copyFailed' : 'ui.report.copy')}
+          </button>
+          <button
+            type="button"
+            class="btn btn--quiet"
+            data-testid="report-close"
+            ref={focus}
+            onClick={() => (reportFor.value = null)}
+          >
+            {t('ui.report.close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The primer's coach: one instruction at a time, with Next for reading steps. */
+function CoachBar({ s }: { s: Session }) {
+  const step = coachStep(s, coachAcks.value);
+  if (s.mode.kind !== 'primer') return null;
+  return (
+    <div class="coach" data-testid="coach" data-step={step?.id ?? 'none'}>
+      <p class="coach__text" role="status" aria-live="polite">
+        {step ? t(step.text) : ''}
+      </p>
+      <div class="coach__actions">
+        {step?.next ? (
+          <button
+            type="button"
+            class="btn btn--primary btn--small"
+            data-testid="coach-next"
+            onClick={() => (coachAcks.value = [...coachAcks.value, step.id])}
+          >
+            {t('primer.next')}
+          </button>
+        ) : null}
         <button
           type="button"
-          class="btn btn--primary"
-          data-testid="citation-close"
-          ref={focus}
-          onClick={() => (citation.value = null)}
+          class="btn btn--quiet btn--small"
+          data-testid="coach-skip"
+          onClick={() => {
+            updateSettings({ primerDone: true });
+            toTitle();
+          }}
         >
-          {t('ui.citation.close')}
+          {t('primer.skip')}
         </button>
       </div>
     </div>
@@ -535,20 +634,24 @@ export function ShiftScreen() {
   if (!s) return null;
   const layout = effectiveLayout();
   const paused = s.state.clock.pausedAt !== null;
-  const blocked = paused || answer.value !== null || citation.value !== null;
+  const blocked = paused || answer.value !== null || citation.value !== null || reportFor.value !== null;
   const c = currentCase(s.state);
+  const step = coachStep(s, coachAcks.value);
   return (
     <div
       class={`shift shift--${layout}${paused ? ' is-paused' : ''}${comparing.value ? ' is-comparing' : ''}`}
       data-layout={layout}
+      data-coach={step?.focus}
     >
       <div class="shift__desk" inert={blocked}>
         <SunBar s={s} />
+        <CoachBar s={s} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>
       {paused ? <PauseOverlay /> : null}
       <AnswerDialog />
       <CitationSlip s={s} />
+      <ReportDialog />
       <ToastView />
     </div>
   );

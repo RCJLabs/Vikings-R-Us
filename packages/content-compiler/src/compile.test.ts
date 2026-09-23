@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { TARGETS } from '@cots/content-schema';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ContentError, compileTarget, loadPacks, writeLeakTokens } from './compile';
+import { ContentError, compileTarget, DAILY_CHECK_RANGE, loadPacks, writeLeakTokens } from './compile';
 
 let root = '';
 afterEach(() => {
@@ -177,6 +177,10 @@ describe('gameplay content lints', () => {
     expect(out('daily.json').days).toEqual([]);
     expect(out('daily.json').archetypes.map((a: { id: string }) => a.id)).toEqual(['arch.liar']);
     expect(out('content.json').archetypes.map((a: { id: string }) => a.id)).toEqual(['arch.liar', 'arch.demoOnly']);
+    // The runtime guard's table: one 8-hex checksum per Daily in the range.
+    const checks = out('daily-checks.json');
+    expect(checks).toMatchObject({ g: 1, from: DAILY_CHECK_RANGE.from });
+    expect(checks.hashes).toHaveLength((DAILY_CHECK_RANGE.to - DAILY_CHECK_RANGE.from + 1) * 8);
     expect(() =>
       compile({
         core: core({ 'archetypes.yaml': archetype('') }),
@@ -184,6 +188,27 @@ describe('gameplay content lints', () => {
         demo: day('arch.liar'),
       }),
     ).toThrow(/the Daily \(day 1 mechanics\) uses unknown archetype "arch.nobody"/);
+  });
+
+  it('lints a scripted queue', () => {
+    const primer = (id: string, dest: string): PackFixture => {
+      const spec = day('arch.liar')
+        .files['days/day-01.yaml'].replace('decree: decree.d1', 'decree: daily.decree')
+        .replace('  count: [6, 6]', `  count: [1, 1]\n  script: [{ id: ${id}, dest: ${dest} }]`);
+      return {
+        yaml: 'id: daily\ndependsOn: [core]\n',
+        strings: { 'daily.intro': 'Daily', 'daily.decree': 'Everything' },
+        files: { 'primer.yaml': spec },
+      };
+    };
+    const base = core({ 'archetypes.yaml': archetype('') });
+    expect(() => compile({ core: base, daily: primer('arch.liar', 'HEL'), demo: day('arch.liar') })).not.toThrow();
+    expect(() => compile({ core: base, daily: primer('arch.other', 'HEL'), demo: day('arch.liar') })).toThrow(
+      /the primer \(day 1 mechanics\) scripts "arch.other", which isn't in its queue/,
+    );
+    expect(() => compile({ core: base, daily: primer('arch.liar', 'RAN'), demo: day('arch.liar') })).toThrow(
+      /scripts a RAN soul, but no rule in force sends anyone there/,
+    );
   });
 
   it('requires the last rule in force to always apply', () => {

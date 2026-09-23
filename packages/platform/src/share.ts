@@ -39,3 +39,6 @@ export async function shareWithFallback(text: string, url?: string): Promise<Sha
   }
   return (await copyText(full)) ? 'copied' : 'failed';
 }
+
+/** For builds with no update channel of their own. */
+export const noUpdates = (): (() => Promise<void>) => async () => {};

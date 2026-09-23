@@ -831,6 +831,109 @@ kbd {
   border-left-color: var(--bad);
 }
 
+/* The primer's coach bar and the things it points at */
+.coach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: #2d3b2a;
+  border-bottom: 1px solid #4d6b47;
+  color: #e7f2e2;
+}
+
+.coach__text {
+  flex: 1 1 16rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.coach__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.shift[data-coach~="hands"] :is([data-region="handR"], [data-region="handL"]),
+.shift[data-coach~="chest"] [data-region="chest"],
+.shift[data-coach~="face"] [data-region="face"],
+.shift[data-coach~="back"] :is([data-region="back"], [data-field="body.back.woundsBack"]),
+.shift[data-coach~="flip"] [data-testid="flip"],
+.shift[data-coach~="feather"] [data-testid="feather"],
+.shift[data-coach~="rules"] :is([data-tab="rules"], .paper--rules),
+.shift[data-coach~="words"] :is([data-tab="words"], .paper--words, .drawer .words),
+.shift[data-coach~="judge"] :is([data-testid="judge"], .stamps) {
+  outline: 3px solid #9fdc8f;
+  outline-offset: 2px;
+  animation: coach-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes coach-pulse {
+  50% {
+    outline-color: rgb(159 220 143 / 0.35);
+  }
+}
+
+/* Banners, links and one-off cards */
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  background: #2d3b2a;
+  border: 1px solid #4d6b47;
+}
+
+.banner p {
+  margin: 0;
+}
+
+.banner--bad {
+  background: #3d231d;
+  border-color: var(--bad);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  justify-content: center;
+}
+
+.links a,
+.card--ask a {
+  color: var(--accent);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.wishlist {
+  align-self: center;
+}
+
+.card--ask,
+.card--ready {
+  border-color: #4d6b47;
+}
+
+.overlay--top {
+  z-index: 55;
+}
+
+.share--small {
+  font-size: 0.75rem;
+}
+
 /* Reduced motion must beat every component style, so this is the one place !important is right. */
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -921,4 +1024,21 @@ kbd {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.lab textarea {
+  width: 100%;
+  font:
+    0.8rem ui-monospace,
+    monospace;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.lab__report {
+  white-space: pre-wrap;
+  font-size: 0.75rem;
+  max-height: 16rem;
+  overflow: auto;
 }

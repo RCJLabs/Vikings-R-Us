@@ -60,6 +60,8 @@ export interface PackContent {
   days: DaySpec[];
   /** The Daily Shift's spec (`daily.yaml`); only the daily pack should have one. */
   daily?: DaySpec;
+  /** The primer's spec (`primer.yaml`). */
+  primer?: DaySpec;
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -73,6 +75,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
   const laws = list('laws.yaml', LawSchema);
   const poolsFile = join(dir, 'pools.yaml');
   const dailyFile = join(dir, 'daily.yaml');
+  const primerFile = join(dir, 'primer.yaml');
   const daysDir = join(dir, 'days');
   const days = existsSync(daysDir)
     ? readdirSync(daysDir)
@@ -98,6 +101,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     pools: existsSync(poolsFile) ? parse(PoolsSchema, readYaml(poolsFile) ?? {}, poolsFile) : {},
     days,
     ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
+    ...(existsSync(primerFile) ? { primer: parse(DaySpecSchema, readYaml(primerFile), primerFile) } : {}),
   };
 }
 
@@ -124,11 +128,15 @@ export function emptyPackContent(): PackContent {
 
 /** Merges packs in dependency order into one engine Content. */
 export function mergeContent(parts: readonly PackContent[], genVersion: number): Content {
-  const cat = <K extends Exclude<keyof PackContent, 'pools' | 'daily'>>(k: K): PackContent[K] =>
+  const cat = <K extends Exclude<keyof PackContent, 'pools' | 'daily' | 'primer'>>(k: K): PackContent[K] =>
     parts.flatMap((p) => p[k] as unknown[]) as PackContent[K];
-  const dailies = parts.flatMap((p) => (p.daily ? [p.daily] : []));
-  if (dailies.length > 1) throw new Error('Only one pack may define the Daily Shift (daily.yaml).');
-  const daily = dailies[0];
+  const one = (k: 'daily' | 'primer'): DaySpec | undefined => {
+    const specs = parts.flatMap((p) => (p[k] ? [p[k]] : []));
+    if (specs.length > 1) throw new Error(`Only one pack may define ${k}.yaml.`);
+    return specs[0];
+  };
+  const daily = one('daily');
+  const primer = one('primer');
   return {
     genVersion,
     facts: cat('facts'),
@@ -148,6 +156,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     pools: Object.assign({}, ...parts.map((p) => p.pools)),
     days: cat('days').sort((a, b) => a.day - b.day),
     ...(daily ? { daily } : {}),
+    ...(primer ? { primer } : {}),
   };
 }
 
@@ -166,6 +175,7 @@ export function idsOf(c: PackContent): string[] {
     ...c.questions.map((x) => x.id),
     ...Object.keys(c.pools),
     ...Object.values(c.daily?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
+    ...Object.values(c.primer?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
     ...c.days.flatMap((d) => Object.values(d.params ?? {}).flatMap((p) => p.pool.map((x) => x.id))),
   ];
 }
@@ -337,6 +347,7 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
 
   const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
   if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
+  if (content.primer) specs.push({ d: content.primer, name: `the primer (day ${content.primer.day} mechanics)` });
   for (const { d, name } of specs) {
     key(d.decree, name);
     for (const [param, def] of Object.entries(d.params ?? {})) {
@@ -351,6 +362,18 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     const teach = d.queue.teachFirst;
     if (teach && !d.queue.archetypes.some((a) => a.id === teach)) {
       problems.push(`${name} teaches with "${teach}", which isn't in its queue.`);
+    }
+    for (const slot of d.queue.script ?? []) {
+      if (!d.queue.archetypes.some((a) => a.id === slot.id)) {
+        problems.push(`${name} scripts "${slot.id}", which isn't in its queue.`);
+      }
+      if (
+        !content.rules.some(
+          (r) => r.then === slot.dest && r.since <= d.day && (r.until === undefined || d.day < r.until),
+        )
+      ) {
+        problems.push(`${name} scripts a ${slot.dest} soul, but no rule in force sends anyone there.`);
+      }
     }
     const inForce = content.rules
       .filter((r) => r.since <= d.day && (r.until === undefined || d.day < r.until))

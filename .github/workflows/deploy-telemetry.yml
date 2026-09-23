@@ -1,0 +1,31 @@
+name: Deploy telemetry
+
+# Deploys the opt-in alpha telemetry Worker (apps/telemetry) to Cloudflare.
+# Run by hand after setting the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
+# secrets and the D1 database id in apps/telemetry/wrangler.toml (see its README).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec vitest run apps/telemetry
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/telemetry
+          preCommands: npx wrangler d1 execute cots-telemetry --remote --file=schema.sql
+          command: deploy

@@ -14,7 +14,13 @@ export interface Platform {
   /** Where a shared result should point players, if this build has a public page. */
   shareUrl(): string | undefined;
   openStore(): Promise<KeyValueStore>;
+  /**
+   * Calls `ready` when a new version is downloaded and waiting (PWA only).
+   * Returns a function that installs it and reloads; the UI only offers that
+   * on the title screen, never mid-shift.
+   */
+  watchForUpdate(ready: () => void): () => Promise<void>;
 }
 
-export { copyText, shareWithFallback } from './share';
+export { copyText, noUpdates, shareWithFallback } from './share';
 export { type KeyValueStore, memoryStore, openStore, requestPersistence } from './storage';

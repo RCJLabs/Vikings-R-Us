@@ -1,7 +1,8 @@
-import { gameContent } from 'virtual:content';
+import { dailyContent, gameContent } from 'virtual:content';
 import { placeholderBody } from '@cots/art-placeholder';
 import {
   type CaseSpec,
+  type Content,
   createDayContext,
   type DayCtx,
   type Destination,
@@ -80,14 +81,51 @@ function labSweep(day: number, seeds: number) {
 
 const pct = (a: number, b: number) => (b ? `${Math.round((a * 100) / b)}%` : '–');
 
+/** A campaign day, or the Daily or primer specs (which play with core + daily content). */
+type Source = number | 'daily' | 'primer';
+
+function contextFor(source: Source, seed: string): { ctx: DayCtx; content: Content } {
+  if (typeof source === 'number') return { ctx: createDayContext(gameContent, source, seed), content: gameContent };
+  const spec = source === 'daily' ? dailyContent?.daily : dailyContent?.primer;
+  if (!dailyContent || !spec) throw new Error(`This build has no ${source}`);
+  return { ctx: createDayContext(dailyContent, spec.day, seed, spec), content: dailyContent };
+}
+
+/** A pasted "Report this soul" JSON: where to jump, and what the player did. */
+interface LoadedReport {
+  readonly mode: string;
+  readonly seed: string;
+  readonly day: number;
+  readonly soul: number;
+  readonly verdict: unknown;
+  readonly actions: unknown;
+}
+
 export function CaseLab() {
   const days = gameContent.days.map((d) => d.day);
   const [seed, setSeed] = useState('lab');
-  const [day, setDay] = useState(days[0] ?? 1);
+  const [source, setSource] = useState<Source>(days[0] ?? 1);
+  const day = typeof source === 'number' ? source : (days[0] ?? 1);
   const [index, setIndex] = useState(0);
   const [sweep, setSweep] = useState<ReturnType<typeof labSweep> | null>(null);
+  const [report, setReport] = useState<LoadedReport | null>(null);
+  const [reportError, setReportError] = useState('');
 
-  const ctx: DayCtx = useMemo(() => createDayContext(gameContent, day, seed), [day, seed]);
+  const loadReport = (text: string) => {
+    try {
+      const r = JSON.parse(text) as LoadedReport;
+      if (typeof r.seed !== 'string' || typeof r.soul !== 'number') throw new Error('not a soul report');
+      setSource(r.mode === 'daily' || r.mode === 'primer' ? r.mode : r.day);
+      setSeed(r.seed);
+      setIndex(r.soul);
+      setReport(r);
+      setReportError('');
+    } catch (e) {
+      setReportError((e as Error).message);
+    }
+  };
+
+  const { ctx, content } = useMemo(() => contextFor(source, seed), [source, seed]);
   const plan = useMemo(() => planDay(seed, ctx), [ctx, seed]);
   const i = Math.min(index, plan.count - 1);
   const { case: c, log } = useMemo(() => generateCaseAt(seed, ctx, i), [ctx, seed, i]);
@@ -104,12 +142,20 @@ export function CaseLab() {
         </label>
         <label>
           Day{' '}
-          <select value={day} onChange={(e) => setDay(Number((e.target as HTMLSelectElement).value))}>
+          <select
+            value={String(source)}
+            onChange={(e) => {
+              const v = (e.target as HTMLSelectElement).value;
+              setSource(v === 'daily' || v === 'primer' ? v : Number(v));
+            }}
+          >
             {days.map((d) => (
               <option key={d} value={d}>
                 {d}
               </option>
             ))}
+            {dailyContent?.daily ? <option value="daily">Daily</option> : null}
+            {dailyContent?.primer ? <option value="primer">Primer</option> : null}
           </select>
         </label>
         <button type="button" onClick={() => setIndex(Math.max(0, i - 1))} disabled={i === 0}>
@@ -122,6 +168,19 @@ export function CaseLab() {
           ▶
         </button>
       </div>
+
+      <details>
+        <summary>Load a soul report</summary>
+        <textarea
+          rows={4}
+          placeholder="Paste the JSON from “Report this soul”"
+          onChange={(e) => loadReport((e.target as HTMLTextAreaElement).value)}
+        />
+        {reportError ? <p>Couldn't read it: {reportError}</p> : null}
+        {report ? (
+          <pre class="lab__report">{JSON.stringify({ verdict: report.verdict, actions: report.actions }, null, 1)}</pre>
+        ) : null}
+      </details>
 
       <p>{t(ctx.spec.decree)}</p>
       {Object.values(ctx.paramChoices).map((p) => (
@@ -216,7 +275,7 @@ export function CaseLab() {
       <h4>Contradictions and questions</h4>
       {solved.contradictions.length === 0 ? <p>None.</p> : null}
       {solved.contradictions.map((x) => {
-        const q = questionResponse(c, x.lie, gameContent);
+        const q = questionResponse(c, x.lie, content);
         return (
           <p key={x.lie}>
             {x.lie} ({x.fact}) vs {x.against.join(' + ')} → {q?.kind}: “
@@ -236,7 +295,7 @@ export function CaseLab() {
       </ol>
 
       <h4>Sweep</h4>
-      <button type="button" onClick={() => setSweep(labSweep(day, 100))}>
+      <button type="button" disabled={typeof source !== 'number'} onClick={() => setSweep(labSweep(day, 100))}>
         Sweep 100 seeds of day {day}
       </button>
       {sweep ? (

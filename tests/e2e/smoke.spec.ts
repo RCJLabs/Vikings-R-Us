@@ -50,3 +50,21 @@ test('web demo ships a PWA manifest', async ({ request }) => {
   expect(manifest.short_name).toBe('Chooser');
   expect(manifest.scope).toBe('/Vikings-R-Us/');
 });
+
+test('web demo registers its service worker (updates wait for the title screen)', async ({ page }) => {
+  await page.goto('./');
+  const script = await page.evaluate(async () => {
+    // This file is typechecked without DOM types; the page has them.
+    type Worker = { scriptURL: string } | null | undefined;
+    type Registration = { active: Worker; installing: Worker; waiting: Worker } | undefined;
+    const sw = (navigator as unknown as { serviceWorker: { getRegistration(): Promise<Registration> } }).serviceWorker;
+    for (let i = 0; i < 50; i++) {
+      const reg = await sw.getRegistration();
+      const worker = reg?.active ?? reg?.installing ?? reg?.waiting;
+      if (worker) return worker.scriptURL;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return null;
+  });
+  expect(script).toBe('http://localhost:4173/Vikings-R-Us/sw.js');
+});

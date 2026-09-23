@@ -14,7 +14,7 @@ import { fnv1a32 } from '../rng/hash';
  */
 
 export interface ShiftConfig {
-  readonly mode: 'daily' | 'practice';
+  readonly mode: 'daily' | 'practice' | 'primer';
   readonly seed: string;
   /** The mechanics day: a campaign day for practice, the Daily spec's day for the Daily. */
   readonly day: number;
@@ -116,11 +116,15 @@ const freshSoul = (): SoulState => ({
   stamp: null,
 });
 
-/** The day context a shift plays in (the Daily uses its own spec). */
+/** The day context a shift plays in (the Daily and the primer have their own specs). */
 export function shiftContext(content: Content, config: ShiftConfig): DayCtx {
   if (config.mode === 'daily') {
     if (!content.daily) throw new Error('This build has no Daily Shift');
     return createDayContext(content, content.daily.day, config.seed, content.daily);
+  }
+  if (config.mode === 'primer') {
+    if (!content.primer) throw new Error('This build has no primer');
+    return createDayContext(content, content.primer.day, config.seed, content.primer);
   }
   return createDayContext(content, config.day, config.seed);
 }
@@ -418,7 +422,11 @@ export function shareText(
   const marks = shareMarks(state);
   const label =
     opts.label ??
-    (state.config.mode === 'daily' ? `Daily #${state.config.dailyNumber ?? '?'}` : `Day ${state.config.day} practice`);
+    (state.config.mode === 'daily'
+      ? `Daily #${state.config.dailyNumber ?? '?'}`
+      : state.config.mode === 'primer'
+        ? 'Primer'
+        : `Day ${state.config.day} practice`);
   const tail = state.endedBy === 'dusk' ? 'sun set' : `${clockText(score.spareMs)} to spare`;
   return [
     `${opts.title} · ${label} (g${content.genVersion})`,

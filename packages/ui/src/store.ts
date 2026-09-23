@@ -1,4 +1,4 @@
-import { dailyContent, gameContent } from 'virtual:content';
+import { dailyChecks, dailyContent, gameContent, manifest } from 'virtual:content';
 import {
   type CivilDate,
   type Content,
@@ -6,6 +6,10 @@ import {
   type DayCtx,
   dailyNumber,
   dailySeed,
+  expectedChecksum,
+  type GuardResult,
+  guardDaily,
+  queueChecksum,
   type ShiftAction,
   type ShiftEvent,
   type ShiftState,
@@ -21,6 +25,9 @@ import { platform } from '@platform';
 import { batch, signal } from '@preact/signals';
 import { t } from './i18n';
 import { type LayoutMode, layoutMode } from './layout';
+import { links } from './links';
+import { sendGuard, sendShift } from './telemetry';
+import { type BuildInfo, shiftRecord } from './telemetry-payload';
 
 /*
  * App state. The engine's shift is pure; this module owns time (a monotonic
@@ -44,6 +51,11 @@ export interface Settings {
   readonly textScale: number;
   readonly holdToSend: boolean;
   readonly untimedPractice: boolean;
+  /** Opt-in alpha telemetry. Off until the player says yes. */
+  readonly telemetry: boolean;
+  /** Whether the one-time telemetry question has been answered. */
+  readonly telemetryAsked: boolean;
+  readonly primerDone: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -52,6 +64,9 @@ export const DEFAULT_SETTINGS: Settings = {
   textScale: 1,
   holdToSend: true,
   untimedPractice: false,
+  telemetry: false,
+  telemetryAsked: false,
+  primerDone: false,
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -64,6 +79,7 @@ export function effectiveLayout(): LayoutMode {
 export function updateSettings(patch: Partial<Settings>): void {
   settings.value = { ...settings.value, ...patch };
   applySettings();
+  mirror(MIRROR.settings, settings.value);
   void store?.set('settings', settings.value);
 }
 
@@ -81,6 +97,8 @@ export interface DailyResult {
   readonly spareMs: number;
   readonly endedBy: 'queue' | 'dusk';
   readonly marks: string;
+  /** Whether this device's Daily matched the build's checksum table. */
+  readonly guard?: GuardResult;
 }
 
 export interface DailyRecord {
@@ -110,7 +128,7 @@ let store: KeyValueStore | null = null;
  * unloads, and losing a just-sent soul or a finished result would let the
  * Daily be played again.
  */
-const MIRROR = { progress: 'cots.daily-progress', record: 'cots.daily' } as const;
+const MIRROR = { progress: 'cots.daily-progress', record: 'cots.daily', settings: 'cots.settings' } as const;
 
 function mirror(key: string, value: unknown): void {
   try {
@@ -154,7 +172,9 @@ export async function initStorage(): Promise<void> {
     store.get<DailyProgress>('daily-progress'),
   ]);
   batch(() => {
-    if (s?.v === 1) settings.value = { ...DEFAULT_SETTINGS, ...s };
+    // The synchronous copy is never older than IndexedDB's.
+    const saved = readMirror<Settings>(MIRROR.settings) ?? s;
+    if (saved?.v === 1) settings.value = { ...DEFAULT_SETTINGS, ...saved };
     dailyRecord.value = mergeRecords(record, readMirror<DailyRecord>(MIRROR.record));
     dailyProgress.value = newest(progress, readMirror<DailyProgress>(MIRROR.progress)) ?? null;
     storageReady.value = true;
@@ -201,16 +221,37 @@ export type Mode =
       readonly date: string;
       readonly preview: boolean;
       readonly ranked: boolean;
+      /** This device's checksum for the Daily, and whether it matched the build's table. */
+      readonly checksum: string;
+      readonly guard: GuardResult;
     }
-  | { readonly kind: 'practice'; readonly day: number };
+  | { readonly kind: 'practice'; readonly day: number }
+  | { readonly kind: 'primer' };
 
 export interface Session {
   readonly mode: Mode;
   readonly content: Content;
   readonly ctx: DayCtx;
+  /** The shift as generated, before any action (traces replay from it). */
+  readonly initial: ShiftState;
   readonly state: ShiftState;
   readonly actions: readonly ShiftAction[];
 }
+
+/** What telemetry and reports say about this build. */
+export function buildInfo(content: Content): BuildInfo {
+  return { target: manifest.target, content: manifest.contentHash, g: content.genVersion };
+}
+
+/**
+ * The telemetry endpoint, if this build may use one. Only the web and itch
+ * builds (the alpha) ever send; the Steam and Play builds ignore the setting,
+ * matching the privacy note and Play's "no data collected".
+ */
+export const telemetryBase = (): string | undefined =>
+  platform.kind === 'web' || platform.kind === 'itch' ? links.telemetry : undefined;
+
+export const telemetryAvailable = (): boolean => telemetryBase() !== undefined;
 
 export type Screen = 'title' | 'briefing' | 'shift' | 'summary';
 
@@ -329,6 +370,22 @@ function saveProgress(s: Session): void {
 function finish(s: Session): void {
   citation.value = null;
   answer.value = null;
+  const telemetry = telemetryBase();
+  if (telemetry && settings.peek().telemetry) {
+    sendShift(
+      telemetry,
+      shiftRecord({
+        build: buildInfo(s.content),
+        mode: s.mode.kind,
+        ...(s.mode.kind === 'daily' ? { n: s.mode.n, guard: s.mode.guard } : {}),
+        layout: effectiveLayout(),
+        initial: s.initial,
+        actions: s.actions,
+        ctx: s.ctx,
+      }),
+    );
+  }
+  if (s.mode.kind === 'primer' && !settings.peek().primerDone) updateSettings({ primerDone: true });
   if (s.mode.kind === 'daily' && s.mode.ranked) {
     const score = shiftScore(s.state);
     const result: DailyResult = {
@@ -339,6 +396,7 @@ function finish(s: Session): void {
       spareMs: score.spareMs,
       endedBy: s.state.endedBy ?? 'queue',
       marks: shareMarks(s.state),
+      guard: s.mode.guard,
     };
     dailyRecord.value = { v: 1, results: { ...dailyRecord.value.results, [String(s.mode.n)]: result } };
     dailyProgress.value = null;
@@ -370,7 +428,28 @@ export function startDaily(): void {
     day: content.daily.day,
     dailyNumber: n,
   });
-  let s: Session = { mode: { kind: 'daily', n, date, preview, ranked }, content, ctx, state, actions: [] };
+  // The checksum guard: does this device generate the Daily everyone else gets?
+  const checksum = queueChecksum(state.cases, ctx);
+  const guard = guardDaily(dailyChecks, n, content.genVersion, checksum);
+  const telemetry = telemetryBase();
+  if (guard === 'mismatch' && telemetry && settings.peek().telemetry) {
+    sendGuard(telemetry, {
+      v: 1,
+      build: buildInfo(content),
+      n,
+      expected: expectedChecksum(dailyChecks, n, content.genVersion) ?? '',
+      got: checksum,
+      ua: navigator.userAgent.slice(0, 400),
+    });
+  }
+  let s: Session = {
+    mode: { kind: 'daily', n, date, preview, ranked, checksum, guard },
+    content,
+    ctx,
+    initial: state,
+    state,
+    actions: [],
+  };
 
   const progress = dailyProgress.value;
   if (ranked && progress && progress.n === n && progress.g === content.genVersion && progress.actions.length > 0) {
@@ -404,9 +483,30 @@ export function startPractice(day: number): void {
     untimed: settings.value.untimedPractice,
   });
   resetSoulUi();
-  session.value = { mode: { kind: 'practice', day }, content: gameContent, ctx, state, actions: [] };
+  session.value = { mode: { kind: 'practice', day }, content: gameContent, ctx, initial: state, state, actions: [] };
   screen.value = 'briefing';
 }
+
+/** The fixed seed that gives everyone the same primer. */
+export const PRIMER_SEED = 'primer';
+
+export function startPrimer(): void {
+  const content = dailyContent;
+  if (!content?.primer) return;
+  const { state, ctx } = startShift(content, {
+    mode: 'primer',
+    seed: PRIMER_SEED,
+    day: content.primer.day,
+    untimed: true,
+  });
+  resetSoulUi();
+  coachAcks.value = [];
+  session.value = { mode: { kind: 'primer' }, content, ctx, initial: state, state, actions: [] };
+  screen.value = 'briefing';
+}
+
+/** Coach steps the player has clicked past ("Next"). */
+export const coachAcks = signal<readonly string[]>([]);
 
 export function begin(): void {
   act({ t: 'begin' });
@@ -424,9 +524,24 @@ export function toTitle(): void {
 
 /** Spoiler-free result text, and the link it points to. */
 export function shareBody(s: Session): { text: string; url: string | undefined } {
-  const label = s.mode.kind === 'daily' && s.mode.preview ? `Daily preview ${s.mode.date}` : undefined;
+  let label: string | undefined;
+  if (s.mode.kind === 'daily') {
+    label = s.mode.preview ? `Daily preview ${s.mode.date}` : `Daily #${s.mode.n}`;
+    // A device that built a different Daily says so, so nobody compares apples with pears.
+    if (s.mode.guard === 'mismatch') label += ' · unverified';
+  }
   const text = shareText(s.state, s.content, { title: t('core.title'), ...(label ? { label } : {}) });
   return { text, url: platform.shareUrl() };
+}
+
+// ---------- updates ----------
+
+/** True when a new version is downloaded and waiting (the title screen offers it). */
+export const updateReady = signal(false);
+let installUpdate: (() => Promise<void>) | null = null;
+
+export function applyUpdate(): void {
+  void installUpdate?.();
 }
 
 export async function shareResult(s: Session): Promise<ShareResult> {
@@ -445,9 +560,12 @@ function pauseIfPlaying(): void {
   }
 }
 
-/** Starts the sun ticker and the auto-pause listeners. Call once. */
+/** Starts the sun ticker, the auto-pause listeners and the update watch. Call once. */
 export function startClock(): void {
   if (ticker) return;
+  installUpdate = platform.watchForUpdate(() => {
+    updateReady.value = true;
+  });
   let beats = 0;
   ticker = setInterval(() => {
     now.value = clock();

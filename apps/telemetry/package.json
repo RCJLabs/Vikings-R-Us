@@ -1,0 +1,11 @@
+{
+  "name": "@cots/telemetry",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Opt-in alpha telemetry: a Cloudflare Worker that stores anonymous shift records in D1.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "dependencies": {
+    "zod": "4.6.5"
+  }
+}
