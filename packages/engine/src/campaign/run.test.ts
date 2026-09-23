@@ -334,7 +334,7 @@ describe('story souls', () => {
     expect(ta?.script).toBe('case.thorvald1');
     expect(ta?.expect.dest).toBe('RETURN');
     expect(ta?.evidence.look).toMatchObject({ name: 'Thorvald', patronym: 'Ketilsson' });
-    expect(ta?.evidence.fields.filter((f) => f.text?.msg.startsWith('case.thorvald1.'))).toHaveLength(2);
+    expect(ta?.evidence.fields.filter((f) => f.text?.msg.startsWith('case.thorvald1.'))).toHaveLength(3);
     expect(ta?.id).not.toBe(tb?.id);
     expect({ ...ta, id: '' }).toEqual({ ...tb, id: '' });
   });

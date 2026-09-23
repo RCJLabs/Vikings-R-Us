@@ -2,6 +2,7 @@ import { fnv1a32, type Look, type Value } from '@cots/engine';
 import type { BodyArtProvider, BodyScene, Portrait } from './contract';
 import {
   BACK_WOUNDS,
+  BLADE_Y,
   CX,
   FRONT_WOUNDS,
   H,
@@ -12,6 +13,8 @@ import {
   SIGN_VIEWS,
   standardHotspots,
   W,
+  type WeaponKind,
+  weaponKind,
 } from './layout';
 
 /**
@@ -113,13 +116,44 @@ function wounds(n: Value | undefined, at: readonly (readonly [number, number])[]
     .join('');
 }
 
-function axe(x: number, y: number, outward: 1 | -1): string {
-  const top = y - 80;
+/** The weapon in the fist, of the kind the soul's words name. The fist is drawn over its grip. */
+function weapon(kind: WeaponKind, x: number, y: number, outward: 1 | -1): string {
   const b = (dx: number) => x + dx * outward;
+  const shaft = (from: number, to: number) => [
+    `<path d="M${x} ${from}V${to}" stroke="${INK}" stroke-width="10" stroke-linecap="round"/>`,
+    `<path d="M${x} ${from}V${to}" stroke="${WOOD}" stroke-width="5" stroke-linecap="round"/>`,
+  ];
+  if (kind === 'sword') {
+    return [
+      `<path d="M${x - 5} ${y - 16}V${y - 88}L${x} ${y - 100}L${x + 5} ${y - 88}V${y - 16}Z" fill="${IRON}" ${OUTLINE}/>`,
+      `<path d="M${x - 1} ${y - 86}V${y - 22}" stroke="${INK}" stroke-width="1.6"/>`,
+      `<path d="M${x + 2} ${y - 84}V${y - 26}" stroke="${PAPER}" stroke-width="1.4"/>`,
+      `<rect x="${x - 15}" y="${y - 21}" width="30" height="7" rx="2" fill="${GOLD}" ${THIN}/>`,
+      ...shaft(y - 14, y + 14),
+      `<circle cx="${x}" cy="${y + 20}" r="6" fill="${GOLD}" ${THIN}/>`,
+    ].join('');
+  }
+  if (kind === 'spear') {
+    return [
+      ...shaft(y - 112, y + 46),
+      `<path d="M${x} ${y - 150}Q${x + 11} ${y - 128} ${x} ${y - 106}Q${x - 11} ${y - 128} ${x} ${y - 150}Z" fill="${IRON}" ${OUTLINE}/>`,
+      `<path d="M${x} ${y - 144}V${y - 110}" stroke="${INK}" stroke-width="1.6"/>`,
+      `<path d="M${x - 4} ${y - 110}H${x + 4}M${x - 4} ${y - 104}H${x + 4}" ${THIN}/>`,
+    ].join('');
+  }
+  if (kind === 'seax') {
+    // A long single-edged knife: a straight back, the edge rising to an angled point.
+    return [
+      `<path d="M${b(-4)} ${y - 14}V${y - 66}L${b(3)} ${y - 78}L${b(9)} ${y - 58}V${y - 14}Z" fill="${IRON}" ${OUTLINE}/>`,
+      `<path d="M${b(2)} ${y - 62}L${b(6)} ${y - 56}V${y - 20}" fill="none" stroke="${PAPER}" stroke-width="1.4"/>`,
+      `<rect x="${x - 9}" y="${y - 18}" width="18" height="6" rx="2" fill="${GOLD}" ${THIN}/>`,
+      ...shaft(y - 12, y + 16),
+    ].join('');
+  }
+  const top = y - 80;
   const head = `M${x} ${top + 2}L${b(20)} ${top - 4}Q${b(40)} ${top + 18} ${b(28)} ${top + 44}Q${b(18)} ${top + 30} ${x} ${top + 26}Z`;
   return [
-    `<path d="M${x} ${top - 6}V${y + 30}" stroke="${INK}" stroke-width="10" stroke-linecap="round"/>`,
-    `<path d="M${x} ${top - 6}V${y + 30}" stroke="${WOOD}" stroke-width="5" stroke-linecap="round"/>`,
+    ...shaft(top - 6, y + 30),
     `<path d="${head}" fill="${IRON}" ${OUTLINE}/>`,
     `<path d="M${b(8)} ${top + 18}L${b(26)} ${top + 34}L${b(14)} ${top + 24}Z" fill="url(#wc-hatch)"/>`,
     `<path d="M${b(24)} ${top}Q${b(36)} ${top + 18} ${b(27)} ${top + 38}" fill="none" stroke="${PAPER}" stroke-width="2"/>`,
@@ -145,8 +179,14 @@ function claws(x: number, y: number): string {
 }
 
 /** Abstract staves in a lens: the text chip reads the runes out; the drawing only has to differ. */
-function runeReading(x: number, y: number, inscription: Value | undefined, mark: Value | undefined): string {
-  const top = y - 80;
+function runeReading(
+  x: number,
+  y: number,
+  inscription: Value | undefined,
+  mark: Value | undefined,
+  kind: WeaponKind,
+): string {
+  const top = y + BLADE_Y[kind] - 14;
   const staves = (seed: string, x0: number, y0: number) =>
     [...seed]
       .map((ch, i) => {
@@ -256,9 +296,12 @@ function figure(scene: BodyScene, uid: string): string {
   const weaponHand = grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
   if (front && weaponHand) {
     const x = weaponHand === 'L' ? hp.L : hp.R;
-    parts.push(axe(x, hp.y, x < CX ? -1 : 1));
+    const kind = weaponKind(scene.weapon);
+    parts.push(weapon(kind, x, hp.y, x < CX ? -1 : 1));
     if (scene.cues.includes('wrongGrip')) parts.push(wrongGrip(x, hp.y));
-    if (scene.tools.includes('runeLens')) parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark));
+    if (scene.tools.includes('runeLens')) {
+      parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
+    }
   }
   for (const side of ['R', 'L'] as const) {
     const x = side === 'L' ? hp.L : hp.R;

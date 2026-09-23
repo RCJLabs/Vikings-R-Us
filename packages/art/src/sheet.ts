@@ -12,8 +12,9 @@ import type { BodyArtProvider, BodyScene, BodyView, Hotspot } from './contract';
 export interface Sign {
   /** Observation or cue key. */
   readonly key: string;
-  readonly kind: 'obs' | 'cue';
-  /** Observation values, or [false, true] for a cue shown or not. */
+  /** A body observation, a cue, or the weapon the soul's words name (a look, not a sign). */
+  readonly kind: 'obs' | 'cue' | 'weapon';
+  /** Observation values, [false, true] for a cue shown or not, or weapon words. */
   readonly values: readonly Value[];
   readonly view: BodyView;
   readonly salience: Salience;
@@ -76,6 +77,15 @@ export function bodySigns(content: Pick<Content, 'facts' | 'observations' | 'cue
   ];
 }
 
+/** The weapons the art draws, as a row of the sheet: what a soul holds follows what it says it held. */
+export const WEAPON_SIGN: Sign = {
+  key: 'weapon',
+  kind: 'weapon',
+  values: ['axe', 'sword', 'spear', 'seax'],
+  view: 'front',
+  salience: 3,
+};
+
 export function signScene(sign: Sign, value: Value, look: Look = PLAIN_LOOK): BodyScene {
   const shown = sign.kind === 'cue' && value === true;
   return {
@@ -84,6 +94,7 @@ export function signScene(sign: Sign, value: Value, look: Look = PLAIN_LOOK): Bo
     obs: sign.kind === 'obs' ? { ...PLAIN_OBS, [sign.key]: value } : PLAIN_OBS,
     cues: shown ? [sign.key] : [],
     tools: sign.tool ? [sign.tool] : [],
+    ...(sign.kind === 'weapon' ? { weapon: String(value) } : {}),
   };
 }
 
@@ -150,7 +161,11 @@ export interface SheetOptions {
 }
 
 const defaultLabel = (sign: Sign, value: Value) =>
-  sign.kind === 'cue' ? `${sign.key}: ${value ? 'shown' : 'absent'}` : `${sign.key}: ${String(value)}`;
+  sign.kind === 'cue'
+    ? `${sign.key}: ${value ? 'shown' : 'absent'}`
+    : sign.kind === 'weapon'
+      ? `"my ${String(value)}"`
+      : `${sign.key}: ${String(value)}`;
 
 /** The comparison sheet as an HTML fragment (style with SHEET_CSS). */
 export function artSheet(
@@ -193,8 +208,9 @@ export function artSheet(
       out.push(`<div class="sheet__row"><h3>${esc(art.id)}</h3><div class="sheet__cells">`);
       for (const value of sign.values) {
         const scene = signScene(sign, value);
+        const region = sign.kind === 'weapon' ? 'grip' : sign.key;
         out.push(
-          `<figure>${sized(art.draw(scene), size.w, size.h)}${loupe(art, scene, sign.key, scale, zoom)}<figcaption>${esc(label(sign, value))}</figcaption></figure>`,
+          `<figure>${sized(art.draw(scene), size.w, size.h)}${loupe(art, scene, region, scale, zoom)}<figcaption>${esc(label(sign, value))}</figcaption></figure>`,
         );
       }
       out.push('</div></div>');

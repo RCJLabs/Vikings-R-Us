@@ -19,6 +19,11 @@ export interface BodyScene {
   readonly cues: readonly string[];
   /** Tools used on this soul; their readings are drawn (the feather at the lips). */
   readonly tools: readonly ToolId[];
+  /**
+   * The weapon the soul's own words name (sword, spear, ...), drawn when it
+   * holds one so the picture never contradicts what it says. Cosmetic.
+   */
+  readonly weapon?: string;
 }
 
 export interface Hotspot {

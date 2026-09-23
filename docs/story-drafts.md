@@ -1,14 +1,14 @@
 # Story drafts and how to write scenes
 
-Everything listed here is **placeholder writing** made so the campaign systems can be built and tested. Rewrite it (or have it rewritten) before the M5 vertical slice. The compiler counts the drafts: `pnpm content:compile --all` prints `N scenes, N draft, ~W words` per target.
+Everything listed here is **draft writing**. Days 1–3 are on their second draft (M5), written against `docs/voice.md` for you to edit and sign off; everything after Day 3 is still first-draft placeholder. A scene stays marked `# draft` until you sign it off (delete the tag). The compiler counts the drafts: `pnpm content:compile --all` prints `N scenes, N draft, ~W words` per target.
 
 ## What is draft
 
 | Piece | Where | Words |
 |---|---|---|
-| Morning and night scenes, Days 1–3 | `content/packs/demo/scenes/d{1,2,3}.{morning,night}.ink` | ~860 |
+| Morning and night scenes, Days 1–3 (second draft) | `content/packs/demo/scenes/d{1,2,3}.{morning,night}.ink` | ~1,820 |
 | Morning and night scenes, Days 4–6 | `content/packs/campaign/scenes/d{4,5,6}.{morning,night}.ink` | ~860 |
-| Thorvald's first visit (Day 3): two lines | `content/packs/demo/cases/thorvald-1.yaml`, strings `case.thorvald1.*` | 20 |
+| Thorvald's first visit (Day 3): three lines | `content/packs/demo/cases/thorvald-1.yaml`, strings `case.thorvald1.*` | 30 |
 | Geir Hallsson, the oathbreaker you knew (Day 6): two lines | `content/packs/campaign/cases/geir.yaml`, strings `case.geir.*` | 20 |
 | Oath lines, question answers, Huginn's line, registry crimes (Day 6) | strings `tm.oath.*`, `q.oath.*`, `rv.huginn.outlaw`; core `pool.crimes` | ~90 |
 | Decrees, laws, lines and answers for Days 7, 8 and 11 (weapons, nails, tallies) | campaign strings `decree.d7`/`d8`/`d11`, `law.*Blade`, `law.*Ulfberht`, `tm.owner.*`, `tm.blade.*`, `q.owner.*`, `q.blade.*`, `tl.*`, `tell.*`, `q.tally.*` | ~450 |
@@ -17,9 +17,9 @@ Everything listed here is **placeholder writing** made so the campaign systems c
 
 What the drafts set up, so a rewrite can keep or change it on purpose:
 
-- **Day 1:** Skögul trains you. The first letter home is from Ulf; Grandfather died of sickness (so he's in Hel, not Valhalla, and Asa doesn't know).
-- **Day 2:** Ulf loses his boatyard work; the roof needs 5 rings (`roof_mended`).
-- **Day 3:** Skögul hints that one soul has come back twice (Thorvald). At night a stranger (Loki, unnamed) says "Lovely nails." and reacts to how you stamped Thorvald. The dead woman's nails grow: Naglfar foreshadowing.
+- **Day 1:** Skögul trains you: the stamp, the wage, two forgiven mistakes, the brass pin for catching liars. The first letter home is from Ulf; Grandfather died of sickness (so he's in Hel, not Valhalla, and Asa doesn't know). Writing the truth tells only Ulf.
+- **Day 2:** The quartermaster's birch-bark decree. Ulf loses his boatyard work; the roof over Asa's bed needs 5 rings (`roof_mended`).
+- **Day 3:** Skögul hints that one soul has come back twice (Thorvald). Thorvald mentions he feels fine while everyone else looks cold. At night a stranger (Loki, unnamed) says "Lovely nails." and reacts to how you stamped Thorvald (home, Valhalla or Hel). His lips are crossed with small stitch scars: the Day 12 tell. The dead woman's nails grow: Naglfar foreshadowing.
 - **Day 4:** Freyja claims her share. Your answer moves Freyja's or Odin's standing.
 - **Day 5:** Rán and the drowned. At night Asa has the winter fever (`fx: family sister sick`) unless she's already sick or away. Skögul can lend you 10 rings (`owes_skogul`).
 - **Day 6:** Odin's clerks bring the registry. Oathbreakers keep the ring they broke (the cue). Geir Hallsson, who sat at your father's table, is in the registry and says he isn't. The night depends on his stamp: his widow's bread (`geir_hel`), or the stranger praising your mercy (`geir_spared`, +1 Loki).

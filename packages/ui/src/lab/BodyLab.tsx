@@ -1,6 +1,6 @@
 import { gameContent } from 'virtual:content';
 import { ART_STYLES, type BodyArtProvider } from '@cots/art';
-import { artSheet, bodySigns, SHEET_CSS, type Sign } from '@cots/art/sheet';
+import { artSheet, bodySigns, SHEET_CSS, type Sign, WEAPON_SIGN } from '@cots/art/sheet';
 import type { Value } from '@cots/engine';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { artStyle, loadArt, setArtStyle } from '../art';
@@ -8,6 +8,7 @@ import { t } from '../i18n';
 
 /** How a sign's value reads to the player (the chip text). */
 function signLabel(sign: Sign, value: Value): string {
+  if (sign.kind === 'weapon') return t('tm.weapon.yes.2', { weapon: String(value) });
   if (sign.kind === 'cue') return value ? t(`cue.${sign.key}`) : `No ${sign.key}`;
   if (typeof value === 'number') return t(`obs.${sign.key}`, { n: value });
   return t(`obs.${sign.key}.${String(value)}`, { name: 'Toki', patronym: 'Ulfsson', other: 'Hrafn' });
@@ -24,7 +25,7 @@ export function BodyLab() {
   useEffect(() => {
     void Promise.all(ART_STYLES.map((s) => loadArt(s))).then(setProviders);
   }, []);
-  const signs = useMemo(() => bodySigns(gameContent), []);
+  const signs = useMemo(() => [...bodySigns(gameContent), WEAPON_SIGN], []);
   const html = useMemo(
     () =>
       providers.length === 0

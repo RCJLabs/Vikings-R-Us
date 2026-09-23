@@ -2,6 +2,7 @@ import type { Look, ObservationDef, ToolId, Value } from '@cots/engine';
 import { loadContent } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
 import type { BodyArtProvider, BodyScene } from './contract';
+import { WEAPON_KINDS } from './layout';
 import { pixelBody } from './pixel';
 import { placeholderBody } from './placeholder';
 import { woodcutBody } from './woodcut';
@@ -69,6 +70,17 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
       const off = art.draw({ ...scene('hair', 'dark'), view: art.views[c.key] ?? 'front' });
       expect(on, c.key).not.toBe(off);
     }
+  });
+
+  it('draws the weapon the soul names, and the same drawing for the same kind', () => {
+    const held = (weapon?: string) => art.draw({ ...scene('grip', 'weapon'), ...(weapon ? { weapon } : {}) });
+    const kinds = WEAPON_KINDS.map((k) => held(k));
+    expect(new Set(kinds).size).toBe(WEAPON_KINDS.length);
+    expect(held('bearded axe')).toBe(held('axe'));
+    expect(held(undefined)).toBe(held('axe'));
+    // Empty hands draw no weapon, whatever the words say.
+    const empty = (weapon: string) => art.draw({ ...scene('grip', 'none'), weapon });
+    expect(empty('sword')).toBe(empty('spear'));
   });
 
   it('draws each sign on its view, as visibly as gameplay requires, under a hotspot', () => {

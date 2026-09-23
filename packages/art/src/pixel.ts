@@ -1,6 +1,6 @@
 import { fnv1a32, type Look, type Value } from '@cots/engine';
 import type { BodyArtProvider, BodyScene, Portrait } from './contract';
-import { H, portraitScene, SIGN_VIEWS, standardHotspots, W } from './layout';
+import { BLADE_Y, H, portraitScene, SIGN_VIEWS, standardHotspots, W, type WeaponKind, weaponKind } from './layout';
 
 /**
  * Candidate art direction B: indexed-palette pixel art. The body is drawn on
@@ -455,11 +455,66 @@ const AXE = [
   '.....OO...',
 ];
 
-function axe(cv: Canvas, x: number, y: number, outward: 1 | -1): void {
+const SWORD = [
+  '..I..',
+  ...Array.from({ length: 24 }, () => '.ILI.'),
+  'GGGGG',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '..W..',
+  '.III.',
+  '.III.',
+];
+
+const SPEARHEAD = ['.I.', '.I.', 'III', 'ILI', 'ILI', 'ILI', 'III', '.I.', '.W.', '.W.'];
+
+const SEAX = [
+  '...I',
+  '..II',
+  '.IIL',
+  ...Array.from({ length: 10 }, () => 'IIIL'),
+  'GGGG',
+  '.WW.',
+  '.WW.',
+  '.WW.',
+  '.WW.',
+  '.WW.',
+  '.WW.',
+  '.WW.',
+  '.WW.',
+  '.WW.',
+];
+
+/** The weapon in the fist, of the kind the soul's words name. The fist is drawn over its grip. */
+function weapon(cv: Canvas, kind: WeaponKind, x: number, y: number, outward: 1 | -1): void {
+  const map = { O: OUTLINE, I: IRON, S: IRON_SHADE, L: IRON_LIGHT, G: GOLD, W: WOOD };
+  if (kind === 'sword') {
+    part(cv, (l) => l.sprite(x - 2, y - 34, SWORD, map));
+    return;
+  }
+  if (kind === 'spear') {
+    part(cv, (l) => {
+      l.rect(x, y - 37, 1, 52, WOOD);
+      l.sprite(x - 1, y - 49, SPEARHEAD, map);
+    });
+    return;
+  }
+  if (kind === 'seax') {
+    part(cv, (l) => l.sprite(outward > 0 ? x - 1 : x - 2, y - 27, SEAX, map, outward < 0));
+    return;
+  }
   part(cv, (l) => {
     l.rect(x, y - 27, 2, 38, WOOD);
   });
-  const map = { O: OUTLINE, I: IRON, S: IRON_SHADE, L: IRON_LIGHT };
   cv.sprite(outward > 0 ? x + 2 : x - 10, y - 28, AXE, map, outward < 0);
 }
 
@@ -474,9 +529,16 @@ function wrongGrip(cv: Canvas, x: number, y: number): void {
   });
 }
 
-function runeReading(cv: Canvas, x: number, y: number, inscription: Value | undefined, mark: Value | undefined): void {
+function runeReading(
+  cv: Canvas,
+  x: number,
+  y: number,
+  inscription: Value | undefined,
+  mark: Value | undefined,
+  kind: WeaponKind,
+): void {
   const cx = x + 7;
-  const cy = y - 22;
+  const cy = y + Math.round(BLADE_Y[kind] / GRID) - 1;
   part(cv, (l) => {
     l.line(cx + 6, cy + 6, cx + 11, cy + 11, WOOD, 2);
   });
@@ -597,9 +659,10 @@ function paint(scene: BodyScene): Canvas {
   const weaponHand = front && obs.grip === 'weapon' ? (obs.gripHand === 'left' ? 'L' : 'R') : null;
   if (weaponHand) {
     const x = weaponHand === 'L' ? hp.L : hp.R;
-    axe(cv, x, hp.y, x < CX ? -1 : 1);
+    const kind = weaponKind(scene.weapon);
+    weapon(cv, kind, x, hp.y, x < CX ? -1 : 1);
     if (scene.cues.includes('wrongGrip')) wrongGrip(cv, x, hp.y);
-    if (scene.tools.includes('runeLens')) runeReading(cv, x, hp.y, obs.inscription, obs.makersMark);
+    if (scene.tools.includes('runeLens')) runeReading(cv, x, hp.y, obs.inscription, obs.makersMark, kind);
   }
   for (const side of ['R', 'L'] as const) {
     const x = side === 'L' ? hp.L : hp.R;

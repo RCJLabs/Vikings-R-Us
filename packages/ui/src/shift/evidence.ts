@@ -94,15 +94,18 @@ export function fieldText(f: Field, c?: CaseSpec): string {
   return f.id;
 }
 
-/** What the body art draws for a soul: every sign it carries, its cues and the tools used on it. */
+/** What the body art draws for a soul: every sign it carries, its cues, the tools used on it and the weapon its words name. */
 export function sceneFor(c: CaseSpec, soul: SoulState): BodyScene {
   const obs: Record<string, string | number | boolean> = {};
   const cues: string[] = [];
+  let weapon: string | undefined;
   for (const f of c.evidence.fields) {
     if (f.obs) obs[f.obs.key] = f.obs.value;
     if (f.cue) cues.push(f.cue.key);
+    const named = f.text?.params.weapon;
+    if (weapon === undefined && typeof named === 'string') weapon = named;
   }
-  return { view: soul.view, look: c.evidence.look, obs, cues, tools: soul.tools };
+  return { view: soul.view, look: c.evidence.look, obs, cues, tools: soul.tools, ...(weapon ? { weapon } : {}) };
 }
 
 /** Fields a hotspot would reveal right now. */

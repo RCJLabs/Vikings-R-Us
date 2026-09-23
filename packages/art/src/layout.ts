@@ -35,6 +35,18 @@ export const BACK_WOUNDS: readonly (readonly [number, number])[] = [
 
 const HAND_KEYS = ['grip', 'gripHand', 'nails', 'wrongGrip', 'inscription', 'makersMark'];
 
+export type WeaponKind = 'axe' | 'sword' | 'spear' | 'seax';
+export const WEAPON_KINDS: readonly WeaponKind[] = ['axe', 'sword', 'spear', 'seax'];
+
+/** The drawing for a weapon word ("bearded axe" is an axe); an axe when the words don't say. */
+export function weaponKind(word: string | undefined): WeaponKind {
+  const w = (word ?? '').toLowerCase();
+  return w.includes('sword') ? 'sword' : w.includes('spear') ? 'spear' : w.includes('seax') ? 'seax' : 'axe';
+}
+
+/** Where a rune-lens sits over each weapon's blade, as a y offset from the fist. */
+export const BLADE_Y: Readonly<Record<WeaponKind, number>> = { axe: -62, sword: -62, spear: -122, seax: -46 };
+
 /** Which signs each region shows. */
 export const REGION_KEYS: Readonly<Record<HotspotId, readonly string[]>> = {
   hair: ['hair'],

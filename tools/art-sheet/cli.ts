@@ -9,7 +9,16 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { ART_STYLES, type BodyArtProvider, type BodyScene } from '@cots/art';
-import { artSheet, bodySigns, fitFrame, type Screen, SHEET_CSS, type Sign, SMALL_PHONE } from '@cots/art/sheet';
+import {
+  artSheet,
+  bodySigns,
+  fitFrame,
+  type Screen,
+  SHEET_CSS,
+  type Sign,
+  SMALL_PHONE,
+  WEAPON_SIGN,
+} from '@cots/art/sheet';
 import type { Value } from '@cots/engine';
 import { loadContent } from '@cots/testkit';
 
@@ -34,6 +43,7 @@ for (const pack of ['core', 'daily', 'demo', 'campaign']) {
 
 /** The chip text, without the message formatter: plural counts and names are filled in plainly. */
 function label(sign: Sign, value: Value): string {
+  if (sign.kind === 'weapon') return `"My ${String(value)} never left my grip."`;
   if (sign.kind === 'cue') return value ? (strings[`cue.${sign.key}`] ?? sign.key) : `(no ${sign.key})`;
   if (typeof value === 'number') return `${sign.key} = ${value}`;
   const text = strings[`obs.${sign.key}.${String(value)}`] ?? `${sign.key}: ${String(value)}`;
@@ -93,7 +103,7 @@ for (const style of styles) {
   providers.push(provider);
 }
 
-const signs = bodySigns(content);
+const signs = [...bodySigns(content), WEAPON_SIGN];
 const body = artSheet(providers, signs, { label, souls: SOULS, screen: SMALL_PHONE });
 
 /** Body stages measured in the web demo's shift screen (M5): CSS pixels and the device pixel ratio. */
@@ -165,7 +175,7 @@ ${SHEET_CSS}
 <li>Every current sign reads at phone size in all three styles, except the feather. "Stirs" against "lies still" was weak everywhere. The candidates now add air lines beside the head; the placeholder still has the weak version.</li>
 <li>Pixel art is scaled in whole device pixels, so on a 360x740 phone it shrinks to 133x187, about 20% smaller than the smooth styles.</li>
 <li>On a landscape phone the body is about 74x103 in any style. That is a layout problem to fix in M5, whatever you choose.</li>
-<li>The soul's words name a spear or a sword while every style draws an axe. The writing pass will make them agree.</li>
+<li>The soul's words named a spear or a sword while every style drew an axe. Each style now draws the weapon the soul names (the weapon row at the end).</li>
 </ul>
 </section>
 <section>
@@ -195,6 +205,8 @@ ${SHEET_CSS}
 ${body}
 </div>
 `;
+// Plain ASCII, so the page reads the same whether or not whoever opens it declares a charset.
+const ascii = html.replace(/[^\t\n\r -~]/gu, (ch) => `&#${ch.codePointAt(0)};`);
 mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, html);
-console.log(`art-sheet: ${providers.map((p) => p.id).join(', ')} -> ${out} (${(html.length / 1024).toFixed(0)} KB)`);
+writeFileSync(out, ascii);
+console.log(`art-sheet: ${providers.map((p) => p.id).join(', ')} -> ${out} (${(ascii.length / 1024).toFixed(0)} KB)`);

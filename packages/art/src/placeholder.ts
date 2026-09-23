@@ -2,6 +2,7 @@ import type { Look, Value } from '@cots/engine';
 import type { BodyArtProvider, BodyScene, BodyView, Portrait } from './contract';
 import {
   BACK_WOUNDS,
+  BLADE_Y,
   CX,
   FRONT_WOUNDS,
   H,
@@ -12,6 +13,8 @@ import {
   SIGN_VIEWS,
   standardHotspots,
   W,
+  type WeaponKind,
+  weaponKind,
 } from './layout';
 
 /**
@@ -61,12 +64,41 @@ function slash(x: number, y: number): string {
   ].join('');
 }
 
-function axe(x: number, y: number, outward: 1 | -1): string {
-  const top = y - 76;
+const HAFT = '#6b4a2b';
+const STEEL = '#9aa3a8';
+const STEEL_EDGE = '#2a2f33';
+
+/** The weapon in the fist, of the kind the soul's words name. The fist is drawn over its grip. */
+function weapon(kind: WeaponKind, x: number, y: number, outward: 1 | -1): string {
   const b = (dx: number) => x + dx * outward;
+  if (kind === 'sword') {
+    return [
+      `<path d="M${x - 4} ${y - 16}V${y - 88}L${x} ${y - 98}L${x + 4} ${y - 88}V${y - 16}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
+      `<path d="M${x} ${y - 86}V${y - 22}" stroke="#6f777c" stroke-width="1.5"/>`,
+      `<rect x="${x - 13}" y="${y - 19}" width="26" height="6" rx="2" fill="#5c4630" stroke="${STEEL_EDGE}" stroke-width="1.5"/>`,
+      `<path d="M${x} ${y - 13}V${y + 14}" stroke="${HAFT}" stroke-width="6"/>`,
+      `<circle cx="${x}" cy="${y + 19}" r="5.5" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="1.5"/>`,
+    ].join('');
+  }
+  if (kind === 'spear') {
+    return [
+      `<path d="M${x} ${y - 112}V${y + 44}" stroke="${HAFT}" stroke-width="5" stroke-linecap="round"/>`,
+      `<path d="M${x} ${y - 146}Q${x + 9} ${y - 126} ${x} ${y - 108}Q${x - 9} ${y - 126} ${x} ${y - 146}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
+      `<path d="M${x} ${y - 140}V${y - 112}" stroke="#6f777c" stroke-width="1.2"/>`,
+    ].join('');
+  }
+  if (kind === 'seax') {
+    // A long single-edged knife: a straight back, the edge rising to an angled point.
+    return [
+      `<path d="M${b(-3)} ${y - 14}V${y - 66}L${b(3)} ${y - 76}L${b(8)} ${y - 58}V${y - 14}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
+      `<rect x="${x - 8}" y="${y - 16}" width="16" height="4" rx="1.5" fill="#5c4630" stroke="${STEEL_EDGE}" stroke-width="1.2"/>`,
+      `<path d="M${x} ${y - 12}V${y + 16}" stroke="${HAFT}" stroke-width="6" stroke-linecap="round"/>`,
+    ].join('');
+  }
+  const top = y - 76;
   return [
-    `<path d="M${x} ${top}V${y + 26}" stroke="#6b4a2b" stroke-width="6" stroke-linecap="round"/>`,
-    `<path d="M${x} ${top + 4}L${b(28)} ${top - 8}Q${b(36)} ${top + 16} ${b(26)} ${top + 34}L${x} ${top + 24}Z" fill="#9aa3a8" stroke="#2a2f33" stroke-width="2"/>`,
+    `<path d="M${x} ${top}V${y + 26}" stroke="${HAFT}" stroke-width="6" stroke-linecap="round"/>`,
+    `<path d="M${x} ${top + 4}L${b(28)} ${top - 8}Q${b(36)} ${top + 16} ${b(26)} ${top + 34}L${x} ${top + 24}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
   ].join('');
 }
 
@@ -93,8 +125,14 @@ function wrongGrip(x: number, y: number): string {
  * carving under it. Stave patterns stand in for the runes (the text chip
  * reads them out), different for each owner and maker's mark.
  */
-function runeReading(x: number, y: number, inscription: Value | undefined, mark: Value | undefined): string {
-  const top = y - 76;
+function runeReading(
+  x: number,
+  y: number,
+  inscription: Value | undefined,
+  mark: Value | undefined,
+  kind: WeaponKind,
+): string {
+  const top = y + BLADE_Y[kind] - 14;
   const staves = (seed: string, x0: number, y0: number) =>
     [...seed]
       .map((ch, i) => {
@@ -162,9 +200,12 @@ function figure(scene: BodyScene): string {
   const weaponHand = grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
   if (view === 'front' && weaponHand) {
     const x = weaponHand === 'L' ? hp.L : hp.R;
-    parts.push(axe(x, hp.y, x < CX ? -1 : 1));
+    const kind = weaponKind(scene.weapon);
+    parts.push(weapon(kind, x, hp.y, x < CX ? -1 : 1));
     if (scene.cues.includes('wrongGrip')) parts.push(wrongGrip(x, hp.y));
-    if (scene.tools.includes('runeLens')) parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark));
+    if (scene.tools.includes('runeLens')) {
+      parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
+    }
   }
   for (const side of ['R', 'L'] as const) {
     const x = side === 'L' ? hp.L : hp.R;
