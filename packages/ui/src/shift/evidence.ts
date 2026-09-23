@@ -1,5 +1,5 @@
 import { gameContent } from 'virtual:content';
-import type { BodyScene, Hotspot, Portrait } from '@cots/art-placeholder';
+import type { BodyScene, Hotspot, Portrait } from '@cots/art';
 import {
   type CaseSpec,
   type DayCtx,

@@ -15,7 +15,7 @@ for (const file of filesIn('packages/engine/src')) {
 for (const dir of [
   'packages/ui/src',
   'packages/platform/src',
-  'packages/art-placeholder/src',
+  'packages/art/src',
   'packages/story/src',
   'apps/web/src',
 ]) {

@@ -14,6 +14,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.14
         version: 2.5.14
+      '@cots/art':
+        specifier: workspace:*
+        version: link:packages/art
       '@cots/content-compiler':
         specifier: workspace:*
         version: link:packages/content-compiler
@@ -94,7 +97,7 @@ importers:
         specifier: 10.29.8
         version: 10.29.8
 
-  packages/art-placeholder:
+  packages/art:
     dependencies:
       '@cots/engine':
         specifier: workspace:*
@@ -163,9 +166,9 @@ importers:
 
   packages/ui:
     dependencies:
-      '@cots/art-placeholder':
+      '@cots/art':
         specifier: workspace:*
-        version: link:../art-placeholder
+        version: link:../art
       '@cots/engine':
         specifier: workspace:*
         version: link:../engine

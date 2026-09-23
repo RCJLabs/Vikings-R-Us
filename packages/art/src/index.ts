@@ -1,9 +1,16 @@
 /**
- * Placeholder art: the procedural SVG body-art provider (docs/tech-spec.md
- * §6.5) and the title sigil.
+ * Body art (docs/tech-spec.md §6.5): the provider contract, the shared figure
+ * layout, the placeholder provider and the title sigil. The candidate art
+ * directions are separate entry points (`@cots/art/woodcut`,
+ * `@cots/art/pixel`) so builds load them only when chosen.
  */
-export * from './body';
-export const PLACEHOLDER_ART_ID = 'placeholder';
+export * from './contract';
+export * from './layout';
+export { placeholderBody } from './placeholder';
+
+/** The art styles a build can switch between; the first is the default. */
+export const ART_STYLES = ['placeholder', 'woodcut', 'pixel'] as const;
+export type ArtStyle = (typeof ART_STYLES)[number];
 
 /** Stamp ring and quill. Deliberately avoids runes and symbols that extremists have appropriated. */
 export function placeholderSigil(): string {

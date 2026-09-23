@@ -33,7 +33,7 @@ pnpm golden:update       # refresh tests/golden (day summaries, Daily checksums)
 | `packages/content-compiler` | Compiles `content/packs` into per-target bundles and leak tokens |
 | `packages/ui` | Preact UI (desk layout for desktop/Deck, drawer layout for phones) |
 | `packages/platform` | Web, itch, Electron and Android adapters, chosen at build time |
-| `packages/art-placeholder` | Procedural SVG body art behind a swappable provider contract; final art arrives at the vertical slice |
+| `packages/art` | Body art behind a swappable provider contract: the placeholder and the two candidate directions (woodcut, pixel) under trial in M5 |
 | `apps/web` | The single Vite entry for every target |
 | `apps/electron`, `apps/android` | Steam (M6) and Google Play (M9) shells |
 | `apps/telemetry` | Opt-in alpha telemetry: a Cloudflare Worker and D1 schema |

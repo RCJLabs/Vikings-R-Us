@@ -1,52 +1,25 @@
-import type { Look, Salience, ToolId, Value } from '@cots/engine';
+import type { Look, Value } from '@cots/engine';
+import type { BodyArtProvider, BodyScene, BodyView, Portrait } from './contract';
+import {
+  BACK_WOUNDS,
+  CX,
+  FRONT_WOUNDS,
+  H,
+  half,
+  hands,
+  PORTRAIT_VIEWBOX,
+  portraitScene,
+  SIGN_VIEWS,
+  standardHotspots,
+  W,
+} from './layout';
 
 /**
- * The placeholder body-art provider (docs/tech-spec.md §6.5): procedural SVG
- * drawn from a soul's look and its body signs. The engine owns what the signs
- * are and how visible they must be; art owns drawing them, the hotspot shapes
- * and a conformance table. Every sign is shape-coded, never colour alone:
- * fever is stipple, sea-foam is bubbles, wounds are slashes, pendants have
- * different silhouettes and each hair colour has its own texture.
+ * The placeholder body-art provider: procedural SVG drawn from a soul's look
+ * and its body signs. Every sign is shape-coded, never colour alone: fever is
+ * stipple, sea-foam is bubbles, wounds are slashes, pendants have different
+ * silhouettes and each hair colour has its own texture.
  */
-
-export type BodyView = 'front' | 'back';
-export type HotspotId = 'hair' | 'face' | 'neck' | 'chest' | 'handR' | 'handL' | 'back';
-
-export interface BodyScene {
-  readonly view: BodyView;
-  readonly look: Look;
-  /** Observation key -> value for every sign the body carries (the art draws the current view's). */
-  readonly obs: Readonly<Record<string, Value>>;
-  /** Cue keys showing on the body (e.g. breathFog). */
-  readonly cues: readonly string[];
-  /** Tools used on this soul; their readings are drawn (the feather at the lips). */
-  readonly tools: readonly ToolId[];
-}
-
-export interface Hotspot {
-  readonly id: HotspotId;
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-  /** Observation and cue keys this region shows. */
-  readonly keys: readonly string[];
-}
-
-export interface BodyArtProvider {
-  readonly id: string;
-  readonly frame: { readonly w: number; readonly h: number };
-  hotspots(scene: BodyScene): Hotspot[];
-  draw(scene: BodyScene): string;
-  /** How visible each drawn sign is, by observation or cue key. Must meet the gameplay salience. */
-  readonly conformance: Readonly<Record<string, Salience>>;
-  /** The view each key is drawn on. */
-  readonly views: Readonly<Record<string, BodyView>>;
-}
-
-const W = 300;
-const H = 420;
-const CX = 150;
 
 const INK = '#2a211a';
 const SKIN = '#d9cdbb';
@@ -70,14 +43,6 @@ const HAIR: Readonly<Record<string, { fill: string; texture: string }>> = {
   },
 };
 
-const half = (look: Look): number => (look.build === 'lean' ? 46 : look.build === 'broad' ? 58 : 64);
-
-/** Where each hand is on screen. The body faces us, so its right hand is on our left (and swaps when flipped). */
-function hands(look: Look, view: BodyView): { R: number; L: number; y: number } {
-  const off = half(look) + 26;
-  return view === 'front' ? { R: CX - off, L: CX + off, y: 300 } : { R: CX + off, L: CX - off, y: 300 };
-}
-
 function hairPath(look: Look, view: BodyView): string {
   if (view === 'back') return 'M104 98C104 44 196 44 196 98C196 124 184 140 150 142C116 140 104 124 104 98Z';
   const cap = 'M106 96C104 48 196 48 194 96C184 76 116 76 106 96Z';
@@ -95,17 +60,6 @@ function slash(x: number, y: number): string {
     ),
   ].join('');
 }
-
-const FRONT_WOUNDS: readonly (readonly [number, number])[] = [
-  [CX - 22, 216],
-  [CX + 18, 238],
-  [CX - 8, 262],
-];
-const BACK_WOUNDS: readonly (readonly [number, number])[] = [
-  [CX - 20, 208],
-  [CX + 20, 232],
-  [CX, 258],
-];
 
 function axe(x: number, y: number, outward: 1 | -1): string {
   const top = y - 76;
@@ -386,35 +340,12 @@ function draw(scene: BodyScene): string {
   ].join('');
 }
 
-function hotspots(scene: BodyScene): Hotspot[] {
-  const h = half(scene.look);
-  const hp = hands(scene.look, scene.view);
-  const handSpot = (id: 'handR' | 'handL', x: number): Hotspot => ({
-    id,
-    x: x - 26,
-    y: 226,
-    w: 52,
-    h: 110,
-    keys: ['grip', 'gripHand', 'nails', 'wrongGrip', 'inscription', 'makersMark'],
-  });
-  if (scene.view === 'back') {
-    return [{ id: 'back', x: CX - h, y: 158, w: 2 * h, h: 146, keys: ['woundsBack'] }];
-  }
-  return [
-    { id: 'hair', x: 100, y: 46, w: 100, h: 38, keys: ['hair'] },
-    { id: 'face', x: 100, y: 84, w: 100, h: 56, keys: ['skin', 'lips', 'breath', 'breathFog'] },
-    { id: 'neck', x: 110, y: 140, w: 80, h: 62, keys: ['ornament', 'brokenRing'] },
-    { id: 'chest', x: CX - h, y: 202, w: 2 * h, h: 102, keys: ['woundsFront', 'freshCarving'] },
-    handSpot('handR', hp.R),
-    handSpot('handL', hp.L),
-  ];
-}
-
 export const placeholderBody: BodyArtProvider = {
   id: 'placeholder',
   frame: { w: W, h: H },
-  hotspots,
+  hotspots: standardHotspots,
   draw,
+  portrait,
   conformance: {
     grip: 3,
     gripHand: 2,
@@ -433,37 +364,10 @@ export const placeholderBody: BodyArtProvider = {
     makersMark: 2,
     freshCarving: 2,
   },
-  views: {
-    grip: 'front',
-    gripHand: 'front',
-    woundsFront: 'front',
-    skin: 'front',
-    lips: 'front',
-    hair: 'front',
-    ornament: 'front',
-    woundsBack: 'back',
-    breath: 'front',
-    breathFog: 'front',
-    brokenRing: 'front',
-    nails: 'front',
-    wrongGrip: 'front',
-    inscription: 'front',
-    makersMark: 'front',
-    freshCarving: 'front',
-  },
+  views: SIGN_VIEWS,
 };
 
-/** What a registry portrait shows: a face to compare with the body (docs/tech-spec.md §6.5). */
-export interface Portrait {
-  readonly gender: Look['gender'];
-  readonly hair: string;
-  readonly beard: Look['beard'];
-  readonly build: Look['build'];
-}
-
 /** A registry portrait: the same drawing as the body, cropped to the head and shoulders. */
-export function placeholderPortrait(p: Portrait): string {
-  const look: Look = { gender: p.gender, name: '', patronym: '', age: 35, build: p.build, beard: p.beard };
-  const svg = draw({ view: 'front', look, obs: { hair: p.hair }, cues: [], tools: [] });
-  return svg.replace(/viewBox="[^"]*"/, 'viewBox="86 34 128 150"');
+function portrait(p: Portrait): string {
+  return draw(portraitScene(p)).replace(/viewBox="[^"]*"/, `viewBox="${PORTRAIT_VIEWBOX}"`);
 }

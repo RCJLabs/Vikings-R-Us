@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks';
+import { initArt } from './art';
 import { campaignUi } from './campaign/lazy';
 import { Briefing, Summary, Title } from './screens';
 import { onShiftKey } from './shift/keys';
@@ -8,6 +9,7 @@ import { initStorage, screen, startClock } from './store';
 export function App() {
   useEffect(() => {
     void initStorage();
+    initArt();
     startClock();
     window.addEventListener('keydown', onShiftKey);
     return () => window.removeEventListener('keydown', onShiftKey);

@@ -44,7 +44,7 @@ Vikings-R-Us/                         (public; see §8.4 for license)
 │  ├─ content-schema/    zod schemas; z.infer types are the single source of truth
 │  ├─ content-compiler/  YAML + Ink + strings -> generated/<target>/**, lints, leak tokens, TS codegen (FactId/ObsKey unions)
 │  ├─ ui/                Preact components, layouts, input/commands, i18n runtime, art interfaces
-│  ├─ art-placeholder/   procedural SVG BodyArtProvider plus manifest
+│  ├─ art/               BodyArtProvider contract, shared layout, placeholder + candidate art (woodcut, pixel)
 │  ├─ art-final/         (M5+) sprite provider, same contract
 │  ├─ platform/          Platform interface; adapters web | itch | electron | android (aliased per target)
 │  └─ testkit/           fast-check arbitraries, brute-force oracle solver, bots, sweep harness, golden utils
@@ -1127,8 +1127,8 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - Shift engine: `packages/engine/src/shift/shift.ts` (state machine, scoring, share text, `queueChecksum`).
 - The Daily's spec: `content/packs/daily/daily.yaml`, compiled to `generated/<target>/daily.json`.
 - UI: `packages/ui/src/store.ts` (time, persistence, session), `screens.tsx` (title, briefing, summary) and `shift/` (the shift screen, keyboard map, evidence text).
-- Body art: `packages/art-placeholder/src/body.ts`. Storage and sharing: `packages/platform/src/{storage,share}.ts`.
-- Tests: `packages/engine/src/shift/shift.test.ts`, `packages/art-placeholder/src/body.test.ts`, `tests/golden/dailies.test.ts`, `tests/e2e/daily.spec.ts`.
+- Body art: `packages/art/src/placeholder.ts` (was `packages/art-placeholder/src/body.ts` until M5). Storage and sharing: `packages/platform/src/{storage,share}.ts`.
+- Tests: `packages/engine/src/shift/shift.test.ts`, `packages/art/src/contract.test.ts`, `tests/golden/dailies.test.ts`, `tests/e2e/daily.spec.ts`.
 
 **Decisions**
 - **The shift is a pure state machine**, `stepShift(state, action, ctx) → {state, events}`.

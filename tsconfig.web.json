@@ -9,6 +9,6 @@
       "@platform": ["./packages/platform/src/adapters/web.ts"]
     }
   },
-  "include": ["packages/ui/src", "packages/platform/src", "packages/art-placeholder/src", "apps/web/src"],
+  "include": ["packages/ui/src", "packages/platform/src", "packages/art/src", "apps/web/src"],
   "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }
