@@ -2,8 +2,12 @@ import type {
   ArchetypeDef,
   CueDef,
   DaySpec,
+  Economy,
+  Effect,
+  EndingDef,
   FactDef,
   FactLaw,
+  FamilyDef,
   NamedPredicate,
   ObservationDef,
   ObsPattern,
@@ -13,8 +17,11 @@ import type {
   RuleDef,
   SignLaw,
   SpeechSlotDef,
+  StandingRule,
+  StatePred,
   TestimonyTemplate,
   ToolDef,
+  UpgradeDef,
   WorldConstraint,
 } from '@cots/engine';
 import { z } from 'zod';
@@ -228,10 +235,19 @@ export const PoolsSchema = z.record(Key, z.array(z.string().min(1)).min(1));
 
 const Pair = z.tuple([Int.min(0), Int.min(0)]);
 
+export const EconomySchema: z.ZodType<Economy> = z.strictObject({
+  wage: Int.min(0),
+  docBonus: Int.min(0),
+  warnings: Int.min(0),
+  fines: z.array(Int.min(0)).min(1),
+  costs: z.strictObject({ hearth: Int.min(0), food: Int.min(0), medicine: Int.min(0) }),
+});
+
 export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
   day: Day,
   sunS: Int.positive(),
   decree: Key,
+  economy: EconomySchema.optional(),
   params: z
     .record(z.string(), z.strictObject({ pool: z.array(z.strictObject({ id: Id, text: Key, is: PredSchema })).min(1) }))
     .optional(),
@@ -257,3 +273,72 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
     }),
   }),
 });
+
+// ---- Campaign (campaign.yaml) ----
+
+const FactionSchema = z.enum(['odin', 'freyja', 'hel', 'loki', 'clerk']);
+
+export const StatePredSchema: z.ZodType<StatePred> = z.lazy(() =>
+  z.union([
+    z.strictObject({ state: z.string(), is: Int.optional(), gte: Int.optional(), lte: Int.optional() }),
+    z.strictObject({ all: z.array(StatePredSchema).min(1) }),
+    z.strictObject({ any: z.array(StatePredSchema).min(1) }),
+    z.strictObject({ not: StatePredSchema }),
+  ]),
+);
+
+export const EffectSchema: z.ZodType<Effect> = z.union([
+  z.strictObject({ rings: Int }),
+  z.strictObject({ standing: FactionSchema, by: Int }),
+  z.strictObject({ flag: z.string().regex(/^[A-Za-z0-9_]+$/), set: Int.optional(), inc: Int.optional() }),
+  z.strictObject({ family: z.string(), becomes: z.enum(['sick', 'well']) }),
+]);
+
+const FamilyDefSchema: z.ZodType<FamilyDef> = z.strictObject({ id: z.string(), name: Key, adult: z.boolean() });
+
+const UpgradeSchema: z.ZodType<UpgradeDef> = z.strictObject({
+  id: Id,
+  name: Key,
+  text: Key,
+  price: Int.min(1),
+  since: Day,
+  effect: z.union([
+    z.strictObject({ tool: ToolIdSchema, costS: Int.min(0) }),
+    z.strictObject({ questionS: Int.min(0) }),
+    z.strictObject({ sunS: Int.min(1) }),
+  ]),
+});
+
+const EndingSchema: z.ZodType<EndingDef> = z.strictObject({
+  id: Id,
+  order: Int,
+  when: StatePredSchema.optional(),
+  title: Key,
+  text: Key,
+});
+
+const StandingRuleSchema: z.ZodType<StandingRule> = z.strictObject({
+  expected: z.union([DestinationSchema, z.literal('*')]),
+  stamped: z.union([DestinationSchema, z.literal('*')]),
+  fx: z.partialRecord(FactionSchema, Int),
+});
+
+/**
+ * One pack's part of the campaign. The demo pack defines the whole thing for
+ * Days 1-3; the campaign pack overrides `lastDay` and `finale` and adds shop
+ * items, standing rules and endings (see mergeCampaign in the compiler).
+ */
+export const CampaignPartSchema = z.strictObject({
+  lastDay: Day.optional(),
+  finale: Id.optional(),
+  startRings: Int.optional(),
+  family: z.array(FamilyDefSchema).min(1).optional(),
+  draupnir: z.strictObject({ nights: z.array(Day), rings: Int.min(0) }).optional(),
+  debtFloor: Int.optional(),
+  care: z.strictObject({ needNights: Int.min(1), sickChance: Percent, sickNights: Int.min(1) }).optional(),
+  worthy: Id.optional(),
+  standing: z.array(StandingRuleSchema).optional(),
+  shop: z.array(UpgradeSchema).optional(),
+  endings: z.array(EndingSchema).optional(),
+});
+export type CampaignPart = z.infer<typeof CampaignPartSchema>;

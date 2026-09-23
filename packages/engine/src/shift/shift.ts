@@ -13,14 +13,24 @@ import { fnv1a32 } from '../rng/hash';
  * clock) and the engine never reads a clock (docs/tech-spec.md §4).
  */
 
+/** Speed-only changes from campaign upgrades (docs/build-plan.md §1). */
+export interface ShiftMods {
+  /** Replacement sun costs, in seconds, for tools (including turning the body over). */
+  readonly toolCostS?: Readonly<Partial<Record<ToolId, number>>>;
+  readonly questionS?: number;
+  /** Extra sun for the whole shift. */
+  readonly sunS?: number;
+}
+
 export interface ShiftConfig {
-  readonly mode: 'daily' | 'practice' | 'primer';
+  readonly mode: 'daily' | 'practice' | 'primer' | 'campaign';
   readonly seed: string;
   /** The mechanics day: a campaign day for practice, the Daily spec's day for the Daily. */
   readonly day: number;
   readonly dailyNumber?: number;
   /** No sun timer (Story Mode, practice). */
   readonly untimed?: boolean;
+  readonly mods?: ShiftMods;
 }
 
 export interface SoulState {
@@ -126,17 +136,27 @@ export function shiftContext(content: Content, config: ShiftConfig): DayCtx {
     if (!content.primer) throw new Error('This build has no primer');
     return createDayContext(content, content.primer.day, config.seed, content.primer);
   }
+  // Practice and campaign days play the day's own spec.
   return createDayContext(content, config.day, config.seed);
 }
 
-export function startShift(content: Content, config: ShiftConfig): { state: ShiftState; ctx: DayCtx } {
+/**
+ * A new shift in its briefing. `queue` replaces generation with an already
+ * generated queue (a saved campaign day), so a resume stays exact even after
+ * the generator changes.
+ */
+export function startShift(
+  content: Content,
+  config: ShiftConfig,
+  queue?: readonly CaseSpec[],
+): { state: ShiftState; ctx: DayCtx } {
   const ctx = shiftContext(content, config);
-  const { cases } = generateDay(config.seed, ctx);
+  const cases = queue ?? generateDay(config.seed, ctx).cases;
   const state: ShiftState = {
     v: 1,
     config: { ...config, day: ctx.day },
     phase: 'briefing',
-    sunMs: ctx.spec.sunS * 1000,
+    sunMs: (ctx.spec.sunS + (config.mods?.sunS ?? 0)) * 1000,
     cases,
     cursor: 0,
     soul: freshSoul(),
@@ -179,6 +199,19 @@ export function inspectable(state: ShiftState, ctx: DayCtx): Field[] {
 /** Stamps available today, in a stable order. */
 export function stampsFor(ctx: DayCtx): Destination[] {
   return DESTINATIONS.filter((d) => ctx.destinations.has(d));
+}
+
+/** A tool's sun cost in seconds today, after upgrades; undefined if the tool isn't taught yet. */
+export function toolCost(state: ShiftState, ctx: DayCtx, tool: ToolId): number | undefined {
+  const base = ctx.tools.get(tool);
+  if (base === undefined) return undefined;
+  return state.config.mods?.toolCostS?.[tool] ?? base;
+}
+
+/** What questioning a liar costs, in sun-ms, after upgrades. */
+export function questionCostMs(state: ShiftState): number {
+  const s = state.config.mods?.questionS;
+  return s === undefined ? PENALTY.question : s * 1000;
 }
 
 function reject(state: ShiftState, reason: string): { state: ShiftState; events: ShiftEvent[] } {
@@ -279,7 +312,7 @@ export function stepShift(
       });
     }
     case 'flip': {
-      const cost = ctx.tools.get('flip');
+      const cost = toolCost(s, ctx, 'flip');
       if (cost === undefined) return withSun(reject(s, 'you cannot turn bodies over yet'));
       const penalty = s.soul.flipped ? 0 : cost * 1000;
       const view = s.soul.view === 'front' ? 'back' : 'front';
@@ -289,7 +322,7 @@ export function stepShift(
       });
     }
     case 'tool': {
-      const cost = ctx.tools.get(action.tool);
+      const cost = toolCost(s, ctx, action.tool);
       if (cost === undefined || action.tool === 'flip') return withSun(reject(s, `no ${action.tool} today`));
       if (s.soul.tools.includes(action.tool)) return withSun({ state: s, events: [] });
       const readings = c.evidence.fields.filter((f) => f.tool === action.tool).map((f) => f.id);
@@ -329,12 +362,10 @@ export function stepShift(
       const response = questionResponse(c, action.lie, ctx.content, s.recentQ);
       if (!response) return withSun(reject(s, 'this soul has nothing to say'));
       const recentQ = [...s.recentQ, response.template].slice(-20);
+      const cost = questionCostMs(s);
       return withSun({
-        state: penalize(
-          { ...s, recentQ, soul: { ...s.soul, questioned: [...s.soul.questioned, action.lie] } },
-          PENALTY.question,
-        ),
-        events: [{ e: 'answer', lie: action.lie, response, penaltyMs: PENALTY.question }],
+        state: penalize({ ...s, recentQ, soul: { ...s.soul, questioned: [...s.soul.questioned, action.lie] } }, cost),
+        events: [{ e: 'answer', lie: action.lie, response, penaltyMs: cost }],
       });
     }
     case 'stamp': {

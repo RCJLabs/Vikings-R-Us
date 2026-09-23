@@ -2,6 +2,8 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   ArchetypeSchema,
+  type CampaignPart,
+  CampaignPartSchema,
   CueSchema,
   DaySpecSchema,
   FactSchema,
@@ -21,6 +23,7 @@ import {
 } from '@cots/content-schema';
 import type {
   ArchetypeDef,
+  CampaignDef,
   Content,
   CueDef,
   DaySpec,
@@ -38,6 +41,7 @@ import type {
   ToolDef,
   WorldConstraint,
 } from '@cots/engine';
+import { STATE_PATHS, type StatePred } from '@cots/engine';
 import { z } from 'zod';
 
 /** The gameplay content one pack defines. Every list is optional in the pack's folder. */
@@ -62,6 +66,8 @@ export interface PackContent {
   daily?: DaySpec;
   /** The primer's spec (`primer.yaml`). */
   primer?: DaySpec;
+  /** This pack's part of the campaign (`campaign.yaml`). */
+  campaign?: CampaignPart;
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -76,6 +82,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
   const poolsFile = join(dir, 'pools.yaml');
   const dailyFile = join(dir, 'daily.yaml');
   const primerFile = join(dir, 'primer.yaml');
+  const campaignFile = join(dir, 'campaign.yaml');
   const daysDir = join(dir, 'days');
   const days = existsSync(daysDir)
     ? readdirSync(daysDir)
@@ -102,6 +109,44 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     days,
     ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
     ...(existsSync(primerFile) ? { primer: parse(DaySpecSchema, readYaml(primerFile), primerFile) } : {}),
+    ...(existsSync(campaignFile) ? { campaign: parse(CampaignPartSchema, readYaml(campaignFile), campaignFile) } : {}),
+  };
+}
+
+const wildcards = (r: { expected: string; stamped: string }) =>
+  (r.expected === '*' ? 1 : 0) + (r.stamped === '*' ? 1 : 0);
+
+/**
+ * Merges the packs' campaign parts in dependency order: later packs override
+ * the single values and add to the lists. Standing rows are sorted so specific
+ * rows are tried before wildcard ones.
+ */
+export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | undefined {
+  if (parts.length === 0) return undefined;
+  const last = <K extends keyof CampaignPart>(k: K): CampaignPart[K] => {
+    for (let i = parts.length - 1; i >= 0; i--) if (parts[i]?.[k] !== undefined) return parts[i]?.[k];
+    return undefined;
+  };
+  const all = <K extends 'standing' | 'shop' | 'endings'>(k: K) =>
+    parts.flatMap((p) => (p[k] ?? []) as NonNullable<CampaignPart[K]>[number][]);
+  const required = ['lastDay', 'finale', 'startRings', 'family', 'draupnir', 'debtFloor', 'care', 'worthy'] as const;
+  const missing = required.filter((k) => last(k) === undefined);
+  if (missing.length > 0) throw new Error(`The campaign is missing ${missing.join(', ')} (campaign.yaml).`);
+  return {
+    lastDay: last('lastDay') as number,
+    finale: last('finale') as string,
+    startRings: last('startRings') as number,
+    family: last('family') as CampaignDef['family'],
+    draupnir: last('draupnir') as CampaignDef['draupnir'],
+    debtFloor: last('debtFloor') as number,
+    care: last('care') as CampaignDef['care'],
+    worthy: last('worthy') as string,
+    standing: all('standing')
+      .map((r, i) => ({ r, i }))
+      .sort((a, b) => wildcards(a.r) - wildcards(b.r) || a.i - b.i)
+      .map((x) => x.r),
+    shop: all('shop'),
+    endings: all('endings'),
   };
 }
 
@@ -137,6 +182,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
   };
   const daily = one('daily');
   const primer = one('primer');
+  const campaign = mergeCampaign(parts.flatMap((p) => (p.campaign ? [p.campaign] : [])));
   return {
     genVersion,
     facts: cat('facts'),
@@ -157,6 +203,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     days: cat('days').sort((a, b) => a.day - b.day),
     ...(daily ? { daily } : {}),
     ...(primer ? { primer } : {}),
+    ...(campaign ? { campaign } : {}),
   };
 }
 
@@ -176,6 +223,8 @@ export function idsOf(c: PackContent): string[] {
     ...Object.keys(c.pools),
     ...Object.values(c.daily?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
     ...Object.values(c.primer?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
+    ...(c.campaign?.shop ?? []).map((u) => u.id),
+    ...(c.campaign?.endings ?? []).map((e) => e.id),
     ...c.days.flatMap((d) => Object.values(d.params ?? {}).flatMap((p) => p.pool.map((x) => x.id))),
   ];
 }
@@ -345,6 +394,8 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     if (!fallback) problems.push(`No fallback question template for "${k}" answers.`);
   }
 
+  if (content.campaign) problems.push(...lintCampaign(content, strings));
+
   const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
   if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
   if (content.primer) specs.push({ d: content.primer, name: `the primer (day ${content.primer.day} mechanics)` });
@@ -380,6 +431,56 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
       .sort((a, b) => a.order - b.order);
     const last = inForce[inForce.length - 1];
     if (!last || !('always' in last.when)) problems.push(`${name}: the last rule in force must always apply.`);
+  }
+  return problems;
+}
+
+/** Campaign cross-references (docs/tech-spec.md §10). */
+function lintCampaign(content: Content, strings: Readonly<Record<string, string>>): string[] {
+  const c = content.campaign;
+  if (!c) return [];
+  const problems: string[] = [];
+  const key = (k: string, where: string) => {
+    if (!(k in strings)) problems.push(`${where} uses missing string "${k}".`);
+  };
+  const seen = new Set<string>();
+  for (const m of c.family) {
+    if (seen.has(m.id)) problems.push(`Duplicate family member "${m.id}".`);
+    seen.add(m.id);
+    key(m.name, `family member ${m.id}`);
+  }
+  const shopIds = new Set<string>();
+  for (const u of c.shop) {
+    if (shopIds.has(u.id)) problems.push(`Duplicate shop item "${u.id}".`);
+    shopIds.add(u.id);
+    key(u.name, `shop item ${u.id}`);
+    key(u.text, `shop item ${u.id}`);
+    if ('tool' in u.effect && !content.tools.some((t) => t.id === (u.effect as { tool: string }).tool)) {
+      problems.push(`shop item ${u.id} speeds up a tool this build doesn't have.`);
+    }
+  }
+  const endingIds = new Set<string>();
+  const walk = (p: StatePred, where: string): void => {
+    if ('all' in p) for (const q of p.all) walk(q, where);
+    else if ('any' in p) for (const q of p.any) walk(q, where);
+    else if ('not' in p) walk(p.not, where);
+    else if (!STATE_PATHS.test(p.state)) problems.push(`${where} reads unknown run state "${p.state}".`);
+  };
+  for (const e of c.endings) {
+    if (endingIds.has(e.id)) problems.push(`Duplicate ending "${e.id}".`);
+    endingIds.add(e.id);
+    key(e.title, `ending ${e.id}`);
+    key(e.text, `ending ${e.id}`);
+    if (e.when) walk(e.when, `ending ${e.id}`);
+  }
+  if (!endingIds.has(c.finale)) problems.push(`The campaign's finale "${c.finale}" isn't an ending.`);
+  if (!content.predicates.some((p) => p.id === c.worthy)) {
+    problems.push(`The campaign's worthy predicate "${c.worthy}" doesn't exist.`);
+  }
+  for (let d = 1; d <= c.lastDay; d++) {
+    const spec = content.days.find((x) => x.day === d);
+    if (!spec) problems.push(`Campaign day ${d} has no day spec.`);
+    else if (!spec.economy) problems.push(`Campaign day ${d} has no economy.`);
   }
   return problems;
 }

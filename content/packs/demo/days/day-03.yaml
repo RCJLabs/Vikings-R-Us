@@ -1,6 +1,12 @@
 day: 3
 sunS: 480
 decree: decree.d3
+economy:
+  wage: 6
+  docBonus: 1
+  warnings: 2
+  fines: [5, 10, 15]
+  costs: { hearth: 6, food: 3, medicine: 10 }
 queue:
   count: [7, 9]
   teachFirst: arch.not_quite_dead

@@ -1,0 +1,8 @@
+# The full campaign's part. lastDay grows as days are written (Day 6 lands in
+# M4; the rest in M7). DRAFT text.
+lastDay: 5
+finale: ending.tbc
+shop:
+  - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }
+endings:
+  - { id: ending.tbc, order: 1000, title: ending.tbc.title, text: ending.tbc.text }

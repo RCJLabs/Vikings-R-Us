@@ -1,6 +1,12 @@
 day: 1
 sunS: 360
 decree: decree.d1
+economy:
+  wage: 5
+  docBonus: 1
+  warnings: 2
+  fines: [3, 6, 10]
+  costs: { hearth: 6, food: 3, medicine: 10 }
 queue:
   count: [6, 6]
   teachFirst: arch.honest_warrior

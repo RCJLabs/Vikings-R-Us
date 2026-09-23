@@ -5,5 +5,9 @@
   "decree.d5": "A sea battle. The drowned belong to Rán, whatever they tell you.",
   "whim.leftHanded": "Freyja claims the left-handed today.",
   "whim.redHair": "Freyja claims the red-haired today.",
-  "whim.amber": "Freyja claims whoever wears amber today."
+  "whim.amber": "Freyja claims whoever wears amber today.",
+  "shop.sundial": "Sundial",
+  "shop.sundial.text": "Skögul teaches you to read the sun. Each shift gets 30 more seconds.",
+  "ending.tbc.title": "To be continued",
+  "ending.tbc.text": "The rest of the road to Ragnarök is still being written."
 }

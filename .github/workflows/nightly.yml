@@ -26,6 +26,8 @@ jobs:
       - run: pnpm sim sweep --seeds 10000 --prefix nightly
       # Dailies #1-#10000: about 27 years of them.
       - run: pnpm sim sweep --daily --seeds 10000
+      # Bots with four skill levels and three night strategies play the campaign.
+      - run: pnpm sim campaign --seeds 200
       - run: pnpm exec vitest run packages/engine/src/gen
         env:
           FAIRNESS_RUNS: '2000'

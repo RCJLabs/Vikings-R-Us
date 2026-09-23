@@ -1,18 +1,50 @@
 /**
- * Generator sweeps (docs/tech-spec.md §10).
+ * Generator sweeps and campaign simulations (docs/tech-spec.md §9-10).
  *   pnpm sim sweep [--seeds 200] [--days 1-5] [--prefix sweep] [--no-timing]
  *   pnpm sim sweep --daily [--seeds 200]      Dailies #1..#seeds
- * Prints a report and exits 1 if any CI threshold is breached.
+ *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo]
+ * Sweeps print a report and exit 1 if any CI threshold is breached.
  */
-import { checkThresholds, loadContent, loadDailyContent, sweep, THRESHOLDS } from '@cots/testkit';
+import type { TargetId } from '@cots/content-schema';
+import { checkThresholds, loadContent, loadDailyContent, simulateCampaign, sweep, THRESHOLDS } from '@cots/testkit';
 
 const arg = (name: string, fallback: string): string => {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? (process.argv[i + 1] ?? fallback) : fallback;
 };
 const [cmd] = process.argv.slice(2);
+if (cmd === 'campaign') {
+  const target = arg('target', 'dev-full') as TargetId;
+  const seeds = Number(arg('seeds', '200'));
+  const started = performance.now();
+  const reports = simulateCampaign(loadContent(target), seeds);
+  console.log(
+    `campaign sim: ${target}, ${seeds} runs per policy, ${((performance.now() - started) / 1000).toFixed(1)}s`,
+  );
+  console.log('judging    night          demoted  family lost  rings (mean / min)  upgrades  endings');
+  for (const r of reports) {
+    const pct = (n: number) => `${((n * 100) / r.runs).toFixed(1)}%`.padStart(6);
+    console.log(
+      [
+        r.judging.padEnd(10),
+        r.strategy.padEnd(14),
+        pct(r.demoted).padStart(7),
+        pct(r.familyLost).padStart(11),
+        `${r.meanRings.toFixed(1)} / ${r.minRings}`.padStart(18),
+        r.meanUpgrades.toFixed(1).padStart(9),
+        ` ${Object.entries(r.endings)
+          .map(([e, n]) => `${e.replace('ending.', '')} ${n}`)
+          .join(', ')}`,
+      ].join(' '),
+    );
+    if (r.ledgerErrors > 0) console.log(`  !! ${r.ledgerErrors} runs whose accounts don't add up`);
+  }
+  process.exit(reports.some((r) => r.ledgerErrors > 0) ? 1 : 0);
+}
 if (cmd !== 'sweep') {
-  console.error('Usage: pnpm sim sweep [--seeds N] [--days 1-5 | --daily] [--prefix P] [--no-timing]');
+  console.error(
+    'Usage: pnpm sim sweep [--seeds N] [--days 1-5 | --daily] [--prefix P] [--no-timing] | pnpm sim campaign [--seeds N]',
+  );
   process.exit(2);
 }
 const [lo, hi] = arg('days', '1-5').split('-').map(Number) as [number, number];

@@ -3,5 +3,20 @@
   "demo.wishlist": "Wishlist on Steam",
   "decree.d1": "Odin decrees: those who fell in battle with a weapon in hand go to Valhalla. Everyone else goes to Hel.",
   "decree.d2": "Odin decrees: a wound in the back means they fled, and the fled go to Hel. You may now turn the bodies over.",
-  "decree.d3": "Odin decrees: some of the fallen are only mostly dead. If the feather stirs, stamp RETURN."
+  "decree.d3": "Odin decrees: some of the fallen are only mostly dead. If the feather stirs, stamp RETURN.",
+  "family.mother": "Ragna, your mother",
+  "family.brother": "Ulf, your brother",
+  "family.sister": "little Asa",
+  "shop.meadHorn": "Horn of mead",
+  "shop.meadHorn.text": "A little mead loosens dead tongues. Questioning costs 15 seconds of sun.",
+  "shop.oiledBier": "Oiled bier",
+  "shop.oiledBier.text": "The bier turns at a touch. Turning a body over costs 1 second.",
+  "shop.swanFeather": "Swan feather",
+  "shop.swanFeather.text": "Light enough to stir at a whisper. The feather costs 6 seconds.",
+  "ending.demoted.title": "Demoted",
+  "ending.demoted.text": "Two nights deep in debt, and Odin's quartermaster takes your wings. You'll count shields in the armoury until Ragnarök.",
+  "ending.alone.title": "An empty house",
+  "ending.alone.text": "No one is left at home to write to. You judge the dead, and no one waits for you.",
+  "ending.demoEnd.title": "The demo ends here",
+  "ending.demoEnd.text": "Three days at the gate. Freyja is coming, the sea is rising, and Ragnarök is seventeen days away. The full game continues the story."
 }

@@ -1,6 +1,12 @@
 day: 2
 sunS: 420
 decree: decree.d2
+economy:
+  wage: 5
+  docBonus: 1
+  warnings: 2
+  fines: [3, 6, 10]
+  costs: { hearth: 6, food: 3, medicine: 10 }
 queue:
   count: [7, 8]
   teachFirst: arch.fled_coward

@@ -239,10 +239,29 @@ export interface DayParam {
   readonly pool: readonly { readonly id: string; readonly text: string; readonly is: Pred }[];
 }
 
+export type Faction = 'odin' | 'freyja' | 'hel' | 'loki' | 'clerk';
+export const FACTIONS: readonly Faction[] = ['odin', 'freyja', 'hel', 'loki', 'clerk'];
+
+/** Pay and bills for one campaign day (docs/tech-spec.md §4). */
+export interface Economy {
+  /** Rings for each soul judged rightly. */
+  readonly wage: number;
+  /** Extra rings when you also caught the soul's lie before stamping. */
+  readonly docBonus: number;
+  /** Citations per day that cost nothing. */
+  readonly warnings: number;
+  /** Fines for the citations after that, the last one repeating. */
+  readonly fines: readonly number[];
+  /** Tonight's bills: the hearth, food per person at home, medicine per sick person. */
+  readonly costs: { readonly hearth: number; readonly food: number; readonly medicine: number };
+}
+
 export interface DaySpec {
   readonly day: number;
   readonly sunS: number;
   readonly decree: string;
+  /** Campaign days only. */
+  readonly economy?: Economy;
   readonly params?: Readonly<Record<string, DayParam>>;
   readonly queue: {
     readonly count: readonly [number, number];
@@ -255,6 +274,85 @@ export interface DaySpec {
     readonly mix: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
     readonly knobs: Knobs;
   };
+}
+
+/** A condition on the campaign run (endings); two-valued. Paths are listed in engine/campaign/state.ts. */
+export type StatePred =
+  | { readonly state: string; readonly is?: number; readonly gte?: number; readonly lte?: number }
+  | { readonly all: readonly StatePred[] }
+  | { readonly any: readonly StatePred[] }
+  | { readonly not: StatePred };
+
+/** What a story scene (or a scripted soul) does to the run, applied once. */
+export type Effect =
+  | { readonly rings: number }
+  | { readonly standing: Faction; readonly by: number }
+  | { readonly flag: string; readonly set?: number; readonly inc?: number }
+  | { readonly family: string; readonly becomes: 'sick' | 'well' };
+
+export interface FamilyDef {
+  readonly id: string;
+  /** String key. */
+  readonly name: string;
+  /** Adults can die; children fall ill or are sent away, but never die (docs/build-plan.md §1). */
+  readonly adult: boolean;
+}
+
+/** Speed only: cheaper tools or questions, or more sun. Never changes what can be solved. */
+export type UpgradeEffect =
+  | { readonly tool: ToolId; readonly costS: number }
+  | { readonly questionS: number }
+  | { readonly sunS: number };
+
+export interface UpgradeDef {
+  readonly id: string;
+  readonly name: string;
+  readonly text: string;
+  readonly price: number;
+  readonly since: number;
+  readonly effect: UpgradeEffect;
+}
+
+export interface EndingDef {
+  readonly id: string;
+  /** Lower orders are checked first. */
+  readonly order: number;
+  /** Without a condition, an ending only happens as the campaign's finale. */
+  readonly when?: StatePred;
+  readonly title: string;
+  readonly text: string;
+}
+
+/** Standing changes for a (expected, stamped) pair; the first matching row applies. */
+export interface StandingRule {
+  readonly expected: Destination | '*';
+  readonly stamped: Destination | '*';
+  readonly fx: Readonly<Partial<Record<Faction, number>>>;
+}
+
+/** The campaign's economy, family, shop and endings (the demo and campaign packs each supply part). */
+export interface CampaignDef {
+  /** The last playable day in this build; its night ends with `finale` unless another ending comes first. */
+  readonly lastDay: number;
+  readonly finale: string;
+  readonly startRings: number;
+  readonly family: readonly FamilyDef[];
+  /** Odin's ring Draupnir drips eight rings every ninth night. */
+  readonly draupnir: { readonly nights: readonly number[]; readonly rings: number };
+  /** Nights ending below this many rings count as nights in debt. */
+  readonly debtFloor: number;
+  /**
+   * Family care: nights in a row without the hearth or food before someone
+   * surely falls sick; the percent chance per unmet need of falling sick sooner
+   * (so skipping a night is a gamble, not free); and nights sick without
+   * medicine before they're lost.
+   */
+  readonly care: { readonly needNights: number; readonly sickChance: number; readonly sickNights: number };
+  readonly standing: readonly StandingRule[];
+  readonly shop: readonly UpgradeDef[];
+  readonly endings: readonly EndingDef[];
+  /** The named predicate that makes a Valhalla stamp a worthy einherjar. */
+  readonly worthy: string;
 }
 
 export interface Content {
@@ -279,4 +377,6 @@ export interface Content {
   readonly daily?: DaySpec;
   /** The primer: a short scripted shift that teaches the Daily's tools. */
   readonly primer?: DaySpec;
+  /** Campaign rules, in builds that ship campaign days. */
+  readonly campaign?: CampaignDef;
 }

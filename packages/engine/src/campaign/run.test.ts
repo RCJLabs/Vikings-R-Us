@@ -1,0 +1,363 @@
+import { loadContent } from '@cots/testkit';
+import { describe, expect, it } from 'vitest';
+import type { Content, Destination } from '../content/types';
+import type { DayCtx } from '../logic/context';
+import {
+  campaignOf,
+  defaultBills,
+  newRun,
+  type RunAction,
+  type RunEnv,
+  type RunEvent,
+  shiftMods,
+  stepRun,
+} from './run';
+import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
+import type { RunState } from './state';
+
+const demo = loadContent('web-demo');
+const full = loadContent('dev-full');
+
+/** Steps a run through actions, keeping the day context current and failing on rejections. */
+function drive(content: Content, run0: RunState, actions: readonly RunAction[]) {
+  let run = run0;
+  let ctx: DayCtx = runContext(content, run);
+  const events: RunEvent[] = [];
+  for (const a of actions) {
+    const r = stepRun(run, a, { content, ctx });
+    const bad = r.events.find((e) => e.e === 'rejected');
+    if (bad && bad.e === 'rejected') throw new Error(`${a.t} rejected: ${bad.reason}`);
+    if (r.state.day !== run.day) ctx = runContext(content, r.state);
+    run = r.state;
+    events.push(...r.events);
+  }
+  return { run, events, ctx };
+}
+
+/** A whole shift: stamp each soul right, or wrong where `wrong(i)` says so; catch lies if asked. */
+function shiftActions(
+  run: RunState,
+  content: Content,
+  opts: { wrong?: (i: number) => boolean; catchLies?: boolean } = {},
+): RunAction[] {
+  const ctx = runContext(content, run);
+  const started = stepRun(run, { t: 'beginShift', at: 0 }, { content, ctx }).state;
+  const cases = started.shift?.cases ?? [];
+  const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+  let at = 0;
+  cases.forEach((c, i) => {
+    at += 20_000;
+    if (opts.catchLies && c.lies.length > 0) {
+      // Look at everything, then flag each contradiction the careful player would find.
+      actions.push({ t: 'shift', action: { t: 'inspect', fields: c.evidence.fields.map((f) => f.id), at } });
+    }
+    const dest: Destination = opts.wrong?.(i) ? (c.expect.dest === 'HEL' ? 'VALHALLA' : 'HEL') : c.expect.dest;
+    actions.push({ t: 'shift', action: { t: 'stamp', dest, at } }, { t: 'shift', action: { t: 'send', at } });
+  });
+  return actions;
+}
+
+function playDay(
+  content: Content,
+  run: RunState,
+  opts: { wrong?: (i: number) => boolean; bills?: Partial<ReturnType<typeof defaultBills>>; buy?: string[] } = {},
+) {
+  const shift = drive(content, run, shiftActions(run, content, opts));
+  const night: RunAction[] = [{ t: 'endAudit' }];
+  if (opts.bills) night.push({ t: 'bills', bills: { ...defaultBills(shift.run), ...opts.bills } });
+  for (const item of opts.buy ?? []) night.push({ t: 'buy', item });
+  night.push({ t: 'endNight' });
+  const end = drive(content, shift.run, night);
+  return { afterShift: shift.run, run: end.run, events: [...shift.events, ...end.events] };
+}
+
+describe('a campaign run', () => {
+  it('starts on the morning of Day 1 with the family at home', () => {
+    const run = newRun(demo, 'r');
+    expect(run).toMatchObject({ day: 1, phase: 'morning', rings: campaignOf(demo).startRings, ending: null });
+    expect(run.family.map((m) => [m.id, m.status])).toEqual([
+      ['mother', 'well'],
+      ['brother', 'well'],
+      ['sister', 'well'],
+    ]);
+  });
+
+  it('pays each soul judged rightly, then bills the night', () => {
+    const run = newRun(demo, 'pay');
+    const { afterShift, run: next, events } = playDay(demo, run);
+    const souls = afterShift.shift?.cases.length ?? 0;
+    const econ = demo.days[0]?.economy;
+    expect(afterShift.phase).toBe('audit');
+    expect(afterShift.ledger[0]).toMatchObject({
+      day: 1,
+      correct: souls,
+      wrong: 0,
+      pay: souls * (econ?.wage ?? 0),
+      fines: 0,
+    });
+    expect(afterShift.rings).toBe(run.rings + souls * (econ?.wage ?? 0));
+    // Hearth plus food for three.
+    const bills = (econ?.costs.hearth ?? 0) + 3 * (econ?.costs.food ?? 0);
+    expect(next).toMatchObject({ day: 2, phase: 'morning', rings: afterShift.rings - bills, shift: null });
+    expect(next.ledger[0]?.night).toMatchObject({
+      hearth: econ?.costs.hearth,
+      food: 3 * (econ?.costs.food ?? 0),
+      medicine: 0,
+    });
+    expect(events).toContainEqual({ e: 'dayBegins', day: 2 });
+  });
+
+  it('forgives the day’s warnings, then fines on the day’s schedule, repeating the last', () => {
+    const { afterShift } = playDay(demo, newRun(demo, 'fines'), { wrong: () => true });
+    const n = afterShift.shift?.cases.length ?? 0;
+    const econ = demo.days[0]?.economy;
+    const fines = econ?.fines ?? [];
+    const charged = Array.from(
+      { length: Math.max(0, n - (econ?.warnings ?? 0)) },
+      (_, i) => fines[Math.min(i, fines.length - 1)] ?? 0,
+    );
+    expect(charged.length).toBeGreaterThan(2);
+    expect(afterShift.ledger[0]).toMatchObject({
+      correct: 0,
+      wrong: n,
+      pay: 0,
+      fines: charged.reduce((a, b) => a + b, 0),
+    });
+  });
+
+  it('Story Mode never fines and has no sun', () => {
+    const run = newRun(demo, 'story', { story: true });
+    const { afterShift } = playDay(demo, run, { wrong: () => true });
+    expect(afterShift.ledger[0]?.fines).toBe(0);
+    expect(afterShift.shift?.config.untimed).toBe(true);
+  });
+
+  it('pays the lie-catching bonus only for a caught lie on a soul judged rightly', () => {
+    for (const seed of ['b1', 'b2', 'b3', 'b4', 'b5', 'b6']) {
+      const run = newRun(demo, seed);
+      const ctx = runContext(demo, run);
+      let r = stepRun(run, { t: 'beginShift', at: 0 }, { content: demo, ctx }).state;
+      const liar = r.shift?.cases.findIndex((c) => c.lies.length > 0) ?? -1;
+      if (liar < 0) continue;
+      let at = 0;
+      for (const [i, c] of (r.shift?.cases ?? []).entries()) {
+        at += 10_000;
+        const step = (a: RunAction) => {
+          r = stepRun(r, a, { content: demo, ctx }).state;
+        };
+        if (i === liar) {
+          step({ t: 'shift', action: { t: 'inspect', fields: c.evidence.fields.map((f) => f.id), at } });
+          const lie = c.lies[0]?.field ?? '';
+          const other = c.evidence.fields.find((f) => f.item === 'body' && r.shift?.soul.seen.includes(f.id));
+          for (const f of c.evidence.fields) step({ t: 'shift', action: { t: 'compare', a: lie, b: f.id, at } });
+          expect(other).toBeDefined();
+        }
+        step({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at } });
+        step({ t: 'shift', action: { t: 'send', at } });
+      }
+      const wage = demo.days[0]?.economy?.wage ?? 0;
+      const n = r.shift?.cases.length ?? 0;
+      expect(r.ledger[0]).toMatchObject({ correct: n, bonus: 1, pay: n * wage });
+      return;
+    }
+    throw new Error('no liar on Day 1 in six seeds');
+  });
+
+  it('keeps count of worthy and unworthy einherjar', () => {
+    const { afterShift } = playDay(demo, newRun(demo, 'ein'), { wrong: () => true });
+    const cases = afterShift.shift?.cases ?? [];
+    // Wrong stamps send every HEL soul to Valhalla: all unworthy.
+    const toValhalla = cases.filter((c) => c.expect.dest === 'HEL').length;
+    expect(afterShift.einherjar).toEqual({ worthy: 0, unworthy: toValhalla });
+    const right = playDay(demo, newRun(demo, 'ein')).afterShift;
+    expect(right.einherjar).toEqual({ worthy: cases.filter((c) => c.expect.dest === 'VALHALLA').length, unworthy: 0 });
+  });
+
+  it('moves the gods’ standing with the mistakes that anger them', () => {
+    const { afterShift } = playDay(demo, newRun(demo, 'stand'), { wrong: () => true });
+    const cases = afterShift.shift?.cases ?? [];
+    const hel = cases.filter((c) => c.expect.dest === 'HEL').length;
+    const valhalla = cases.filter((c) => c.expect.dest === 'VALHALLA').length;
+    expect(afterShift.standing).toMatchObject({ odin: -hel - valhalla, hel: -hel, freyja: 0 });
+  });
+});
+
+describe('the family at night', () => {
+  /** The same rules without the random chance, to test the sure thresholds. */
+  const sure: Content = {
+    ...full,
+    campaign: { ...campaignOf(full), care: { ...campaignOf(full).care, sickChance: 0 } },
+  };
+
+  it('falls sick after two cold nights, recovers with medicine, and is lost without it', () => {
+    const full = sure;
+    let run = newRun(full, 'fam');
+    const cold = { hearth: false };
+    run = playDay(full, run, { bills: cold }).run;
+    expect(run.family.every((m) => m.status === 'well' && m.cold === 1)).toBe(true);
+    const second = playDay(full, run, { bills: cold });
+    run = second.run;
+    expect(run.family.every((m) => m.status === 'sick')).toBe(true);
+    expect(second.events.filter((e) => e.e === 'family')).toHaveLength(3);
+    // Medicine for the mother only; the others go a night sick without it.
+    run = playDay(full, run, { bills: { hearth: true, medicine: ['mother'] } }).run;
+    expect(run.family.map((m) => [m.id, m.status])).toEqual([
+      ['mother', 'well'],
+      ['brother', 'sick'],
+      ['sister', 'sick'],
+    ]);
+    const lost = playDay(full, run, { bills: { hearth: true, medicine: [] } });
+    // An adult can die; a child is sent to relatives, never dies (docs/build-plan.md §1).
+    expect(lost.run.family.find((m) => m.id === 'brother')).toMatchObject({ status: 'gone', gone: 'died' });
+    expect(lost.run.family.find((m) => m.id === 'sister')).toMatchObject({ status: 'gone', gone: 'left' });
+    expect(lost.events).toContainEqual({ e: 'family', id: 'sister', change: 'left' });
+  });
+
+  it('makes one cold night a gamble: some fall sick, the same way on every replay', () => {
+    const sickAfterOneColdNight = (seed: string) =>
+      playDay(full, newRun(full, seed), { bills: { hearth: false } }).run.family.filter((m) => m.status === 'sick')
+        .length;
+    const counts = Array.from({ length: 30 }, (_, i) => sickAfterOneColdNight(`g${i}`));
+    const total = counts.reduce((a, b) => a + b, 0);
+    // 30% each for three people over 30 runs: about 27, never all or none.
+    expect(total).toBeGreaterThan(10);
+    expect(total).toBeLessThan(60);
+    expect(counts.map((_, i) => sickAfterOneColdNight(`g${i}`))).toEqual(counts);
+    // Paying for everything is never a gamble.
+    for (let i = 0; i < 10; i++) {
+      expect(playDay(full, newRun(full, `w${i}`)).run.family.every((m) => m.status === 'well')).toBe(true);
+    }
+  });
+
+  it('medicine is only charged for the sick', () => {
+    const run = newRun(demo, 'med');
+    const next = playDay(demo, run, { bills: { medicine: ['mother', 'brother'] } }).run;
+    expect(next.ledger[0]?.night?.medicine).toBe(0);
+  });
+});
+
+describe('endings', () => {
+  it('two nights deep in debt ends the run: Demoted', () => {
+    let run: RunState = { ...newRun(demo, 'debt'), rings: -100 };
+    run = playDay(demo, run, { wrong: () => true }).run;
+    expect(run.debtNights).toBe(1);
+    const end = playDay(demo, run, { wrong: () => true });
+    expect(end.run).toMatchObject({ phase: 'ending', ending: 'ending.demoted' });
+    expect(end.events).toContainEqual({ e: 'ended', ending: 'ending.demoted' });
+    expect(
+      stepRun(end.run, { t: 'endAudit' }, { content: demo, ctx: runContext(demo, end.run) }).events[0],
+    ).toMatchObject({
+      e: 'rejected',
+    });
+  });
+
+  it('the demo ends after Day 3; the full build goes on', () => {
+    let run = newRun(demo, 'fin');
+    for (let d = 1; d <= 3; d++) run = playDay(demo, run).run;
+    expect(run).toMatchObject({ phase: 'ending', ending: 'ending.demoEnd', day: 3 });
+    let f = newRun(full, 'fin');
+    for (let d = 1; d <= 3; d++) f = playDay(full, f).run;
+    expect(f).toMatchObject({ phase: 'morning', day: 4 });
+    for (let d = 4; d <= campaignOf(full).lastDay; d++) f = playDay(full, f).run;
+    expect(f).toMatchObject({ phase: 'ending', ending: campaignOf(full).finale });
+  });
+
+  it('Draupnir drips rings on its nights', () => {
+    const content: Content = { ...demo, campaign: { ...campaignOf(demo), draupnir: { nights: [1], rings: 8 } } };
+    const { run, events } = playDay(content, newRun(content, 'ring'));
+    expect(events).toContainEqual({ e: 'draupnir', rings: 8 });
+    expect(run.ledger[0]?.night?.draupnir).toBe(8);
+  });
+});
+
+describe('the shop and scenes', () => {
+  it('sells speed, never answers: a bought bier makes turning a body over cheaper', () => {
+    let run: RunState = { ...newRun(demo, 'shop'), rings: 100 };
+    run = playDay(demo, run, { buy: ['up.meadHorn'] }).run;
+    expect(run.upgrades).toEqual(['up.meadHorn']);
+    expect(run.ledger[0]?.night?.upgrades).toBe(15);
+    run = playDay(demo, run, { buy: ['up.oiledBier'] }).run;
+    expect(shiftMods(run, demo)).toEqual({ toolCostS: { flip: 1 }, questionS: 15 });
+    const ctx = runContext(demo, run);
+    const begun = stepRun(run, { t: 'beginShift', at: 0 }, { content: demo, ctx }).state;
+    const flipped = stepRun(begun, { t: 'shift', action: { t: 'flip', at: 0 } }, { content: demo, ctx });
+    expect(flipped.events).toContainEqual({ e: 'shift', event: { e: 'flipped', view: 'back', penaltyMs: 1_000 } });
+  });
+
+  it('refuses what you can’t afford, what isn’t on sale yet, and repeat purchases', () => {
+    const run = newRun(demo, 'shop2');
+    const shift = drive(demo, run, shiftActions(run, demo)).run;
+    const night = drive(demo, shift, [{ t: 'endAudit' }]).run;
+    const env: RunEnv = { content: demo, ctx: runContext(demo, night) };
+    expect(stepRun(night, { t: 'buy', item: 'up.swanFeather' }, env).events[0]).toMatchObject({ e: 'rejected' });
+    const poor = { ...night, rings: 3 };
+    expect(stepRun(poor, { t: 'buy', item: 'up.meadHorn' }, env).events[0]).toMatchObject({ e: 'rejected' });
+    const rich = stepRun({ ...night, rings: 50 }, { t: 'buy', item: 'up.meadHorn' }, env).state;
+    expect(stepRun(rich, { t: 'buy', item: 'up.meadHorn' }, env).events[0]).toMatchObject({ e: 'rejected' });
+  });
+
+  it('applies a scene’s effects once', () => {
+    const run = newRun(demo, 'scene');
+    const env: RunEnv = { content: demo, ctx: runContext(demo, run) };
+    const effects = [
+      { rings: 3 },
+      { standing: 'freyja' as const, by: 2 },
+      { flag: 'met_loki' },
+      { family: 'sister', becomes: 'sick' as const },
+    ];
+    const once = stepRun(run, { t: 'scene', id: 'scene.test', effects }, env);
+    expect(once.state).toMatchObject({ rings: run.rings + 3, flags: { met_loki: 1 } });
+    expect(once.state.standing.freyja).toBe(2);
+    expect(once.state.family.find((m) => m.id === 'sister')?.status).toBe('sick');
+    expect(stepRun(once.state, { t: 'scene', id: 'scene.test', effects }, env).state).toBe(once.state);
+  });
+});
+
+describe('saves', () => {
+  function playRecorded(content: Content, save0: RunSave, days: number, stopMidDay = false) {
+    let save = save0;
+    let run = resumeSave(save, content, 0).run;
+    let ctx = runContext(content, run);
+    const apply = (a: RunAction) => {
+      const r = stepRun(run, a, { content, ctx, ...(save.queue ? { queue: save.queue } : {}) });
+      save = recordAction(save, run, a, r.state);
+      if (r.state.day !== run.day) ctx = runContext(content, r.state);
+      run = r.state;
+    };
+    for (let d = 0; d < days; d++) {
+      const actions = shiftActions(run, content);
+      const cut = stopMidDay && d === days - 1 ? Math.floor(actions.length / 2) : actions.length;
+      for (const a of actions.slice(0, cut)) apply(a);
+      if (cut < actions.length) break;
+      apply({ t: 'endAudit' });
+      apply({ t: 'endNight' });
+    }
+    return { save, run };
+  }
+
+  it('resumes mid-day exactly, from the morning snapshot and today’s actions', () => {
+    const { save, run } = playRecorded(full, startSave(full, 'save', 0), 3, true);
+    expect(save.mornings.map((m) => m.day)).toEqual([1, 2, 3]);
+    expect(save.queue).toEqual(run.shift?.cases);
+    expect(resumeSave(save, full, 0)).toEqual({ run, rewound: false });
+  });
+
+  it('uses the saved queue, not a regenerated one', () => {
+    const { save } = playRecorded(full, startSave(full, 'q', 0), 1, true);
+    const tampered = { ...save, queue: (save.queue ?? []).map((c) => ({ ...c, id: `${c.id}!` })) };
+    expect(resumeSave(tampered, full, 0).run.shift?.cases[0]?.id).toMatch(/!$/);
+  });
+
+  it('replays any day from its morning, discarding the days after it', () => {
+    const { save } = playRecorded(full, startSave(full, 'replay', 0), 3);
+    const back = replayDay(save, 2);
+    expect(back.mornings.map((m) => m.day)).toEqual([1, 2]);
+    expect(back.log).toEqual([]);
+    expect(resumeSave(back, full, 0).run).toEqual(save.mornings[1]);
+  });
+
+  it('rewinds to the morning when the engine changed since the save', () => {
+    const { save } = playRecorded(full, startSave(full, 'eng', 0), 2, true);
+    expect(resumeSave(save, full, 1)).toEqual({ run: save.mornings[1], rewound: true });
+  });
+});
