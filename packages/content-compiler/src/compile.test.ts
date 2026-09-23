@@ -142,6 +142,35 @@ describe('gameplay content lints', () => {
     expect(() => compile({ core: noText, demo: day('arch.liar') })).toThrow(/missing string "rule.missing"/);
   });
 
+  const dailyPack = (archetype: string): PackFixture => {
+    const spec = day(archetype).files['days/day-01.yaml'].replace('decree: decree.d1', 'decree: daily.decree');
+    return {
+      yaml: 'id: daily\ndependsOn: [core]\n',
+      strings: { 'daily.intro': 'Daily', 'daily.decree': 'Everything' },
+      files: { 'daily.yaml': spec },
+    };
+  };
+
+  it('emits the Daily from core and daily packs only, and lints it', () => {
+    const demoOnly = {
+      ...day('arch.liar'),
+      files: { ...day('arch.liar').files, 'archetypes.yaml': archetype('').replace('arch.liar', 'arch.demoOnly') },
+    };
+    compile({ core: core({ 'archetypes.yaml': archetype('') }), daily: dailyPack('arch.liar'), demo: demoOnly });
+    const out = (f: string) => JSON.parse(readFileSync(join(root, 'generated', 'web-demo', f), 'utf8'));
+    expect(out('daily.json').daily).toMatchObject({ day: 1, decree: 'daily.decree' });
+    expect(out('daily.json').days).toEqual([]);
+    expect(out('daily.json').archetypes.map((a: { id: string }) => a.id)).toEqual(['arch.liar']);
+    expect(out('content.json').archetypes.map((a: { id: string }) => a.id)).toEqual(['arch.liar', 'arch.demoOnly']);
+    expect(() =>
+      compile({
+        core: core({ 'archetypes.yaml': archetype('') }),
+        daily: dailyPack('arch.nobody'),
+        demo: day('arch.liar'),
+      }),
+    ).toThrow(/the Daily \(day 1 mechanics\) uses unknown archetype "arch.nobody"/);
+  });
+
   it('requires the last rule in force to always apply', () => {
     const partial = core({
       'rules.yaml':

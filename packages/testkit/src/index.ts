@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 
-export { loadContent } from './content';
+export { loadContent, loadDailyContent } from './content';
 export { type OracleResult, oracleSolve } from './oracle';
 export { checkThresholds, type SweepOptions, type SweepReport, sweep, THRESHOLDS } from './sweep';
 export { fc };

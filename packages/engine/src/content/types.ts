@@ -273,4 +273,6 @@ export interface Content {
   readonly questions: readonly QuestionTemplate[];
   readonly pools: Readonly<Record<string, readonly string[]>>;
   readonly days: readonly DaySpec[];
+  /** The Daily Shift: same souls for everyone on a date. `day` is the mechanics day it plays with. */
+  readonly daily?: DaySpec;
 }

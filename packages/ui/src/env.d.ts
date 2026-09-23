@@ -10,4 +10,6 @@ declare module 'virtual:content' {
   };
   export const strings: Readonly<Record<string, string>>;
   export const gameContent: import('@cots/engine').Content;
+  /** Core + daily packs only, so a Daily plays the same in every build. */
+  export const dailyContent: import('@cots/engine').Content | null;
 }

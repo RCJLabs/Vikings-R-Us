@@ -58,6 +58,8 @@ export interface PackContent {
   questions: QuestionTemplate[];
   pools: Record<string, string[]>;
   days: DaySpec[];
+  /** The Daily Shift's spec (`daily.yaml`); only the daily pack should have one. */
+  daily?: DaySpec;
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -70,6 +72,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
   };
   const laws = list('laws.yaml', LawSchema);
   const poolsFile = join(dir, 'pools.yaml');
+  const dailyFile = join(dir, 'daily.yaml');
   const daysDir = join(dir, 'days');
   const days = existsSync(daysDir)
     ? readdirSync(daysDir)
@@ -94,6 +97,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     questions: list('templates/questions.yaml', QuestionTemplateSchema),
     pools: existsSync(poolsFile) ? parse(PoolsSchema, readYaml(poolsFile) ?? {}, poolsFile) : {},
     days,
+    ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
   };
 }
 
@@ -120,8 +124,11 @@ export function emptyPackContent(): PackContent {
 
 /** Merges packs in dependency order into one engine Content. */
 export function mergeContent(parts: readonly PackContent[], genVersion: number): Content {
-  const cat = <K extends Exclude<keyof PackContent, 'pools'>>(k: K): PackContent[K] =>
+  const cat = <K extends Exclude<keyof PackContent, 'pools' | 'daily'>>(k: K): PackContent[K] =>
     parts.flatMap((p) => p[k] as unknown[]) as PackContent[K];
+  const dailies = parts.flatMap((p) => (p.daily ? [p.daily] : []));
+  if (dailies.length > 1) throw new Error('Only one pack may define the Daily Shift (daily.yaml).');
+  const daily = dailies[0];
   return {
     genVersion,
     facts: cat('facts'),
@@ -140,6 +147,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     questions: cat('questions'),
     pools: Object.assign({}, ...parts.map((p) => p.pools)),
     days: cat('days').sort((a, b) => a.day - b.day),
+    ...(daily ? { daily } : {}),
   };
 }
 
@@ -157,6 +165,8 @@ export function idsOf(c: PackContent): string[] {
     ...c.ravens.map((x) => x.id),
     ...c.questions.map((x) => x.id),
     ...Object.keys(c.pools),
+    ...Object.values(c.daily?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
+    ...c.days.flatMap((d) => Object.values(d.params ?? {}).flatMap((p) => p.pool.map((x) => x.id))),
   ];
 }
 
@@ -307,26 +317,28 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     if (!fallback) problems.push(`No fallback question template for "${k}" answers.`);
   }
 
-  for (const d of content.days) {
-    key(d.decree, `day ${d.day}`);
-    for (const [name, param] of Object.entries(d.params ?? {})) {
-      for (const choice of param.pool) {
-        pred(choice.is, `day ${d.day} param ${name}`);
-        key(choice.text, `day ${d.day} param ${name}`);
+  const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
+  if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
+  for (const { d, name } of specs) {
+    key(d.decree, name);
+    for (const [param, def] of Object.entries(d.params ?? {})) {
+      for (const choice of def.pool) {
+        pred(choice.is, `${name} param ${param}`);
+        key(choice.text, `${name} param ${param}`);
       }
     }
     for (const { id } of d.queue.archetypes) {
-      if (!archetypes.has(id)) problems.push(`day ${d.day} uses unknown archetype "${id}".`);
+      if (!archetypes.has(id)) problems.push(`${name} uses unknown archetype "${id}".`);
     }
     const teach = d.queue.teachFirst;
     if (teach && !d.queue.archetypes.some((a) => a.id === teach)) {
-      problems.push(`day ${d.day} teaches with "${teach}", which isn't in its queue.`);
+      problems.push(`${name} teaches with "${teach}", which isn't in its queue.`);
     }
     const inForce = content.rules
       .filter((r) => r.since <= d.day && (r.until === undefined || d.day < r.until))
       .sort((a, b) => a.order - b.order);
     const last = inForce[inForce.length - 1];
-    if (!last || !('always' in last.when)) problems.push(`day ${d.day}: the last rule in force must always apply.`);
+    if (!last || !('always' in last.when)) problems.push(`${name}: the last rule in force must always apply.`);
   }
   return problems;
 }

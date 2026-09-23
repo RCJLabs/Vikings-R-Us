@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { buildTarget, loadPacks } from '@cots/content-compiler';
+import { buildDaily, buildTarget, loadPacks } from '@cots/content-compiler';
 import { TARGETS, type TargetId } from '@cots/content-schema';
 import type { Content } from '@cots/engine';
 
@@ -13,4 +13,15 @@ export function loadContent(target: TargetId = 'dev-full'): Content {
   const { content } = buildTarget(TARGETS[target], loadPacks(packsDir));
   cache.set(target, content);
   return content;
+}
+
+let daily: Content | undefined;
+
+/** The Daily Shift's content: core + daily packs, as every build ships it. */
+export function loadDailyContent(): Content {
+  if (daily) return daily;
+  const built = buildDaily(loadPacks(packsDir));
+  if (!built) throw new Error('No Daily Shift content');
+  daily = built;
+  return daily;
 }

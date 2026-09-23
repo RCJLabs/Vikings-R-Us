@@ -68,11 +68,18 @@ export function activeValues(def: FactDef, day: number): Value[] {
 
 const byOrder = (a: RuleDef, b: RuleDef): number => a.order - b.order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
-/** Builds the context for `day`. Day parameters (e.g. Freyja's whim) are drawn from `runSeed`. */
-export function createDayContext(content: Content, day: number, runSeed: string): DayCtx {
-  const spec = content.days.find((d) => d.day === day);
-  if (!spec) throw new Error(`No day spec for day ${day}`);
+/**
+ * Builds the context for `day`. Day parameters (e.g. Freyja's whim) are drawn
+ * from `runSeed`. Pass `spec` to play a day's mechanics with another queue
+ * (the Daily Shift uses its own spec).
+ */
+export function createDayContext(content: Content, day: number, runSeed: string, spec?: DaySpec): DayCtx {
+  const found = spec ?? content.days.find((d) => d.day === day);
+  if (!found) throw new Error(`No day spec for day ${day}`);
+  return buildContext(content, day, runSeed, found);
+}
 
+function buildContext(content: Content, day: number, runSeed: string, spec: DaySpec): DayCtx {
   const facts = new Map<string, ActiveFact>();
   const sampled: string[] = [];
   const derived: string[] = [];

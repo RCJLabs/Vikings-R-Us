@@ -1,9 +1,10 @@
 /**
  * Generator sweeps (docs/tech-spec.md §10).
  *   pnpm sim sweep [--seeds 200] [--days 1-5] [--prefix sweep] [--no-timing]
+ *   pnpm sim sweep --daily [--seeds 200]      Dailies #1..#seeds
  * Prints a report and exits 1 if any CI threshold is breached.
  */
-import { checkThresholds, loadContent, sweep, THRESHOLDS } from '@cots/testkit';
+import { checkThresholds, loadContent, loadDailyContent, sweep, THRESHOLDS } from '@cots/testkit';
 
 const arg = (name: string, fallback: string): string => {
   const i = process.argv.indexOf(`--${name}`);
@@ -11,18 +12,20 @@ const arg = (name: string, fallback: string): string => {
 };
 const [cmd] = process.argv.slice(2);
 if (cmd !== 'sweep') {
-  console.error('Usage: pnpm sim sweep [--seeds N] [--days 1-5] [--prefix P] [--no-timing]');
+  console.error('Usage: pnpm sim sweep [--seeds N] [--days 1-5 | --daily] [--prefix P] [--no-timing]');
   process.exit(2);
 }
 const [lo, hi] = arg('days', '1-5').split('-').map(Number) as [number, number];
 const days = Array.from({ length: (hi ?? lo) - lo + 1 }, (_, i) => lo + i);
 const seeds = Number(arg('seeds', '200'));
 const timing = !process.argv.includes('--no-timing');
+const daily = process.argv.includes('--daily');
 
 const started = performance.now();
 const r = sweep({
-  content: loadContent('dev-full'),
+  content: daily ? loadDailyContent() : loadContent('dev-full'),
   days,
+  daily,
   seeds,
   seedPrefix: arg('prefix', 'sweep'),
   now: () => performance.now(),
@@ -30,7 +33,7 @@ const r = sweep({
 const pct = (a: number, b: number) => (b ? ((a * 100) / b).toFixed(1) : '0.0');
 
 console.log(
-  `sweep: ${seeds} seeds x days ${days.join(',')} = ${r.cases} souls in ${((performance.now() - started) / 1000).toFixed(1)}s`,
+  `sweep: ${daily ? `Dailies #1-#${seeds}` : `${seeds} seeds x days ${days.join(',')}`} = ${r.cases} souls in ${((performance.now() - started) / 1000).toFixed(1)}s`,
 );
 console.log(
   `attempts: mean ${r.attemptsMean.toFixed(2)}, p99 ${r.attemptsP99}; fallbacks ${r.fallbacks} (${pct(r.fallbacks, r.cases)}%)`,
@@ -42,7 +45,7 @@ console.log(
 );
 console.log(
   `trusting by day: ${Object.entries(r.trustingByDay)
-    .map(([d, v]) => `d${d} ${pct(v.correct, v.total)}%`)
+    .map(([d, v]) => `${/^\d+$/.test(d) ? `d${d}` : d} ${pct(v.correct, v.total)}%`)
     .join(', ')}`,
 );
 console.log(

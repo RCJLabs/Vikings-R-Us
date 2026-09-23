@@ -1,7 +1,7 @@
 name: Nightly sweep
 
 # The full-size generator checks (docs/tech-spec.md §9): 10k seeds x every
-# playable day, plus a deeper run of the fairness property tests.
+# playable day, 10k Dailies, plus a deeper run of the fairness property tests.
 # Scheduled workflows run from the default branch.
 on:
   schedule:
@@ -24,6 +24,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm sim sweep --seeds 10000 --prefix nightly
+      # Dailies #1-#10000: about 27 years of them.
+      - run: pnpm sim sweep --daily --seeds 10000
       - run: pnpm exec vitest run packages/engine/src/gen
         env:
           FAIRNESS_RUNS: '2000'

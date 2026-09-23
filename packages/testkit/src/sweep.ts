@@ -1,7 +1,9 @@
 import {
   type Content,
   createDayContext,
+  type DayCtx,
   type Destination,
+  dailySeed,
   generateCase,
   planDay,
   revealsOf,
@@ -13,6 +15,8 @@ export interface SweepOptions {
   readonly days: readonly number[];
   readonly seeds: number;
   readonly seedPrefix?: string;
+  /** Sweep Dailies #1..#seeds with the content's Daily spec instead of `days`. */
+  readonly daily?: boolean;
   /** Clock for per-case timing (the engine itself never reads one). */
   readonly now?: () => number;
 }
@@ -28,7 +32,8 @@ export interface SweepReport {
   readonly mix: { readonly ok: number; readonly days: number };
   readonly ideal: { readonly correct: number; readonly total: number };
   readonly trusting: { readonly correct: number; readonly total: number };
-  readonly trustingByDay: Record<number, { correct: number; total: number }>;
+  /** Keyed by day number, or `daily`. */
+  readonly trustingByDay: Record<string, { correct: number; total: number }>;
   readonly rejects: Record<string, number>;
   readonly destinations: Record<string, number>;
 }
@@ -47,7 +52,7 @@ export function sweep(opts: SweepOptions): SweepReport {
   const times: number[] = [];
   const rejects: Record<string, number> = {};
   const destinations: Record<string, number> = {};
-  const trustingByDay: Record<number, { correct: number; total: number }> = {};
+  const trustingByDay: Record<string, { correct: number; total: number }> = {};
   let fallbacks = 0;
   let cases = 0;
   let mixOk = 0;
@@ -55,12 +60,32 @@ export function sweep(opts: SweepOptions): SweepReport {
   let idealOk = 0;
   let trustOk = 0;
 
-  for (const day of opts.days) {
+  const daily = opts.content.daily;
+  if (opts.daily && !daily) throw new Error('This content has no Daily spec');
+  const runs: { label: string; make: (s: number) => { seed: string; ctx: DayCtx } }[] =
+    opts.daily && daily
+      ? [
+          {
+            label: 'daily',
+            make: (s) => {
+              const seed = dailySeed(s + 1);
+              return { seed, ctx: createDayContext(opts.content, daily.day, seed, daily) };
+            },
+          },
+        ]
+      : opts.days.map((day) => ({
+          label: String(day),
+          make: (s) => {
+            const seed = `${opts.seedPrefix ?? 'sweep'}-${s}`;
+            return { seed, ctx: createDayContext(opts.content, day, seed) };
+          },
+        }));
+
+  for (const { label, make } of runs) {
     const byDay = { correct: 0, total: 0 };
-    trustingByDay[day] = byDay;
+    trustingByDay[label] = byDay;
     for (let s = 0; s < opts.seeds; s++) {
-      const seed = `${opts.seedPrefix ?? 'sweep'}-${s}`;
-      const ctx = createDayContext(opts.content, day, seed);
+      const { seed, ctx } = make(s);
       const plan = planDay(seed, ctx);
       const counts: Partial<Record<Destination, number>> = {};
       plan.targets.forEach((target, i) => {
@@ -72,7 +97,7 @@ export function sweep(opts: SweepOptions): SweepReport {
         if (g.log.fallback) fallbacks++;
         for (const a of g.log.attempts) {
           if (!a.archetype) continue;
-          const key = `${day}:${a.archetype}`;
+          const key = `${label}:${a.archetype}`;
           const row = perDayArchetype[key] ?? { attempts: 0, accepted: 0 };
           row.attempts++;
           if (a.code === 'ACCEPTED') row.accepted++;

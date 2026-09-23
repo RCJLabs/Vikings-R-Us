@@ -1,4 +1,5 @@
 export {
+  buildDaily,
   buildTarget,
   type CompileResult,
   ContentError,
