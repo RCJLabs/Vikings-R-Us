@@ -58,7 +58,11 @@ describe('playScene', () => {
       { flag: 'kept_rings', set: 1 },
       { standing: 'odin', by: 1 },
     ]);
-    expect(keep.lines.at(-1)?.text).toBe('The day begins.');
+    expect(keep.lines.slice(-3)).toEqual([
+      { text: 'Keep the rings', tags: [], chosen: true },
+      { text: 'You keep them.', tags: ['fx: flag kept_rings'] },
+      { text: 'The day begins.', tags: ['fx: standing odin +1'] },
+    ]);
   });
 
   it('is the same every time for the same seed and choices', () => {

@@ -13,6 +13,7 @@
     "@cots/art-placeholder": "workspace:*",
     "@cots/engine": "workspace:*",
     "@cots/platform": "workspace:*",
+    "@cots/story": "workspace:*",
     "@preact/signals": "2.11.2",
     "intl-messageformat": "12.1.2",
     "preact": "10.29.8"

@@ -56,6 +56,15 @@ You send what you can. # fx: rings -5
 
 A tag on its own line attaches to the next line of text, which is fine inside a choice's branch. **Don't put fx tags on a choice line.** Ink can attach them to the choice instead of the text, and then they never fire. The compiler rejects them there.
 
+**Choices.** Write each choice's whole text in brackets and what happens on the following lines:
+
+```ink
+* ["What if they lie?"]
+  "They will." # speaker: skogul
+```
+
+The game echoes the picked option as its own line (so a reply never appears without the question it answers). Text outside the brackets would print a second time, so the compiler rejects it. Put a `speaker:` tag only on lines that are that character's words; narration has no speaker.
+
 **Other tags.**
 - `# speaker: skogul` names who is talking. It needs a `speaker.skogul` string.
 - `# draft` as the first line marks the whole scene as placeholder writing.
@@ -63,6 +72,7 @@ A tag on its own line attaches to the next line of text, which is fine inside a 
 **What the compiler checks** (`pnpm content:compile`):
 - Ink errors and warnings.
 - Only the externals above.
+- Choices written as `[whole text]`.
 - Every fx tag parses, reached or not, and is plain text.
 - Every day's scene exists and every scene is played by some day.
 - Speaker strings exist.

@@ -97,6 +97,8 @@ interface LoadedReport {
   readonly seed: string;
   readonly day: number;
   readonly soul: number;
+  /** `seed:day:position` for a generated soul, `seed:day:<story soul id>` for a story soul. */
+  readonly case?: string;
   readonly verdict: unknown;
   readonly actions: unknown;
 }
@@ -117,7 +119,9 @@ export function CaseLab() {
       if (typeof r.seed !== 'string' || typeof r.soul !== 'number') throw new Error('not a soul report');
       setSource(r.mode === 'daily' || r.mode === 'primer' ? r.mode : r.day);
       setSeed(r.seed);
-      setIndex(r.soul);
+      // A campaign queue can hold story souls, so its position in the queue isn't the generated one.
+      const tail = r.case?.split(':').pop();
+      setIndex(tail !== undefined && /^\d+$/.test(tail) ? Number(tail) : r.soul);
       setReport(r);
       setReportError('');
     } catch (e) {
@@ -177,6 +181,9 @@ export function CaseLab() {
           onChange={(e) => loadReport((e.target as HTMLTextAreaElement).value)}
         />
         {reportError ? <p>Couldn't read it: {reportError}</p> : null}
+        {report?.case && !/:\d+$/.test(report.case) ? (
+          <p>This is story soul {report.case.split(':').pop()}; the lab shows generated souls only.</p>
+        ) : null}
         {report ? (
           <pre class="lab__report">{JSON.stringify({ verdict: report.verdict, actions: report.actions }, null, 1)}</pre>
         ) : null}

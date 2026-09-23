@@ -15,6 +15,7 @@ import {
   drawerTab,
   effectiveLayout,
   now,
+  quitToSlots,
   type Session,
   session,
   settings,
@@ -443,20 +444,28 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
 
 function PauseOverlay() {
   const focus = useAutoFocus<HTMLButtonElement>();
+  const campaign = session.value?.mode.kind === 'campaign';
   return (
     <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <div class="dialog">
         <h2 id="pause-title">{t('ui.paused')}</h2>
         <p>{t('ui.paused.body')}</p>
-        <button
-          type="button"
-          class="btn btn--primary"
-          data-testid="resume"
-          ref={focus}
-          onClick={() => act({ t: 'resume' })}
-        >
-          {t('ui.resume')}
-        </button>
+        <div class="row">
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-testid="resume"
+            ref={focus}
+            onClick={() => act({ t: 'resume' })}
+          >
+            {t('ui.resume')}
+          </button>
+          {campaign ? (
+            <button type="button" class="btn" data-testid="save-quit" onClick={quitToSlots}>
+              {t('ui.campaign.quit')}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

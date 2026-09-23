@@ -353,6 +353,8 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       if (run.phase !== 'shift' || !run.shift) return reject(run, 'no shift in progress');
       const r = stepShift(run.shift, action.action, env.ctx);
       const events: RunEvent[] = r.events.map((event) => ({ e: 'shift', event }));
+      // An action that changes nothing (most ticks) leaves the run as it was, so callers can skip saving it.
+      if (r.state === run.shift) return { state: run, events };
       if (r.state.phase !== 'done') return { state: { ...run, shift: r.state }, events };
       const a = audit({ ...run, shift: r.state }, r.state, env);
       events.push({ e: 'audited', ledger: a.ledger });

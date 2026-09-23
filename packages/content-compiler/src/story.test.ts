@@ -53,7 +53,7 @@ describe('compiling a scene', () => {
     const s = compileScene('x/d9.test.ink', '# draft\nHello. # speaker: skogul\n* [Go]\n  Gone.\n-> END\n');
     expect(s).toMatchObject({ id: 'scene.d9.test', draft: true, speakers: ['skogul'] });
     expect(s.words).toBeGreaterThan(0);
-    expect(playScene(s.json, env, [0]).lines.map((l) => l.text)).toEqual(['Hello.', 'Gone.']);
+    expect(playScene(s.json, env, [0]).lines.map((l) => l.text)).toEqual(['Hello.', 'Go', 'Gone.']);
   });
 
   it.each([
@@ -63,6 +63,11 @@ describe('compiling a scene', () => {
     ['an effect on a choice line', '* [Pay] # fx: rings -5\n  Paid.\n', /line 1: put effect tags on the line after/],
     ['a computed effect', 'Hello. # fx: rings {x}\n', /must be plain text/],
     ['an INCLUDE', 'INCLUDE other.ink\nHello.\n', /INCLUDE isn’t supported/],
+    [
+      'a choice with text outside its brackets',
+      '* Pay [up] now\n  Paid.\n',
+      /line 1: write a choice as \[its whole text\]/,
+    ],
   ])('rejects %s', (_, source, error) => {
     expect(() => compileScene('x/d9.test.ink', source)).toThrow(error);
   });
@@ -85,7 +90,7 @@ describe('scenes in a target', () => {
     const frame = playScene(d1, env, [0]);
     expect(frame.done).toBe(true);
     expect(frame.effects).toEqual([{ flag: 'asked_about_lies', set: 1 }]);
-    expect(readFileSync(join(out, 'web-demo', 'index.ts'), 'utf8')).toContain('export const scenes');
+    expect(readFileSync(join(out, 'web-demo', 'index.ts'), 'utf8')).toContain("import('./scenes.json')");
   });
 
   it('rejects a day that plays a missing scene', () => {

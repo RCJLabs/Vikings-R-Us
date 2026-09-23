@@ -41,10 +41,15 @@ export function compileScene(file: string, source: string): CompiledScene {
       problems.push(`EXTERNAL ${fn} isn't one the game provides (${EXTERNALS.join(', ')}).`);
     }
   }
-  // A tag on a choice line can end up on the choice alone, where it never fires.
   code.split('\n').forEach((line, i) => {
-    if (/^\s*[*+]/.test(line) && /#\s*fx:/.test(line)) {
+    if (!/^\s*[*+]/.test(line)) return;
+    // A tag on a choice line can end up on the choice alone, where it never fires.
+    if (/#\s*fx:/.test(line)) {
       problems.push(`line ${i + 1}: put effect tags on the line after the choice, not on the choice.`);
+    }
+    // The game echoes the picked option, so its whole text goes in brackets and the reply on the next line.
+    else if (!/^\s*[*+][\s*+]*(\(\w+\)\s*)?(\{[^}]*\}\s*)*\[[^\]]+\]\s*(->\s*[\w.]+\s*)?$/.test(line)) {
+      problems.push(`line ${i + 1}: write a choice as [its whole text] and what follows on the next line.`);
     }
   });
   // Every effect tag must parse, whether or not a walk reaches it, and be plain text.

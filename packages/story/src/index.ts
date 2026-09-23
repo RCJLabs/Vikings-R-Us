@@ -30,6 +30,8 @@ export interface SceneLine {
   /** From a `# speaker: name` tag. */
   readonly speaker?: string;
   readonly tags: readonly string[];
+  /** The option the player picked, echoed so the reply that follows makes sense. */
+  readonly chosen?: boolean;
 }
 
 /** A scene's view of the run as it stands; the seed is fixed per run, day and scene. */
@@ -137,7 +139,9 @@ export function playScene(json: string | object, env: SceneEnv, choices: readonl
     if (open.length === 0) return { draft, lines, choices: [], effects, done: true };
     if (i >= choices.length) return { draft, lines, choices: open.map((c) => c.text), effects, done: false };
     const pick = choices[i++] as number;
-    if (pick < 0 || pick >= open.length) throw new RangeError(`choice ${pick} of ${open.length}`);
+    const picked = open[pick];
+    if (!picked) throw new RangeError(`choice ${pick} of ${open.length}`);
+    lines.push({ text: picked.text.trim(), tags: [], chosen: true });
     story.ChooseChoiceIndex(pick);
   }
 }

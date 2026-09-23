@@ -3,6 +3,7 @@ import { placeholderSigil } from '@cots/art-placeholder';
 import { shiftScore } from '@cots/engine';
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { openCampaign } from './campaign/lazy';
 import { clockText, t } from './i18n';
 import { issueFormUrl, links } from './links';
 import { openReport } from './report';
@@ -120,6 +121,25 @@ function DailyCard() {
   );
 }
 
+function CampaignCard() {
+  if (!gameContent.campaign) return null;
+  return (
+    <section class="card card--campaign">
+      <h2>{t('ui.campaign')}</h2>
+      <p>{t(manifest.edition === 'demo' ? 'ui.campaign.hint.demo' : 'ui.campaign.hint.full')}</p>
+      <button
+        type="button"
+        class="btn btn--primary btn--big"
+        data-testid="play-campaign"
+        disabled={!storageReady.value}
+        onClick={() => void openCampaign()}
+      >
+        {t('ui.campaign.play')}
+      </button>
+    </section>
+  );
+}
+
 function SettingsCard() {
   const s = settings.value;
   const set = (patch: Partial<Settings>) => updateSettings(patch);
@@ -198,6 +218,7 @@ export function Title() {
         <p class="muted">{t('core.tagline')}</p>
       </header>
       <DailyCard />
+      <CampaignCard />
       <section class="card">
         <h2>{t('ui.practice')}</h2>
         <div class="row">
@@ -239,6 +260,7 @@ export function Title() {
 function modeTitle(s: Session): string {
   if (s.mode.kind === 'practice') return t('ui.briefing.practice', { n: s.mode.day });
   if (s.mode.kind === 'primer') return t('primer.title');
+  if (s.mode.kind === 'campaign') return t('ui.campaign.day', { n: s.mode.day });
   return s.mode.preview ? t('ui.briefing.preview') : t('ui.briefing.daily', { n: s.mode.n });
 }
 

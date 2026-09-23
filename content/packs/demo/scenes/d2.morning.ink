@@ -1,6 +1,6 @@
 # draft
 // DRAFT: placeholder writing to be rewritten (docs/story-drafts.md).
-Skögul is already at the table, rolling a dead man onto his face with one boot. # speaker: skogul
+Skögul is already at the table, rolling a dead man onto his face with one boot.
 "New decree. A wound in the back means they ran, and Odin won't feed a man who ran." # speaker: skogul
 "Turn them over. It costs a breath of daylight each time, so don't do it for fun." # speaker: skogul
 * ["Isn't that unfair on the ones who were ambushed?"]

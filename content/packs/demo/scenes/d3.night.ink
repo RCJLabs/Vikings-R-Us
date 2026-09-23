@@ -2,7 +2,8 @@
 // DRAFT: placeholder writing to be rewritten (docs/story-drafts.md).
 EXTERNAL flag(name)
 The queue is empty and the light is going when you notice the man sitting on the end of your table.
-He is looking at a dead woman's hands. "Lovely nails," he says. # speaker: stranger
+He is looking at a dead woman's hands.
+"Lovely nails." # speaker: stranger
 Afterwards, you won't be able to say what he was wearing.
 { flag("thorvald_returned"):
   "You sent the unlucky one back. Kind. He'll be here again, you know. Some men are made for this gate." # speaker: stranger
