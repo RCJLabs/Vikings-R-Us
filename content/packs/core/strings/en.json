@@ -277,5 +277,10 @@
   "faction.clerk": "The clerk",
   "ui.audit.standing": "Standing",
   "ui.audit.today": "Today",
-  "ui.audit.total": "In all"
+  "ui.audit.total": "In all",
+  "ui.tab.registry": "Registry",
+  "ui.registry.search": "Search the registry",
+  "ui.registry.unsearched": "Search the registry to look up {name} {patronym}.",
+  "ui.registry.field": "the registry",
+  "ui.registry.portrait": "Registry portrait of {name} {patronym}"
 }

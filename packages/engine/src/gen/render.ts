@@ -136,9 +136,9 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
   for (const obs of ctx.observations) {
     if (obs.when && !eval2(obs.when, truth, ctx)) continue;
     fields.push({
-      id: obs.tool ? `tool.${obs.tool}.${obs.key}` : `body.${obs.view}.${obs.key}`,
-      item: 'body',
-      view: obs.view,
+      id: obs.doc ? `${obs.doc}.${obs.key}` : obs.tool ? `tool.${obs.tool}.${obs.key}` : `body.${obs.view}.${obs.key}`,
+      item: obs.doc ?? 'body',
+      ...(obs.doc ? {} : { view: obs.view }),
       ...(obs.tool ? { tool: obs.tool } : {}),
       salience: obs.salience,
       cost: obs.cost,

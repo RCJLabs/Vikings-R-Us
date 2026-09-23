@@ -6,6 +6,7 @@ export {
   type NightStrategy,
   type PolicyReport,
   type RunResult,
+  scenarioSave,
   simulateCampaign,
   simulateRun,
 } from './campaign-sim';

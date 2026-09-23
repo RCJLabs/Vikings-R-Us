@@ -3,3 +3,5 @@ names.f: [Astrid, Gudrun, Thora, Sigrid, Ragnhild, Hallgerd, Thorunn, Helga, Ing
 pool.places: [the black ford, the ship-bridge, the hill fort, the frozen lake, the long beach, the burning hall, the river mouth, the stone circle]
 pool.foes: [Jarl Sigtrygg Bent-Nose, the Wendish raiders, the king's housecarls, Hrolf's sea-wolves, the men of the eastern fjord, a very large Dane]
 pool.weapons: [axe, sword, spear, seax, bearded axe]
+# What the registry says outlaws did (flavour on Day 6's registry entries; no template uses it).
+pool.crimes: [breaking an oath sworn on the ring, killing a kinsman at a feast, burning a neighbour's hall, fleeing a sworn duel, stealing a ship, lying at the Thing]

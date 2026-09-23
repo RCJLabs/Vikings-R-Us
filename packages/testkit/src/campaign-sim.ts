@@ -9,11 +9,14 @@ import {
   newRun,
   Rng,
   type RunAction,
+  type RunSave,
   type RunState,
+  recordAction,
   runContext,
   shopFor,
   solve,
   stampsFor,
+  startSave,
   stepRun,
 } from '@cots/engine';
 
@@ -183,4 +186,31 @@ export function simulateCampaign(
     }
   }
   return out;
+}
+
+/**
+ * A scenario jumper for tests (docs/build-plan.md §11): a save on the morning
+ * of `day`, with every earlier soul judged rightly and every bill paid.
+ */
+export function scenarioSave(content: Content, seed: string, day: number, engine: number): RunSave {
+  let save = startSave(content, seed, engine);
+  let run = save.mornings[0] as RunState;
+  const apply = (action: RunAction) => {
+    const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
+    const next = stepRun(run, action, env).state;
+    save = recordAction(save, run, action, next);
+    run = next;
+  };
+  while (run.day < day && run.phase !== 'ending') {
+    apply({ t: 'beginShift', at: 0 });
+    let at = 0;
+    for (const c of run.shift?.cases ?? []) {
+      at += 1000;
+      apply({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at } });
+      apply({ t: 'shift', action: { t: 'send', at } });
+    }
+    apply({ t: 'endAudit' });
+    apply({ t: 'endNight' });
+  }
+  return save;
 }

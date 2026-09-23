@@ -287,7 +287,7 @@ export const answer = signal<{ readonly name: string; readonly lines: readonly s
 export const citation = signal<Verdict | null>(null);
 export const comparing = signal(false);
 export const compareFirst = signal<string | null>(null);
-export const drawerTab = signal<'words' | 'ravens' | 'rules'>('words');
+export const drawerTab = signal<'words' | 'ravens' | 'registry' | 'rules'>('words');
 export const stampSheet = signal(false);
 
 let toastId = 0;

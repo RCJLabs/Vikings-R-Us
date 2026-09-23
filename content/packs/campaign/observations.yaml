@@ -1,0 +1,14 @@
+# Searching the registry by name: the soul's own entry, someone else's with the same name, or nobody.
+# Read from a document, not the body, and only with the registry tool.
+- key: registry
+  view: front
+  doc: registry
+  tool: registry
+  since: 6
+  salience: 2
+  cost: 2
+  from:
+    map:
+      - { when: { fact: outlaw, is: true }, value: listed }
+      - { when: { fact: namesake, is: true }, value: namesake }
+    otherwise: none

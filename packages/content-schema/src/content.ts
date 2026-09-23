@@ -42,7 +42,7 @@ const Weight = Int.min(0);
 
 export const ValueSchema = z.union([z.string(), Int, z.boolean()]);
 export const DestinationSchema = z.enum(['VALHALLA', 'FOLKVANGR', 'HEL', 'RAN', 'RETURN', 'DETAIN', 'TRANSFER']);
-export const ToolIdSchema = z.enum(['flip', 'feather', 'runeLens', 'clippers']);
+export const ToolIdSchema = z.enum(['flip', 'feather', 'registry', 'runeLens', 'clippers']);
 const ViewSchema = z.enum(['front', 'back']);
 const SalienceSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 const QuestionKindSchema = z.enum(['confess', 'excuse', 'insist', 'deflect']);
@@ -109,6 +109,7 @@ export const ObservationSchema: z.ZodType<ObservationDef> = z.strictObject({
     }),
   ]),
   when: PredSchema.optional(),
+  doc: z.literal('registry').optional(),
 });
 
 const FactConstraintSchema = z.strictObject({ fact: z.string(), in: z.array(ValueSchema).min(1) });
@@ -187,7 +188,7 @@ export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   lies: z.array(LieSpecSchema),
 });
 
-const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'back', 'flavor']);
+const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'back', 'oath', 'flavor']);
 
 export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
   slot: SpeechSlotNameSchema,

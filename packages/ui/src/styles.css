@@ -1227,3 +1227,30 @@ a.btn {
 .ending__text {
   font-size: 1.1rem;
 }
+
+/* The registry (Day 6): a portrait beside the entry */
+.registry {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.registry__portrait {
+  flex: 0 0 auto;
+  width: 5.5rem;
+  border: 2px solid var(--paper-ink);
+  border-radius: 6px;
+  background: #e8dcc4;
+  overflow: hidden;
+}
+
+.registry__portrait svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.registry .lines {
+  flex: 1 1 auto;
+  margin: 0;
+}

@@ -1,0 +1,12 @@
+- id: arch.oathbreaker
+  since: 6
+  personas: [veteran, braggart]
+  truth:
+    outlaw: { is: true }
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: outlaw, claim: false, p: 85, motive: evadeRegistry, onQuestion: { confess: 2, excuse: 1 } }

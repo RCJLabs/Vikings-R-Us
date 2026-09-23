@@ -1,0 +1,6 @@
+- id: q.oath.confess
+  on: { fact: outlaw, claimed: false, truth: [true], kind: confess }
+  msgs: [q.oath.confess.1, q.oath.confess.2]
+- id: q.oath.excuse
+  on: { fact: outlaw, kind: excuse }
+  msgs: [q.oath.excuse.1]

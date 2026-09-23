@@ -1,0 +1,2 @@
+# Oathbreakers keep the ring they broke. It proves nothing; it says "search the registry".
+- { key: brokenRing, view: front, since: 6, salience: 2, hint: { fact: outlaw, value: true } }

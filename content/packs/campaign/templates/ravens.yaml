@@ -1,0 +1,1 @@
+- { id: rv.huginn.outlaw, raven: huginn, asserts: { fact: outlaw, value: true }, msg: rv.huginn.outlaw }

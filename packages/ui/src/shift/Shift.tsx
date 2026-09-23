@@ -1,4 +1,4 @@
-import { type Hotspot, placeholderBody } from '@cots/art-placeholder';
+import { type Hotspot, placeholderBody, placeholderPortrait } from '@cots/art-placeholder';
 import { type CaseSpec, currentCase, type Field, PENALTY, stampsFor, sunLeft, type Verdict } from '@cots/engine';
 import { copyText } from '@cots/platform';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -25,7 +25,7 @@ import {
   updateSettings,
 } from '../store';
 import { coachStep } from './coach';
-import { fieldText, regionFields, regionSeen, sceneFor } from './evidence';
+import { fieldText, regionFields, regionSeen, registryEntry, sceneFor } from './evidence';
 import { RulesPanel } from './Rules';
 
 /** Focuses an element once, when it mounts (dialogs, the briefing's Begin button). */
@@ -144,12 +144,36 @@ function BodyStage({ s, c }: { s: Session; c: CaseSpec }) {
             {t('tool.feather')} <kbd>T</kbd>
           </button>
         ) : null}
+        {[...tools.keys()]
+          .filter((id) => id !== 'flip' && id !== 'feather')
+          .map((id) => (
+            <button
+              key={id}
+              type="button"
+              class="btn btn--tool"
+              data-testid={id}
+              aria-label={id === 'registry' ? t('ui.registry.search') : undefined}
+              disabled={soul.tools.includes(id)}
+              onClick={() => {
+                act({ t: 'tool', tool: id });
+                if (id === 'registry' && effectiveLayout() === 'drawer') drawerTab.value = 'registry';
+              }}
+            >
+              {t(`tool.${id}`)}
+              {id === 'registry' ? (
+                <>
+                  {' '}
+                  <kbd>G</kbd>
+                </>
+              ) : null}
+            </button>
+          ))}
       </div>
     </figure>
   );
 }
 
-function Evidence({ s, f, variant }: { s: Session; f: Field; variant: 'chip' | 'line' }) {
+function Evidence({ s, c, f, variant }: { s: Session; c: CaseSpec; f: Field; variant: 'chip' | 'line' }) {
   const selected = comparing.value && compareFirst.value === f.id;
   const flag = s.state.soul.flagged.find((x) => x.lie === f.id);
   const questioned = s.state.soul.questioned.includes(f.id);
@@ -162,7 +186,7 @@ function Evidence({ s, f, variant }: { s: Session; f: Field; variant: 'chip' | '
         data-field={f.id}
         onClick={() => pick(f.id)}
       >
-        {fieldText(f)}
+        {fieldText(f, c)}
       </button>
       {flag ? <span class="evidence__badge">{t('ui.contradicted')}</span> : null}
       {flag && !questioned ? (
@@ -198,7 +222,7 @@ function Clues({ s, c }: { s: Session; c: CaseSpec }) {
   return (
     <div class="clues">
       {seen.map((f) => (
-        <Evidence key={f.id} s={s} f={f} variant="chip" />
+        <Evidence key={f.id} s={s} c={c} f={f} variant="chip" />
       ))}
       {pending.map((spot) => (
         <button
@@ -228,7 +252,7 @@ function Lines({ s, c, items, empty }: { s: Session; c: CaseSpec; items: readonl
     <ul class="lines">
       {items.map((f) => (
         <li key={f.id}>
-          <Evidence s={s} f={f} variant="line" />
+          <Evidence s={s} c={c} f={f} variant="line" />
         </li>
       ))}
     </ul>
@@ -250,6 +274,29 @@ function Words({ s, c }: { s: Session; c: CaseSpec }) {
 function Ravens({ s, c }: { s: Session; c: CaseSpec }) {
   const items = c.evidence.fields.filter((f) => f.item === 'huginn' || f.item === 'muninn');
   return <Lines s={s} c={c} items={items} empty={t('ui.ravens.none')} />;
+}
+
+/** The registry, looked up by this soul's name once the player searches it. */
+function Registry({ s, c }: { s: Session; c: CaseSpec }) {
+  const f = c.evidence.fields.find((x) => x.item === 'registry');
+  const { name, patronym } = c.evidence.look;
+  if (!f || !s.state.soul.tools.includes('registry')) {
+    return <p class="muted">{t('ui.registry.unsearched', { name, patronym })}</p>;
+  }
+  const entry = registryEntry(c, f);
+  return (
+    <div class="registry" data-testid="registry-entry">
+      {entry.kind === 'nobody' ? null : (
+        <div
+          class="registry__portrait"
+          role="img"
+          aria-label={t('ui.registry.portrait', { name, patronym })}
+          dangerouslySetInnerHTML={{ __html: placeholderPortrait(entry) }}
+        />
+      )}
+      <Lines s={s} c={c} items={[f]} empty="" />
+    </div>
+  );
 }
 
 function CompareBar() {
@@ -384,6 +431,12 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
             <h2>{t('ui.tab.ravens')}</h2>
             <Ravens s={s} c={c} />
           </div>
+          {s.ctx.tools.has('registry') ? (
+            <div class="paper paper--registry">
+              <h2>{t('ui.tab.registry')}</h2>
+              <Registry s={s} c={c} />
+            </div>
+          ) : null}
         </section>
         <section class="desk__bottom">
           <button
@@ -406,6 +459,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
   const tabs = [
     ['words', 'ui.tab.words'],
     ['ravens', 'ui.tab.ravens'],
+    ...(s.ctx.tools.has('registry') ? ([['registry', 'ui.tab.registry']] as const) : []),
     ['rules', 'ui.tab.rules'],
   ] as const;
   return (
@@ -431,6 +485,8 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           <Words s={s} c={c} />
         ) : tab === 'ravens' ? (
           <Ravens s={s} c={c} />
+        ) : tab === 'registry' ? (
+          <Registry s={s} c={c} />
         ) : (
           <RulesPanel ctx={s.ctx} />
         )}
@@ -510,7 +566,7 @@ function CitationBox({ s, v }: { s: Session; v: Verdict }) {
   const focus = useAutoFocus<HTMLButtonElement>();
   const c = s.state.cases[v.index];
   const rule = s.ctx.rules.find((r) => r.id === v.rule);
-  const missed = (c?.evidence.fields ?? []).filter((f) => v.missed.includes(f.id)).map(fieldText);
+  const missed = (c?.evidence.fields ?? []).filter((f) => v.missed.includes(f.id)).map((f) => fieldText(f, c));
   return (
     <div class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="citation-title">
       <div class="dialog dialog--citation">

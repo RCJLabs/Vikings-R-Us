@@ -2,7 +2,7 @@ import type { Destination, Motive, QuestionKind, Salience, ToolId, Value, View }
 import type { Judgment } from '../logic/judge';
 import type { Truth } from '../logic/pred';
 
-export type Item = 'body' | 'testimony' | 'huginn' | 'muninn';
+export type Item = 'body' | 'testimony' | 'huginn' | 'muninn' | 'registry';
 
 /** One thing the player can inspect: a body sign, a cue, or a line of testimony or raven report. */
 export interface Field {

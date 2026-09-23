@@ -272,6 +272,16 @@ function ornament(value: Value | undefined): string {
     : `${cord}<circle cx="150" cy="186" r="9" fill="none" stroke="#c9ced3" stroke-width="5"/><circle cx="150" cy="186" r="9" fill="none" stroke="#5c6166" stroke-width="1"/>`;
 }
 
+/** An oath-ring on a thong, snapped open: drawn beside any pendant so both stay readable. */
+function brokenRing(on: boolean): string {
+  if (!on) return '';
+  return [
+    `<path d="M160 146L178 176" fill="none" stroke="#3a2c20" stroke-width="2"/>`,
+    `<path d="M186 180A9 9 0 1 1 176 172" fill="none" stroke="#b08d3c" stroke-width="4" stroke-linecap="round"/>`,
+    `<path d="M180 170L184 166M186 176L191 175" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`,
+  ].join('');
+}
+
 function wounds(n: Value | undefined, at: readonly (readonly [number, number])[]): string {
   const count = typeof n === 'number' ? Math.max(0, Math.min(at.length, n)) : 0;
   return at
@@ -298,6 +308,7 @@ function draw(scene: BodyScene): string {
           hair(scene),
           face(scene),
           ornament(scene.obs.ornament),
+          brokenRing(scene.cues.includes('brokenRing')),
           wounds(scene.obs.woundsFront, FRONT_WOUNDS),
         ]
       : [figure(scene), hair(scene), wounds(scene.obs.woundsBack, BACK_WOUNDS)];
@@ -326,7 +337,7 @@ function hotspots(scene: BodyScene): Hotspot[] {
   return [
     { id: 'hair', x: 100, y: 46, w: 100, h: 38, keys: ['hair'] },
     { id: 'face', x: 100, y: 84, w: 100, h: 56, keys: ['skin', 'lips', 'breath', 'breathFog'] },
-    { id: 'neck', x: 110, y: 140, w: 80, h: 62, keys: ['ornament'] },
+    { id: 'neck', x: 110, y: 140, w: 80, h: 62, keys: ['ornament', 'brokenRing'] },
     { id: 'chest', x: CX - h, y: 202, w: 2 * h, h: 102, keys: ['woundsFront'] },
     handSpot('handR', hp.R),
     handSpot('handL', hp.L),
@@ -349,6 +360,7 @@ export const placeholderBody: BodyArtProvider = {
     woundsBack: 3,
     breath: 3,
     breathFog: 2,
+    brokenRing: 2,
   },
   views: {
     grip: 'front',
@@ -361,5 +373,21 @@ export const placeholderBody: BodyArtProvider = {
     woundsBack: 'back',
     breath: 'front',
     breathFog: 'front',
+    brokenRing: 'front',
   },
 };
+
+/** What a registry portrait shows: a face to compare with the body (docs/tech-spec.md §6.5). */
+export interface Portrait {
+  readonly gender: Look['gender'];
+  readonly hair: string;
+  readonly beard: Look['beard'];
+  readonly build: Look['build'];
+}
+
+/** A registry portrait: the same drawing as the body, cropped to the head and shoulders. */
+export function placeholderPortrait(p: Portrait): string {
+  const look: Look = { gender: p.gender, name: '', patronym: '', age: 35, build: p.build, beard: p.beard };
+  const svg = draw({ view: 'front', look, obs: { hair: p.hair }, cues: [], tools: [] });
+  return svg.replace(/viewBox="[^"]*"/, 'viewBox="86 34 128 150"');
+}

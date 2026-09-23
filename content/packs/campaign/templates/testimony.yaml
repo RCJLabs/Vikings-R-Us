@@ -1,0 +1,3 @@
+- { id: tm.oath.kept.1, slot: oath, asserts: { fact: outlaw, value: false }, msg: tm.oath.kept.1, weight: 2 }
+- { id: tm.oath.kept.2, slot: oath, asserts: { fact: outlaw, value: false }, personas: [braggart], msg: tm.oath.kept.2, weight: 2 }
+- { id: tm.oath.kept.3, slot: oath, asserts: { fact: outlaw, value: false }, personas: [veteran, honest], msg: tm.oath.kept.3 }

@@ -22,7 +22,7 @@ export const DESTINATIONS: readonly Destination[] = [
   'TRANSFER',
 ];
 
-export type ToolId = 'flip' | 'feather' | 'runeLens' | 'clippers';
+export type ToolId = 'flip' | 'feather' | 'registry' | 'runeLens' | 'clippers';
 export type View = 'front' | 'back';
 export type Salience = 1 | 2 | 3;
 
@@ -76,6 +76,8 @@ export interface ObservationDef {
   readonly from: ObsSource;
   /** Only rendered when this holds (e.g. which hand holds the weapon). */
   readonly when?: Pred;
+  /** Read from a document rather than the body: its own evidence item, shown off the body. */
+  readonly doc?: 'registry';
 }
 
 export type ObsPattern =
@@ -174,7 +176,7 @@ export interface ArchetypeDef {
   readonly lies: readonly LieSpec[];
 }
 
-export type SpeechSlot = 'identity' | 'death' | 'weapon' | 'back' | 'flavor';
+export type SpeechSlot = 'identity' | 'death' | 'weapon' | 'back' | 'oath' | 'flavor';
 
 /** One slot of a soul's speech: which fact it talks about and how often. */
 export interface SpeechSlotDef {

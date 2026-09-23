@@ -1,11 +1,13 @@
 import type { Look, ObservationDef, Value } from '@cots/engine';
 import { loadContent } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
-import { type BodyArtProvider, type BodyScene, placeholderBody } from './body';
+import { type BodyArtProvider, type BodyScene, placeholderBody, placeholderPortrait } from './body';
 
 // The body-art contract (docs/tech-spec.md §6.5). Any provider must pass these.
 const providers: BodyArtProvider[] = [placeholderBody];
 const content = loadContent('dev-full');
+// Body signs only: readings from a document (the registry) are drawn elsewhere.
+const bodyObservations = content.observations.filter((o) => o.doc === undefined);
 
 const look = (over: Partial<Look> = {}): Look => ({
   gender: 'm',
@@ -50,7 +52,7 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
   });
 
   it('draws every value of every sign differently', () => {
-    for (const o of content.observations) {
+    for (const o of bodyObservations) {
       const drawn = valuesOf(o).map((v) => art.draw(scene(o.key, v)));
       expect(new Set(drawn).size, `${o.key}: ${valuesOf(o).join(', ')}`).toBe(drawn.length);
     }
@@ -63,7 +65,7 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
 
   it('draws each sign on its view, as visibly as gameplay requires, under a hotspot', () => {
     const signs = [
-      ...content.observations.map((o) => ({ key: o.key, view: o.view, salience: o.salience })),
+      ...bodyObservations.map((o) => ({ key: o.key, view: o.view, salience: o.salience })),
       ...content.cues.map((c) => ({ key: c.key, view: c.view, salience: c.salience })),
     ];
     for (const s of signs) {
@@ -110,5 +112,15 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
         }
       }
     }
+  });
+});
+
+describe('registry portraits', () => {
+  it('show the hair and beard that set one face apart from another', () => {
+    const face = (hair: string, beard: Look['beard']) =>
+      placeholderPortrait({ gender: 'm', hair, beard, build: 'broad' });
+    const faces = ['dark', 'fair', 'red', 'grey'].flatMap((hair) => [face(hair, 'none'), face(hair, 'long')]);
+    expect(new Set(faces).size).toBe(faces.length);
+    for (const svg of faces) expect(svg).toMatch(/^<svg [^>]*viewBox="86 34 128 150"/);
   });
 });

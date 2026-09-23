@@ -1,7 +1,9 @@
-# The full campaign's part. lastDay grows as days are written (Day 6 lands in
-# M4; the rest in M7). DRAFT text.
-lastDay: 5
+# The full campaign's part. lastDay grows as days are written (Days 7-20 in
+# M7). DRAFT text.
+lastDay: 6
 finale: ending.tbc
+# Oathbreakers sent to Valhalla will run at Ragnarök: they don't count as worthy einherjar.
+worthy: pred.einherjar
 shop:
   - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }
 endings:

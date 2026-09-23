@@ -1,0 +1,14 @@
+# Day 6: the registry of outlaws and oathbreakers.
+- id: outlaw
+  domain: { bool: true }
+  since: 6
+  inert: false
+  presumption: false
+  # Only archetypes that ask for it are outlaws.
+  prior: { 'false': 1, 'true': 0 }
+# Someone else of the same name is in the registry (it only matters if the player looks).
+- id: namesake
+  domain: { bool: true }
+  since: 6
+  inert: false
+  prior: { 'false': 3, 'true': 1 }

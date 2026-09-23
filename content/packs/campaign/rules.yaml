@@ -1,0 +1,1 @@
+- { id: rule.outlaw, order: 200, since: 6, when: { fact: outlaw, is: true }, then: HEL, text: rule.outlaw }

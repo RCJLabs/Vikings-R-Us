@@ -7,8 +7,10 @@ Everything listed here is **placeholder writing** made so the campaign systems c
 | Piece | Where | Words |
 |---|---|---|
 | Morning and night scenes, Days 1–3 | `content/packs/demo/scenes/d{1,2,3}.{morning,night}.ink` | ~860 |
-| Morning and night scenes, Days 4–5 | `content/packs/campaign/scenes/d{4,5}.{morning,night}.ink` | ~580 |
+| Morning and night scenes, Days 4–6 | `content/packs/campaign/scenes/d{4,5,6}.{morning,night}.ink` | ~860 |
 | Thorvald's first visit (Day 3): two lines | `content/packs/demo/cases/thorvald-1.yaml`, strings `case.thorvald1.*` | 20 |
+| Geir Hallsson, the oathbreaker you knew (Day 6): two lines | `content/packs/campaign/cases/geir.yaml`, strings `case.geir.*` | 20 |
+| Oath lines, question answers, Huginn's line, registry crimes (Day 6) | strings `tm.oath.*`, `q.oath.*`, `rv.huginn.outlaw`; core `pool.crimes` | ~90 |
 | Speaker names | strings `speaker.*` (demo, campaign) | — |
 | Family, shop and ending text (M4.1) | strings `family.*`, `shop.*`, `ending.*` | ~150 |
 
@@ -19,8 +21,9 @@ What the drafts set up, so a rewrite can keep or change it on purpose:
 - **Day 3:** Skögul hints that one soul has come back twice (Thorvald). At night a stranger (Loki, unnamed) says "Lovely nails." and reacts to how you stamped Thorvald. The dead woman's nails grow: Naglfar foreshadowing.
 - **Day 4:** Freyja claims her share. Your answer moves Freyja's or Odin's standing.
 - **Day 5:** Rán and the drowned. At night Asa has the winter fever (`fx: family sister sick`) unless she's already sick or away. Skögul can lend you 10 rings (`owes_skogul`).
+- **Day 6:** Odin's clerks bring the registry. Oathbreakers keep the ring they broke (the cue). Geir Hallsson, who sat at your father's table, is in the registry and says he isn't. The night depends on his stamp: his widow's bread (`geir_hel`), or the stranger praising your mercy (`geir_spared`, +1 Loki).
 
-Flags the drafts set: `asked_about_lies`, `asked_twice`, `letters_kind`, `letters_honest`, `roof_mended`, `met_loki`, `promised_medicine`, `owes_skogul`, and from Thorvald's stamp `thorvald_met`, `thorvald_returned`, `thorvald_valhalla`. Nothing reads most of them yet; they exist for later days and endings.
+Flags the drafts set: `asked_about_lies`, `asked_twice`, `asked_namesake`, `letters_kind`, `letters_honest`, `roof_mended`, `met_loki`, `promised_medicine`, `owes_skogul`; from Thorvald's stamp `thorvald_met`, `thorvald_returned`, `thorvald_valhalla`; from Geir's `geir_judged`, `geir_hel`, `geir_spared`. Nothing reads most of them yet; they exist for later days and endings.
 
 ## Writing a scene
 

@@ -1,0 +1,21 @@
+# DRAFT writing. Day 6's story soul: an oathbreaker you knew in life
+# (docs/build-plan.md §2). Geir sat at your father's table; the registry
+# says he broke his oath to the jarl.
+id: case.geir
+personas: [veteran]
+truth:
+  outlaw: { is: true }
+  cause: { is: battle }
+  grip: { is: weapon }
+  woundsFront: { is: 1 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+lies:
+  - { fact: outlaw, claim: false, p: 100, motive: evadeRegistry, onQuestion: { confess: 1 } }
+look: { gender: m, name: Geir, patronym: Hallsson, age: 44, build: heavy, beard: long }
+lines: [case.geir.knows, case.geir.plea]
+expect: HEL
+onStamp:
+  - { stamped: '*', effects: [{ flag: geir_judged }] }
+  - { stamped: HEL, effects: [{ flag: geir_hel }] }
+  - { stamped: VALHALLA, effects: [{ flag: geir_spared }, { standing: loki, by: 1 }] }
