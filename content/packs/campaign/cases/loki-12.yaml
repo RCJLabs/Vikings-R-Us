@@ -1,0 +1,21 @@
+# DRAFT writing. Day 12's story soul: the stranger from Day 3, in a dead hero's
+# face. Everything says Valhalla except the stitch scars on his lips; he knows
+# you, and says so. Detaining him or letting him through shapes the night.
+id: case.loki12
+personas: [braggart]
+truth:
+  trickster: { is: true }
+  cause: { is: battle }
+  grip: { is: weapon }
+  woundsFront: { is: 2 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+lies:
+  - { fact: trickster, claim: false, p: 100, motive: mischief, onQuestion: { deflect: 1 } }
+look: { gender: m, name: Hrafn, patronym: Sigurdsson, age: 36, build: broad, beard: short }
+lines: [case.loki12.nails, case.loki12.again]
+expect: DETAIN
+onStamp:
+  - { stamped: '*', effects: [{ flag: loki_judged }] }
+  - { stamped: DETAIN, effects: [{ flag: loki_detained }, { standing: odin, by: 1 }] }
+  - { stamped: VALHALLA, effects: [{ flag: loki_in_valhalla }, { standing: loki, by: 2 }] }

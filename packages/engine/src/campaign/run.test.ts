@@ -416,3 +416,45 @@ describe('saves', () => {
     expect(resumeSave(save, full, 1)).toEqual({ run: save.mornings[1], rewound: true });
   });
 });
+
+describe('the vertical slice', () => {
+  const slice = campaignOf(full).slice;
+
+  it('plays its first days, then jumps to its late day with what the skipped days brought', () => {
+    if (!slice) throw new Error('dev-full has no slice');
+    let run = newRun(full, 'slice', { slice: 'play' });
+    for (let day = 1; day <= slice.after; day++) {
+      expect(run.day).toBe(day);
+      run = playDay(full, run).run;
+    }
+    expect(run).toMatchObject({ day: slice.day, phase: 'morning', slice: true });
+    for (const [flag, value] of Object.entries(slice.preset.flags ?? {})) expect(run.flags[flag]).toBe(value);
+    // Day 3's own story memory survives the jump.
+    expect(run.flags.thorvald_met).toBe(1);
+    const late = playDay(full, run);
+    expect(late.run).toMatchObject({ phase: 'ending', ending: slice.finale });
+  });
+
+  it('can start on its late day, and a plain campaign never jumps', () => {
+    if (!slice) throw new Error('dev-full has no slice');
+    const jumped = newRun(full, 'jump', { slice: 'fromJump' });
+    expect(jumped).toMatchObject({
+      day: slice.day,
+      slice: true,
+      rings: campaignOf(full).startRings + (slice.preset.rings ?? 0),
+    });
+    expect(jumped.standing.odin).toBe(slice.preset.standing?.odin ?? 0);
+    let plain = newRun(full, 'plain');
+    for (let day = 1; day <= slice.after; day++) plain = playDay(full, plain).run;
+    expect(plain.day).toBe(slice.after + 1);
+    expect(() => newRun(demo, 'demo', { slice: 'play' })).toThrow('no vertical slice');
+  });
+
+  it('puts the story Loki in the late day, and detaining him is remembered', () => {
+    const run = newRun(full, 'loki', { slice: 'fromJump' });
+    const { afterShift, run: night } = playDay(full, run);
+    const loki = afterShift.shift?.cases.find((c) => c.script === 'case.loki12');
+    expect(loki?.expect.dest).toBe('DETAIN');
+    expect(night.flags).toMatchObject({ loki_judged: 1, loki_detained: 1 });
+  });
+});

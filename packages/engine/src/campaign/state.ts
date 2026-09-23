@@ -82,6 +82,8 @@ export interface RunState {
   readonly ending: string | null;
   /** Story Mode: no sun and no fines. */
   readonly story: boolean;
+  /** A vertical-slice run: after the slice's first days it jumps to its late day. */
+  readonly slice?: boolean;
 }
 
 /**

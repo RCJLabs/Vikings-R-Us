@@ -1,7 +1,9 @@
 # Day 12 (M5 vertical slice): Loki in borrowed faces, DETAIN. Every earlier rule still holds.
+# The slice plays it after Day 3; Practice plays its mechanics alone.
 day: 12
 sunS: 780
 decree: decree.d12
+scenes: { morning: scene.d12.morning, night: scene.d12.night }
 economy:
   wage: 8
   docBonus: 1
@@ -17,6 +19,8 @@ params:
 queue:
   count: [12, 14]
   teachFirst: arch.loki
+  scripted:
+    - { case: case.loki12, at: 7 }
   archetypes:
     - { id: arch.honest_warrior, w: 2 }
     - { id: arch.freyja_pick, w: 2 }

@@ -1,4 +1,13 @@
-import type { CampaignDef, Content, Destination, Economy, Effect, Faction, UpgradeDef } from '../content/types';
+import type {
+  CampaignDef,
+  Content,
+  Destination,
+  Economy,
+  Effect,
+  Faction,
+  SliceDef,
+  UpgradeDef,
+} from '../content/types';
 import { FACTIONS } from '../content/types';
 import { generateDay } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
@@ -66,12 +75,25 @@ export function campaignOf(content: Content): CampaignDef {
   return content.campaign;
 }
 
-export function newRun(content: Content, seed: string, opts: { story?: boolean } = {}): RunState {
+export interface NewRunOptions {
+  /** Story Mode: no sun and no fines. */
+  readonly story?: boolean;
+  /** The vertical slice: its first days, then the jump to its late day ('fromJump' starts on that day). */
+  readonly slice?: 'play' | 'fromJump';
+}
+
+export function newRun(content: Content, seed: string, opts: NewRunOptions = {}): RunState {
   const campaign = campaignOf(content);
+  if (opts.slice && !campaign.slice) throw new Error('This build has no vertical slice');
+  const run = firstMorning(campaign, seed, content.genVersion, opts);
+  return opts.slice === 'fromJump' && campaign.slice ? jump(run, campaign.slice) : run;
+}
+
+function firstMorning(campaign: CampaignDef, seed: string, genVersion: number, opts: NewRunOptions): RunState {
   return {
     v: 1,
     seed,
-    genVersion: content.genVersion,
+    genVersion,
     day: 1,
     phase: 'morning',
     shift: null,
@@ -89,6 +111,32 @@ export function newRun(content: Content, seed: string, opts: { story?: boolean }
     spent: 0,
     ending: null,
     story: opts.story === true,
+    ...(opts.slice ? { slice: true } : {}),
+  };
+}
+
+/**
+ * The day after `run.day`: the next one, or in a vertical slice the jump over
+ * the unwritten middle.
+ */
+function nextMorning(run: RunState, campaign: CampaignDef): RunState {
+  const slice = run.slice ? campaign.slice : undefined;
+  if (!slice || run.day !== slice.after) return { ...run, day: run.day + 1 };
+  return jump(run, slice);
+}
+
+/** The slice's late day, with what the skipped days would have brought (the run's own flags win). */
+function jump(run: RunState, slice: SliceDef): RunState {
+  const standing = { ...run.standing };
+  for (const [f, by] of Object.entries(slice.preset.standing ?? {})) {
+    standing[f as Faction] = (standing[f as Faction] ?? 0) + (by ?? 0);
+  }
+  return {
+    ...run,
+    day: slice.day,
+    rings: run.rings + (slice.preset.rings ?? 0),
+    standing,
+    flags: { ...slice.preset.flags, ...run.flags },
   };
 }
 
@@ -317,6 +365,7 @@ export function endingFor(run: RunState, content: Content): string | null {
     .sort((a, b) => a.order - b.order)
     .find((e) => e.when !== undefined && evalState(e.when, run));
   if (hit) return hit.id;
+  if (run.slice && campaign.slice) return run.day >= campaign.slice.day ? campaign.slice.finale : null;
   return run.day >= campaign.lastDay ? campaign.finale : null;
 }
 
@@ -399,11 +448,11 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         events.push({ e: 'ended', ending });
         return { state: { ...after, phase: 'ending', ending, shift: null, bills: null }, events };
       }
-      events.push({ e: 'dayBegins', day: run.day + 1 });
+      const next = nextMorning(after, campaignOf(env.content));
+      events.push({ e: 'dayBegins', day: next.day });
       return {
         state: {
-          ...after,
-          day: run.day + 1,
+          ...next,
           phase: 'morning',
           shift: null,
           scenes: [],

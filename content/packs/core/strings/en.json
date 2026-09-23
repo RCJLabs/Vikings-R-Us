@@ -288,5 +288,9 @@
   "ui.citation.skippedOnly": "{name} was bound for {dest}, but the decree said to {procs} first.",
   "ui.summary.skipped": "not done: {procs}",
   "ui.tab.tally": "Tally",
-  "ui.tally.lens": "Look at the carving through the rune-lens to check it for forgery."
+  "ui.tally.lens": "Look at the carving through the rune-lens to check it for forgery.",
+  "ui.campaign.start.campaign": "The campaign",
+  "ui.campaign.start.play": "Vertical slice: Days 1–3, then Day {day}",
+  "ui.campaign.start.fromJump": "Vertical slice from Day {day}",
+  "ui.campaign.slice": "Slice"
 }

@@ -6,5 +6,17 @@ finale: ending.tbc
 worthy: pred.einherjar
 shop:
   - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }
+# The vertical slice (M5): Days 1-3, then nine days pass and Day 12 is
+# played, to prove the late game. What the skipped days bring (rings earned,
+# standing, Ulf's new work in the north) is a guess. DRAFT.
+slice:
+  after: 3
+  day: 12
+  finale: ending.sliceEnd
+  preset:
+    rings: 30
+    standing: { odin: 1, freyja: 1, clerk: 1 }
+    flags: { slice: 1, ulf_shipyard: 1 }
 endings:
   - { id: ending.tbc, order: 1000, title: ending.tbc.title, text: ending.tbc.text }
+  - { id: ending.sliceEnd, order: 1001, title: ending.sliceEnd.title, text: ending.sliceEnd.text }

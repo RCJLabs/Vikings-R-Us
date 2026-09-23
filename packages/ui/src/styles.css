@@ -1071,6 +1071,22 @@ a.btn {
   gap: 0.5rem;
 }
 
+.slot__start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.slot__start label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .slot h2,
 .slot p {
   margin: 0;
