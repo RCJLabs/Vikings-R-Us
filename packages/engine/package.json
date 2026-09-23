@@ -1,0 +1,11 @@
+{
+  "name": "@cots/engine",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Deterministic game engine: pure TypeScript, no DOM, integer math only.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

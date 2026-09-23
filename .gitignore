@@ -1,0 +1,11 @@
+node_modules/
+dist/
+generated/
+coverage/
+test-results/
+tests/e2e/report/
+playwright-report/
+.vite/
+*.log
+.DS_Store
+tests/e2e/results/

@@ -1,0 +1,11 @@
+{
+  "name": "@cots/art-placeholder",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Procedural SVG placeholder art (swappable body-art provider).",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

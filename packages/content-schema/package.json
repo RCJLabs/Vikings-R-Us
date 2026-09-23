@@ -1,0 +1,14 @@
+{
+  "name": "@cots/content-schema",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Content schemas (zod) and the build-target matrix.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  }
+}

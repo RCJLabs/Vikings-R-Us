@@ -1,0 +1,7 @@
+{
+  "name": "@cots/android",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Google Play shell (Capacitor). Arrives in M9; see docs/tech-spec.md section 8.2.",
+  "license": "GPL-3.0-only"
+}

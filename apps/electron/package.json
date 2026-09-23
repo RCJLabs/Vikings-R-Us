@@ -1,0 +1,7 @@
+{
+  "name": "@cots/electron",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Steam shell (Electron). Arrives in M6; see docs/tech-spec.md section 8.1.",
+  "license": "GPL-3.0-only"
+}

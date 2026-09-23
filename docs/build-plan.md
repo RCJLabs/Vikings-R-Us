@@ -111,6 +111,7 @@ Upgrades change speed only. They never change what can be solved.
 - No self-harm and no sexual violence.
 - Wounds are stylized marks.
 - Religion is played as comedy about competing afterlife bureaucracies. The clerk's storyline gets a sensitivity read.
+- **Norse symbols that extremists have appropriated** (valknut, Othala with serifs, Algiz as the "life rune", doubled Sowilo, the Tyr rune, Wolfsangel, black sun) never appear in branding or UI. Runes in in-world inscriptions are fine.
 - Target rating: PEGI 12 / ESRB T.
 
 **Lore the mechanics use (established)**
@@ -179,7 +180,7 @@ Upgrades change speed only. They never change what can be solved.
 - **Story:** inkjs 2.4, which compiles Ink scripts in Node.
 - **Text:** intl-messageformat 12.1.
 - **Tests:** Vitest 5 + fast-check 4.10; Playwright **1.56.1**, which matches the Chromium already installed here.
-- **Lint and formatting:** Biome, plus dependency-cruiser for import rules.
+- **Lint and formatting:** Biome, plus a small import-boundary check in `tools/lint-boundaries` (dependency-cruiser doesn't support TypeScript 7 yet).
 - **PWA:** vite-plugin-pwa 1.3.
 - **Steam:** Electron 44 + electron-builder 26 + steamworks-ffi-node 0.11.
 - **Play:** Capacitor 8.5.

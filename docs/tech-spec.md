@@ -38,7 +38,7 @@ This is the detailed design behind [`build-plan.md`](build-plan.md). When the tw
 
 ```
 Vikings-R-Us/                         (public; see §8.4 for license)
-├─ package.json  pnpm-workspace.yaml  tsconfig.base.json  biome.json  .dependency-cruiser.cjs
+├─ package.json  pnpm-workspace.yaml  tsconfig.*.json  biome.json
 ├─ packages/
 │  ├─ engine/            pure TS; tsconfig lib ES2023 with no DOM. rng/ logic/ gen/ sim/ narrative/ save/ runes/
 │  ├─ content-schema/    zod schemas; z.infer types are the single source of truth
@@ -59,7 +59,7 @@ Vikings-R-Us/                         (public; see §8.4 for license)
 │  ├─ demo/      days/01..03, scripted cases, ink/*.ink, letters, strings
 │  └─ campaign/  days/04..20, characters, endings, ink/, strings, pack.yaml (holds a canary)
 ├─ assets/{core,demo,campaign}/        pack-scoped art and audio
-├─ tools/  case-lab/  sim/  replay/  leak-check/  glyph-check/  body-lab/  engine-purity/
+├─ tools/  case-lab/  sim/  replay/  leak-check/  lint-boundaries/  glyph-check/  body-lab/
 ├─ tests/  e2e/  golden/  replays/  fixtures/saves/
 └─ .github/workflows/  ci.yml nightly.yml deploy-web.yml itch.yml steam.yml android.yml
 ```
@@ -77,7 +77,7 @@ Vikings-R-Us/                         (public; see §8.4 for license)
 
 **How demo builds exclude the campaign**
 1. **Pack dependency graph in the compiler.** `daily → core`, `demo → core`, `campaign → core, demo`. Any reference that breaks it is a build error. Output goes to `generated/<target>/`, which contains only the allowed packs.
-2. **Vite `virtual:content` plugin.** It resolves only to `generated/<target>/index.ts`. A lint rule blocks any other import of `content/**` or `generated/**`.
+2. **Vite `virtual:content` plugin.** It resolves only to `generated/<target>/index.ts`. The boundary check (`tools/lint-boundaries`) blocks any other import of `content/**` or `generated/**`.
 3. **Everything is pack-scoped:** strings (`strings/<pack>.en.json`), Ink JSON, assets, achievement metadata and the PWA's offline cache list.
 4. **Post-build leak check** (a CI gate on web-demo, web-itch and electron-demo). It scans every emitted file (js, json, css, html, map, webmanifest, service-worker cache list) for the campaign canary and every campaign-owned ID (string keys, scene names, character IDs, asset names). **Positive control:** the same scan must find them in the full builds, so the check can't pass by doing nothing. Public targets ship no source maps.
 5. **Source:** the repo is public by decision, so layers 1–4 keep the campaign off the *demo builds*, not out of the source (§8.4).
@@ -251,6 +251,7 @@ export declare function step(s: GameState, a: Action, c: Content): { state: Game
   - Ages are limited to 18–85, so no children can appear.
   - A blocklist of banned combinations applies.
   - Names are unique within a day.
+  - Symbols appropriated by extremists (valknut, serifed Othala, Algiz as "life rune", doubled Sowilo, Tyr rune, Wolfsangel, black sun) are banned from branding and UI art; runes stay allowed in in-world inscriptions.
 
 ### 3.3 Solver (from the player's point of view; three-valued; sound but conservative)
 ```ts
@@ -984,7 +985,7 @@ test.prop([fc.string({ minLength: 1, maxLength: 12 }), fc.integer({ min: 1, max:
 See the table in `build-plan.md` §12. Engineering exit criteria:
 
 - **M0 Foundations:**
-  - pnpm workspace; Biome + dependency-cruiser.
+  - pnpm workspace; Biome + the import-boundary check.
   - Engine purity check (no DOM, `Math.random`, `Date`, trig/exp `Math`, `localeCompare`/`Intl`).
   - CI runs typecheck, lint and tests, builds all 6 targets, and runs the leak check with both controls.
   - Hello-world deployed to Pages.

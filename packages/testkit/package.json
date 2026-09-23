@@ -1,0 +1,14 @@
+{
+  "name": "@cots/testkit",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Shared test helpers: fast-check arbitraries, bots and sweeps.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "fast-check": "4.10.2"
+  }
+}

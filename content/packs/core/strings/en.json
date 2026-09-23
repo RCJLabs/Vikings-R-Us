@@ -1,0 +1,12 @@
+{
+  "core.title": "Chooser of the Slain",
+  "core.tagline": "Judge the fallen before dusk.",
+  "core.ui.build": "Build",
+  "core.ui.edition": "Edition",
+  "core.ui.content": "Content",
+  "core.ui.layout": "Layout",
+  "core.ui.today": "Today",
+  "core.daily.label": "Daily #{n}",
+  "core.daily.countdown": "Daily #1 in {days} days",
+  "core.status.m0": "Foundations build (M0). The shift desk arrives in M2."
+}

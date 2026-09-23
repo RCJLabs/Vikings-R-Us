@@ -1,0 +1,12 @@
+{
+  "name": "@cots/web",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Web entry point for every build target (see vite.config.ts).",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "dependencies": {
+    "@cots/ui": "workspace:*",
+    "preact": "10.29.8"
+  }
+}

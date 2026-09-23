@@ -1,0 +1,3 @@
+id: core
+description: Rules, systems and UI text shared by every build.
+dependsOn: []
