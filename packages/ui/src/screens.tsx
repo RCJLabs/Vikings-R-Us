@@ -174,6 +174,18 @@ function SettingsCard() {
         />
       </label>
       <label>
+        {t('ui.settings.sound')}{' '}
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          value={s.sound}
+          data-testid="setting-sound"
+          onInput={(e) => set({ sound: Number((e.target as HTMLInputElement).value) })}
+        />
+      </label>
+      <label>
         <input
           type="checkbox"
           checked={s.holdToSend}

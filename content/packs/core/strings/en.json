@@ -292,5 +292,6 @@
   "ui.campaign.start.campaign": "The campaign",
   "ui.campaign.start.play": "Vertical slice: Days 1–3, then Day {day}",
   "ui.campaign.start.fromJump": "Vertical slice from Day {day}",
-  "ui.campaign.slice": "Slice"
+  "ui.campaign.slice": "Slice",
+  "ui.settings.sound": "Sound"
 }
