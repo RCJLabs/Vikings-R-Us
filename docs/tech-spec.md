@@ -1259,6 +1259,37 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - A forged tally is always also contradicted by the body, so the rune-lens is a second route rather than the only one. Forgeries that only the lens can catch need facts with no cheap physical sign.
 - Web demo JS is 63.6 KB gzipped on first load (the campaign screens and the Ink runtime, 40.8 KB, load when the campaign is opened; the demo's scenes are 2.6 KB).
 
+## 17. M5 implementation notes (the vertical slice as built)
+
+**Where things live**
+- Art: `packages/art` (was `art-placeholder`): the contract (`contract.ts`), the shared figure layout and hotspot regions (`layout.ts`), the placeholder, the two candidates (`woodcut.ts`, `pixel.ts`, loaded on demand), and the comparison sheet (`sheet.ts`). The UI's art switch is `packages/ui/src/art.ts`; `pnpm art:sheet` writes the trial page; dev-full's title screen has a Body Lab.
+- Days 10 and 12: the campaign pack (`faith`, `thorsHammer`, `trickster`, the `amulet` and `lipScars` signs, `rule.transfer`, `rule.detain`, five archetypes, templates, `days/day-10.yaml`, `day-12.yaml`).
+- The slice: `campaign.yaml` `slice`; Day 12's scenes and story soul (`scenes/d12.*.ink`, `cases/loki-12.yaml`).
+- Sound: `packages/ui/src/audio.ts`. Writing: `docs/voice.md`. Art and store briefs: `docs/art-brief.md`. Next Fest: `docs/next-fest.md`.
+
+**Decisions**
+- **The art contract grew.** Each provider draws its own registry portraits. Pixel art declares its grid, and the stage sizes it so each art pixel covers whole device pixels (a ResizeObserver; the frame is letterboxed). Every provider shares one layout, so taps land in the same places and a region's signs are one decision.
+- **Choosing art.** `?art=woodcut|pixel|placeholder` picks the art and the device remembers it. Feedback links name it. Art never changes a case.
+- **The weapon a soul names is the weapon drawn.** Testimony already shares one weapon word per soul; the shift passes it to the art (axe, sword, spear, seax). No generation change, so Dailies and goldens stay put.
+- **Day 10:** faith is heathen by presumption. The amulet is the sign: a cross means baptized, a hammer heathen, and both on one cord prime-signed (who stay ours). TRANSFER comes after outlaws. A false convert's claim is caught by his hammer.
+- **Day 12:** `trickster` (not `loki`, which is a faction id in shared code and would trip the leak check). Its only sign is stitch scars on the lips (salience 1), so the day's floor drops to 1. DETAIN comes first. Loki's one lie is "just a plain man", and questioning it gets a `deflect`, which reveals nothing.
+- **Rules accumulate,** so Day 11 now includes the Day 10 souls; the Days 6-on golden pins Days 10–12 (Days 6–8 unchanged).
+- **The slice** is a run flag. After the slice's first day range it jumps to the late day, adding what the skipped days would have brought (the run's own flags win), and the late day's night ends with the slice's finale. It can also start on the late day.
+- **Sound** is synthesised (no files). `soundFor()` maps shift events to sounds, so the audio pass replaces only the recipes. Nothing is created at volume 0; audio starts on the first gesture and holds while paused.
+
+**Measured**
+- The body on screen: 166×232 CSS px on a 360×740 phone; 216×302 on a 740×360 landscape phone (it was 74×103 before the landscape layout: the body now runs down the left with the tools beside it).
+- Every sign reads at phone size in all three styles except the feather, whose "stirs" was weak everywhere; all three now draw air lines beside the head.
+- Days 10–12, 500 seeds: every generation gate met, the trusting bot at 57%, DETAIN about one soul a day on Day 12. Fairness properties pass at 800 runs with the new days included.
+- Web demo first load 66.3 KB gzip; each art candidate is a 4.6 KB chunk loaded only when chosen.
+
+**Known limits**
+- The candidates are drawn in code: they show readability and cost, not how commissioned art would look.
+- Loki's scars read at a glance in the woodcut, which may make him too easy. The pixel scars show only through the loupe, and on a bearded face they can look like teeth.
+- The slice's stand-in for Days 4–11 (rings, standing, `ulf_shipyard`) is a guess. Day 12 has a generated teaching Loki as well as the story Loki. The slice plays only in full builds, which aren't deployed anywhere public.
+- Days 7–11 still have no story; the plain campaign still ends after Day 6.
+- Everything written in M5 is draft (`docs/story-drafts.md`). The sound is a placeholder.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

@@ -59,3 +59,22 @@ test.describe('the Body Lab', () => {
     await expect(page.locator('.stage')).toHaveAttribute('data-art', 'pixel');
   });
 });
+
+test.describe('a landscape phone', () => {
+  test.use({ viewport: { width: 740, height: 360 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+
+  test('shows the body down the side at full height, with the tools clear of it', async ({ page }, info) => {
+    test.skip(info.project.name === 'desktop', 'the viewport is set here; one run is enough');
+    await page.goto('./?art=placeholder');
+    await page.getByTestId('practice-3').click();
+    await page.getByTestId('begin').click();
+    const frame = await page.locator('.stage__frame').boundingBox();
+    expect(frame?.height ?? 0).toBeGreaterThan(250);
+    const right = (frame?.x ?? 0) + (frame?.width ?? 0);
+    const tools = await page
+      .locator('.stage .btn--tool')
+      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().left));
+    expect(tools.length).toBeGreaterThan(0);
+    for (const left of tools) expect(left).toBeGreaterThanOrEqual(right);
+  });
+});

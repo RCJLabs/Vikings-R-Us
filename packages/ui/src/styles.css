@@ -546,8 +546,27 @@ kbd {
   color: #f0e6d0;
 }
 
+.stamp--transfer {
+  color: #c9d6f2;
+}
+
+.stamp--detain {
+  color: #e8876e;
+}
+
+/* Choosing a stamp lands it: a quick press down (none with reduced motion). */
 .stamp[aria-pressed="true"] {
   background: currentColor;
+  animation: thunk 160ms ease-out;
+}
+
+@keyframes thunk {
+  from {
+    transform: scale(1.12) rotate(-3deg);
+  }
+  to {
+    transform: none;
+  }
 }
 
 .stamp[aria-pressed="true"] kbd,
@@ -634,6 +653,70 @@ kbd {
   .drawer .clues {
     gap: 0.3rem;
     padding: 0.4rem 0.5rem;
+  }
+}
+
+/*
+ * Landscape phones: the body down the left side at full height, everything
+ * else beside it. A portrait-shaped column left the body 74x103 px on a
+ * 740x360 phone; this gives it about three times the height.
+ */
+@media (orientation: landscape) and (max-height: 540px) {
+  .drawer {
+    display: grid;
+    grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "stage clues"
+      "stage tabs"
+      "stage panel"
+      "stage compare"
+      "stage actions";
+  }
+
+  /* The body sits to the left so every tool fits in one column to its right. */
+  .drawer .stage {
+    grid-area: stage;
+    height: 100%;
+    justify-content: flex-start;
+    padding-left: 0.5rem;
+  }
+
+  .drawer .stage__tools {
+    right: 0.4rem;
+  }
+
+  .drawer .stage__tools--more {
+    left: auto;
+    right: 0.4rem;
+    top: 6.4rem;
+    align-items: flex-end;
+  }
+
+  .drawer .btn--tool {
+    padding: 0.15rem 0.45rem;
+    font-size: 0.8rem;
+  }
+
+  .drawer .clues {
+    grid-area: clues;
+    max-height: 5.5rem;
+  }
+
+  .drawer .tabs {
+    grid-area: tabs;
+  }
+
+  .drawer .drawer__panel {
+    grid-area: panel;
+  }
+
+  .drawer .comparebar {
+    grid-area: compare;
+  }
+
+  .drawer .actionbar {
+    grid-area: actions;
   }
 }
 

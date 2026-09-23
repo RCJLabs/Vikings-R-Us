@@ -301,7 +301,7 @@ function face(scene: BodyScene): string {
   }
   if (scene.tools.includes('feather')) {
     const stirs = obs.breath === 'stirs';
-    const tilt = stirs ? -8 : 0;
+    const tilt = stirs ? -16 : 0;
     parts.push(
       `<g transform="rotate(${tilt} 138 126)">`,
       `<path d="M96 156L136 126" stroke="${INK}" stroke-width="2"/>`,
@@ -309,8 +309,9 @@ function face(scene: BodyScene): string {
       '</g>',
     );
     if (stirs) {
+      // Air lines beside the head, clear of the face, so "stirs" reads at phone size.
       parts.push(
-        `<path d="M126 112Q122 118 126 124M120 108Q114 118 120 128" fill="none" stroke="${INK}" stroke-width="1.8"/>`,
+        `<path d="M100 102Q92 112 100 122M88 96Q76 112 88 128" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`,
       );
     }
   }

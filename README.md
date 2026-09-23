@@ -4,7 +4,7 @@ A Papers, Please-style judgment game: you're a new Valkyrie with 20 battle-days 
 
 - **Plan:** [`docs/build-plan.md`](docs/build-plan.md): design, 20-day campaign, milestones, risks.
 - **Technical spec:** [`docs/tech-spec.md`](docs/tech-spec.md): types, the case-fairness system, content formats, platform shells.
-- **Status:** M4 (campaign systems, built): the campaign with save slots, mornings, audits, nights, family, factions, a shop and endings, Ink story scenes, story souls and replaying any day. The demo plays Days 1–3; the full game Days 1–6, with the registry, rune-lens, clipping nails and forged tallies in Practice (Days 6–8 and 11). All story text is draft ([`docs/story-drafts.md`](docs/story-drafts.md)). M3's public Daily alpha is unchanged: to launch it, follow [`docs/alpha-launch.md`](docs/alpha-launch.md). Privacy: [`docs/privacy.md`](docs/privacy.md).
+- **Status:** M5 (vertical slice, engineering done): two candidate art directions (woodcut and pixel) behind a swappable art module, compared on the art trial page (`pnpm art:sheet`) and in play with `?art=`; Days 10 (the clerk, TRANSFER) and 12 (Loki, DETAIN); a vertical slice in the full builds (Days 1–3, then Day 12); placeholder sound; a landscape phone layout; the second draft of Days 1–3 ([`docs/voice.md`](docs/voice.md)). Waiting on you: the art choice ([`docs/art-brief.md`](docs/art-brief.md)), signing off the writing ([`docs/story-drafts.md`](docs/story-drafts.md)) and the Next Fest checkpoint ([`docs/next-fest.md`](docs/next-fest.md)). The public Daily alpha is unchanged: to launch it, follow [`docs/alpha-launch.md`](docs/alpha-launch.md). Privacy: [`docs/privacy.md`](docs/privacy.md).
 
 ## Getting started
 
