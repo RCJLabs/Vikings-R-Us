@@ -1,0 +1,32 @@
+# The campaign's economy, family, shop and endings (docs/build-plan.md §1).
+# The demo ships Days 1-3; the campaign pack raises lastDay and adds to the
+# lists. Numbers are first guesses: `pnpm sim campaign` reports how they play.
+# DRAFT: names and text are placeholders until the M7 writing pass.
+lastDay: 3
+finale: ending.demoEnd
+startRings: 10
+family:
+  - { id: mother, name: family.mother, adult: true }
+  - { id: brother, name: family.brother, adult: true }
+  - { id: sister, name: family.sister, adult: false }
+draupnir: { nights: [9, 18], rings: 8 }
+debtFloor: -30
+care: { needNights: 2, sickChance: 30, sickNights: 2 }
+worthy: pred.worthy
+# The first matching row applies; specific rows are tried before wildcards.
+standing:
+  - { expected: FOLKVANGR, stamped: VALHALLA, fx: { freyja: -2, odin: 1 } }
+  - { expected: VALHALLA, stamped: FOLKVANGR, fx: { odin: -2, freyja: 1 } }
+  - { expected: HEL, stamped: VALHALLA, fx: { odin: -1, hel: -1 } }
+  - { expected: VALHALLA, stamped: '*', fx: { odin: -1 } }
+  - { expected: FOLKVANGR, stamped: '*', fx: { freyja: -1 } }
+  - { expected: HEL, stamped: '*', fx: { hel: -1 } }
+  - { expected: RETURN, stamped: '*', fx: { odin: -1 } }
+shop:
+  - { id: up.meadHorn, name: shop.meadHorn, text: shop.meadHorn.text, price: 15, since: 1, effect: { questionS: 15 } }
+  - { id: up.oiledBier, name: shop.oiledBier, text: shop.oiledBier.text, price: 12, since: 2, effect: { tool: flip, costS: 1 } }
+  - { id: up.swanFeather, name: shop.swanFeather, text: shop.swanFeather.text, price: 18, since: 3, effect: { tool: feather, costS: 6 } }
+endings:
+  - { id: ending.demoted, order: 10, when: { state: debtNights, gte: 2 }, title: ending.demoted.title, text: ending.demoted.text }
+  - { id: ending.alone, order: 20, when: { state: family.home, lte: 0 }, title: ending.alone.title, text: ending.alone.text }
+  - { id: ending.demoEnd, order: 1000, title: ending.demoEnd.title, text: ending.demoEnd.text }

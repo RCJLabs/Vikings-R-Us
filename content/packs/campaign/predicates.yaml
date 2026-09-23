@@ -1,0 +1,5 @@
+# Who stays and fights at Ragnarök: the worthy, less the oathbreakers (the campaign's einherjar count).
+- id: pred.einherjar
+  versions:
+    - { since: 1, is: { all: [{ ref: pred.worthy }, { not: { fact: outlaw, is: true } }] } }
+    - { since: 7, is: { all: [{ ref: pred.worthy }, { not: { fact: outlaw, is: true } }, { not: { fact: weaponOwner, is: other } }] } }

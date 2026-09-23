@@ -1,0 +1,33 @@
+# Day 6: the registry of outlaws and oathbreakers.
+- id: outlaw
+  domain: { bool: true }
+  since: 6
+  inert: false
+  presumption: false
+  # Only archetypes that ask for it are outlaws.
+  prior: { 'false': 1, 'true': 0 }
+# Someone else of the same name is in the registry (it only matters if the player looks).
+- id: namesake
+  domain: { bool: true }
+  since: 6
+  inert: false
+  prior: { 'false': 3, 'true': 1 }
+# Day 7: whose weapon it is, and who made it (read with the rune-lens).
+- id: weaponOwner
+  domain: { enum: [self, other] }
+  since: 7
+  inert: self
+  presumption: self
+  # Only archetypes that ask for it carry someone else's weapon.
+  prior: { self: 1, other: 0 }
+- id: blade
+  domain: { enum: [plain, ulfberht, fakeUlfberht] }
+  since: 7
+  inert: plain
+  prior: { plain: 6, ulfberht: 1, fakeUlfberht: 1 }
+# Day 8: Naglfar is built from dead men's untrimmed nails.
+- id: nailsGrown
+  domain: { bool: true }
+  since: 8
+  inert: false
+  prior: { 'false': 2, 'true': 1 }

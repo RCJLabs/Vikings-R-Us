@@ -1,9 +1,13 @@
 export * from './calendar';
+export * from './campaign/run';
+export * from './campaign/save';
+export * from './campaign/state';
 export * from './content/types';
 export * from './gen/generate';
 export { makeLook } from './gen/look';
 export { weightedPick } from './gen/pick';
 export { compileRequirements, sampleTruth } from './gen/sample';
+export * from './gen/scripted';
 export * from './gen/types';
 export {
   decisiveFacts,

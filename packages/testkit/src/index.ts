@@ -1,5 +1,15 @@
 import fc from 'fast-check';
 
+export {
+  JUDGING,
+  type Judging,
+  type NightStrategy,
+  type PolicyReport,
+  type RunResult,
+  scenarioSave,
+  simulateCampaign,
+  simulateRun,
+} from './campaign-sim';
 export { loadContent, loadDailyContent } from './content';
 export { type OracleResult, oracleSolve } from './oracle';
 export { checkThresholds, type SweepOptions, type SweepReport, sweep, THRESHOLDS } from './sweep';

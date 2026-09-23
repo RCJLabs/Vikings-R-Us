@@ -8,6 +8,7 @@ import type {
   FactLaw,
   ObservationDef,
   Pred,
+  ProcedureDef,
   RuleDef,
   SignLaw,
   ToolId,
@@ -40,6 +41,8 @@ export interface DayCtx extends PredCtx {
   readonly derived: readonly string[];
   /** Rules in force today, in evaluation order. */
   readonly rules: readonly RuleDef[];
+  /** Procedures in force today, in content order. */
+  readonly procedures: readonly ProcedureDef[];
   /** Which pool entry each day parameter drew (for the decree text). */
   readonly paramChoices: Readonly<Record<string, { readonly id: string; readonly text: string }>>;
   /** Observations that exist today (their tools are unlocked). */
@@ -73,13 +76,26 @@ const byOrder = (a: RuleDef, b: RuleDef): number => a.order - b.order || (a.id <
  * from `runSeed`. Pass `spec` to play a day's mechanics with another queue
  * (the Daily Shift uses its own spec).
  */
-export function createDayContext(content: Content, day: number, runSeed: string, spec?: DaySpec): DayCtx {
+export function createDayContext(
+  content: Content,
+  day: number,
+  runSeed: string,
+  spec?: DaySpec,
+  /** Forces a day param's choice by its id, e.g. to check a story soul under every whim. */
+  choose?: Readonly<Record<string, string>>,
+): DayCtx {
   const found = spec ?? content.days.find((d) => d.day === day);
   if (!found) throw new Error(`No day spec for day ${day}`);
-  return buildContext(content, day, runSeed, found);
+  return buildContext(content, day, runSeed, found, choose);
 }
 
-function buildContext(content: Content, day: number, runSeed: string, spec: DaySpec): DayCtx {
+function buildContext(
+  content: Content,
+  day: number,
+  runSeed: string,
+  spec: DaySpec,
+  choose?: Readonly<Record<string, string>>,
+): DayCtx {
   const facts = new Map<string, ActiveFact>();
   const sampled: string[] = [];
   const derived: string[] = [];
@@ -96,6 +112,7 @@ function buildContext(content: Content, day: number, runSeed: string, spec: DayS
 
   const inForce = (since: number, until?: number) => since <= day && (until === undefined || day < until);
   const rules = content.rules.filter((r) => inForce(r.since, r.until)).sort(byOrder);
+  const procedures = (content.procedures ?? []).filter((p) => inForce(p.since, p.until));
 
   const predicates = new Map<string, Pred>();
   for (const np of content.predicates) {
@@ -107,7 +124,8 @@ function buildContext(content: Content, day: number, runSeed: string, spec: DayS
   const params: Record<string, Pred> = {};
   const paramChoices: Record<string, { id: string; text: string }> = {};
   for (const [name, param] of Object.entries(spec.params ?? {})) {
-    const choice = new Rng(`${content.genVersion}|${runSeed}|${day}|param|${name}`).pick(param.pool);
+    const forced = choose?.[name] === undefined ? undefined : param.pool.find((c) => c.id === choose[name]);
+    const choice = forced ?? new Rng(`${content.genVersion}|${runSeed}|${day}|param|${name}`).pick(param.pool);
     params[name] = choice.is;
     paramChoices[name] = { id: choice.id, text: choice.text };
   }
@@ -134,6 +152,7 @@ function buildContext(content: Content, day: number, runSeed: string, spec: DayS
     sampled,
     derived,
     rules,
+    procedures,
     predicates,
     params,
     paramChoices,

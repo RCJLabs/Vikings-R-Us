@@ -12,7 +12,13 @@ const violations: Violation[] = [];
 for (const file of filesIn('packages/engine/src')) {
   violations.push(...checkEngineSource(rel(file), readFileSync(file, 'utf8')));
 }
-for (const dir of ['packages/ui/src', 'packages/platform/src', 'packages/art-placeholder/src', 'apps/web/src']) {
+for (const dir of [
+  'packages/ui/src',
+  'packages/platform/src',
+  'packages/art-placeholder/src',
+  'packages/story/src',
+  'apps/web/src',
+]) {
   for (const file of filesIn(dir)) violations.push(...checkClientSource(rel(file), readFileSync(file, 'utf8')));
 }
 

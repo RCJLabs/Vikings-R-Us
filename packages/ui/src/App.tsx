@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks';
+import { campaignUi } from './campaign/lazy';
 import { Briefing, Summary, Title } from './screens';
 import { onShiftKey } from './shift/keys';
 import { ShiftScreen } from './shift/Shift';
@@ -19,6 +20,14 @@ export function App() {
       return <ShiftScreen />;
     case 'summary':
       return <Summary />;
+    case 'campaign':
+    case 'morning':
+    case 'audit':
+    case 'night':
+    case 'ending': {
+      const ui = campaignUi.value;
+      return ui ? <ui.CampaignScreen which={screen.value} /> : <Title />;
+    }
     default:
       return <Title />;
   }

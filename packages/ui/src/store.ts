@@ -40,6 +40,10 @@ import { type BuildInfo, shiftRecord } from './telemetry-payload';
 let clockOffset = 0;
 /** Monotonic integer ms. Continues across a reload when an in-progress Daily is resumed. */
 export const clock = (): number => Math.round(performance.now()) + clockOffset;
+/** Makes the clock read at least `at` from now on, so a resumed shift carries on its own timeline. */
+export function resumeClockAt(at: number): void {
+  if (clock() < at) clockOffset = at - Math.round(performance.now());
+}
 /** Updated four times a second while a shift runs; the sun display reads it. */
 export const now = signal(0);
 
@@ -130,7 +134,7 @@ let store: KeyValueStore | null = null;
  */
 const MIRROR = { progress: 'cots.daily-progress', record: 'cots.daily', settings: 'cots.settings' } as const;
 
-function mirror(key: string, value: unknown): void {
+export function mirror(key: string, value: unknown): void {
   try {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, JSON.stringify(value));
@@ -139,7 +143,7 @@ function mirror(key: string, value: unknown): void {
   }
 }
 
-function readMirror<T>(key: string): T | undefined {
+export function readMirror<T>(key: string): T | undefined {
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : undefined;
@@ -159,6 +163,9 @@ function newest(a: DailyProgress | undefined, b: DailyProgress | undefined): Dai
   if (a.n !== b.n) return a.n > b.n ? a : b;
   return b.actions.length > a.actions.length || (b.seenAt ?? 0) > (a.seenAt ?? 0) ? b : a;
 }
+
+/** The key-value store, once initStorage has opened it. */
+export const kvStore = (): KeyValueStore | null => store;
 
 export async function initStorage(): Promise<void> {
   try {
@@ -226,7 +233,8 @@ export type Mode =
       readonly guard: GuardResult;
     }
   | { readonly kind: 'practice'; readonly day: number }
-  | { readonly kind: 'primer' };
+  | { readonly kind: 'primer' }
+  | { readonly kind: 'campaign'; readonly day: number; readonly story: boolean };
 
 export interface Session {
   readonly mode: Mode;
@@ -236,6 +244,16 @@ export interface Session {
   readonly initial: ShiftState;
   readonly state: ShiftState;
   readonly actions: readonly ShiftAction[];
+  /** Steps the shift instead of stepShift: a campaign steps its whole run (campaign/run-store.ts). */
+  readonly step?: (
+    state: ShiftState,
+    action: ShiftAction,
+  ) => {
+    readonly state: ShiftState;
+    readonly events: readonly ShiftEvent[];
+  };
+  /** Called every few seconds while the sun runs, to save how far it got. */
+  readonly heartbeat?: () => void;
 }
 
 /** What telemetry and reports say about this build. */
@@ -253,7 +271,7 @@ export const telemetryBase = (): string | undefined =>
 
 export const telemetryAvailable = (): boolean => telemetryBase() !== undefined;
 
-export type Screen = 'title' | 'briefing' | 'shift' | 'summary';
+export type Screen = 'title' | 'briefing' | 'shift' | 'summary' | 'campaign' | 'morning' | 'audit' | 'night' | 'ending';
 
 export const screen = signal<Screen>('title');
 export const session = signal<Session | null>(null);
@@ -269,7 +287,7 @@ export const answer = signal<{ readonly name: string; readonly lines: readonly s
 export const citation = signal<Verdict | null>(null);
 export const comparing = signal(false);
 export const compareFirst = signal<string | null>(null);
-export const drawerTab = signal<'words' | 'ravens' | 'rules'>('words');
+export const drawerTab = signal<'words' | 'ravens' | 'registry' | 'tally' | 'rules'>('words');
 export const stampSheet = signal(false);
 
 let toastId = 0;
@@ -298,7 +316,7 @@ export function act(input: ActionInput): void {
   const s = session.peek();
   if (!s) return;
   const action = { ...input, at: clock() } as ShiftAction;
-  const r = stepShift(s.state, action, s.ctx);
+  const r = s.step ? s.step(s.state, action) : stepShift(s.state, action, s.ctx);
   if (r.state === s.state && r.events.length === 0) return;
   const changed = r.state !== s.state;
   const next: Session = { ...s, state: r.state, actions: changed ? [...s.actions, action] : s.actions };
@@ -370,6 +388,11 @@ function saveProgress(s: Session): void {
 function finish(s: Session): void {
   citation.value = null;
   answer.value = null;
+  // The run has already audited the shift; the campaign's own screens take over.
+  if (s.mode.kind === 'campaign') {
+    screen.value = 'audit';
+    return;
+  }
   const telemetry = telemetryBase();
   if (telemetry && settings.peek().telemetry) {
     sendShift(
@@ -513,6 +536,16 @@ export function begin(): void {
   if (session.value?.state.phase === 'shift') screen.value = 'shift';
 }
 
+/** Leaves a campaign shift for the save slots. The run is already saved, paused. */
+export function quitToSlots(): void {
+  batch(() => {
+    session.value = null;
+    citation.value = null;
+    answer.value = null;
+    screen.value = 'campaign';
+  });
+}
+
 export function toTitle(): void {
   batch(() => {
     session.value = null;
@@ -572,7 +605,11 @@ export function startClock(): void {
     const s = session.peek();
     if (s?.state.phase === 'shift' && s.state.clock.pausedAt === null) {
       act({ t: 'tick' });
-      if (++beats % 20 === 0) saveProgress(session.peek() ?? s);
+      if (++beats % 20 === 0) {
+        const current = session.peek() ?? s;
+        saveProgress(current);
+        current.heartbeat?.();
+      }
     }
   }, 250);
   document.addEventListener('visibilitychange', () => {

@@ -50,8 +50,10 @@ describe('client boundaries', () => {
         "import s from 'content/packs/core/strings/en.json';",
         "import { readFileSync } from 'node:fs';",
         "import { manifest } from 'virtual:content';",
+        "import { Compiler } from 'inkjs/full';",
+        "import { Story } from 'inkjs';",
       ].join('\n'),
     );
-    expect(found.map((v) => v.line)).toEqual([1, 2, 3]);
+    expect(found.map((v) => v.line)).toEqual([1, 2, 3, 5]);
   });
 });

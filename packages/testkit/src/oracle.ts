@@ -24,8 +24,9 @@ function obsMatches(p: ObsPattern, seen: ReadonlyMap<string, Value>): boolean {
 
 /**
  * Brute force: enumerate every world consistent with what the player can
- * perceive and has been taught, apply presumptions to facts nothing
- * constrains, and see whether all remaining worlds agree on the destination.
+ * perceive and has been taught, let a consistent, unforged saga tally narrow them, apply
+ * presumptions to facts nothing constrains, and see whether all remaining
+ * worlds agree on the destination.
  * Exact, slow, and independent of the solver's propagation logic.
  */
 export function oracleSolve(fields: readonly Field[], ctx: DayCtx): OracleResult {
@@ -74,7 +75,15 @@ export function oracleSolve(fields: readonly Field[], ctx: DayCtx): OracleResult
   };
   visit(0);
 
+  // A saga tally narrows the worlds (it outranks presumptions) if all its lines can be true together;
+  // otherwise, or once a forgery sign is seen, it counts for nothing.
   let worlds = consistent;
+  const forgerySeen = perceived.some((f) => f.tell !== undefined);
+  const carved = forgerySeen ? [] : perceived.filter((f) => f.item === 'tally' && f.says && f.says.value !== null);
+  if (carved.length > 0) {
+    const agree = worlds.filter((t) => carved.every((line) => t[line.says?.fact as string] === line.says?.value));
+    if (agree.length > 0) worlds = agree;
+  }
   for (const [id, af] of ctx.facts) {
     const p = af.def.presumption;
     if (p === undefined || af.def.derived || af.pinned) continue;

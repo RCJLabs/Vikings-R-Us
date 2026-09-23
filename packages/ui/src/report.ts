@@ -69,7 +69,14 @@ export function soulReport(s: Session, index: number): SoulReport {
 }
 
 export function reportTitle(r: SoulReport): string {
-  const what = r.mode === 'daily' ? `Daily #${r.n}` : r.mode === 'primer' ? 'Primer' : `Day ${r.day} practice`;
+  const what =
+    r.mode === 'daily'
+      ? `Daily #${r.n}`
+      : r.mode === 'primer'
+        ? 'Primer'
+        : r.mode === 'campaign'
+          ? `Day ${r.day} campaign`
+          : `Day ${r.day} practice`;
   return `Soul report: ${what}, soul ${r.soul + 1}`;
 }
 

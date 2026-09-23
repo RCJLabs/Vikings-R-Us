@@ -1,7 +1,7 @@
-import type { Destination, ObsPattern, Value } from '../content/types';
+import type { Destination, ObsPattern, Pred, Value } from '../content/types';
 import type { Field } from '../gen/types';
 import type { DayCtx } from './context';
-import { eval3, factsIn, type Tri } from './pred';
+import { eval2, eval3, factsIn, type Tri } from './pred';
 
 /**
  * What the player can know about a fact. Levels follow the trust ladder
@@ -23,7 +23,13 @@ export interface Contradiction {
 }
 
 export type SolveJudgment =
-  | { readonly kind: 'determined'; readonly dest: Destination; readonly rule: string }
+  | {
+      readonly kind: 'determined';
+      readonly dest: Destination;
+      readonly rule: string;
+      /** Procedures known to be due (absent when none). */
+      readonly procedures?: readonly string[];
+    }
   | { readonly kind: 'undetermined'; readonly rule: string; readonly blocking: readonly string[] };
 
 export interface SolveResult {
@@ -38,7 +44,7 @@ export interface SolveResult {
 export interface SolveOptions {
   /** What questioning would reveal: lie field id -> the fact's true value. */
   readonly reveals?: ReadonlyMap<string, { readonly fact: string; readonly value: Value }>;
-  /** The "trusting" bot: testimony overrides everything else. */
+  /** The "trusting" bot: what the soul says (aloud or on its tally) overrides everything else. */
   readonly trustTestimony?: boolean;
 }
 
@@ -56,6 +62,20 @@ function union(a: readonly string[], b: readonly string[]): string[] {
 }
 
 type Seen = ReadonlyMap<string, { readonly value: Value; readonly field: string }>;
+
+/**
+ * What a predicate being `want` says about single facts, where it says anything definite:
+ * "never fled" (fled = woundsBack >= 1, false) means woundsBack is 0.
+ */
+function inverse(p: Pred, want: boolean, ctx: DayCtx): { fact: string; values: Value[] }[] {
+  if ('all' in p) return want || p.all.length === 1 ? p.all.flatMap((q) => inverse(q, want, ctx)) : [];
+  if ('any' in p) return !want || p.any.length === 1 ? p.any.flatMap((q) => inverse(q, want, ctx)) : [];
+  if ('not' in p) return inverse(p.not, !want, ctx);
+  if (!('fact' in p)) return [];
+  const af = ctx.facts.get(p.fact);
+  if (!af || af.def.derived) return [];
+  return [{ fact: p.fact, values: af.values.filter((v) => eval2(p, { [p.fact]: v }, ctx) === want) }];
+}
 
 function matchObs(p: ObsPattern, seen: Seen): string[] | null {
   if ('all' in p) {
@@ -155,8 +175,9 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     }
   }
   if (opts.trustTestimony) {
+    // The trusting bot believes what the soul says and what its tally says.
     for (const f of perceived) {
-      if (f.item === 'testimony' && f.says && f.says.value !== null) {
+      if ((f.item === 'testimony' || f.item === 'tally') && f.says && f.says.value !== null) {
         forced.set(f.says.fact, { values: [f.says.value], level: 5, support: [f.id] });
       }
     }
@@ -167,8 +188,11 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
       let changed = false;
       for (const law of ctx.factLaws) {
         if (eval3(law.if, valuesOf, ctx) !== 'T') continue;
-        const support = [...factsIn(law.if, ctx)].reduce<string[]>((s, id) => union(s, view(id).support), []);
-        if (narrow(law.then.fact, law.then.in, 4, support)) changed = true;
+        const premises = [...factsIn(law.if, ctx)].map(view);
+        const support = premises.reduce<string[]>((s, b) => union(s, b.support), []);
+        // A conclusion is only as trusted as its weakest premise (a tally line counts less than a body sign).
+        const level = premises.reduce((m, b) => Math.min(m, b.level), 4);
+        if (narrow(law.then.fact, law.then.in, level, support)) changed = true;
       }
       if (!changed) return;
     }
@@ -176,6 +200,52 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
   propagate();
 
   const contradictions: Contradiction[] = [];
+
+  // The saga tally (trust 3) is believed whole or not at all, as the decree says of a forged one.
+  // A line established evidence refutes is a lie to catch; then, or once a forgery sign is seen, or if
+  // its lines can't all be true together with the evidence, the tally counts for nothing.
+  const carved = perceived.filter((f) => f.item === 'tally' && f.says && f.says.value !== null);
+  let refuted = false;
+  for (const f of carved) {
+    const says = f.says as { fact: string; value: Value };
+    const b = view(says.fact);
+    if (b.level >= 3 && !b.values.includes(says.value)) {
+      refuted = true;
+      if (!opts.trustTestimony) contradictions.push({ lie: f.id, fact: says.fact, against: b.support });
+    }
+  }
+  const forgerySeen = perceived.some((f) => f.tell !== undefined);
+  if (carved.length > 0 && !refuted && !forgerySeen && !opts.trustTestimony) {
+    const saved = { beliefs: new Map(beliefs), asserted: new Map(asserted), conflicts: conflicts.length };
+    let whole = true;
+    for (const f of carved) {
+      const says = f.says as { fact: string; value: Value };
+      const b = view(says.fact);
+      if (b.level >= 3 && !b.values.includes(says.value)) whole = false;
+      else {
+        narrow(says.fact, [says.value], 3, [f.id]);
+        // A derived line constrains what it's made of too ("never fled" means no wound in the back),
+        // so lines that can't all be true are caught.
+        const def = ctx.facts.get(says.fact)?.def;
+        if (def?.derived && typeof says.value === 'boolean') {
+          for (const c of inverse(def.derived, says.value, ctx)) narrow(c.fact, c.values, 3, [f.id]);
+        }
+        propagate();
+      }
+      if (!whole || conflicts.length > saved.conflicts) {
+        whole = false;
+        break;
+      }
+    }
+    if (!whole) {
+      beliefs.clear();
+      for (const [k, v] of saved.beliefs) beliefs.set(k, v);
+      asserted.clear();
+      for (const [k, v] of saved.asserted) asserted.set(k, v);
+      conflicts.length = saved.conflicts;
+    }
+  }
+
   if (!opts.trustTestimony) {
     for (const f of perceived) {
       if (f.item !== 'testimony' || !f.says || f.says.value === null) continue;
@@ -216,6 +286,21 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     }
   }
   if (!judgment) throw new Error(`The rulebook for day ${ctx.day} has no rule that always applies`);
+
+  // The judgment also says which procedures are due; one the player can't settle leaves it undetermined.
+  if (judgment.kind === 'determined' && ctx.procedures.length > 0) {
+    const due: string[] = [];
+    for (const p of ctx.procedures) {
+      const res = eval3(p.when, valuesOf, ctx);
+      if (res === 'T') due.push(p.id);
+      else if (res === 'U') {
+        const blocking = [...factsIn(p.when, ctx)].filter((id) => view(id).values.length > 1);
+        judgment = { kind: 'undetermined', rule: p.id, blocking };
+        break;
+      }
+    }
+    if (judgment.kind === 'determined' && due.length > 0) judgment = { ...judgment, procedures: due };
+  }
 
   const all = new Map<string, Belief>();
   for (const id of ctx.facts.keys()) all.set(id, view(id));

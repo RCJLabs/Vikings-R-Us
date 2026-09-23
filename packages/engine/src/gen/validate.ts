@@ -1,17 +1,19 @@
 import type { Knobs, ObsPattern, ToolId, Value } from '../content/types';
 import type { DayCtx } from '../logic/context';
-import { type Judgment, judge, observe, withOverride } from '../logic/judge';
+import { type Judgment, judge, observe, sameJudgment, withOverride } from '../logic/judge';
 import { eval2, type Truth } from '../logic/pred';
-import { type SolveResult, solve } from '../logic/solver';
+import { isPerceivable, type SolveResult, solve } from '../logic/solver';
 import type { Evidence, Field, Lie, RejectCode } from './types';
 
-/** Facts whose value decides the judgment: changing any one of them changes the destination. */
+/** Facts whose value decides the judgment: changing any one of them changes the destination or the procedures due. */
 export function decisiveFacts(truth: Truth, expected: Judgment, ctx: DayCtx): string[] {
   const out: string[] = [];
   for (const id of ctx.sampled) {
     const af = ctx.facts.get(id);
     if (!af || af.pinned) continue;
-    if (af.values.some((v) => v !== truth[id] && judge(withOverride(truth, id, v, ctx), ctx).dest !== expected.dest)) {
+    if (
+      af.values.some((v) => v !== truth[id] && !sameJudgment(judge(withOverride(truth, id, v, ctx), ctx), expected))
+    ) {
       out.push(id);
     }
   }
@@ -65,7 +67,7 @@ export function minimalProof(evidence: Evidence, lies: readonly Lie[], expected:
       ctx,
       { reveals },
     ).judgment;
-    if (r.kind !== 'determined' || r.dest !== expected.dest) keep.add(id);
+    if (r.kind !== 'determined' || !sameJudgment(r, expected)) keep.add(id);
   }
   const proofFields = evidence.fields.filter((f) => keep.has(f.id));
   const tools = toolsFor(proofFields);
@@ -153,11 +155,31 @@ export function validateCase(
   const j = solved.judgment;
   if (j.kind !== 'determined') return fail('UNDETERMINED', `${j.rule} blocked by ${j.blocking.join(', ')}`);
   if (j.dest !== expected.dest) return fail('WRONG_DEST', `solver says ${j.dest}, truth says ${expected.dest}`);
+  if (!sameJudgment(j, expected)) {
+    return fail('WRONG_DEST', `solver says ${(j.procedures ?? []).join('+') || 'no procedures'} are due`);
+  }
 
-  // F4: every lie that would change the outcome is caught by a contradiction.
+  // F5: a forged tally shows a forgery sign that can be seen today; if seeing it takes a tool, something hints at it.
+  const tells = evidence.fields.filter((f) => f.tell !== undefined && isPerceivable(f, ctx));
+  // A forged line is one actually carved on the tally, whatever the lie says about itself.
+  const tallyIds = new Set(evidence.fields.filter((f) => f.item === 'tally' && f.says).map((f) => f.id));
+  const carved = (lie: Lie) => lie.via === 'tally' && tallyIds.has(lie.field);
+  if (lies.some(carved)) {
+    if (tells.length === 0) return fail('HIDDEN_FORGERY', 'the forged tally shows no sign it is forged');
+    if (tells.every((f) => f.tool !== undefined)) {
+      const cued = evidence.fields.some((f) => {
+        const cue = f.cue && ctx.cues.find((c) => c.key === f.cue?.key);
+        return cue && 'forgery' in cue.hint && f.salience >= knobs.salienceFloor;
+      });
+      if (!cued) return fail('CUE_MISSING', 'the forged tally needs a tool but nothing hints at it');
+    }
+  }
+
+  // F4: every lie that would change the outcome is caught by a contradiction (a forged line also by its tally's tell).
   for (const lie of lies) {
-    const changes = judge(withOverride(truth, lie.fact, lie.claimed, ctx), ctx).dest !== expected.dest;
-    if (changes && !solved.contradictions.some((c) => c.lie === lie.field)) {
+    const changes = !sameJudgment(judge(withOverride(truth, lie.fact, lie.claimed, ctx), ctx), expected);
+    const exposed = solved.contradictions.some((c) => c.lie === lie.field) || (carved(lie) && tells.length > 0);
+    if (changes && !exposed) {
       return fail('HIDDEN_LIE', `${lie.field} (${lie.fact}) is never contradicted`);
     }
   }
@@ -176,7 +198,13 @@ export function validateCase(
     if (needsTool) {
       const cued = evidence.fields.some((f) => {
         const cue = f.cue && ctx.cues.find((c) => c.key === f.cue?.key);
-        return cue && cue.hint.fact === fact && cue.hint.value === truth[fact] && f.salience >= knobs.salienceFloor;
+        return (
+          cue &&
+          'fact' in cue.hint &&
+          cue.hint.fact === fact &&
+          cue.hint.value === truth[fact] &&
+          f.salience >= knobs.salienceFloor
+        );
       });
       if (!cued) return fail('CUE_MISSING', `${fact} needs a tool but nothing hints at it`);
     }

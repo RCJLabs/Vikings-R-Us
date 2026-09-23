@@ -1,0 +1,7 @@
+- { id: rule.outlaw, order: 200, since: 6, when: { fact: outlaw, is: true }, then: HEL, text: rule.outlaw }
+- id: rule.borrowed
+  order: 550
+  since: 7
+  when: { all: [{ fact: grip, is: weapon }, { fact: weaponOwner, is: other }] }
+  then: HEL
+  text: rule.borrowed

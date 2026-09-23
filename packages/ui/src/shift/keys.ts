@@ -9,7 +9,7 @@ function focusSend(): void {
 }
 
 /**
- * The shift's keyboard map (docs/tech-spec.md §6.4): F turn over, T feather,
+ * The shift's keyboard map (docs/tech-spec.md §6.4): F turn over, T feather, G registry,
  * C compare, Q question, 1-9 stamps (focus moves to Send), Enter send,
  * R rules, Esc cancels or pauses.
  */
@@ -44,6 +44,12 @@ export function onShiftKey(e: KeyboardEvent): void {
       break;
     case 't':
       if (s.ctx.tools.has('feather')) act({ t: 'tool', tool: 'feather' });
+      break;
+    case 'g':
+      if (s.ctx.tools.has('registry')) {
+        act({ t: 'tool', tool: 'registry' });
+        drawerTab.value = 'registry';
+      }
       break;
     case 'c':
       toggleCompare();

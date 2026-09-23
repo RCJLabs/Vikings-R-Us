@@ -1,4 +1,4 @@
-import { type Hotspot, placeholderBody } from '@cots/art-placeholder';
+import { type Hotspot, placeholderBody, placeholderPortrait } from '@cots/art-placeholder';
 import { type CaseSpec, currentCase, type Field, PENALTY, stampsFor, sunLeft, type Verdict } from '@cots/engine';
 import { copyText } from '@cots/platform';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -15,6 +15,7 @@ import {
   drawerTab,
   effectiveLayout,
   now,
+  quitToSlots,
   type Session,
   session,
   settings,
@@ -24,7 +25,7 @@ import {
   updateSettings,
 } from '../store';
 import { coachStep } from './coach';
-import { fieldText, regionFields, regionSeen, sceneFor } from './evidence';
+import { fieldText, regionFields, regionSeen, registryEntry, sceneFor, skippedText } from './evidence';
 import { RulesPanel } from './Rules';
 
 /** Focuses an element once, when it mounts (dialogs, the briefing's Begin button). */
@@ -144,11 +145,38 @@ function BodyStage({ s, c }: { s: Session; c: CaseSpec }) {
           </button>
         ) : null}
       </div>
+      {/* Later decrees' tools take the other side of the body, so no column outgrows a phone's stage. */}
+      <div class="stage__tools stage__tools--more">
+        {[...tools.keys()]
+          .filter((id) => id !== 'flip' && id !== 'feather')
+          .map((id) => (
+            <button
+              key={id}
+              type="button"
+              class="btn btn--tool"
+              data-testid={id}
+              aria-label={id === 'registry' ? t('ui.registry.search') : undefined}
+              disabled={soul.tools.includes(id)}
+              onClick={() => {
+                act({ t: 'tool', tool: id });
+                if (id === 'registry' && effectiveLayout() === 'drawer') drawerTab.value = 'registry';
+              }}
+            >
+              {t(`tool.${id}`)}
+              {id === 'registry' ? (
+                <>
+                  {' '}
+                  <kbd>G</kbd>
+                </>
+              ) : null}
+            </button>
+          ))}
+      </div>
     </figure>
   );
 }
 
-function Evidence({ s, f, variant }: { s: Session; f: Field; variant: 'chip' | 'line' }) {
+function Evidence({ s, c, f, variant }: { s: Session; c: CaseSpec; f: Field; variant: 'chip' | 'line' }) {
   const selected = comparing.value && compareFirst.value === f.id;
   const flag = s.state.soul.flagged.find((x) => x.lie === f.id);
   const questioned = s.state.soul.questioned.includes(f.id);
@@ -161,7 +189,7 @@ function Evidence({ s, f, variant }: { s: Session; f: Field; variant: 'chip' | '
         data-field={f.id}
         onClick={() => pick(f.id)}
       >
-        {fieldText(f)}
+        {fieldText(f, c)}
       </button>
       {flag ? <span class="evidence__badge">{t('ui.contradicted')}</span> : null}
       {flag && !questioned ? (
@@ -197,7 +225,7 @@ function Clues({ s, c }: { s: Session; c: CaseSpec }) {
   return (
     <div class="clues">
       {seen.map((f) => (
-        <Evidence key={f.id} s={s} f={f} variant="chip" />
+        <Evidence key={f.id} s={s} c={c} f={f} variant="chip" />
       ))}
       {pending.map((spot) => (
         <button
@@ -227,7 +255,7 @@ function Lines({ s, c, items, empty }: { s: Session; c: CaseSpec; items: readonl
     <ul class="lines">
       {items.map((f) => (
         <li key={f.id}>
-          <Evidence s={s} f={f} variant="line" />
+          <Evidence s={s} c={c} f={f} variant="line" />
         </li>
       ))}
     </ul>
@@ -249,6 +277,43 @@ function Words({ s, c }: { s: Session; c: CaseSpec }) {
 function Ravens({ s, c }: { s: Session; c: CaseSpec }) {
   const items = c.evidence.fields.filter((f) => f.item === 'huginn' || f.item === 'muninn');
   return <Lines s={s} c={c} items={items} empty={t('ui.ravens.none')} />;
+}
+
+/** The soul's saga tally: its carved lines, and under the rune-lens, any sign it was forged. */
+function Tally({ s, c }: { s: Session; c: CaseSpec }) {
+  const lens = s.state.soul.tools.includes('runeLens');
+  const items = c.evidence.fields.filter((f) => f.item === 'tally' && (f.says !== undefined || lens));
+  return (
+    <div class="tally" data-testid="tally">
+      <Lines s={s} c={c} items={items} empty="" />
+      {!lens && s.ctx.tools.has('runeLens') ? <p class="muted">{t('ui.tally.lens')}</p> : null}
+    </div>
+  );
+}
+
+const hasTally = (c: CaseSpec) => c.evidence.fields.some((f) => f.item === 'tally');
+
+/** The registry, looked up by this soul's name once the player searches it. */
+function Registry({ s, c }: { s: Session; c: CaseSpec }) {
+  const f = c.evidence.fields.find((x) => x.item === 'registry');
+  const { name, patronym } = c.evidence.look;
+  if (!f || !s.state.soul.tools.includes('registry')) {
+    return <p class="muted">{t('ui.registry.unsearched', { name, patronym })}</p>;
+  }
+  const entry = registryEntry(c, f);
+  return (
+    <div class="registry" data-testid="registry-entry">
+      {entry.kind === 'nobody' ? null : (
+        <div
+          class="registry__portrait"
+          role="img"
+          aria-label={t('ui.registry.portrait', { name, patronym })}
+          dangerouslySetInnerHTML={{ __html: placeholderPortrait(entry) }}
+        />
+      )}
+      <Lines s={s} c={c} items={[f]} empty="" />
+    </div>
+  );
 }
 
 function CompareBar() {
@@ -383,6 +448,18 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
             <h2>{t('ui.tab.ravens')}</h2>
             <Ravens s={s} c={c} />
           </div>
+          {s.ctx.tools.has('registry') ? (
+            <div class="paper paper--registry">
+              <h2>{t('ui.tab.registry')}</h2>
+              <Registry s={s} c={c} />
+            </div>
+          ) : null}
+          {hasTally(c) ? (
+            <div class="paper paper--tally">
+              <h2>{t('ui.tab.tally')}</h2>
+              <Tally s={s} c={c} />
+            </div>
+          ) : null}
         </section>
         <section class="desk__bottom">
           <button
@@ -401,10 +478,13 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
     );
   }
 
-  const tab = drawerTab.value;
+  // A soul without a tally has no tally tab; fall back to its words.
+  const tab = drawerTab.value === 'tally' && !hasTally(c) ? 'words' : drawerTab.value;
   const tabs = [
     ['words', 'ui.tab.words'],
     ['ravens', 'ui.tab.ravens'],
+    ...(hasTally(c) ? ([['tally', 'ui.tab.tally']] as const) : []),
+    ...(s.ctx.tools.has('registry') ? ([['registry', 'ui.tab.registry']] as const) : []),
     ['rules', 'ui.tab.rules'],
   ] as const;
   return (
@@ -430,6 +510,10 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           <Words s={s} c={c} />
         ) : tab === 'ravens' ? (
           <Ravens s={s} c={c} />
+        ) : tab === 'registry' ? (
+          <Registry s={s} c={c} />
+        ) : tab === 'tally' ? (
+          <Tally s={s} c={c} />
         ) : (
           <RulesPanel ctx={s.ctx} />
         )}
@@ -443,20 +527,28 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
 
 function PauseOverlay() {
   const focus = useAutoFocus<HTMLButtonElement>();
+  const campaign = session.value?.mode.kind === 'campaign';
   return (
     <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <div class="dialog">
         <h2 id="pause-title">{t('ui.paused')}</h2>
         <p>{t('ui.paused.body')}</p>
-        <button
-          type="button"
-          class="btn btn--primary"
-          data-testid="resume"
-          ref={focus}
-          onClick={() => act({ t: 'resume' })}
-        >
-          {t('ui.resume')}
-        </button>
+        <div class="row">
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-testid="resume"
+            ref={focus}
+            onClick={() => act({ t: 'resume' })}
+          >
+            {t('ui.resume')}
+          </button>
+          {campaign ? (
+            <button type="button" class="btn" data-testid="save-quit" onClick={quitToSlots}>
+              {t('ui.campaign.quit')}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -501,12 +593,22 @@ function CitationBox({ s, v }: { s: Session; v: Verdict }) {
   const focus = useAutoFocus<HTMLButtonElement>();
   const c = s.state.cases[v.index];
   const rule = s.ctx.rules.find((r) => r.id === v.rule);
-  const missed = (c?.evidence.fields ?? []).filter((f) => v.missed.includes(f.id)).map(fieldText);
+  const missed = (c?.evidence.fields ?? []).filter((f) => v.missed.includes(f.id)).map((f) => fieldText(f, c));
+  const skipped = skippedText(v.skipped, s.ctx);
+  const name = c?.evidence.look.name ?? '';
+  const dest = t(`dest.${v.expected}`);
   return (
     <div class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="citation-title">
       <div class="dialog dialog--citation">
         <h2 id="citation-title">{t('ui.citation.title')}</h2>
-        <p>{t('ui.citation.should', { name: c?.evidence.look.name ?? '', dest: t(`dest.${v.expected}`) })}</p>
+        {v.stamped === v.expected && skipped.length > 0 ? (
+          <p data-testid="citation-skipped">{t('ui.citation.skippedOnly', { name, dest, procs: listText(skipped) })}</p>
+        ) : (
+          <p>{t('ui.citation.should', { name, dest })}</p>
+        )}
+        {v.stamped !== v.expected && skipped.length > 0 ? (
+          <p data-testid="citation-skipped">{t('ui.citation.skipped', { procs: listText(skipped) })}</p>
+        ) : null}
         {rule ? <p class="dialog__rule">{t(rule.text)}</p> : null}
         {missed.length > 0 ? <p>{t('ui.citation.missed', { fields: listText(missed) })}</p> : null}
         <div class="row">

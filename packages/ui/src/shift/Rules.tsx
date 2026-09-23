@@ -47,6 +47,16 @@ export function RulesPanel({ ctx, decree = true }: { ctx: DayCtx; decree?: boole
           </ul>
         </>
       ) : null}
+      {ctx.procedures.length > 0 ? (
+        <>
+          <h3>{t('ui.rules.procedures')}</h3>
+          <ul>
+            {ctx.procedures.map((p) => (
+              <li key={p.id}>{t(p.text)}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       <h3>{t('ui.rules.tools')}</h3>
       <ul>
         {[...ctx.tools].map(([id, s]) => (

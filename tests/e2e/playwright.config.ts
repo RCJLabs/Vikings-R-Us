@@ -1,19 +1,26 @@
 import { defineConfig } from '@playwright/test';
+import { BASE, FULL } from './urls';
 
-const BASE = 'http://localhost:4173/Vikings-R-Us/';
-
-// Smoke tests against the real web-demo build (run `pnpm build:web-demo` first).
+// Tests against the real builds (run `pnpm build:web-demo` and `pnpm build:dev-full` first).
 export default defineConfig({
   testDir: '.',
   outputDir: './results',
   reporter: process.env.CI ? [['list'], ['html', { outputFolder: './report', open: 'never' }]] : 'list',
   use: { baseURL: BASE },
-  webServer: {
-    command: 'pnpm preview:web-demo',
-    url: BASE,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: 'pnpm preview:web-demo',
+      url: BASE,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      command: 'pnpm preview:dev-full',
+      url: FULL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
   projects: [
     {
       name: 'phone',

@@ -4,7 +4,7 @@ A Papers, Please-style judgment game: you're a new Valkyrie with 20 battle-days 
 
 - **Plan:** [`docs/build-plan.md`](docs/build-plan.md): design, 20-day campaign, milestones, risks.
 - **Technical spec:** [`docs/tech-spec.md`](docs/tech-spec.md): types, the case-fairness system, content formats, platform shells.
-- **Status:** M3 (public Daily alpha, built): the Daily Shift, a three-soul primer and practice days, with "Report this soul", feedback forms, a Daily checksum guard and opt-in telemetry. To launch it, follow [`docs/alpha-launch.md`](docs/alpha-launch.md). Privacy: [`docs/privacy.md`](docs/privacy.md).
+- **Status:** M4 (campaign systems, built): the campaign with save slots, mornings, audits, nights, family, factions, a shop and endings, Ink story scenes, story souls and replaying any day. The demo plays Days 1–3; the full game Days 1–6, with the registry, rune-lens, clipping nails and forged tallies in Practice (Days 6–8 and 11). All story text is draft ([`docs/story-drafts.md`](docs/story-drafts.md)). M3's public Daily alpha is unchanged: to launch it, follow [`docs/alpha-launch.md`](docs/alpha-launch.md). Privacy: [`docs/privacy.md`](docs/privacy.md).
 
 ## Getting started
 

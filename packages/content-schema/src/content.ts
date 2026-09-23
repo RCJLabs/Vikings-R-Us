@@ -2,19 +2,29 @@ import type {
   ArchetypeDef,
   CueDef,
   DaySpec,
+  Economy,
+  Effect,
+  EndingDef,
   FactDef,
   FactLaw,
+  FamilyDef,
   NamedPredicate,
   ObservationDef,
   ObsPattern,
   Pred,
+  ProcedureDef,
   QuestionTemplate,
   RavenTemplate,
   RuleDef,
+  ScriptedCaseDef,
   SignLaw,
   SpeechSlotDef,
+  StandingRule,
+  StatePred,
+  TallyTemplate,
   TestimonyTemplate,
   ToolDef,
+  UpgradeDef,
   WorldConstraint,
 } from '@cots/engine';
 import { z } from 'zod';
@@ -34,7 +44,7 @@ const Weight = Int.min(0);
 
 export const ValueSchema = z.union([z.string(), Int, z.boolean()]);
 export const DestinationSchema = z.enum(['VALHALLA', 'FOLKVANGR', 'HEL', 'RAN', 'RETURN', 'DETAIN', 'TRANSFER']);
-export const ToolIdSchema = z.enum(['flip', 'feather', 'runeLens', 'clippers']);
+export const ToolIdSchema = z.enum(['flip', 'feather', 'registry', 'runeLens', 'clippers']);
 const ViewSchema = z.enum(['front', 'back']);
 const SalienceSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 const QuestionKindSchema = z.enum(['confess', 'excuse', 'insist', 'deflect']);
@@ -101,6 +111,7 @@ export const ObservationSchema: z.ZodType<ObservationDef> = z.strictObject({
     }),
   ]),
   when: PredSchema.optional(),
+  doc: z.literal('registry').optional(),
 });
 
 const FactConstraintSchema = z.strictObject({ fact: z.string(), in: z.array(ValueSchema).min(1) });
@@ -132,7 +143,10 @@ export const CueSchema: z.ZodType<CueDef> = z.strictObject({
   view: ViewSchema,
   since: Day,
   salience: SalienceSchema,
-  hint: z.strictObject({ fact: z.string(), value: ValueSchema }),
+  hint: z.union([
+    z.strictObject({ fact: z.string(), value: ValueSchema }),
+    z.strictObject({ forgery: z.literal(true) }),
+  ]),
 });
 
 export const WorldSchema: z.ZodType<WorldConstraint> = z.strictObject({ id: Id, if: PredSchema, then: PredSchema });
@@ -154,11 +168,30 @@ export const RuleSchema: z.ZodType<RuleDef> = z.strictObject({
 
 export const ToolSchema: z.ZodType<ToolDef> = z.strictObject({ id: ToolIdSchema, since: Day, cost: Int.min(0) });
 
+export const ProcedureSchema: z.ZodType<ProcedureDef> = z.strictObject({
+  id: Id,
+  since: Day,
+  until: Day.optional(),
+  when: PredSchema,
+  tool: ToolIdSchema,
+  text: Key,
+});
+
 const TruthConstraintSchema = z.union([
   z.strictObject({ is: ValueSchema }),
   z.strictObject({ in: z.array(ValueSchema).min(1) }),
   z.strictObject({ gte: Int.optional(), lte: Int.optional() }),
 ]);
+
+const LieSpecSchema = z.strictObject({
+  fact: z.string(),
+  claim: ValueSchema,
+  p: Percent,
+  motive: z.enum(['wantsValhalla', 'avoidHel', 'hideFaith', 'evadeRegistry', 'mistaken', 'mischief']),
+  onQuestion: z.partialRecord(QuestionKindSchema, Weight),
+  since: Day.optional(),
+  via: z.literal('tally').optional(),
+});
 
 export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   id: Id,
@@ -167,19 +200,10 @@ export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   personas: z.array(Id).min(1),
   truth: z.record(z.string(), TruthConstraintSchema),
   require: z.array(PredSchema).optional(),
-  lies: z.array(
-    z.strictObject({
-      fact: z.string(),
-      claim: ValueSchema,
-      p: Percent,
-      motive: z.enum(['wantsValhalla', 'avoidHel', 'hideFaith', 'evadeRegistry', 'mistaken', 'mischief']),
-      onQuestion: z.partialRecord(QuestionKindSchema, Weight),
-      since: Day.optional(),
-    }),
-  ),
+  lies: z.array(LieSpecSchema),
 });
 
-const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'back', 'flavor']);
+const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'owner', 'blade', 'back', 'oath', 'flavor']);
 
 export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
   slot: SpeechSlotNameSchema,
@@ -219,8 +243,17 @@ export const QuestionTemplateSchema: z.ZodType<QuestionTemplate> = z.strictObjec
     truth: z.array(ValueSchema).min(1).optional(),
     persona: z.array(Id).min(1).optional(),
     kind: QuestionKindSchema,
+    via: z.literal('tally').optional(),
   }),
   msgs: z.array(Key).min(1),
+  weight: Weight.default(1),
+});
+
+export const TallyTemplateSchema: z.ZodType<TallyTemplate> = z.strictObject({
+  id: Id,
+  asserts: Asserts,
+  msg: Key,
+  params: Params.optional(),
   weight: Weight.default(1),
 });
 
@@ -228,10 +261,20 @@ export const PoolsSchema = z.record(Key, z.array(z.string().min(1)).min(1));
 
 const Pair = z.tuple([Int.min(0), Int.min(0)]);
 
+export const EconomySchema: z.ZodType<Economy> = z.strictObject({
+  wage: Int.min(0),
+  docBonus: Int.min(0),
+  warnings: Int.min(0),
+  fines: z.array(Int.min(0)).min(1),
+  costs: z.strictObject({ hearth: Int.min(0), food: Int.min(0), medicine: Int.min(0) }),
+});
+
 export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
   day: Day,
   sunS: Int.positive(),
   decree: Key,
+  economy: EconomySchema.optional(),
+  scenes: z.strictObject({ morning: Id.optional(), night: Id.optional() }).optional(),
   params: z
     .record(z.string(), z.strictObject({ pool: z.array(z.strictObject({ id: Id, text: Key, is: PredSchema })).min(1) }))
     .optional(),
@@ -240,6 +283,10 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
     teachFirst: Id.optional(),
     script: z
       .array(z.strictObject({ id: Id, dest: DestinationSchema }))
+      .min(1)
+      .optional(),
+    scripted: z
+      .array(z.strictObject({ case: Id, at: Int.min(0) }))
       .min(1)
       .optional(),
     archetypes: z.array(z.strictObject({ id: Id, w: Int.positive() })).min(1),
@@ -254,6 +301,108 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       maxTools: Int.min(0),
       maxDocs: Int.min(1),
       salienceFloor: SalienceSchema,
+      tallyRate: Percent.optional(),
     }),
   }),
 });
+
+// ---- Campaign (campaign.yaml) ----
+
+const FactionSchema = z.enum(['odin', 'freyja', 'hel', 'loki', 'clerk']);
+
+export const StatePredSchema: z.ZodType<StatePred> = z.lazy(() =>
+  z.union([
+    z.strictObject({ state: z.string(), is: Int.optional(), gte: Int.optional(), lte: Int.optional() }),
+    z.strictObject({ all: z.array(StatePredSchema).min(1) }),
+    z.strictObject({ any: z.array(StatePredSchema).min(1) }),
+    z.strictObject({ not: StatePredSchema }),
+  ]),
+);
+
+export const EffectSchema: z.ZodType<Effect> = z.union([
+  z.strictObject({ rings: Int }),
+  z.strictObject({ standing: FactionSchema, by: Int }),
+  z.strictObject({ flag: z.string().regex(/^[A-Za-z0-9_]+$/), set: Int.optional(), inc: Int.optional() }),
+  z.strictObject({ family: z.string(), becomes: z.enum(['sick', 'well']) }),
+]);
+
+const LookSchema = z.strictObject({
+  gender: z.enum(['m', 'f']),
+  name: z.string().min(1),
+  patronym: z.string().min(1),
+  // The dead are adults only (docs/build-plan.md §1, content rules).
+  age: Int.min(18).max(85),
+  build: z.enum(['lean', 'broad', 'heavy']),
+  beard: z.enum(['none', 'short', 'long', 'braided']),
+});
+
+/** A story soul (`cases/*.yaml`, one per file). */
+export const ScriptedCaseSchema: z.ZodType<ScriptedCaseDef> = z.strictObject({
+  id: Id,
+  personas: z.array(Id).min(1),
+  truth: z.record(z.string(), TruthConstraintSchema),
+  require: z.array(PredSchema).optional(),
+  lies: z.array(LieSpecSchema),
+  look: LookSchema,
+  lines: z.array(Key).min(1).optional(),
+  expect: DestinationSchema,
+  when: StatePredSchema.optional(),
+  onStamp: z
+    .array(
+      z.strictObject({
+        stamped: z.union([DestinationSchema, z.literal('*')]),
+        effects: z.array(EffectSchema).min(1),
+      }),
+    )
+    .min(1)
+    .optional(),
+});
+
+const FamilyDefSchema: z.ZodType<FamilyDef> = z.strictObject({ id: z.string(), name: Key, adult: z.boolean() });
+
+const UpgradeSchema: z.ZodType<UpgradeDef> = z.strictObject({
+  id: Id,
+  name: Key,
+  text: Key,
+  price: Int.min(1),
+  since: Day,
+  effect: z.union([
+    z.strictObject({ tool: ToolIdSchema, costS: Int.min(0) }),
+    z.strictObject({ questionS: Int.min(0) }),
+    z.strictObject({ sunS: Int.min(1) }),
+  ]),
+});
+
+const EndingSchema: z.ZodType<EndingDef> = z.strictObject({
+  id: Id,
+  order: Int,
+  when: StatePredSchema.optional(),
+  title: Key,
+  text: Key,
+});
+
+const StandingRuleSchema: z.ZodType<StandingRule> = z.strictObject({
+  expected: z.union([DestinationSchema, z.literal('*')]),
+  stamped: z.union([DestinationSchema, z.literal('*')]),
+  fx: z.partialRecord(FactionSchema, Int),
+});
+
+/**
+ * One pack's part of the campaign. The demo pack defines the whole thing for
+ * Days 1-3; the campaign pack overrides `lastDay` and `finale` and adds shop
+ * items, standing rules and endings (see mergeCampaign in the compiler).
+ */
+export const CampaignPartSchema = z.strictObject({
+  lastDay: Day.optional(),
+  finale: Id.optional(),
+  startRings: Int.optional(),
+  family: z.array(FamilyDefSchema).min(1).optional(),
+  draupnir: z.strictObject({ nights: z.array(Day), rings: Int.min(0) }).optional(),
+  debtFloor: Int.optional(),
+  care: z.strictObject({ needNights: Int.min(1), sickChance: Percent, sickNights: Int.min(1) }).optional(),
+  worthy: Id.optional(),
+  standing: z.array(StandingRuleSchema).optional(),
+  shop: z.array(UpgradeSchema).optional(),
+  endings: z.array(EndingSchema).optional(),
+});
+export type CampaignPart = z.infer<typeof CampaignPartSchema>;

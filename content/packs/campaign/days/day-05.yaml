@@ -1,6 +1,13 @@
 day: 5
 sunS: 540
 decree: decree.d5
+economy:
+  wage: 7
+  docBonus: 1
+  warnings: 2
+  fines: [5, 10, 15]
+  costs: { hearth: 6, food: 3, medicine: 10 }
+scenes: { morning: scene.d5.morning, night: scene.d5.night }
 params:
   freyjaWhim:
     pool:
