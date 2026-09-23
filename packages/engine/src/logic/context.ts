@@ -8,6 +8,7 @@ import type {
   FactLaw,
   ObservationDef,
   Pred,
+  ProcedureDef,
   RuleDef,
   SignLaw,
   ToolId,
@@ -40,6 +41,8 @@ export interface DayCtx extends PredCtx {
   readonly derived: readonly string[];
   /** Rules in force today, in evaluation order. */
   readonly rules: readonly RuleDef[];
+  /** Procedures in force today, in content order. */
+  readonly procedures: readonly ProcedureDef[];
   /** Which pool entry each day parameter drew (for the decree text). */
   readonly paramChoices: Readonly<Record<string, { readonly id: string; readonly text: string }>>;
   /** Observations that exist today (their tools are unlocked). */
@@ -109,6 +112,7 @@ function buildContext(
 
   const inForce = (since: number, until?: number) => since <= day && (until === undefined || day < until);
   const rules = content.rules.filter((r) => inForce(r.since, r.until)).sort(byOrder);
+  const procedures = (content.procedures ?? []).filter((p) => inForce(p.since, p.until));
 
   const predicates = new Map<string, Pred>();
   for (const np of content.predicates) {
@@ -148,6 +152,7 @@ function buildContext(
     sampled,
     derived,
     rules,
+    procedures,
     predicates,
     params,
     paramChoices,

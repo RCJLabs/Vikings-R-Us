@@ -282,5 +282,11 @@
   "ui.registry.search": "Search the registry",
   "ui.registry.unsearched": "Search the registry to look up {name} {patronym}.",
   "ui.registry.field": "the registry",
-  "ui.registry.portrait": "Registry portrait of {name} {patronym}"
+  "ui.registry.portrait": "Registry portrait of {name} {patronym}",
+  "ui.rules.procedures": "Procedures",
+  "ui.citation.skipped": "The decree also said to {procs}.",
+  "ui.citation.skippedOnly": "{name} was bound for {dest}, but the decree said to {procs} first.",
+  "ui.summary.skipped": "not done: {procs}",
+  "ui.tab.tally": "Tally",
+  "ui.tally.lens": "Look at the carving through the rune-lens to check it for forgery."
 }

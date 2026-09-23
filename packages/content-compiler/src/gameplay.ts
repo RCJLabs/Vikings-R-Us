@@ -11,11 +11,13 @@ import {
   NamedPredicateSchema,
   ObservationSchema,
   PoolsSchema,
+  ProcedureSchema,
   QuestionTemplateSchema,
   RavenTemplateSchema,
   RuleSchema,
   ScriptedCaseSchema,
   SpeechSlotSchema,
+  TallyTemplateSchema,
   TestimonyTemplateSchema,
   ToolSchema,
   toFactLaw,
@@ -33,12 +35,14 @@ import type {
   NamedPredicate,
   ObservationDef,
   Pred,
+  ProcedureDef,
   QuestionTemplate,
   RavenTemplate,
   RuleDef,
   ScriptedCaseDef,
   SignLaw,
   SpeechSlotDef,
+  TallyTemplate,
   TestimonyTemplate,
   ToolDef,
   WorldConstraint,
@@ -72,6 +76,8 @@ export interface PackContent {
   campaign?: CampaignPart;
   /** Story souls (`cases/*.yaml`, one per file). */
   scripted: ScriptedCaseDef[];
+  procedures: ProcedureDef[];
+  tallies: TallyTemplate[];
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -115,6 +121,8 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     pools: existsSync(poolsFile) ? parse(PoolsSchema, readYaml(poolsFile) ?? {}, poolsFile) : {},
     days,
     scripted: each('cases', ScriptedCaseSchema),
+    procedures: list('procedures.yaml', ProcedureSchema),
+    tallies: list('templates/tallies.yaml', TallyTemplateSchema),
     ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
     ...(existsSync(primerFile) ? { primer: parse(DaySpecSchema, readYaml(primerFile), primerFile) } : {}),
     ...(existsSync(campaignFile) ? { campaign: parse(CampaignPartSchema, readYaml(campaignFile), campaignFile) } : {}),
@@ -177,6 +185,8 @@ export function emptyPackContent(): PackContent {
     pools: {},
     days: [],
     scripted: [],
+    procedures: [],
+    tallies: [],
   };
 }
 
@@ -193,6 +203,8 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
   const primer = one('primer');
   const campaign = mergeCampaign(parts.flatMap((p) => (p.campaign ? [p.campaign] : [])));
   const scripted = cat('scripted');
+  const procedures = cat('procedures');
+  const tallies = cat('tallies');
   return {
     genVersion,
     facts: cat('facts'),
@@ -215,6 +227,8 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     ...(primer ? { primer } : {}),
     ...(campaign ? { campaign } : {}),
     ...(scripted.length > 0 ? { scripted } : {}),
+    ...(procedures.length > 0 ? { procedures } : {}),
+    ...(tallies.length > 0 ? { tallies } : {}),
   };
 }
 
@@ -237,6 +251,8 @@ export function idsOf(c: PackContent): string[] {
     ...(c.campaign?.shop ?? []).map((u) => u.id),
     ...(c.campaign?.endings ?? []).map((e) => e.id),
     ...c.scripted.map((x) => x.id),
+    ...c.procedures.map((x) => x.id),
+    ...c.tallies.map((x) => x.id),
     ...c.days.flatMap((d) => Object.values(d.params ?? {}).flatMap((p) => p.pool.map((x) => x.id))),
   ];
 }
@@ -339,7 +355,7 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     key(l.text, `law ${l.id}`);
   }
   for (const c of content.cues) {
-    fact(c.hint.fact, `cue ${c.key}`);
+    if ('fact' in c.hint) fact(c.hint.fact, `cue ${c.key}`);
     key(`cue.${c.key}`, `cue ${c.key}`);
   }
   // The shift UI shows every sign as a text chip: `obs.<key>.<value>`, or `obs.<key>` with an {n} plural.
@@ -367,9 +383,25 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     key(r.text, `rule ${r.id}`);
   }
   for (const s of content.speech) if (s.fact) fact(s.fact, `speech slot ${s.slot}`);
+  dupes(
+    'procedure',
+    (content.procedures ?? []).map((p) => p.id),
+  );
+  for (const p of content.procedures ?? []) {
+    pred(p.when, `procedure ${p.id}`);
+    key(p.text, `procedure ${p.id}`);
+    key(`${p.text}.short`, `procedure ${p.id}`);
+    const tool = content.tools.find((x) => x.id === p.tool);
+    if (!tool) problems.push(`procedure ${p.id} is done with a tool this build doesn't have.`);
+    else if (tool.since > p.since) problems.push(`procedure ${p.id} starts before its tool does.`);
+  }
 
   const pools = new Set(Object.keys(content.pools));
-  const templates = [...content.testimony, ...content.ravens];
+  dupes(
+    'tally line',
+    (content.tallies ?? []).map((t) => t.id),
+  );
+  const templates = [...content.testimony, ...content.ravens, ...(content.tallies ?? [])];
   for (const t of templates) {
     if (t.asserts) fact(t.asserts.fact, `template ${t.id}`);
     key(t.msg, `template ${t.id}`);
@@ -390,13 +422,19 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     for (const lie of a.lies) {
       fact(lie.fact, `archetype ${a.id}`);
       for (const [k, w] of Object.entries(lie.onQuestion)) if ((w ?? 0) > 0) kindsUsed.add(k);
-      const speakable = content.testimony.some(
-        (t) =>
-          t.asserts?.fact === lie.fact &&
-          t.asserts.value === lie.claim &&
-          (t.personas === undefined || t.personas.some((p) => a.personas.includes(p))),
-      );
-      if (!speakable) problems.push(`archetype ${a.id} can't voice its lie ${lie.fact}=${String(lie.claim)}.`);
+      const speakable =
+        lie.via === 'tally'
+          ? (content.tallies ?? []).some((t) => t.asserts.fact === lie.fact && t.asserts.value === lie.claim)
+          : content.testimony.some(
+              (t) =>
+                t.asserts?.fact === lie.fact &&
+                t.asserts.value === lie.claim &&
+                (t.personas === undefined || t.personas.some((p) => a.personas.includes(p))),
+            );
+      if (!speakable) {
+        const how = lie.via === 'tally' ? 'carve' : 'voice';
+        problems.push(`archetype ${a.id} can't ${how} its lie ${lie.fact}=${String(lie.claim)}.`);
+      }
     }
   }
   for (const k of kindsUsed) {

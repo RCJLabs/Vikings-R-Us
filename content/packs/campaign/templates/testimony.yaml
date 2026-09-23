@@ -1,3 +1,7 @@
 - { id: tm.oath.kept.1, slot: oath, asserts: { fact: outlaw, value: false }, msg: tm.oath.kept.1, weight: 2 }
 - { id: tm.oath.kept.2, slot: oath, asserts: { fact: outlaw, value: false }, personas: [braggart], msg: tm.oath.kept.2, weight: 2 }
 - { id: tm.oath.kept.3, slot: oath, asserts: { fact: outlaw, value: false }, personas: [veteran, honest], msg: tm.oath.kept.3 }
+- { id: tm.owner.self.1, slot: owner, asserts: { fact: weaponOwner, value: self }, msg: tm.owner.self.1, weight: 2 }
+- { id: tm.owner.self.2, slot: owner, asserts: { fact: weaponOwner, value: self }, personas: [braggart], msg: tm.owner.self.2 }
+- { id: tm.blade.ulfberht.1, slot: blade, asserts: { fact: blade, value: ulfberht }, msg: tm.blade.ulfberht.1 }
+- { id: tm.blade.ulfberht.2, slot: blade, asserts: { fact: blade, value: ulfberht }, personas: [braggart], msg: tm.blade.ulfberht.2, weight: 2 }

@@ -55,6 +55,20 @@ export function registryEntry(c: CaseSpec, f: Field): RegistryEntry {
   };
 }
 
+/** What the decree also required and wasn't done, e.g. "clip the nails". */
+export function skippedText(skipped: readonly string[] | undefined, ctx: DayCtx): string[] {
+  return (skipped ?? []).map((id) => {
+    const p = ctx.procedures.find((x) => x.id === id);
+    return p ? t(`${p.text}.short`) : id;
+  });
+}
+
+/** Somebody else's given name for this soul's case (an owner's runes that don't name the soul). */
+export function otherName(c: CaseSpec): string {
+  const names = (gameContent.pools['names.m'] ?? []).filter((n) => n !== c.evidence.look.name);
+  return names[fnv1a32(`${c.id}|owner`) % Math.max(1, names.length)] ?? 'Nobody';
+}
+
 /** A field as the player reads it: a sign chip, a cue, or a line of testimony or raven report. */
 export function fieldText(f: Field, c?: CaseSpec): string {
   if (f.item === 'registry' && f.obs) {
@@ -69,7 +83,11 @@ export function fieldText(f: Field, c?: CaseSpec): string {
   }
   if (f.obs) {
     const v = f.obs.value;
-    return typeof v === 'number' ? t(`obs.${f.obs.key}`, { n: v }) : t(`obs.${f.obs.key}.${String(v)}`);
+    // Readings that name somebody (a weapon's owner) get the names; other signs ignore them.
+    const who: Record<string, string> = c
+      ? { name: c.evidence.look.name, patronym: c.evidence.look.patronym, other: otherName(c) }
+      : {};
+    return typeof v === 'number' ? t(`obs.${f.obs.key}`, { n: v, ...who }) : t(`obs.${f.obs.key}.${String(v)}`, who);
   }
   if (f.cue) return t(`cue.${f.cue.key}`);
   if (f.text) return t(f.text.msg, f.text.params);

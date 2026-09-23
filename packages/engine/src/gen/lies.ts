@@ -33,6 +33,7 @@ export function pickLies(arch: ArchetypeDef, truth: Truth, ctx: DayCtx, knobs: K
       motive: spec.motive,
       onQuestion,
       reveals: onQuestion === 'confess' ? [spec.fact] : [],
+      ...(spec.via ? { via: spec.via } : {}),
     });
   }
   return out;

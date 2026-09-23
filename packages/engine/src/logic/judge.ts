@@ -5,14 +5,28 @@ import { eval2, type Truth } from './pred';
 export interface Judgment {
   readonly dest: Destination;
   readonly rule: string;
+  /** Procedures the soul needs before it goes (absent when none, so older cases keep their shape). */
+  readonly procedures?: readonly string[];
 }
 
-/** The correct judgment for a complete truth: the first rule in force that holds. */
+/** The correct judgment for a complete truth: the first rule in force that holds, plus any procedures due. */
 export function judge(truth: Truth, ctx: DayCtx): Judgment {
   for (const r of ctx.rules) {
-    if (eval2(r.when, truth, ctx)) return { dest: r.then, rule: r.id };
+    if (!eval2(r.when, truth, ctx)) continue;
+    const procedures = ctx.procedures.filter((p) => eval2(p.when, truth, ctx)).map((p) => p.id);
+    return { dest: r.then, rule: r.id, ...(procedures.length > 0 ? { procedures } : {}) };
   }
   throw new Error(`The rulebook for day ${ctx.day} has no rule that always applies`);
+}
+
+/** Same destination and same procedures (in rulebook order). */
+export function sameJudgment(
+  a: { readonly dest: Destination; readonly procedures?: readonly string[] },
+  b: { readonly dest: Destination; readonly procedures?: readonly string[] },
+): boolean {
+  const pa = a.procedures ?? [];
+  const pb = b.procedures ?? [];
+  return a.dest === b.dest && pa.length === pb.length && pa.every((p, i) => p === pb[i]);
 }
 
 /** Adds derived facts (e.g. `fled`) to sampled ones, in content order. */

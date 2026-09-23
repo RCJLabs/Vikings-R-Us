@@ -53,6 +53,8 @@ export interface Verdict {
   readonly correct: boolean;
   /** Proof fields the player never looked at, for the citation. */
   readonly missed: readonly string[];
+  /** Procedures the soul needed that weren't done (e.g. nails left unclipped). */
+  readonly skipped?: readonly string[];
   readonly caught: number;
   readonly lies: number;
   readonly atMs: number;
@@ -378,13 +380,18 @@ export function stepShift(
     case 'send': {
       const stamped = s.soul.stamp;
       if (!stamped) return withSun(reject(s, 'choose a stamp first'));
+      const skipped = (c.expect.procedures ?? []).filter((id) => {
+        const p = ctx.procedures.find((x) => x.id === id);
+        return !p || !s.soul.tools.includes(p.tool);
+      });
       const verdict: Verdict = {
         index: s.cursor,
         stamped,
         expected: c.expect.dest,
         rule: c.expect.rule,
-        correct: stamped === c.expect.dest,
+        correct: stamped === c.expect.dest && skipped.length === 0,
         missed: c.meta.proof.filter((id) => !s.soul.seen.includes(id)),
+        ...(skipped.length > 0 ? { skipped } : {}),
         caught: s.soul.flagged.length,
         lies: c.lies.length,
         atMs: sunElapsed(s, action.at),

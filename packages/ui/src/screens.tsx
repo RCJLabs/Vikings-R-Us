@@ -4,9 +4,10 @@ import { shiftScore } from '@cots/engine';
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { openCampaign } from './campaign/lazy';
-import { clockText, t } from './i18n';
+import { clockText, listText, t } from './i18n';
 import { issueFormUrl, links } from './links';
 import { openReport } from './report';
+import { skippedText } from './shift/evidence';
 import { Decree, RulesPanel } from './shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from './shift/Shift';
 import {
@@ -381,7 +382,12 @@ export function Summary() {
               {t('ui.summary.row', { name, dest: t(`dest.${v.expected}`) })}
               {v.stamped === null ? (
                 <span class="muted"> ({t('ui.summary.unjudged')})</span>
-              ) : v.correct ? null : (
+              ) : v.correct ? null : v.stamped === v.expected ? (
+                <span class="muted">
+                  {' '}
+                  ({t('ui.summary.skipped', { procs: listText(skippedText(v.skipped, s.ctx)) })})
+                </span>
+              ) : (
                 <span class="muted"> ({t('ui.summary.you', { dest: t(`dest.${v.stamped}`) })})</span>
               )}{' '}
               <button

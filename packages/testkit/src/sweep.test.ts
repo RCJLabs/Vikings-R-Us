@@ -3,10 +3,11 @@ import { loadContent, loadDailyContent } from './content';
 import { checkThresholds, sweep } from './sweep';
 
 // The CI gate from docs/tech-spec.md §3.8, on a PR-sized sweep. `pnpm sim sweep --seeds 10000` runs the nightly size.
-it('the generator meets its thresholds on 200 seeds x days 1-6', () => {
+it('the generator meets its thresholds on 200 seeds x every day', () => {
+  const content = loadContent('dev-full');
   const report = sweep({
-    content: loadContent('dev-full'),
-    days: [1, 2, 3, 4, 5, 6],
+    content,
+    days: content.days.map((d) => d.day),
     seeds: Number(process.env.SWEEP_SEEDS ?? 200),
     seedPrefix: 'ci',
     now: () => performance.now(),

@@ -1,4 +1,4 @@
-import type { Look, ObservationDef, Value } from '@cots/engine';
+import type { Look, ObservationDef, ToolId, Value } from '@cots/engine';
 import { loadContent } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
 import { type BodyArtProvider, type BodyScene, placeholderBody, placeholderPortrait } from './body';
@@ -8,6 +8,10 @@ const providers: BodyArtProvider[] = [placeholderBody];
 const content = loadContent('dev-full');
 // Body signs only: readings from a document (the registry) are drawn elsewhere.
 const bodyObservations = content.observations.filter((o) => o.doc === undefined);
+const toolOf = (key: string): ToolId[] => {
+  const tool = content.observations.find((o) => o.key === key)?.tool;
+  return tool ? [tool] : [];
+};
 
 const look = (over: Partial<Look> = {}): Look => ({
   gender: 'm',
@@ -47,7 +51,8 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
     look: look(),
     obs: { ...BASE, [key]: value },
     cues: [],
-    tools: key === 'breath' ? ['feather'] : [],
+    // A tool's reading is drawn once the tool is used (the feather at the lips, the rune-lens on the blade).
+    tools: toolOf(key),
     ...over,
   });
 

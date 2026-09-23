@@ -116,6 +116,55 @@ function axe(x: number, y: number, outward: 1 | -1): string {
   ].join('');
 }
 
+/** Long nails as claws past the knuckles; after the clippers, nothing sticks out. */
+function claws(x: number, y: number): string {
+  return [-9, -3, 3, 9]
+    .map(
+      (d) =>
+        `<path d="M${x + d} ${y + 10}L${x + d * 1.3} ${y + 22}" stroke="#e6dcc0" stroke-width="3" stroke-linecap="round"/><path d="M${x + d} ${y + 10}L${x + d * 1.3} ${y + 22}" stroke="${INK}" stroke-width="1" stroke-linecap="round"/>`,
+    )
+    .join('');
+}
+
+/** A grip wrapped for a bigger hand: a thick, cross-bound band above the fist. */
+function wrongGrip(x: number, y: number): string {
+  return [
+    `<rect x="${x - 9}" y="${y - 44}" width="18" height="26" rx="4" fill="#8a5a2b" stroke="${INK}" stroke-width="2"/>`,
+    `<path d="M${x - 9} ${y - 40}L${x + 9} ${y - 30}M${x - 9} ${y - 30}L${x + 9} ${y - 20}" stroke="${INK}" stroke-width="1.5"/>`,
+  ].join('');
+}
+
+/**
+ * What the rune-lens shows on the weapon: a lens over the blade and the
+ * carving under it. Stave patterns stand in for the runes (the text chip
+ * reads them out), different for each owner and maker's mark.
+ */
+function runeReading(x: number, y: number, inscription: Value | undefined, mark: Value | undefined): string {
+  const top = y - 76;
+  const staves = (seed: string, x0: number, y0: number) =>
+    [...seed]
+      .map((ch, i) => {
+        const cx = x0 + i * 5;
+        const k = ch.charCodeAt(0) % 3;
+        const branch =
+          k === 0
+            ? `M${cx} ${y0 + 2}L${cx + 3} ${y0 - 1}`
+            : k === 1
+              ? `M${cx} ${y0 + 4}L${cx - 3} ${y0 + 1}`
+              : `M${cx - 2} ${y0 + 3}L${cx + 2} ${y0 + 3}`;
+        return `<path d="M${cx} ${y0 - 3}V${y0 + 8}${branch}" stroke="${INK}" stroke-width="1.3" fill="none"/>`;
+      })
+      .join('');
+  const owner = inscription === 'other' ? 'xqzv' : inscription === 'own' ? 'amik' : '';
+  const maker = mark === 'markTrue' ? '+vlfberh+t' : mark === 'markCopy' ? '+vlfberht+' : '';
+  return [
+    `<circle cx="${x + 18}" cy="${top + 14}" r="22" fill="#f4efe0" fill-opacity="0.85" stroke="#3a2c20" stroke-width="3"/>`,
+    `<path d="M${x + 34} ${top + 30}L${x + 46} ${top + 42}" stroke="#3a2c20" stroke-width="5" stroke-linecap="round"/>`,
+    owner ? staves(owner, x + 6, top + 4) : '',
+    maker ? staves(maker.slice(-6), x + 2, top + 18) : '',
+  ].join('');
+}
+
 function hand(x: number, y: number, open: boolean): string {
   const fingers = open
     ? [-8, 0, 8]
@@ -160,11 +209,14 @@ function figure(scene: BodyScene): string {
   if (view === 'front' && weaponHand) {
     const x = weaponHand === 'L' ? hp.L : hp.R;
     parts.push(axe(x, hp.y, x < CX ? -1 : 1));
+    if (scene.cues.includes('wrongGrip')) parts.push(wrongGrip(x, hp.y));
+    if (scene.tools.includes('runeLens')) parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark));
   }
   for (const side of ['R', 'L'] as const) {
     const x = side === 'L' ? hp.L : hp.R;
     const open = view === 'front' && grip === 'none';
     parts.push(hand(x, hp.y, open));
+    if (view === 'front' && scene.obs.nails === true && !scene.tools.includes('clippers')) parts.push(claws(x, hp.y));
     parts.push(
       `<text x="${x}" y="${hp.y + 42}" font-size="13" font-family="sans-serif" text-anchor="middle" fill="#8f7e63">${side}</text>`,
     );
@@ -272,6 +324,19 @@ function ornament(value: Value | undefined): string {
     : `${cord}<circle cx="150" cy="186" r="9" fill="none" stroke="#c9ced3" stroke-width="5"/><circle cx="150" cy="186" r="9" fill="none" stroke="#5c6166" stroke-width="1"/>`;
 }
 
+/** A tally stick tucked in the belt, its notches fresh and pale (drawn only as a cue). */
+function freshTally(on: boolean, look: Look): string {
+  if (!on) return '';
+  const x = CX + half(look) - 22;
+  return [
+    `<rect x="${x}" y="262" width="10" height="44" rx="2" fill="#7a5a36" stroke="${INK}" stroke-width="2" transform="rotate(12 ${x + 5} 284)"/>`,
+    ...[268, 276, 284, 292].map(
+      (y) =>
+        `<path d="M${x + 1} ${y}L${x + 9} ${y + 2}" stroke="#f4ead2" stroke-width="2.5" transform="rotate(12 ${x + 5} 284)"/>`,
+    ),
+  ].join('');
+}
+
 /** An oath-ring on a thong, snapped open: drawn beside any pendant so both stay readable. */
 function brokenRing(on: boolean): string {
   if (!on) return '';
@@ -309,6 +374,7 @@ function draw(scene: BodyScene): string {
           face(scene),
           ornament(scene.obs.ornament),
           brokenRing(scene.cues.includes('brokenRing')),
+          freshTally(scene.cues.includes('freshCarving'), scene.look),
           wounds(scene.obs.woundsFront, FRONT_WOUNDS),
         ]
       : [figure(scene), hair(scene), wounds(scene.obs.woundsBack, BACK_WOUNDS)];
@@ -329,7 +395,7 @@ function hotspots(scene: BodyScene): Hotspot[] {
     y: 226,
     w: 52,
     h: 110,
-    keys: ['grip', 'gripHand'],
+    keys: ['grip', 'gripHand', 'nails', 'wrongGrip', 'inscription', 'makersMark'],
   });
   if (scene.view === 'back') {
     return [{ id: 'back', x: CX - h, y: 158, w: 2 * h, h: 146, keys: ['woundsBack'] }];
@@ -338,7 +404,7 @@ function hotspots(scene: BodyScene): Hotspot[] {
     { id: 'hair', x: 100, y: 46, w: 100, h: 38, keys: ['hair'] },
     { id: 'face', x: 100, y: 84, w: 100, h: 56, keys: ['skin', 'lips', 'breath', 'breathFog'] },
     { id: 'neck', x: 110, y: 140, w: 80, h: 62, keys: ['ornament', 'brokenRing'] },
-    { id: 'chest', x: CX - h, y: 202, w: 2 * h, h: 102, keys: ['woundsFront'] },
+    { id: 'chest', x: CX - h, y: 202, w: 2 * h, h: 102, keys: ['woundsFront', 'freshCarving'] },
     handSpot('handR', hp.R),
     handSpot('handL', hp.L),
   ];
@@ -361,6 +427,11 @@ export const placeholderBody: BodyArtProvider = {
     breath: 3,
     breathFog: 2,
     brokenRing: 2,
+    nails: 2,
+    wrongGrip: 2,
+    inscription: 2,
+    makersMark: 2,
+    freshCarving: 2,
   },
   views: {
     grip: 'front',
@@ -374,6 +445,11 @@ export const placeholderBody: BodyArtProvider = {
     breath: 'front',
     breathFog: 'front',
     brokenRing: 'front',
+    nails: 'front',
+    wrongGrip: 'front',
+    inscription: 'front',
+    makersMark: 'front',
+    freshCarving: 'front',
   },
 };
 

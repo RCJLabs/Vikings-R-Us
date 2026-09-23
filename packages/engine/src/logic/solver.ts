@@ -23,7 +23,13 @@ export interface Contradiction {
 }
 
 export type SolveJudgment =
-  | { readonly kind: 'determined'; readonly dest: Destination; readonly rule: string }
+  | {
+      readonly kind: 'determined';
+      readonly dest: Destination;
+      readonly rule: string;
+      /** Procedures known to be due (absent when none). */
+      readonly procedures?: readonly string[];
+    }
   | { readonly kind: 'undetermined'; readonly rule: string; readonly blocking: readonly string[] };
 
 export interface SolveResult {
@@ -38,7 +44,7 @@ export interface SolveResult {
 export interface SolveOptions {
   /** What questioning would reveal: lie field id -> the fact's true value. */
   readonly reveals?: ReadonlyMap<string, { readonly fact: string; readonly value: Value }>;
-  /** The "trusting" bot: testimony overrides everything else. */
+  /** The "trusting" bot: what the soul says (aloud or on its tally) overrides everything else. */
   readonly trustTestimony?: boolean;
 }
 
@@ -155,8 +161,9 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     }
   }
   if (opts.trustTestimony) {
+    // The trusting bot believes what the soul says and what its tally says.
     for (const f of perceived) {
-      if (f.item === 'testimony' && f.says && f.says.value !== null) {
+      if ((f.item === 'testimony' || f.item === 'tally') && f.says && f.says.value !== null) {
         forced.set(f.says.fact, { values: [f.says.value], level: 5, support: [f.id] });
       }
     }
@@ -176,6 +183,20 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
   propagate();
 
   const contradictions: Contradiction[] = [];
+
+  // The saga tally counts at trust 3, unless a forgery sign on it has been seen (then it counts for
+  // nothing). Where it disagrees with established evidence, the line is a lie to catch either way.
+  const forgerySeen = perceived.some((f) => f.tell !== undefined);
+  let carved = false;
+  for (const f of perceived) {
+    if (f.item !== 'tally' || !f.says || f.says.value === null) continue;
+    const b = view(f.says.fact);
+    if (b.level >= 3 && !b.values.includes(f.says.value)) {
+      if (!opts.trustTestimony) contradictions.push({ lie: f.id, fact: f.says.fact, against: b.support });
+    } else if (!forgerySeen && narrow(f.says.fact, [f.says.value], 3, [f.id])) carved = true;
+  }
+  if (carved) propagate();
+
   if (!opts.trustTestimony) {
     for (const f of perceived) {
       if (f.item !== 'testimony' || !f.says || f.says.value === null) continue;
@@ -216,6 +237,21 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     }
   }
   if (!judgment) throw new Error(`The rulebook for day ${ctx.day} has no rule that always applies`);
+
+  // The judgment also says which procedures are due; one the player can't settle leaves it undetermined.
+  if (judgment.kind === 'determined' && ctx.procedures.length > 0) {
+    const due: string[] = [];
+    for (const p of ctx.procedures) {
+      const res = eval3(p.when, valuesOf, ctx);
+      if (res === 'T') due.push(p.id);
+      else if (res === 'U') {
+        const blocking = [...factsIn(p.when, ctx)].filter((id) => view(id).values.length > 1);
+        judgment = { kind: 'undetermined', rule: p.id, blocking };
+        break;
+      }
+    }
+    if (judgment.kind === 'determined' && due.length > 0) judgment = { ...judgment, procedures: due };
+  }
 
   const all = new Map<string, Belief>();
   for (const id of ctx.facts.keys()) all.set(id, view(id));

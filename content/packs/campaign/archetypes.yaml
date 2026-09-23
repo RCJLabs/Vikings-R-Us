@@ -10,3 +10,66 @@
     alive: { is: false }
   lies:
     - { fact: outlaw, claim: false, p: 85, motive: evadeRegistry, onQuestion: { confess: 2, excuse: 1 } }
+- id: arch.borrowed_blade
+  since: 7
+  personas: [braggart, veteran]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    weaponOwner: { is: other }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: weaponOwner, claim: self, p: 80, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 1 } }
+- id: arch.ulfberht_braggart
+  since: 7
+  personas: [braggart]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    blade: { is: fakeUlfberht }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  require:
+    - { not: { param: freyjaWhim } }
+  lies:
+    - { fact: blade, claim: ulfberht, p: 90, motive: mistaken, onQuestion: { confess: 1, excuse: 1 } }
+# Day 8's teaching soul: a plain Valhalla case whose nails need clipping (anyone can have
+# long nails; see the nailsGrown prior).
+- id: arch.long_nails
+  since: 8
+  personas: [veteran, honest]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    nailsGrown: { is: true }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  require:
+    - { not: { param: freyjaWhim } }
+  lies: []
+# Day 11: forged saga tallies. The lie is carved, not spoken, and the carving gives itself away.
+- id: arch.tally_forger
+  since: 11
+  personas: [braggart, coward]
+  truth:
+    cause: { in: [sickness, oldAge] }
+    woundsFront: { is: 0 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: cause, claim: battle, p: 100, via: tally, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 1 } }
+- id: arch.coward_forger
+  since: 11
+  personas: [coward, braggart]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsBack: { gte: 1 }
+    woundsFront: { lte: 1 }
+    alive: { is: false }
+  lies:
+    - { fact: fled, claim: false, p: 100, via: tally, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 1 } }

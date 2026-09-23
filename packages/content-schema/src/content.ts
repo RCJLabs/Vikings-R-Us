@@ -12,6 +12,7 @@ import type {
   ObservationDef,
   ObsPattern,
   Pred,
+  ProcedureDef,
   QuestionTemplate,
   RavenTemplate,
   RuleDef,
@@ -20,6 +21,7 @@ import type {
   SpeechSlotDef,
   StandingRule,
   StatePred,
+  TallyTemplate,
   TestimonyTemplate,
   ToolDef,
   UpgradeDef,
@@ -141,7 +143,10 @@ export const CueSchema: z.ZodType<CueDef> = z.strictObject({
   view: ViewSchema,
   since: Day,
   salience: SalienceSchema,
-  hint: z.strictObject({ fact: z.string(), value: ValueSchema }),
+  hint: z.union([
+    z.strictObject({ fact: z.string(), value: ValueSchema }),
+    z.strictObject({ forgery: z.literal(true) }),
+  ]),
 });
 
 export const WorldSchema: z.ZodType<WorldConstraint> = z.strictObject({ id: Id, if: PredSchema, then: PredSchema });
@@ -163,6 +168,15 @@ export const RuleSchema: z.ZodType<RuleDef> = z.strictObject({
 
 export const ToolSchema: z.ZodType<ToolDef> = z.strictObject({ id: ToolIdSchema, since: Day, cost: Int.min(0) });
 
+export const ProcedureSchema: z.ZodType<ProcedureDef> = z.strictObject({
+  id: Id,
+  since: Day,
+  until: Day.optional(),
+  when: PredSchema,
+  tool: ToolIdSchema,
+  text: Key,
+});
+
 const TruthConstraintSchema = z.union([
   z.strictObject({ is: ValueSchema }),
   z.strictObject({ in: z.array(ValueSchema).min(1) }),
@@ -176,6 +190,7 @@ const LieSpecSchema = z.strictObject({
   motive: z.enum(['wantsValhalla', 'avoidHel', 'hideFaith', 'evadeRegistry', 'mistaken', 'mischief']),
   onQuestion: z.partialRecord(QuestionKindSchema, Weight),
   since: Day.optional(),
+  via: z.literal('tally').optional(),
 });
 
 export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
@@ -188,7 +203,7 @@ export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   lies: z.array(LieSpecSchema),
 });
 
-const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'back', 'oath', 'flavor']);
+const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'owner', 'blade', 'back', 'oath', 'flavor']);
 
 export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
   slot: SpeechSlotNameSchema,
@@ -228,8 +243,17 @@ export const QuestionTemplateSchema: z.ZodType<QuestionTemplate> = z.strictObjec
     truth: z.array(ValueSchema).min(1).optional(),
     persona: z.array(Id).min(1).optional(),
     kind: QuestionKindSchema,
+    via: z.literal('tally').optional(),
   }),
   msgs: z.array(Key).min(1),
+  weight: Weight.default(1),
+});
+
+export const TallyTemplateSchema: z.ZodType<TallyTemplate> = z.strictObject({
+  id: Id,
+  asserts: Asserts,
+  msg: Key,
+  params: Params.optional(),
   weight: Weight.default(1),
 });
 
@@ -277,6 +301,7 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       maxTools: Int.min(0),
       maxDocs: Int.min(1),
       salienceFloor: SalienceSchema,
+      tallyRate: Percent.optional(),
     }),
   }),
 });

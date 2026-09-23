@@ -9,13 +9,24 @@ import { createDayContext, generateDay } from '@cots/engine';
 import { loadContent } from '@cots/testkit';
 import { expect, it } from 'vitest';
 
-const FILE = resolve(import.meta.dirname, 'days-1-5.json');
 const content = loadContent('dev-full');
 
-function summarize() {
+/**
+ * Days 1-5 play in the demo and feed the Daily's mechanics; Days 6 on are the
+ * full game's (a diff there changes campaigns and practice, not Dailies).
+ */
+const FILES = [
+  { file: resolve(import.meta.dirname, 'days-1-5.json'), days: [1, 2, 3, 4, 5] },
+  {
+    file: resolve(import.meta.dirname, 'days-6-on.json'),
+    days: content.days.map((d) => d.day).filter((d) => d >= 6),
+  },
+];
+
+function summarize(days: readonly number[]) {
   const out: Record<string, unknown> = { genVersion: content.genVersion };
   for (let s = 0; s < 12; s++) {
-    for (let day = 1; day <= 5; day++) {
+    for (const day of days) {
       const seed = `golden-${s}`;
       const ctx = createDayContext(content, day, seed);
       out[`${seed}/day-${day}`] = {
@@ -28,6 +39,7 @@ function summarize() {
             c.lies.map((l) => `lie ${l.fact}=${String(l.claimed)}/${l.onQuestion}`).join(',') || 'honest',
             `proof ${c.meta.proof.join('+')} ${c.meta.proofCostS}s`,
             `difficulty ${c.meta.difficulty}`,
+            ...(c.expect.procedures ? [`then ${c.expect.procedures.join('+')}`] : []),
           ].join(' | '),
         ),
       };
@@ -36,10 +48,10 @@ function summarize() {
   return out;
 }
 
-it('generated days match the golden summaries', () => {
-  const actual = summarize();
-  if (process.env.UPDATE_GOLDEN === '1' || !existsSync(FILE)) {
-    writeFileSync(FILE, `${JSON.stringify(actual, null, 2)}\n`);
+it.each(FILES.map((f) => [f.file.split('/').pop(), f] as const))('generated days match %s', (_, { file, days }) => {
+  const actual = summarize(days);
+  if (process.env.UPDATE_GOLDEN === '1' || !existsSync(file)) {
+    writeFileSync(file, `${JSON.stringify(actual, null, 2)}\n`);
   }
-  expect(actual).toEqual(JSON.parse(readFileSync(FILE, 'utf8')));
+  expect(actual).toEqual(JSON.parse(readFileSync(file, 'utf8')));
 });

@@ -388,6 +388,13 @@ kbd {
   gap: 0.4rem;
 }
 
+/* Turning over and the feather on the right; the later decrees' tools on the left. */
+.stage__tools--more {
+  right: auto;
+  left: 0.5rem;
+  align-items: flex-start;
+}
+
 .clues {
   display: flex;
   flex-wrap: wrap;
@@ -595,6 +602,21 @@ kbd {
   max-height: 9.9rem;
   overflow-y: auto;
   border-bottom: 1px solid var(--line);
+}
+
+/* On phones the tools stay beside the body: compact buttons, no key hints. */
+.drawer .stage__tools {
+  top: 0.35rem;
+  gap: 0.3rem;
+}
+
+.drawer .btn--tool {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.drawer .btn--tool kbd {
+  display: none;
 }
 
 /* Short or narrow phones: smaller chips so every sign fits without scrolling (targets stay 44px tall). */

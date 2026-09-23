@@ -1,0 +1,11 @@
+# Saga tally lines (Day 11 on): what a soul's deeds were carved as. Trusted unless the tally is forged.
+- { id: tl.cause.battle, asserts: { fact: cause, value: battle }, msg: tl.cause.battle, params: { place: pool.places } }
+- { id: tl.cause.sickness, asserts: { fact: cause, value: sickness }, msg: tl.cause.sickness }
+- { id: tl.cause.oldAge, asserts: { fact: cause, value: oldAge }, msg: tl.cause.oldAge }
+- { id: tl.cause.drowned, asserts: { fact: cause, value: drowned }, msg: tl.cause.drowned, params: { place: pool.places } }
+- { id: tl.grip.weapon, asserts: { fact: grip, value: weapon }, msg: tl.grip.weapon, params: { weapon: pool.weapons } }
+- { id: tl.grip.none, asserts: { fact: grip, value: none }, msg: tl.grip.none, params: { weapon: pool.weapons } }
+- { id: tl.fled.false, asserts: { fact: fled, value: false }, msg: tl.fled.false }
+- { id: tl.fled.true, asserts: { fact: fled, value: true }, msg: tl.fled.true }
+- { id: tl.owner.self, asserts: { fact: weaponOwner, value: self }, msg: tl.owner.self }
+- { id: tl.outlaw.false, asserts: { fact: outlaw, value: false }, msg: tl.outlaw.false }

@@ -2,7 +2,7 @@ import type { Destination, Motive, QuestionKind, Salience, ToolId, Value, View }
 import type { Judgment } from '../logic/judge';
 import type { Truth } from '../logic/pred';
 
-export type Item = 'body' | 'testimony' | 'huginn' | 'muninn' | 'registry';
+export type Item = 'body' | 'testimony' | 'huginn' | 'muninn' | 'registry' | 'tally';
 
 /** One thing the player can inspect: a body sign, a cue, or a line of testimony or raven report. */
 export interface Field {
@@ -17,6 +17,8 @@ export interface Field {
   readonly cue?: { readonly key: string };
   /** A statement about a fact. `null` means Muninn forgot. */
   readonly says?: { readonly fact: string; readonly value: Value | null };
+  /** A forgery sign on the soul's saga tally: seen, it makes the whole tally worthless. */
+  readonly tell?: ForgeryTell;
   readonly text?: { readonly msg: string; readonly params: Readonly<Record<string, string | number>> };
 }
 
@@ -36,9 +38,14 @@ export interface Evidence {
   readonly persona: string;
 }
 
+/** How a forged tally gives itself away (never spelling: Younger Futhark spelling varied too much). */
+export type ForgeryTell = 'elderRune' | 'mirroredRune' | 'brokenFormula';
+
 export interface Lie {
-  /** The testimony field that tells it. */
+  /** The testimony or tally field that tells it. */
   readonly field: string;
+  /** Carved on a forged saga tally rather than spoken. */
+  readonly via?: 'tally';
   readonly fact: string;
   readonly claimed: Value;
   readonly truth: Value;
@@ -89,6 +96,7 @@ export type RejectCode =
   | 'HIDDEN_LIE'
   | 'PRESUMPTION_UNSUPPORTED'
   | 'CUE_MISSING'
+  | 'HIDDEN_FORGERY'
   | 'EFFORT_BAND'
   | 'TOO_MANY_TOOLS'
   | 'SALIENCE_FLOOR'

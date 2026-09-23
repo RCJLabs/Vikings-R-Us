@@ -1,2 +1,6 @@
 - { kind: sign, id: law.registry, since: 6, text: law.registry, if: { obs: registry, is: listed }, then: { fact: outlaw, in: [true] } }
 - { kind: sign, id: law.unregistered, since: 6, text: law.unregistered, if: { obs: registry, in: [namesake, none] }, then: { fact: outlaw, in: [false] } }
+- { kind: sign, id: law.ownBlade, since: 7, text: law.ownBlade, if: { obs: inscription, is: own }, then: { fact: weaponOwner, in: [self] } }
+- { kind: sign, id: law.borrowedBlade, since: 7, text: law.borrowedBlade, if: { obs: inscription, is: other }, then: { fact: weaponOwner, in: [other] } }
+- { kind: sign, id: law.ulfberht, since: 7, text: law.ulfberht, if: { obs: makersMark, is: markTrue }, then: { fact: blade, in: [ulfberht] } }
+- { kind: sign, id: law.copyUlfberht, since: 7, text: law.copyUlfberht, if: { obs: makersMark, is: markCopy }, then: { fact: blade, in: [fakeUlfberht] } }

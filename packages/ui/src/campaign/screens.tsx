@@ -17,8 +17,9 @@ import {
 } from '@cots/engine';
 import { playScene, sceneEnv } from '@cots/story';
 import { useState } from 'preact/hooks';
-import { clockText, t } from '../i18n';
+import { clockText, listText, t } from '../i18n';
 import { openReport } from '../report';
+import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from '../shift/Shift';
 import { type Screen, session, toTitle } from '../store';
@@ -274,7 +275,8 @@ function RulebookChanges({ day }: { day: number }) {
   const added = gameContent.rules.filter((r) => r.since === day);
   const repealed = gameContent.rules.filter((r) => r.until === day);
   const tools = gameContent.tools.filter((x) => x.since === day);
-  if (added.length + repealed.length + tools.length === 0) return null;
+  const procedures = (gameContent.procedures ?? []).filter((p) => p.since === day);
+  if (added.length + repealed.length + tools.length + procedures.length === 0) return null;
   return (
     <div class="changes" data-testid="rulebook-changes">
       {added.map((r) => (
@@ -285,6 +287,11 @@ function RulebookChanges({ day }: { day: number }) {
       {repealed.map((r) => (
         <p key={r.id}>
           <span class="badge badge--old">{t('ui.campaign.repealed.badge')}</span> {t(r.text)}
+        </p>
+      ))}
+      {procedures.map((p) => (
+        <p key={p.id}>
+          <span class="badge badge--new">{t('ui.campaign.new.badge')}</span> {t(p.text)}
         </p>
       ))}
       {tools.map((x) => (
@@ -405,7 +412,12 @@ function Audit() {
               {t('ui.summary.row', { name, dest: t(`dest.${v.expected}`) })}
               {v.stamped === null ? (
                 <span class="muted"> ({t('ui.summary.unjudged')})</span>
-              ) : v.correct ? null : (
+              ) : v.correct ? null : v.stamped === v.expected ? (
+                <span class="muted">
+                  {' '}
+                  ({t('ui.summary.skipped', { procs: listText(skippedText(v.skipped, a.ctx)) })})
+                </span>
+              ) : (
                 <span class="muted"> ({t('ui.summary.you', { dest: t(`dest.${v.stamped}`) })})</span>
               )}{' '}
               {s ? (

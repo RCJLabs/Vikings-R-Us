@@ -33,7 +33,7 @@ export function questionResponse(
   const lie = c.lies.find((l) => l.field === lieField);
   if (!lie) return null;
   const persona = c.evidence.persona;
-  const matches = content.questions.filter(
+  const fits = content.questions.filter(
     (t) =>
       t.on.kind === lie.onQuestion &&
       (t.on.fact === '*' || t.on.fact === lie.fact) &&
@@ -41,6 +41,9 @@ export function questionResponse(
       (t.on.truth === undefined || t.on.truth.includes(lie.truth)) &&
       (t.on.persona === undefined || t.on.persona.includes(persona)),
   );
+  // Answers about a forged tally come before any more specific answer about a spoken lie, and never the other way.
+  const sameVia = fits.filter((t) => t.on.via === lie.via);
+  const matches = sameVia.length > 0 ? sameVia : fits.filter((t) => t.on.via === undefined);
   if (matches.length === 0) return null;
   const best = Math.max(...matches.map(specificity));
   const top = matches.filter((t) => specificity(t) === best);

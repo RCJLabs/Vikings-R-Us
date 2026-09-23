@@ -114,7 +114,8 @@ export interface CueDef {
   readonly view: View;
   readonly since: number;
   readonly salience: Salience;
-  readonly hint: { readonly fact: string; readonly value: Value };
+  /** What it hints at: a fact's value, or a forged saga tally. */
+  readonly hint: { readonly fact: string; readonly value: Value } | { readonly forgery: true };
 }
 
 /** Holds in every generated truth, on every day. */
@@ -162,6 +163,17 @@ export interface LieSpec {
   /** Weights for how the soul answers when questioned. */
   readonly onQuestion: Readonly<Partial<Record<QuestionKind, number>>>;
   readonly since?: number;
+  /** Carved on a forged saga tally instead of spoken (docs/tech-spec.md §3.4). */
+  readonly via?: 'tally';
+}
+
+/** A line carved on a saga tally: what the soul's deeds say about one fact. */
+export interface TallyTemplate {
+  readonly id: string;
+  readonly asserts: { readonly fact: string; readonly value: Value };
+  readonly msg: string;
+  readonly params?: Readonly<Record<string, string>>;
+  readonly weight: number;
 }
 
 /** A character type the generator samples souls from. */
@@ -176,7 +188,7 @@ export interface ArchetypeDef {
   readonly lies: readonly LieSpec[];
 }
 
-export type SpeechSlot = 'identity' | 'death' | 'weapon' | 'back' | 'oath' | 'flavor';
+export type SpeechSlot = 'identity' | 'death' | 'weapon' | 'owner' | 'blade' | 'back' | 'oath' | 'flavor';
 
 /** One slot of a soul's speech: which fact it talks about and how often. */
 export interface SpeechSlotDef {
@@ -217,6 +229,8 @@ export interface QuestionTemplate {
     readonly truth?: readonly Value[];
     readonly persona?: readonly string[];
     readonly kind: QuestionKind;
+    /** Only for lies carved on a forged tally. */
+    readonly via?: 'tally';
   };
   readonly msgs: readonly string[];
   readonly weight: number;
@@ -237,6 +251,8 @@ export interface Knobs {
   readonly maxTools: number;
   readonly maxDocs: number;
   readonly salienceFloor: Salience;
+  /** Percent chance an honest soul carries a saga tally (Day 11 on). */
+  readonly tallyRate?: number;
 }
 
 export interface DayParam {
@@ -290,6 +306,22 @@ export type StatePred =
   | { readonly all: readonly StatePred[] }
   | { readonly any: readonly StatePred[] }
   | { readonly not: StatePred };
+
+/**
+ * Something the player must do to a soul before sending it on, beyond the
+ * stamp: clipping untrimmed nails under the Naglfar decree. A judgment is the
+ * destination plus every procedure whose condition holds (docs/tech-spec.md §2).
+ */
+export interface ProcedureDef {
+  readonly id: string;
+  readonly since: number;
+  readonly until?: number;
+  readonly when: Pred;
+  /** Done by using this tool on the soul. */
+  readonly tool: ToolId;
+  /** Rulebook line. */
+  readonly text: string;
+}
 
 /**
  * A soul written for the story (docs/tech-spec.md §4, "Scripted cases"). It is
@@ -413,4 +445,8 @@ export interface Content {
   readonly campaign?: CampaignDef;
   /** Story souls that campaign days place in their queues. */
   readonly scripted?: readonly ScriptedCaseDef[];
+  /** Things to do to a soul besides stamping it (Day 8 on). */
+  readonly procedures?: readonly ProcedureDef[];
+  /** Saga tally lines (Day 11 on). */
+  readonly tallies?: readonly TallyTemplate[];
 }

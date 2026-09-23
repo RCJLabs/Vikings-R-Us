@@ -1,0 +1,2 @@
+# Day 8, the Naglfar decree: whatever the stamp, clip untrimmed nails first.
+- { id: proc.clip, since: 8, when: { fact: nailsGrown, is: true }, tool: clippers, text: proc.clip }

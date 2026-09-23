@@ -25,7 +25,7 @@ import {
   updateSettings,
 } from '../store';
 import { coachStep } from './coach';
-import { fieldText, regionFields, regionSeen, registryEntry, sceneFor } from './evidence';
+import { fieldText, regionFields, regionSeen, registryEntry, sceneFor, skippedText } from './evidence';
 import { RulesPanel } from './Rules';
 
 /** Focuses an element once, when it mounts (dialogs, the briefing's Begin button). */
@@ -144,6 +144,9 @@ function BodyStage({ s, c }: { s: Session; c: CaseSpec }) {
             {t('tool.feather')} <kbd>T</kbd>
           </button>
         ) : null}
+      </div>
+      {/* Later decrees' tools take the other side of the body, so no column outgrows a phone's stage. */}
+      <div class="stage__tools stage__tools--more">
         {[...tools.keys()]
           .filter((id) => id !== 'flip' && id !== 'feather')
           .map((id) => (
@@ -275,6 +278,20 @@ function Ravens({ s, c }: { s: Session; c: CaseSpec }) {
   const items = c.evidence.fields.filter((f) => f.item === 'huginn' || f.item === 'muninn');
   return <Lines s={s} c={c} items={items} empty={t('ui.ravens.none')} />;
 }
+
+/** The soul's saga tally: its carved lines, and under the rune-lens, any sign it was forged. */
+function Tally({ s, c }: { s: Session; c: CaseSpec }) {
+  const lens = s.state.soul.tools.includes('runeLens');
+  const items = c.evidence.fields.filter((f) => f.item === 'tally' && (f.says !== undefined || lens));
+  return (
+    <div class="tally" data-testid="tally">
+      <Lines s={s} c={c} items={items} empty="" />
+      {!lens && s.ctx.tools.has('runeLens') ? <p class="muted">{t('ui.tally.lens')}</p> : null}
+    </div>
+  );
+}
+
+const hasTally = (c: CaseSpec) => c.evidence.fields.some((f) => f.item === 'tally');
 
 /** The registry, looked up by this soul's name once the player searches it. */
 function Registry({ s, c }: { s: Session; c: CaseSpec }) {
@@ -437,6 +454,12 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
               <Registry s={s} c={c} />
             </div>
           ) : null}
+          {hasTally(c) ? (
+            <div class="paper paper--tally">
+              <h2>{t('ui.tab.tally')}</h2>
+              <Tally s={s} c={c} />
+            </div>
+          ) : null}
         </section>
         <section class="desk__bottom">
           <button
@@ -455,10 +478,12 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
     );
   }
 
-  const tab = drawerTab.value;
+  // A soul without a tally has no tally tab; fall back to its words.
+  const tab = drawerTab.value === 'tally' && !hasTally(c) ? 'words' : drawerTab.value;
   const tabs = [
     ['words', 'ui.tab.words'],
     ['ravens', 'ui.tab.ravens'],
+    ...(hasTally(c) ? ([['tally', 'ui.tab.tally']] as const) : []),
     ...(s.ctx.tools.has('registry') ? ([['registry', 'ui.tab.registry']] as const) : []),
     ['rules', 'ui.tab.rules'],
   ] as const;
@@ -487,6 +512,8 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           <Ravens s={s} c={c} />
         ) : tab === 'registry' ? (
           <Registry s={s} c={c} />
+        ) : tab === 'tally' ? (
+          <Tally s={s} c={c} />
         ) : (
           <RulesPanel ctx={s.ctx} />
         )}
@@ -567,11 +594,21 @@ function CitationBox({ s, v }: { s: Session; v: Verdict }) {
   const c = s.state.cases[v.index];
   const rule = s.ctx.rules.find((r) => r.id === v.rule);
   const missed = (c?.evidence.fields ?? []).filter((f) => v.missed.includes(f.id)).map((f) => fieldText(f, c));
+  const skipped = skippedText(v.skipped, s.ctx);
+  const name = c?.evidence.look.name ?? '';
+  const dest = t(`dest.${v.expected}`);
   return (
     <div class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="citation-title">
       <div class="dialog dialog--citation">
         <h2 id="citation-title">{t('ui.citation.title')}</h2>
-        <p>{t('ui.citation.should', { name: c?.evidence.look.name ?? '', dest: t(`dest.${v.expected}`) })}</p>
+        {v.stamped === v.expected && skipped.length > 0 ? (
+          <p data-testid="citation-skipped">{t('ui.citation.skippedOnly', { name, dest, procs: listText(skipped) })}</p>
+        ) : (
+          <p>{t('ui.citation.should', { name, dest })}</p>
+        )}
+        {v.stamped !== v.expected && skipped.length > 0 ? (
+          <p data-testid="citation-skipped">{t('ui.citation.skipped', { procs: listText(skipped) })}</p>
+        ) : null}
         {rule ? <p class="dialog__rule">{t(rule.text)}</p> : null}
         {missed.length > 0 ? <p>{t('ui.citation.missed', { fields: listText(missed) })}</p> : null}
         <div class="row">

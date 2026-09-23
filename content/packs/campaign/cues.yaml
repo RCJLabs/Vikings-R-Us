@@ -1,2 +1,6 @@
 # Oathbreakers keep the ring they broke. It proves nothing; it says "search the registry".
 - { key: brokenRing, view: front, since: 6, salience: 2, hint: { fact: outlaw, value: true } }
+# A weapon that isn't theirs sits wrong in the hand. It proves nothing; it says "use the rune-lens".
+- { key: wrongGrip, view: front, since: 7, salience: 2, hint: { fact: weaponOwner, value: other } }
+# Day 11: a tally stick in the belt with pale, fresh cuts. It says "look at the carving with the rune-lens".
+- { key: freshCarving, view: front, since: 11, salience: 2, hint: { forgery: true } }

@@ -7,7 +7,7 @@ import { Rng } from '../rng/rng';
 import { pickLies } from './lies';
 import { makeLook } from './look';
 import { ceilDiv, weightedPick } from './pick';
-import { planRavens, planSpeech, render } from './render';
+import { planRavens, planSpeech, planTally, render } from './render';
 import { sampleTruth } from './sample';
 import type { CaseMeta, CaseSpec, Evidence, Field, GenAttempt, GenLog, Look, RejectCode } from './types';
 import { decisiveFacts, validateCase } from './validate';
@@ -146,11 +146,20 @@ export function dressCase(
   const persona = planRng.pick(arch.personas);
   const speech = planSpeech(truth, planned, ctx, planRng);
   const ravens = planRavens(truth, decisive, ctx, knobs, planRng);
+  const tally = planTally(truth, planned, decisive, ctx, knobs, rng.fork('tally'));
   const cues = ctx.cues.flatMap((c) => {
-    if (truth[c.hint.fact] === c.hint.value) return [{ key: c.key, decoy: false }];
+    if ('forgery' in c.hint) {
+      // Only a soul carrying a tally can show one that looks off.
+      if (!tally) return [];
+      if (tally.tell) return [{ key: c.key, decoy: false }];
+    } else if (truth[c.hint.fact] === c.hint.value) return [{ key: c.key, decoy: false }];
     return planRng.chance(knobs.decoyRate, 100) ? [{ key: c.key, decoy: true }] : [];
   });
-  const rendered = render({ truth, lies: planned, speech, ravens, cues, look, persona }, ctx, rng.fork('dialog'));
+  const rendered = render(
+    { truth, lies: planned, speech, ravens, cues, look, persona, tally },
+    ctx,
+    rng.fork('dialog'),
+  );
   if (rendered.unspoken > 0) return { code: 'LIE_UNSPOKEN', detail: 'no template for a lie' };
   const evidence = lines.length > 0 ? withLines(rendered.evidence, lines) : rendered.evidence;
 

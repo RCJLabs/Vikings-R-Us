@@ -12,3 +12,27 @@
       - { when: { fact: outlaw, is: true }, value: listed }
       - { when: { fact: namesake, is: true }, value: namesake }
     otherwise: none
+# Day 7: the carving on the weapon in hand, read with the rune-lens.
+# "X á mik" means "X owns me"; a maker's mark says who forged the blade.
+- key: inscription
+  view: front
+  tool: runeLens
+  since: 7
+  salience: 2
+  cost: 1
+  from: { map: [{ when: { fact: weaponOwner, is: other }, value: other }], otherwise: own }
+  when: { fact: grip, is: weapon }
+- key: makersMark
+  view: front
+  tool: runeLens
+  since: 7
+  salience: 2
+  cost: 1
+  from:
+    map:
+      - { when: { fact: blade, is: ulfberht }, value: markTrue }
+      - { when: { fact: blade, is: fakeUlfberht }, value: markCopy }
+    otherwise: none
+  when: { fact: grip, is: weapon }
+# Day 8: the hands, read directly.
+- { key: nails, view: front, since: 8, salience: 2, cost: 1, from: { fact: nailsGrown } }

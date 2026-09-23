@@ -4,3 +4,12 @@
 - id: q.oath.excuse
   on: { fact: outlaw, kind: excuse }
   msgs: [q.oath.excuse.1]
+- id: q.owner.confess
+  on: { fact: weaponOwner, claimed: self, truth: [other], kind: confess }
+  msgs: [q.owner.confess.1]
+- id: q.blade.confess
+  on: { fact: blade, claimed: ulfberht, truth: [fakeUlfberht], kind: confess }
+  msgs: [q.blade.confess.1]
+# A forger questioned about the tally.
+- { id: q.tally.confess, on: { fact: '*', kind: confess, via: tally }, msgs: [q.tally.confess.1, q.tally.confess.2] }
+- { id: q.tally.excuse, on: { fact: '*', kind: excuse, via: tally }, msgs: [q.tally.excuse.1] }
