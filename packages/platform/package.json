@@ -1,0 +1,11 @@
+{
+  "name": "@cots/platform",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Platform interface and per-target adapters (web, itch, electron, android).",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

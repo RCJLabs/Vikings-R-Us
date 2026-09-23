@@ -1,0 +1,37 @@
+# The Daily Shift: the same eight souls for everyone on a date, numbered
+# from DAILY_EPOCH. Plays with Day 1-5 mechanics (the alpha allows up to
+# Day 6) and never touches story content. The twist for now is Freyja's
+# whim; changing anything here changes every future Daily, so bump
+# core's genVersion when you do.
+day: 5
+sunS: 360
+decree: daily.decree
+params:
+  freyjaWhim:
+    pool:
+      - { id: daily.whim.leftHanded, text: daily.whim.leftHanded, is: { fact: gripHand, is: left } }
+      - { id: daily.whim.redHair, text: daily.whim.redHair, is: { fact: hair, is: red } }
+      - { id: daily.whim.amber, text: daily.whim.amber, is: { fact: ornament, is: amber } }
+queue:
+  count: [8, 8]
+  archetypes:
+    - { id: arch.honest_warrior, w: 3 }
+    - { id: arch.freyja_pick, w: 2 }
+    - { id: arch.disarmed_warrior, w: 2 }
+    - { id: arch.straw_braggart, w: 2 }
+    - { id: arch.fled_coward, w: 3 }
+    - { id: arch.not_quite_dead, w: 1 }
+    - { id: arch.drowned_raider, w: 2 }
+  # RETURN can be 0-2 so finding one soul alive doesn't tell you the rest are dead.
+  # HEL-heavy on purpose: the testimony-trusting bot scores ~59% (gate: 65%).
+  mix: { VALHALLA: [10, 30], FOLKVANGR: [10, 25], HEL: [25, 50], RETURN: [0, 25], RAN: [10, 25] }
+  knobs:
+    lieRate: 100
+    maxLies: 1
+    decoyRate: 20
+    ravenRate: 20
+    forgetRate: 10
+    proofCostS: [0, 35]
+    maxTools: 2
+    maxDocs: 3
+    salienceFloor: 2

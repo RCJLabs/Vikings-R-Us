@@ -1,0 +1,5 @@
+id: campaign
+description: Campaign days 4-20 and the endings. Full builds only (Steam, Google Play).
+dependsOn: [core, demo]
+# The leak check fails any demo build that contains this marker, and any full build that lacks it.
+canary: cots-canary-campaign-9f41c2d7e3

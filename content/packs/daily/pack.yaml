@@ -1,0 +1,3 @@
+id: daily
+description: The Daily Shift. Same seed for everyone, no story content.
+dependsOn: [core]

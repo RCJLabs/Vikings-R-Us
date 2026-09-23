@@ -1,0 +1,15 @@
+# Deploy with `npx wrangler deploy` from this folder, or the "Deploy telemetry"
+# workflow. Create the database first (see README.md) and paste its id below.
+name = "cots-telemetry"
+main = "src/worker.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Browsers may only post from these origins. `*.` matches any subdomain (itch
+# serves games from html-classic.itch.zone and similar).
+ALLOWED_ORIGINS = "https://rcjlabs.github.io,https://*.itch.zone"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cots-telemetry"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"

@@ -1,0 +1,23 @@
+day: 3
+sunS: 480
+decree: decree.d3
+queue:
+  count: [7, 9]
+  teachFirst: arch.not_quite_dead
+  archetypes:
+    - { id: arch.honest_warrior, w: 4 }
+    - { id: arch.disarmed_warrior, w: 2 }
+    - { id: arch.straw_braggart, w: 3 }
+    - { id: arch.fled_coward, w: 3 }
+    - { id: arch.not_quite_dead, w: 2 }
+  mix: { VALHALLA: [25, 45], HEL: [40, 65], RETURN: [10, 20] }
+  knobs:
+    lieRate: 95
+    maxLies: 1
+    decoyRate: 15
+    ravenRate: 25
+    forgetRate: 10
+    proofCostS: [0, 35]
+    maxTools: 2
+    maxDocs: 3
+    salienceFloor: 2

@@ -1,0 +1,31 @@
+day: 5
+sunS: 540
+decree: decree.d5
+params:
+  freyjaWhim:
+    pool:
+      - { id: whim.leftHanded, text: whim.leftHanded, is: { fact: gripHand, is: left } }
+      - { id: whim.redHair, text: whim.redHair, is: { fact: hair, is: red } }
+      - { id: whim.amber, text: whim.amber, is: { fact: ornament, is: amber } }
+queue:
+  count: [9, 11]
+  teachFirst: arch.drowned_raider
+  archetypes:
+    - { id: arch.honest_warrior, w: 3 }
+    - { id: arch.freyja_pick, w: 2 }
+    - { id: arch.disarmed_warrior, w: 2 }
+    - { id: arch.straw_braggart, w: 2 }
+    - { id: arch.fled_coward, w: 3 }
+    - { id: arch.not_quite_dead, w: 1 }
+    - { id: arch.drowned_raider, w: 3 }
+  mix: { VALHALLA: [15, 35], FOLKVANGR: [10, 25], HEL: [30, 50], RETURN: [5, 15], RAN: [15, 30] }
+  knobs:
+    lieRate: 100
+    maxLies: 1
+    decoyRate: 20
+    ravenRate: 20
+    forgetRate: 10
+    proofCostS: [0, 35]
+    maxTools: 2
+    maxDocs: 3
+    salienceFloor: 2

@@ -1,0 +1,21 @@
+day: 1
+sunS: 360
+decree: decree.d1
+queue:
+  count: [6, 6]
+  teachFirst: arch.honest_warrior
+  archetypes:
+    - { id: arch.honest_warrior, w: 4 }
+    - { id: arch.disarmed_warrior, w: 2 }
+    - { id: arch.straw_braggart, w: 3 }
+  mix: { VALHALLA: [35, 60], HEL: [40, 65] }
+  knobs:
+    lieRate: 90
+    maxLies: 1
+    decoyRate: 0
+    ravenRate: 30
+    forgetRate: 10
+    proofCostS: [0, 20]
+    maxTools: 0
+    maxDocs: 3
+    salienceFloor: 2

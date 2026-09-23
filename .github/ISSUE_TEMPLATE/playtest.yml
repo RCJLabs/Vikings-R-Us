@@ -1,0 +1,35 @@
+name: Playtest feedback
+description: Tell us how the Daily Shift alpha played for you.
+title: "Playtest feedback"
+labels: [playtest, alpha]
+body:
+  - type: input
+    id: build
+    attributes:
+      label: Build and device
+      description: Filled in by the game (build, layout, screen size, browser).
+  - type: dropdown
+    id: device
+    attributes:
+      label: What did you play on?
+      options:
+        - Phone
+        - Tablet
+        - Laptop or desktop
+        - Steam Deck
+    validations:
+      required: true
+  - type: textarea
+    id: clear
+    attributes:
+      label: What was confusing?
+      description: Rules, signs you couldn't see, buttons you couldn't find, text that didn't fit.
+  - type: textarea
+    id: fun
+    attributes:
+      label: What was fun, or not?
+  - type: textarea
+    id: bugs
+    attributes:
+      label: Anything broken?
+      description: What you did, what you expected, what happened. Screenshots help.

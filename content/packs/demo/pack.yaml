@@ -1,0 +1,3 @@
+id: demo
+description: Campaign days 1-3, shipped free on the web and as the Steam demo.
+dependsOn: [core]

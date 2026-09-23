@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": [
+    "packages/engine/src/**/*.test.ts",
+    "packages/art-placeholder/src/**/*.test.ts",
+    "packages/ui/src/telemetry-payload.ts",
+    "packages/ui/src/telemetry.ts",
+    "packages/ui/src/telemetry.test.ts",
+    "apps/telemetry/src",
+    "packages/content-schema/src",
+    "packages/content-compiler/src",
+    "packages/testkit/src",
+    "tools",
+    "tests/e2e",
+    "vitest.config.ts",
+    "apps/web/vite.config.ts",
+    "tests/golden"
+  ]
+}
