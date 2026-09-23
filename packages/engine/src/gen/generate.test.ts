@@ -14,6 +14,8 @@ const seedArb = fc.string({ minLength: 1, maxLength: 12 });
 // Every day with a spec, from the demo's first to the full game's latest mechanics.
 const dayArb = fc.constantFrom(...content.days.map((d) => d.day));
 const RUNS = Number(process.env.FAIRNESS_RUNS ?? 150);
+// About 25 ms a run on a laptop (a whole day each); the nightly's thousands of runs need minutes, not vitest's 5 s.
+const TIMEOUT_MS = Math.max(5_000, RUNS * 100);
 
 const revalidate = (
   c: CaseSpec,
@@ -31,23 +33,31 @@ const revalidate = (
   );
 
 describe('fairness contract (F1–F8)', () => {
-  test.prop([seedArb, dayArb], { numRuns: RUNS })('every generated soul passes validation', (seed, day) => {
-    const ctx = createDayContext(content, day, seed);
-    for (const c of generateDay(seed, ctx).cases) {
-      const v = revalidate(c, ctx);
-      expect(v.ok ? 'ok' : `${v.code}: ${v.detail}`).toBe('ok');
-    }
-  });
+  test.prop([seedArb, dayArb], { numRuns: RUNS })(
+    'every generated soul passes validation',
+    (seed, day) => {
+      const ctx = createDayContext(content, day, seed);
+      for (const c of generateDay(seed, ctx).cases) {
+        const v = revalidate(c, ctx);
+        expect(v.ok ? 'ok' : `${v.code}: ${v.detail}`).toBe('ok');
+      }
+    },
+    TIMEOUT_MS,
+  );
 
-  test.prop([seedArb, dayArb], { numRuns: RUNS })('the brute-force oracle agrees with the solver', (seed, day) => {
-    const ctx = createDayContext(content, day, seed);
-    for (const c of generateDay(seed, ctx).cases) {
-      const s = solve(c.evidence.fields, ctx).judgment;
-      expect(s.kind).toBe('determined');
-      if (s.kind === 'determined')
-        expect(oracleSolve(c.evidence.fields, ctx)).toEqual({ kind: 'determined', dest: s.dest });
-    }
-  });
+  test.prop([seedArb, dayArb], { numRuns: RUNS })(
+    'the brute-force oracle agrees with the solver',
+    (seed, day) => {
+      const ctx = createDayContext(content, day, seed);
+      for (const c of generateDay(seed, ctx).cases) {
+        const s = solve(c.evidence.fields, ctx).judgment;
+        expect(s.kind).toBe('determined');
+        if (s.kind === 'determined')
+          expect(oracleSolve(c.evidence.fields, ctx)).toEqual({ kind: 'determined', dest: s.dest });
+      }
+    },
+    TIMEOUT_MS,
+  );
 
   test.prop([seedArb, dayArb, fc.integer()], { numRuns: RUNS })(
     'on partial evidence the solver is never more certain than the oracle',
@@ -60,6 +70,7 @@ describe('fairness contract (F1–F8)', () => {
         if (s.kind === 'determined') expect(oracleSolve(subset, ctx)).toEqual({ kind: 'determined', dest: s.dest });
       }
     },
+    TIMEOUT_MS,
   );
 });
 

@@ -1,4 +1,4 @@
-import { loadContent } from '@cots/testkit';
+import { loadContent, oracleSolve } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
 import { createDayContext, type DayCtx } from '../logic/context';
 import { judge } from '../logic/judge';
@@ -125,6 +125,43 @@ describe('Day 11: saga tallies, and forged ones', () => {
     const fact = lie?.fact ?? '';
     expect(solve([line], ctx).beliefs.get(fact)?.values).toEqual([lie?.claimed]);
     expect(solve([line, tell as Field], ctx).beliefs.get(fact)?.level ?? 0).toBeLessThan(3);
+  });
+
+  it('believes a tally whole or not at all: lines that can’t all be true count for nothing', () => {
+    // From a CI counterexample: no front wounds seen, the back not yet turned over. "Never fled" means no
+    // back wound either, so "fell in battle" can't also be true; neither line may decide the soul.
+    const ctx = createDayContext(full, 11, 'whole');
+    const body = (key: string, value: string | number): Field => ({
+      id: `body.front.${key}`,
+      item: 'body',
+      view: 'front',
+      salience: 3,
+      cost: 1,
+      obs: { key, value },
+    });
+    const line = (i: number, fact: string, value: string | boolean): Field => ({
+      id: `tally.${i}`,
+      item: 'tally',
+      salience: 3,
+      cost: 2,
+      says: { fact, value },
+    });
+    // Everything else Day 11 asks about is in view (Freyja's whim, the nails), so only the tally is in question.
+    const seen = [
+      body('grip', 'weapon'),
+      body('gripHand', 'right'),
+      body('woundsFront', 0),
+      body('hair', 'fair'),
+      body('ornament', 'none'),
+      { ...body('nails', 0), obs: { key: 'nails', value: false } },
+    ];
+    // Either line alone leaves the soul open (how did they die?); together they'd wrongly say Valhalla.
+    expect(solve([...seen, line(0, 'fled', false)], ctx).judgment.kind).toBe('undetermined');
+    const both = [...seen, line(0, 'fled', false), line(1, 'cause', 'battle')];
+    expect(solve(both, ctx).judgment.kind).toBe('undetermined');
+    expect(oracleSolve(both, ctx).kind).toBe('undetermined');
+    const causeOnly = solve([...seen, line(1, 'cause', 'battle')], ctx);
+    expect(causeOnly.beliefs.get('cause')).toMatchObject({ values: ['battle'], level: 3 });
   });
 
   it('rejects a forged tally with no sign, or with no cue to look for one', () => {

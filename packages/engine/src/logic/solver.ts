@@ -1,7 +1,7 @@
-import type { Destination, ObsPattern, Value } from '../content/types';
+import type { Destination, ObsPattern, Pred, Value } from '../content/types';
 import type { Field } from '../gen/types';
 import type { DayCtx } from './context';
-import { eval3, factsIn, type Tri } from './pred';
+import { eval2, eval3, factsIn, type Tri } from './pred';
 
 /**
  * What the player can know about a fact. Levels follow the trust ladder
@@ -62,6 +62,20 @@ function union(a: readonly string[], b: readonly string[]): string[] {
 }
 
 type Seen = ReadonlyMap<string, { readonly value: Value; readonly field: string }>;
+
+/**
+ * What a predicate being `want` says about single facts, where it says anything definite:
+ * "never fled" (fled = woundsBack >= 1, false) means woundsBack is 0.
+ */
+function inverse(p: Pred, want: boolean, ctx: DayCtx): { fact: string; values: Value[] }[] {
+  if ('all' in p) return want || p.all.length === 1 ? p.all.flatMap((q) => inverse(q, want, ctx)) : [];
+  if ('any' in p) return !want || p.any.length === 1 ? p.any.flatMap((q) => inverse(q, want, ctx)) : [];
+  if ('not' in p) return inverse(p.not, !want, ctx);
+  if (!('fact' in p)) return [];
+  const af = ctx.facts.get(p.fact);
+  if (!af || af.def.derived) return [];
+  return [{ fact: p.fact, values: af.values.filter((v) => eval2(p, { [p.fact]: v }, ctx) === want) }];
+}
 
 function matchObs(p: ObsPattern, seen: Seen): string[] | null {
   if ('all' in p) {
@@ -174,8 +188,11 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
       let changed = false;
       for (const law of ctx.factLaws) {
         if (eval3(law.if, valuesOf, ctx) !== 'T') continue;
-        const support = [...factsIn(law.if, ctx)].reduce<string[]>((s, id) => union(s, view(id).support), []);
-        if (narrow(law.then.fact, law.then.in, 4, support)) changed = true;
+        const premises = [...factsIn(law.if, ctx)].map(view);
+        const support = premises.reduce<string[]>((s, b) => union(s, b.support), []);
+        // A conclusion is only as trusted as its weakest premise (a tally line counts less than a body sign).
+        const level = premises.reduce((m, b) => Math.min(m, b.level), 4);
+        if (narrow(law.then.fact, law.then.in, level, support)) changed = true;
       }
       if (!changed) return;
     }
@@ -184,18 +201,50 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
 
   const contradictions: Contradiction[] = [];
 
-  // The saga tally counts at trust 3, unless a forgery sign on it has been seen (then it counts for
-  // nothing). Where it disagrees with established evidence, the line is a lie to catch either way.
-  const forgerySeen = perceived.some((f) => f.tell !== undefined);
-  let carved = false;
-  for (const f of perceived) {
-    if (f.item !== 'tally' || !f.says || f.says.value === null) continue;
-    const b = view(f.says.fact);
-    if (b.level >= 3 && !b.values.includes(f.says.value)) {
-      if (!opts.trustTestimony) contradictions.push({ lie: f.id, fact: f.says.fact, against: b.support });
-    } else if (!forgerySeen && narrow(f.says.fact, [f.says.value], 3, [f.id])) carved = true;
+  // The saga tally (trust 3) is believed whole or not at all, as the decree says of a forged one.
+  // A line established evidence refutes is a lie to catch; then, or once a forgery sign is seen, or if
+  // its lines can't all be true together with the evidence, the tally counts for nothing.
+  const carved = perceived.filter((f) => f.item === 'tally' && f.says && f.says.value !== null);
+  let refuted = false;
+  for (const f of carved) {
+    const says = f.says as { fact: string; value: Value };
+    const b = view(says.fact);
+    if (b.level >= 3 && !b.values.includes(says.value)) {
+      refuted = true;
+      if (!opts.trustTestimony) contradictions.push({ lie: f.id, fact: says.fact, against: b.support });
+    }
   }
-  if (carved) propagate();
+  const forgerySeen = perceived.some((f) => f.tell !== undefined);
+  if (carved.length > 0 && !refuted && !forgerySeen && !opts.trustTestimony) {
+    const saved = { beliefs: new Map(beliefs), asserted: new Map(asserted), conflicts: conflicts.length };
+    let whole = true;
+    for (const f of carved) {
+      const says = f.says as { fact: string; value: Value };
+      const b = view(says.fact);
+      if (b.level >= 3 && !b.values.includes(says.value)) whole = false;
+      else {
+        narrow(says.fact, [says.value], 3, [f.id]);
+        // A derived line constrains what it's made of too ("never fled" means no wound in the back),
+        // so lines that can't all be true are caught.
+        const def = ctx.facts.get(says.fact)?.def;
+        if (def?.derived && typeof says.value === 'boolean') {
+          for (const c of inverse(def.derived, says.value, ctx)) narrow(c.fact, c.values, 3, [f.id]);
+        }
+        propagate();
+      }
+      if (!whole || conflicts.length > saved.conflicts) {
+        whole = false;
+        break;
+      }
+    }
+    if (!whole) {
+      beliefs.clear();
+      for (const [k, v] of saved.beliefs) beliefs.set(k, v);
+      asserted.clear();
+      for (const [k, v] of saved.asserted) asserted.set(k, v);
+      conflicts.length = saved.conflicts;
+    }
+  }
 
   if (!opts.trustTestimony) {
     for (const f of perceived) {
