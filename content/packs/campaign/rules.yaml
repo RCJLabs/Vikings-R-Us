@@ -5,3 +5,7 @@
   when: { all: [{ fact: grip, is: weapon }, { fact: weaponOwner, is: other }] }
   then: HEL
   text: rule.borrowed
+# Day 12: Loki, in any face, is held for Odin whatever else is true.
+- { id: rule.detain, order: 90, since: 12, when: { fact: trickster, is: true }, then: DETAIN, text: rule.detain }
+# Day 10: the baptized go to the clerk (after outlaws, who are Hel's whoever baptized them).
+- { id: rule.transfer, order: 300, since: 10, when: { fact: faith, is: baptized }, then: TRANSFER, text: rule.transfer }

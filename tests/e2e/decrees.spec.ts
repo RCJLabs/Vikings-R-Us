@@ -5,9 +5,10 @@ import { FULL } from './urls';
 
 /*
  * The later decrees in the full game, played in Practice: clipping nails
- * (Day 8) and forged saga tallies (Day 11). Practice seeds come from the
- * clock and Math.random, so the test pins both and works out the queue, and
- * the right answers, with the engine itself.
+ * (Day 8), the clerk's TRANSFER (Day 10), forged saga tallies (Day 11) and
+ * Loki's DETAIN (Day 12). Practice seeds come from the clock and
+ * Math.random, so the test pins both and works out the queue, and the right
+ * answers, with the engine itself.
  */
 
 test.use({ baseURL: FULL });
@@ -77,6 +78,40 @@ test('Day 11: a forged tally shows its sign under the rune-lens', async ({ page 
       await page.getByTestId('runeLens').click();
       if (await drawer(page)) await page.locator('[data-tab="tally"]').click();
       await expect(tally.locator('[data-field="tally.tell"]')).toContainText('Under the lens');
+    }
+    if (needsClipping(c)) await page.getByTestId('clippers').click();
+    await stampAndSend(page, c.expect.dest);
+  }
+  await expect(page.getByTestId('score')).toHaveText(`${queue.length} of ${queue.length} judged rightly`);
+});
+
+test('Day 10: the baptized are stamped TRANSFER, and the cross is on the neck', async ({ page }) => {
+  const queue = queueFor(10);
+  const baptized = queue.findIndex((c) => c.expect.dest === 'TRANSFER');
+  expect(baptized).toBeGreaterThanOrEqual(0);
+  await openPractice(page, 10);
+  for (const [i, c] of queue.entries()) {
+    await expect(page.getByTestId('soul-count')).toHaveText(`Soul ${i + 1} of ${queue.length}`);
+    if (i === baptized) {
+      await page.locator('.stage .hotspot[data-region="neck"]').click();
+      await expect(page.locator('.clues')).toContainText('A cross on a cord');
+    }
+    if (needsClipping(c)) await page.getByTestId('clippers').click();
+    await stampAndSend(page, c.expect.dest);
+  }
+  await expect(page.getByTestId('score')).toHaveText(`${queue.length} of ${queue.length} judged rightly`);
+});
+
+test('Day 12: Loki is stamped DETAIN; his lips give him away', async ({ page }) => {
+  const queue = queueFor(12);
+  const loki = queue.findIndex((c) => c.expect.dest === 'DETAIN');
+  expect(loki).toBeGreaterThanOrEqual(0);
+  await openPractice(page, 12);
+  for (const [i, c] of queue.entries()) {
+    await expect(page.getByTestId('soul-count')).toHaveText(`Soul ${i + 1} of ${queue.length}`);
+    if (i === loki) {
+      await page.locator('.stage .hotspot[data-region="face"]').click();
+      await expect(page.locator('.clues')).toContainText('Small stitch scars across the lips');
     }
     if (needsClipping(c)) await page.getByTestId('clippers').click();
     await stampAndSend(page, c.expect.dest);

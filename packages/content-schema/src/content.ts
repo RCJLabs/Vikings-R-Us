@@ -203,7 +203,18 @@ export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   lies: z.array(LieSpecSchema),
 });
 
-const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'owner', 'blade', 'back', 'oath', 'flavor']);
+const SpeechSlotNameSchema = z.enum([
+  'identity',
+  'death',
+  'weapon',
+  'owner',
+  'blade',
+  'back',
+  'oath',
+  'creed',
+  'guise',
+  'flavor',
+]);
 
 export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
   slot: SpeechSlotNameSchema,

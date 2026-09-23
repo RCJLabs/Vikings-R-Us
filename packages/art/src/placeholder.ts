@@ -275,6 +275,12 @@ function face(scene: BodyScene): string {
   parts.push(
     `<path d="M140 124Q150 128 160 124" fill="none" stroke="#7d5a4c" stroke-width="2.5" stroke-linecap="round"/>`,
   );
+  if (obs.lipScars === 'stitched') {
+    // Brokkr's stitches: small scars across the lips (the subtlest sign in the game).
+    parts.push(
+      `<path d="M142 120V130M146 121V131M150 121V131M154 121V131M158 120V130" stroke="#6b3a2e" stroke-width="1.6" stroke-linecap="round"/>`,
+    );
+  }
   if (obs.lips === 'seaFoam') {
     for (const [x, y, r] of [
       [140, 126, 3.5],
@@ -317,6 +323,19 @@ function ornament(value: Value | undefined): string {
   return value === 'amber'
     ? `${cord}<path d="M150 172C160 184 158 196 150 198C142 196 140 184 150 172Z" fill="#d98e1f" stroke="#6b3d05" stroke-width="2"/><circle cx="147" cy="186" r="2" fill="#f6d28a"/>`
     : `${cord}<circle cx="150" cy="186" r="9" fill="none" stroke="#c9ced3" stroke-width="5"/><circle cx="150" cy="186" r="9" fill="none" stroke="#5c6166" stroke-width="1"/>`;
+}
+
+/** An amulet on its own cord, left of any ornament: Thor's hammer, a cross, or both on one cord. */
+function amulet(value: Value | undefined): string {
+  if (value !== 'hammer' && value !== 'cross' && value !== 'hammerAndCross') return '';
+  const hammer = (x: number) =>
+    `<path d="M${x - 1.5} 176H${x + 1.5}V186H${x + 7}V192H${x - 7}V186H${x - 1.5}Z" fill="#8c9296" stroke="${INK}" stroke-width="1.5"/>`;
+  const cross = (x: number) =>
+    `<path d="M${x - 1.5} 176H${x + 1.5}V181H${x + 6}V184H${x + 1.5}V196H${x - 1.5}V184H${x - 6}V181H${x - 1.5}Z" fill="#c08a3e" stroke="${INK}" stroke-width="1.5"/>`;
+  const cord = `<path d="M138 152L128 176" fill="none" stroke="#3a2c20" stroke-width="2"/>`;
+  if (value === 'hammer') return `${cord}${hammer(128)}`;
+  if (value === 'cross') return `${cord}${cross(128)}`;
+  return `${cord}<path d="M121 176H135" stroke="#3a2c20" stroke-width="2"/>${hammer(121)}${cross(135)}`;
 }
 
 /** A tally stick tucked in the belt, its notches fresh and pale (drawn only as a cue). */
@@ -368,6 +387,7 @@ function draw(scene: BodyScene): string {
           hair(scene),
           face(scene),
           ornament(scene.obs.ornament),
+          amulet(scene.obs.amulet),
           brokenRing(scene.cues.includes('brokenRing')),
           freshTally(scene.cues.includes('freshCarving'), scene.look),
           wounds(scene.obs.woundsFront, FRONT_WOUNDS),
@@ -404,6 +424,8 @@ export const placeholderBody: BodyArtProvider = {
     inscription: 2,
     makersMark: 2,
     freshCarving: 2,
+    amulet: 2,
+    lipScars: 1,
   },
   views: SIGN_VIEWS,
 };

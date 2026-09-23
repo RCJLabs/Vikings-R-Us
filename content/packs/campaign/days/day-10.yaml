@@ -1,7 +1,7 @@
-# Mechanics day (M4): playable in Practice; its story comes with Days 7-20 (M7).
-day: 11
+# Mechanics day (M5): the clerk and TRANSFER. Playable in Practice; its story comes with M7.
+day: 10
 sunS: 720
-decree: decree.d11
+decree: decree.d10
 economy:
   wage: 8
   docBonus: 1
@@ -16,25 +16,23 @@ params:
       - { id: whim.amber, text: whim.amber, is: { fact: ornament, is: amber } }
 queue:
   count: [12, 14]
-  teachFirst: arch.tally_forger
+  teachFirst: arch.baptized
   archetypes:
     - { id: arch.honest_warrior, w: 3 }
     - { id: arch.freyja_pick, w: 2 }
     - { id: arch.disarmed_warrior, w: 2 }
-    - { id: arch.straw_braggart, w: 1 }
-    - { id: arch.fled_coward, w: 1 }
+    - { id: arch.straw_braggart, w: 2 }
+    - { id: arch.fled_coward, w: 2 }
     - { id: arch.not_quite_dead, w: 1 }
     - { id: arch.drowned_raider, w: 2 }
     - { id: arch.oathbreaker, w: 2 }
     - { id: arch.borrowed_blade, w: 2 }
     - { id: arch.ulfberht_braggart, w: 1 }
     - { id: arch.long_nails, w: 1 }
-    - { id: arch.tally_forger, w: 3 }
-    - { id: arch.coward_forger, w: 2 }
-    - { id: arch.baptized, w: 2 }
-    - { id: arch.prime_signed, w: 1 }
-    - { id: arch.false_convert, w: 1 }
-  mix: { VALHALLA: [10, 35], FOLKVANGR: [5, 20], HEL: [30, 55], RETURN: [5, 10], RAN: [5, 25], TRANSFER: [5, 15] }
+    - { id: arch.baptized, w: 3 }
+    - { id: arch.prime_signed, w: 2 }
+    - { id: arch.false_convert, w: 2 }
+  mix: { VALHALLA: [15, 35], FOLKVANGR: [5, 20], HEL: [30, 50], RETURN: [5, 10], RAN: [5, 20], TRANSFER: [8, 20] }
   knobs:
     lieRate: 100
     maxLies: 1
@@ -45,4 +43,3 @@ queue:
     maxTools: 3
     maxDocs: 5
     salienceFloor: 2
-    tallyRate: 40

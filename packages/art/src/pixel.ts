@@ -590,6 +590,24 @@ function ornament(cv: Canvas, value: Value | undefined): void {
   });
 }
 
+/** An amulet on its own cord, left of any ornament: Thor's hammer, a cross, or both on one cord. */
+function amulet(cv: Canvas, value: Value | undefined): void {
+  if (value !== 'hammer' && value !== 'cross' && value !== 'hammerAndCross') return;
+  // Mjölnir's head is wider than it is tall; the cross is taller than it is wide.
+  const HAMMER = ['..I..', '..I..', '..I..', 'IIIII', 'IIIII'];
+  const CROSS = ['..G..', 'GGGGG', '..G..', '..G..', '..G..', '..G..'];
+  const map = { I: IRON, G: GOLD };
+  cv.line(46, 51, 43, 58, OUTLINE);
+  part(cv, (l) => {
+    if (value === 'hammer') l.sprite(41, 59, HAMMER, map);
+    else if (value === 'cross') l.sprite(41, 59, CROSS, map);
+    else {
+      l.sprite(37, 59, HAMMER, map);
+      l.sprite(43, 59, CROSS, map);
+    }
+  });
+}
+
 function brokenRing(cv: Canvas): void {
   cv.line(54, 51, 59, 58, OUTLINE);
   part(cv, (l) => {
@@ -643,8 +661,13 @@ function paint(scene: BodyScene): Canvas {
     face(cv, scene);
     hairFront(cv, look, hair);
     beard(cv, look, hair);
+    if (obs.lipScars === 'stitched') {
+      // Brokkr's stitches: small scars across the lips (the subtlest sign in the game).
+      for (const x of [47, 49, 51, 53]) for (let y = 40; y <= 42; y++) cv.set(x, y, SKIN_DARK);
+    }
     if (obs.lips === 'seaFoam') seaFoam(cv);
     ornament(cv, obs.ornament);
+    amulet(cv, obs.amulet);
     if (scene.cues.includes('brokenRing')) brokenRing(cv);
     if (scene.cues.includes('freshCarving')) freshTally(cv, look);
     if (scene.cues.includes('breathFog')) breathFog(cv);
@@ -755,6 +778,8 @@ export const pixelBody: BodyArtProvider = {
     inscription: 2,
     makersMark: 2,
     freshCarving: 2,
+    amulet: 2,
+    lipScars: 1,
   },
   views: SIGN_VIEWS,
 };

@@ -73,3 +73,52 @@
     alive: { is: false }
   lies:
     - { fact: fled, claim: false, p: 100, via: tally, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 1 } }
+# Day 10: the baptized, some of whom would rather feast with Odin and keep quiet about the water.
+- id: arch.baptized
+  since: 10
+  personas: [honest, veteran, confused]
+  truth:
+    faith: { is: baptized }
+    alive: { is: false }
+  lies:
+    - { fact: faith, claim: heathen, p: 40, motive: hideFaith, onQuestion: { confess: 2, excuse: 1 } }
+# The prime-signed wear both: the trap is stamping TRANSFER on a cross that isn't alone.
+- id: arch.prime_signed
+  since: 10
+  personas: [veteran, honest]
+  truth:
+    faith: { is: primeSigned }
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  require:
+    - { not: { param: freyjaWhim } }
+  lies: []
+# A heathen bound for Hel who claims the water, hoping the clerk's hall is warmer. The hammer says otherwise.
+- id: arch.false_convert
+  since: 10
+  personas: [coward, confused]
+  truth:
+    faith: { is: heathen }
+    thorsHammer: { is: true }
+    cause: { in: [sickness, oldAge] }
+    woundsFront: { is: 0 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: faith, claim: baptized, p: 100, motive: avoidHel, onQuestion: { confess: 1, excuse: 1 } }
+# Day 12: Loki in a hero's face. Everything says Valhalla except the lips; asked, he deflects.
+- id: arch.loki
+  since: 12
+  personas: [veteran, braggart]
+  truth:
+    trickster: { is: true }
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  lies:
+    - { fact: trickster, claim: false, p: 100, motive: mischief, onQuestion: { deflect: 1 } }

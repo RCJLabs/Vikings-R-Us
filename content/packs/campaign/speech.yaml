@@ -1,3 +1,6 @@
 - { slot: oath, fact: outlaw, chance: 25, since: 6 }
 - { slot: owner, fact: weaponOwner, chance: 20, since: 7 }
 - { slot: blade, fact: blade, chance: 25, since: 7 }
+- { slot: creed, fact: faith, chance: 20, since: 10 }
+# Only Loki says it (as his one lie): nobody else is asked.
+- { slot: guise, fact: trickster, chance: 0, since: 12 }

@@ -50,8 +50,8 @@ export const BLADE_Y: Readonly<Record<WeaponKind, number>> = { axe: -62, sword: 
 /** Which signs each region shows. */
 export const REGION_KEYS: Readonly<Record<HotspotId, readonly string[]>> = {
   hair: ['hair'],
-  face: ['skin', 'lips', 'breath', 'breathFog'],
-  neck: ['ornament', 'brokenRing'],
+  face: ['skin', 'lips', 'lipScars', 'breath', 'breathFog'],
+  neck: ['ornament', 'amulet', 'brokenRing'],
   chest: ['woundsFront', 'freshCarving'],
   handR: HAND_KEYS,
   handL: HAND_KEYS,
@@ -76,6 +76,8 @@ export const SIGN_VIEWS: Readonly<Record<string, BodyView>> = {
   inscription: 'front',
   makersMark: 'front',
   freshCarving: 'front',
+  amulet: 'front',
+  lipScars: 'front',
 };
 
 /** The hotspot regions over the shared layout, in 300x420 frame units. */

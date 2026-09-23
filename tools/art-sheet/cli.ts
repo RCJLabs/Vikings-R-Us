@@ -179,10 +179,11 @@ ${SHEET_CSS}
 </ul>
 </section>
 <section>
-<h2>Not here yet</h2>
+<h2>The subtle signs</h2>
 <ul>
-<li>Day 10's pendants (hammer, cross, both) and Day 12's stitched lips, the subtlest sign in the game (salience 1). They arrive with those days, and they are where the styles should differ most.</li>
-<li>How each style looks in motion, on a stream or as store art. Judge that from the whole souls below and from playing a shift with <span class="mono">?art=woodcut</span> or <span class="mono">?art=pixel</span>.</li>
+<li>Loki's stitch scars (<a href="#sign-lipScars">lipScars</a>, salience 1) are meant to be the hardest sign in the game. The woodcut's ink lines read at a glance, which may make Loki too easy. The pixel scars are faint at full size and clear through the loupe; on a bearded face they can look like teeth.</li>
+<li>Amulets (<a href="#sign-amulet">amulet</a>, Day 10): the hammer and the cross differ in shape and colour. At full phone size the colour does most of the work in every style.</li>
+<li>Not judged here: motion, streams and store art. Play a shift with <span class="mono">?art=woodcut</span> or <span class="mono">?art=pixel</span> for that.</li>
 </ul>
 </section>
 <section>

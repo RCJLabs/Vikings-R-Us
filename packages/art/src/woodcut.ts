@@ -352,6 +352,12 @@ function face(scene: BodyScene): string {
   parts.push(
     `<path d="M138 124Q150 129 162 124" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`,
   );
+  if (obs.lipScars === 'stitched') {
+    // Brokkr's stitches: small scars across the lips (the subtlest sign in the game).
+    parts.push(
+      `<path d="M141 119V131M145.5 120V132M150 120V132M154.5 120V132M159 119V131" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`,
+    );
+  }
   if (obs.lips === 'seaFoam') {
     parts.push(
       `<path d="M162 127Q165 136 162 146" fill="none" stroke="${FOAM_EDGE}" stroke-width="3" stroke-linecap="round"/>`,
@@ -400,6 +406,19 @@ function ornament(value: Value | undefined): string {
     : `${cord}<circle cx="150" cy="188" r="10" fill="none" stroke="${INK}" stroke-width="8"/><circle cx="150" cy="188" r="10" fill="none" stroke="${SILVER}" stroke-width="4"/>`;
 }
 
+/** An amulet on its own cord, left of any ornament: Thor's hammer, a cross, or both on one cord. */
+function amulet(value: Value | undefined): string {
+  if (value !== 'hammer' && value !== 'cross' && value !== 'hammerAndCross') return '';
+  const hammer = (x: number) =>
+    `<path d="M${x - 2} 175H${x + 2}V185H${x + 8}L${x + 7} 193H${x - 7}L${x - 8} 185H${x - 2}Z" fill="${IRON}" ${THIN}/>`;
+  const cross = (x: number) =>
+    `<path d="M${x - 2} 175H${x + 2}V181H${x + 7}V185H${x + 2}V197H${x - 2}V185H${x - 7}V181H${x - 2}Z" fill="${GOLD}" ${THIN}/>`;
+  const cord = `<path d="M138 152L128 175" fill="none" stroke="${INK}" stroke-width="2"/>`;
+  if (value === 'hammer') return `${cord}${hammer(128)}`;
+  if (value === 'cross') return `${cord}${cross(128)}`;
+  return `${cord}<path d="M120 175H136" stroke="${INK}" stroke-width="2"/>${hammer(120)}${cross(136)}`;
+}
+
 /** An oath-ring on a thong, snapped open, beside any pendant. */
 function brokenRing(on: boolean): string {
   if (!on) return '';
@@ -445,6 +464,7 @@ function draw(scene: BodyScene): string {
         hairFill(hair, hairShape(scene.look, true)),
         face(scene),
         ornament(scene.obs.ornament),
+        amulet(scene.obs.amulet),
         brokenRing(scene.cues.includes('brokenRing')),
         freshTally(scene.cues.includes('freshCarving'), scene.look),
         wounds(scene.obs.woundsFront, FRONT_WOUNDS),
@@ -488,6 +508,8 @@ export const woodcutBody: BodyArtProvider = {
     inscription: 2,
     makersMark: 2,
     freshCarving: 2,
+    amulet: 2,
+    lipScars: 1,
   },
   views: SIGN_VIEWS,
 };

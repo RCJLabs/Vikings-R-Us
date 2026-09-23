@@ -188,7 +188,17 @@ export interface ArchetypeDef {
   readonly lies: readonly LieSpec[];
 }
 
-export type SpeechSlot = 'identity' | 'death' | 'weapon' | 'owner' | 'blade' | 'back' | 'oath' | 'flavor';
+export type SpeechSlot =
+  | 'identity'
+  | 'death'
+  | 'weapon'
+  | 'owner'
+  | 'blade'
+  | 'back'
+  | 'oath'
+  | 'creed'
+  | 'guise'
+  | 'flavor';
 
 /** One slot of a soul's speech: which fact it talks about and how often. */
 export interface SpeechSlotDef {

@@ -11,9 +11,10 @@ import { decisiveFacts, revealsOf, validateCase } from './validate';
 
 /*
  * The later decrees (docs/build-plan.md §2): the registry (Day 6), the
- * rune-lens and borrowed weapons (Day 7), clipping nails (Day 8) and forged
- * saga tallies (Day 11). Each mechanic, and a broken case the validator must
- * reject.
+ * rune-lens and borrowed weapons (Day 7), clipping nails (Day 8), the clerk
+ * and the baptized (Day 10), forged saga tallies (Day 11) and Loki in
+ * borrowed faces (Day 12). Each mechanic, and a broken case the validator
+ * must reject.
  */
 
 const full = loadContent('dev-full');
@@ -197,5 +198,75 @@ describe('Day 11: saga tallies, and forged ones', () => {
         }
       }
     }
+  });
+});
+
+describe('Day 10: the clerk takes the baptized', () => {
+  const speaksOfFaith = (x: CaseSpec) => x.evidence.fields.some((f) => f.says?.fact === 'faith');
+
+  it('transfers a baptized soul, and the cross at the neck is what shows it', () => {
+    const { c, ctx } = findCase(10, (x) => x.truth.faith === 'baptized' && !speaksOfFaith(x));
+    expect(c.expect).toMatchObject({ dest: 'TRANSFER', rule: 'rule.transfer' });
+    const cross = c.evidence.fields.find((f) => f.obs?.key === 'amulet');
+    expect(cross?.obs?.value).toBe('cross');
+    const blind = solve(
+      c.evidence.fields.filter((f) => f !== cross),
+      ctx,
+      { reveals: revealsOf(c.lies) },
+    );
+    expect(blind.judgment).not.toMatchObject({ kind: 'determined', dest: 'TRANSFER' });
+  });
+
+  it('keeps the prime-signed: a cross that shares its cord with a hammer', () => {
+    const { c } = findCase(10, (x) => x.truth.faith === 'primeSigned');
+    expect(c.expect.dest).not.toBe('TRANSFER');
+    expect(c.evidence.fields.find((f) => f.obs?.key === 'amulet')?.obs?.value).toBe('hammerAndCross');
+  });
+
+  it('catches a heathen claiming the water by the hammer at the neck, and rejects the case without it', () => {
+    const { c, ctx } = findCase(10, (x) => x.archetype === 'arch.false_convert');
+    expect(c.expect.dest).toBe('HEL');
+    expect(c.lies.find((l) => l.fact === 'faith')?.claimed).toBe('baptized');
+    expect(c.evidence.fields.find((f) => f.obs?.key === 'amulet')?.obs?.value).toBe('hammer');
+    const v = revalidate(
+      c,
+      ctx,
+      c.evidence.fields.filter((f) => f.obs?.key !== 'amulet'),
+    );
+    expect(v).toMatchObject({ ok: false, code: 'HIDDEN_LIE' });
+  });
+});
+
+describe('Day 12: Loki in a borrowed face', () => {
+  const loki = (x: CaseSpec) => x.truth.trickster === true;
+
+  it('detains him, and only the scars on his lips give him away', () => {
+    const { c, ctx } = findCase(12, loki);
+    expect(c.expect).toMatchObject({ dest: 'DETAIN', rule: 'rule.detain' });
+    const lips = c.evidence.fields.find((f) => f.obs?.key === 'lipScars');
+    expect(lips).toMatchObject({ salience: 1, obs: { value: 'stitched' } });
+    const blind = solve(
+      c.evidence.fields.filter((f) => f !== lips),
+      ctx,
+      { reveals: revealsOf(c.lies) },
+    );
+    expect(blind.judgment).not.toMatchObject({ kind: 'determined', dest: 'DETAIN' });
+  });
+
+  it('is too subtle for a day whose floor is salience 2', () => {
+    const { c, ctx } = findCase(12, loki);
+    const v = validateCase(c.evidence, c.truth, c.lies, c.expect, decisiveFacts(c.truth, c.expect, ctx), ctx, {
+      ...ctx.spec.queue.knobs,
+      salienceFloor: 2,
+    });
+    expect(v).toMatchObject({ ok: false, code: 'SALIENCE_FLOOR' });
+  });
+
+  it('deflects when questioned: no confession, nothing revealed', () => {
+    const { c } = findCase(12, loki);
+    const lie = c.lies.find((l) => l.fact === 'trickster');
+    const answer = questionResponse(c, lie?.field ?? '', full);
+    expect(answer).toMatchObject({ kind: 'deflect', reveals: [] });
+    expect(answer?.template).toMatch(/^q\.guise\.deflect/);
   });
 });

@@ -4,3 +4,8 @@
 - { kind: sign, id: law.borrowedBlade, since: 7, text: law.borrowedBlade, if: { obs: inscription, is: other }, then: { fact: weaponOwner, in: [other] } }
 - { kind: sign, id: law.ulfberht, since: 7, text: law.ulfberht, if: { obs: makersMark, is: markTrue }, then: { fact: blade, in: [ulfberht] } }
 - { kind: sign, id: law.copyUlfberht, since: 7, text: law.copyUlfberht, if: { obs: makersMark, is: markCopy }, then: { fact: blade, in: [fakeUlfberht] } }
+- { kind: sign, id: law.cross, since: 10, text: law.cross, if: { obs: amulet, is: cross }, then: { fact: faith, in: [baptized] } }
+- { kind: sign, id: law.primeSigned, since: 10, text: law.primeSigned, if: { obs: amulet, is: hammerAndCross }, then: { fact: faith, in: [primeSigned] } }
+- { kind: sign, id: law.hammer, since: 10, text: law.hammer, if: { obs: amulet, is: hammer }, then: { fact: faith, in: [heathen] } }
+- { kind: sign, id: law.stitchedLips, since: 12, text: law.stitchedLips, if: { obs: lipScars, is: stitched }, then: { fact: trickster, in: [true] } }
+- { kind: sign, id: law.plainLips, since: 12, text: law.plainLips, if: { obs: lipScars, is: none }, then: { fact: trickster, in: [false] } }
