@@ -141,21 +141,45 @@ test('leaving the page pauses the sun, and a reload resumes the same Daily', asy
   await expect(page.getByTestId('sun')).toHaveText(frozen ?? '');
   await page.getByTestId('resume').click();
 
+  // The feather's 10 s penalty makes a reset clock (6:00) stand out.
+  await page.getByTestId('feather').click();
+  const before = seconds(await page.getByTestId('sun').textContent());
+  expect(before).toBeLessThanOrEqual(350);
   await page.reload();
   await expect(page.getByTestId('play-daily')).toHaveText("Resume today's shift");
   await page.getByTestId('play-daily').click();
   await expect(page.getByTestId('resume')).toBeVisible();
   await page.getByTestId('resume').click();
   await expect(page.getByTestId('soul-count')).toHaveText('Soul 3 of 8');
+  // Same timeline: at most the 5 s heartbeat is refunded.
+  const after = seconds(await page.getByTestId('sun').textContent());
+  expect(after).toBeLessThanOrEqual(before + 6);
+  expect(after).toBeGreaterThanOrEqual(before - 6);
+});
+
+function seconds(text: string | null): number {
+  const [m, s] = (text ?? '').split(':').map(Number);
+  return (m ?? 0) * 60 + (s ?? 0);
+}
+
+test('a reload right after the last send keeps the result', async ({ page }) => {
+  await openDaily(page);
+  for (const c of state.cases) await stampAndSend(page, c.expect.dest);
+  await page.reload();
+  await expect(page.getByTestId('daily-result')).toContainText('8/8');
+  await expect(page.getByTestId('play-daily')).toHaveText("Play again (won't count)");
 });
 
 test('keyboard only: look, turn over, stamp with number keys, send with Enter', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'keyboard play is for the desk layout');
   await page.clock.setFixedTime(DATE);
   await page.goto('./');
+  // The button waits for saved Daily progress to load; a disabled button can't take focus.
+  await expect(page.getByTestId('play-daily')).toBeEnabled();
   await page.getByTestId('play-daily').focus();
   await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter'); // Begin shift has focus
+  await expect(page.getByTestId('begin')).toBeFocused();
+  await page.keyboard.press('Enter');
   for (const [i, c] of state.cases.entries()) {
     await expect(page.getByTestId('soul-count')).toHaveText(`Soul ${i + 1} of ${state.cases.length}`);
     const look = page.locator('.chip--look');

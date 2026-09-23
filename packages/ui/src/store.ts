@@ -94,6 +94,8 @@ export interface DailyProgress {
   readonly n: number;
   readonly g: number;
   readonly actions: readonly ShiftAction[];
+  /** Clock time last seen with the sun running (a 5 s heartbeat), so a reload refunds at most that. */
+  readonly seenAt?: number;
 }
 
 export const dailyRecord = signal<DailyRecord>({ v: 1, results: {} });
@@ -101,6 +103,44 @@ export const dailyProgress = signal<DailyProgress | null>(null);
 export const storageReady = signal(false);
 
 let store: KeyValueStore | null = null;
+
+/*
+ * Daily progress and results are also mirrored to localStorage, which writes
+ * synchronously. An IndexedDB write still in flight is lost if the page
+ * unloads, and losing a just-sent soul or a finished result would let the
+ * Daily be played again.
+ */
+const MIRROR = { progress: 'cots.daily-progress', record: 'cots.daily' } as const;
+
+function mirror(key: string, value: unknown): void {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage blocked or full: IndexedDB still has it.
+  }
+}
+
+function readMirror<T>(key: string): T | undefined {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function mergeRecords(a: DailyRecord | undefined, b: DailyRecord | undefined): DailyRecord {
+  return { v: 1, results: { ...(a?.v === 1 ? a.results : {}), ...(b?.v === 1 ? b.results : {}) } };
+}
+
+/** The fuller of two saves of the same Daily (or the later Daily). */
+function newest(a: DailyProgress | undefined, b: DailyProgress | undefined): DailyProgress | undefined {
+  if (a?.v !== 1) return b?.v === 1 ? b : undefined;
+  if (b?.v !== 1) return a;
+  if (a.n !== b.n) return a.n > b.n ? a : b;
+  return b.actions.length > a.actions.length || (b.seenAt ?? 0) > (a.seenAt ?? 0) ? b : a;
+}
 
 export async function initStorage(): Promise<void> {
   try {
@@ -115,8 +155,8 @@ export async function initStorage(): Promise<void> {
   ]);
   batch(() => {
     if (s?.v === 1) settings.value = { ...DEFAULT_SETTINGS, ...s };
-    if (record?.v === 1) dailyRecord.value = record;
-    if (progress?.v === 1) dailyProgress.value = progress;
+    dailyRecord.value = mergeRecords(record, readMirror<DailyRecord>(MIRROR.record));
+    dailyProgress.value = newest(progress, readMirror<DailyProgress>(MIRROR.progress)) ?? null;
     storageReady.value = true;
   });
   applySettings();
@@ -274,8 +314,15 @@ function onEvent(e: ShiftEvent, s: Session): void {
 
 function saveProgress(s: Session): void {
   if (s.mode.kind !== 'daily' || !s.mode.ranked || s.state.phase === 'done') return;
-  const progress: DailyProgress = { v: 1, n: s.mode.n, g: s.content.genVersion, actions: s.actions };
+  const progress: DailyProgress = {
+    v: 1,
+    n: s.mode.n,
+    g: s.content.genVersion,
+    actions: s.actions,
+    seenAt: clock(),
+  };
   dailyProgress.value = progress;
+  mirror(MIRROR.progress, progress);
   void store?.set('daily-progress', progress);
 }
 
@@ -295,6 +342,9 @@ function finish(s: Session): void {
     };
     dailyRecord.value = { v: 1, results: { ...dailyRecord.value.results, [String(s.mode.n)]: result } };
     dailyProgress.value = null;
+    // Result first, then drop the progress: an unload between the two must not lose both.
+    mirror(MIRROR.record, dailyRecord.value);
+    mirror(MIRROR.progress, null);
     void store?.set('daily', dailyRecord.value);
     void store?.remove('daily-progress');
     void requestPersistence();
@@ -328,10 +378,12 @@ export function startDaily(): void {
     let st = s.state;
     for (const a of progress.actions) st = stepShift(st, a, ctx).state;
     const lastAt = progress.actions[progress.actions.length - 1]?.at ?? 0;
-    clockOffset = lastAt - Math.round(performance.now());
+    // The sun ran at least until the last heartbeat; the unload's own pause may not have been saved.
+    const resumeAt = Math.max(lastAt, progress.seenAt ?? 0);
+    clockOffset = resumeAt - Math.round(performance.now());
     const actions = [...progress.actions];
     if (st.phase === 'shift' && st.clock.pausedAt === null) {
-      const pause: ShiftAction = { t: 'pause', at: lastAt };
+      const pause: ShiftAction = { t: 'pause', at: resumeAt };
       st = stepShift(st, pause, ctx).state;
       actions.push(pause);
     }
@@ -396,10 +448,14 @@ function pauseIfPlaying(): void {
 /** Starts the sun ticker and the auto-pause listeners. Call once. */
 export function startClock(): void {
   if (ticker) return;
+  let beats = 0;
   ticker = setInterval(() => {
     now.value = clock();
     const s = session.peek();
-    if (s?.state.phase === 'shift' && s.state.clock.pausedAt === null) act({ t: 'tick' });
+    if (s?.state.phase === 'shift' && s.state.clock.pausedAt === null) {
+      act({ t: 'tick' });
+      if (++beats % 20 === 0) saveProgress(session.peek() ?? s);
+    }
   }, 250);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') pauseIfPlaying();

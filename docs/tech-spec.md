@@ -1145,6 +1145,8 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - **Preview Dailies.** Before `DAILY_EPOCH`, the title offers an unnumbered "Daily preview · date" (seed `daily:<n>`, n ≤ 0) so testers can play now. Its share text says "Daily preview <date>".
 - **Saving a Daily in progress.**
   - The action log is saved after every action (not the state). A reload replays it and resumes paused on the same timeline.
+  - The log and the results are mirrored to localStorage, which writes synchronously. An IndexedDB write still in flight is lost when the page unloads, which would let a just-sent soul be judged again. On load the fuller copy wins.
+  - A 5 s heartbeat saves the last time the sun was seen running, so a reload or crash refunds at most about 5 s of sun.
   - Leaving the page (hidden, blurred or unloaded) pauses the sun, and the desk is blurred while paused.
   - One ranked attempt per Daily; replays don't count. The streak counts consecutive Dailies played to the end.
 - **Strings are ICU MessageFormat.** The UI uses intl-messageformat. The compiler checks every message parses, and requires chip text for every sign value, tool and destination.
@@ -1161,7 +1163,7 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - No gamepad or focus graph yet (M6, with the Deck). Keyboard play uses native focus plus the keymap.
 - Landscape phones get the drawer, not the side sheet from §6.3.
 - Blur-to-pause also fires when a desktop player clicks another window. That's intended.
-- If the browser crashes, the time between the last action and the crash isn't counted: the pause is saved on `pagehide`, which a crash skips.
+- A crash or reload refunds up to 5 s of sun (the heartbeat interval).
 - No runtime Daily checksum guard yet (M3). Checksums are only checked in CI.
 - Only the web build's share text carries a link. The itch, Steam and Android builds share text alone.
 - Web demo JS is 47.7 KB gzipped (budget 250 KB).
