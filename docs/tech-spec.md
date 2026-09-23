@@ -1209,6 +1209,56 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - Web demo JS is 56.9 KB gzipped (budget 250 KB), up from 48 KB. Most of that is the checksum table, the new strings and the new UI; the service-worker update client is about 1 KB.
 - Telemetry exists only in the web and itch builds. The Steam and Play builds ignore a telemetry URL even if one is set, which matches Play's "no data collected".
 
+## 16. M4 implementation notes (campaign systems as built)
+
+**Where things live**
+- The run: `packages/engine/src/campaign/` (`run.ts` the day loop, economy, family and endings; `save.ts` saves, resume and replaying a day; `state.ts` the run state and the paths endings can read).
+- Story: `packages/story` plays compiled Ink; the compiler's `scenes.ts` compiles and lints `scenes/*.ink`. Story souls are `cases/*.yaml`, made by `engine/src/gen/scripted.ts`. What is placeholder writing, and the rules for writing scenes, are in `docs/story-drafts.md`.
+- Campaign UI: `packages/ui/src/campaign/` (`run-store.ts` slots, saving and resume; `screens.tsx` slots, morning, audit, night, ending). It loads on first use, with scenes in a chunk of their own.
+- Content: `content/packs/demo` (Days 1–3 and their campaign rules) and `content/packs/campaign` (Days 4–8 and 11, the registry, the rune-lens, procedures, tallies).
+- Tools: `pnpm sim campaign [--target]` (the economy bots), the testkit's `scenarioSave` (a save on any morning, for tests), and a second e2e preview server for the full build.
+
+**Decisions**
+- **The run is pure.** `stepRun(run, action, env)` wraps the shift. Morning scenes, beginning the shift, the shift's own actions, the audit, bills, the shop, night scenes and ending the night are all actions. A save keeps each morning's state, the day's actions and the day's queue, so a resume is exact and any day can be replayed from its morning. A save from another engine version starts its day again ("the Norns rewound the day").
+- **Economy and family** (all numbers are per day, in its spec):
+  - Wages per soul judged rightly, a bonus when the lie was caught, a few forgiven mistakes, then fines that escalate.
+  - Bills: hearth, food for everyone at home, medicine for the sick. An unmet need is a seeded gamble (so replays fall sick the same way), and two nights of the same need in a row always make someone sick.
+  - Two nights sick without medicine lose them: adults die; children are sent to relatives.
+  - Draupnir drips rings on nights 9 and 18. Two nights below the debt floor is the Demoted ending.
+  - Story Mode has no sun and no fines.
+- **Standing** with Odin, Freyja, Hel, Loki and the clerk moves by an (expected, stamped) table, and through scenes and story souls. The shop sells speed only.
+- **Scenes are stateless Ink.** Each file is compiled on its own. A scene reads the run through six externals and changes it only through `# fx:` tags, applied once when the scene ends.
+  - The compiler rejects Ink errors and warnings, unknown externals, malformed effects, effects on choice lines, text outside a choice's brackets (the game echoes the picked option), missing speakers, and scenes no day plays.
+  - It walks every choice path in three sample runs.
+- **Story souls** are generated from their own truth constraints with a fixed identity and a seed of their own (the same soul in every run), then validated by the same F1–F8 contract. The compiler proves each can be made on every day that places it, under every whim. Stamping one can set flags or move standing at the audit. Thorvald (Day 3) and Geir (Day 6) are the first.
+- **Later decrees reuse the fairness engine.** Each needed one general addition:
+  - Registry (Day 6): an observation can be read from a document (`doc`), which becomes its own evidence item. The registry lookup is a tool; a namesake's entry always shows different hair; a cue (the broken oath-ring) says when to look.
+  - Rune-lens (Day 7): owner's runes and maker's marks are tool readings on the weapon; a borrowed weapon sends a soul to Hel.
+  - Procedures (Day 8): a judgment is a destination plus the procedures due. Clipping nails is the first. The solver must see the hands to settle it; a right stamp on unclipped nails is a mistake with its own citation. The key is left out of judgments without procedures, so older cases and Dailies keep their exact shape.
+  - Saga tallies (Day 11): tally lines count at trust 3 unless a forgery sign is seen through the rune-lens, which voids the whole tally. A forger's lie is carved, never spoken. F5 requires a visible sign and a cue for every forgery. The oracle models tallies the same way, and the trusting bot believes tallies as well as words.
+- **Mechanics live in the campaign pack.** New facts sort after the old ones, and new random draws use their own forks, so the Daily and Days 1–5 generate exactly as before (goldens unchanged). A Days 6-on golden now pins the full game's days.
+- **Leak check vs shared code.** Campaign ids and string keys must not appear in the UI code every build shares. Tool buttons and chips build their keys from data, and the one pool the UI names (crimes) lives in core.
+
+**Economy simulation** (`pnpm sim campaign --seeds 200`; bots judge at a fixed accuracy and follow a night strategy)
+
+| Judging (accuracy) | Demo, Days 1–3: demoted | Full, Days 1–6: demoted | Full: rings at the end (competent: mean / min) |
+|---|---|---|---|
+| Expert (97%) | 0% | 0% | — |
+| Competent (85%) | 0% | 0% | 126 / 49 (pay all bills) |
+| Novice (65%) | 0.5–1.5% | 3.5–14% | — |
+| Careless (40%) | 23–34% | 92–98% | — |
+
+The range in each cell spans the three night strategies (pay everything, skip the hearth on odd nights, buy upgrades first). No bot lost a family member, because every strategy pays for medicine; the unit tests cover losing one.
+
+**Deferred and known limits**
+- The campaign runs to Day 6. Days 7, 8 and 11 have mechanics and specs (playable in Practice in full builds) but no story. Days 9, 10 and 12–20 are M7.
+- All story text is draft (about 1.7k words of Ink plus strings); see `docs/story-drafts.md`. The scene lint walks three sample runs, not every run.
+- By Day 6 a competent player has about 126 rings and nothing left to buy. The economy needs more sinks or costs as days are added.
+- A scene restarts if the page reloads mid-scene (choices are logged only when it ends); a shift resumes paused where it was.
+- Minimal proofs are 1-minimal, not cheapest: with a tool, the proof can keep the tool reading where a raven line would do. Proof costs run a little high on those days.
+- A forged tally is always also contradicted by the body, so the rune-lens is a second route rather than the only one. Forgeries that only the lens can catch need facts with no cheap physical sign.
+- Web demo JS is 63.6 KB gzipped on first load (the campaign screens and the Ink runtime, 40.8 KB, load when the campaign is opened; the demo's scenes are 2.6 KB).
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

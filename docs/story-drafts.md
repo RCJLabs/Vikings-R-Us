@@ -11,6 +11,7 @@ Everything listed here is **placeholder writing** made so the campaign systems c
 | Thorvald's first visit (Day 3): two lines | `content/packs/demo/cases/thorvald-1.yaml`, strings `case.thorvald1.*` | 20 |
 | Geir Hallsson, the oathbreaker you knew (Day 6): two lines | `content/packs/campaign/cases/geir.yaml`, strings `case.geir.*` | 20 |
 | Oath lines, question answers, Huginn's line, registry crimes (Day 6) | strings `tm.oath.*`, `q.oath.*`, `rv.huginn.outlaw`; core `pool.crimes` | ~90 |
+| Decrees, laws, lines and answers for Days 7, 8 and 11 (weapons, nails, tallies) | campaign strings `decree.d7`/`d8`/`d11`, `law.*Blade`, `law.*Ulfberht`, `tm.owner.*`, `tm.blade.*`, `q.owner.*`, `q.blade.*`, `tl.*`, `tell.*`, `q.tally.*` | ~450 |
 | Speaker names | strings `speaker.*` (demo, campaign) | — |
 | Family, shop and ending text (M4.1) | strings `family.*`, `shop.*`, `ending.*` | ~150 |
 

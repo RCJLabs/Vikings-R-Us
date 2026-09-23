@@ -1,6 +1,6 @@
 /**
  * Generator sweeps and campaign simulations (docs/tech-spec.md §9-10).
- *   pnpm sim sweep [--seeds 200] [--days 1-5] [--prefix sweep] [--no-timing]
+ *   pnpm sim sweep [--seeds 200] [--days 1-11] [--prefix sweep] [--no-timing]   (default: every day with a spec)
  *   pnpm sim sweep --daily [--seeds 200]      Dailies #1..#seeds
  *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo]
  * Sweeps print a report and exit 1 if any CI threshold is breached.
@@ -43,12 +43,16 @@ if (cmd === 'campaign') {
 }
 if (cmd !== 'sweep') {
   console.error(
-    'Usage: pnpm sim sweep [--seeds N] [--days 1-5 | --daily] [--prefix P] [--no-timing] | pnpm sim campaign [--seeds N]',
+    'Usage: pnpm sim sweep [--seeds N] [--days 1-11 | --daily] [--prefix P] [--no-timing] | pnpm sim campaign [--seeds N]',
   );
   process.exit(2);
 }
-const [lo, hi] = arg('days', '1-5').split('-').map(Number) as [number, number];
-const days = Array.from({ length: (hi ?? lo) - lo + 1 }, (_, i) => lo + i);
+// Every day with a spec by default; a range keeps only the days that have one.
+const specced = loadContent('dev-full').days.map((d) => d.day);
+const range = process.argv.includes('--days')
+  ? (arg('days', '1-5').split('-').map(Number) as [number, number])
+  : ([Math.min(...specced), Math.max(...specced)] as [number, number]);
+const days = specced.filter((d) => d >= range[0] && d <= (range[1] ?? range[0]));
 const seeds = Number(arg('seeds', '200'));
 const timing = !process.argv.includes('--no-timing');
 const daily = process.argv.includes('--daily');
