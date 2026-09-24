@@ -1288,6 +1288,7 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - Loki's scars read at a glance in the woodcut, which may make him too easy. The pixel scars show only through the loupe, and on a bearded face they can look like teeth.
 - The slice's stand-in for Days 4–11 (rings, standing, `ulf_shipyard`) is a guess. Day 12 has a generated teaching Loki as well as the story Loki. The slice plays only in full builds, which aren't deployed anywhere public.
 - Days 7–11 still have no story; the plain campaign still ends after Day 6.
+- The brute-force oracle enumerates every world the evidence allows, which is exponential in the free facts. Days 10–12 made the partial-evidence property the slowest check (about 100 ms a run); its budget is now 250 ms a run. M7's days will need the oracle to enumerate only the facts the day's rules, laws and constraints can reach.
 - Everything written in M5 is draft (`docs/story-drafts.md`). The sound is a placeholder.
 
 ## Sources
