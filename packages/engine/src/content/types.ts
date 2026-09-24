@@ -209,6 +209,8 @@ export interface ArchetypeDef {
   /** Extra conditions such as Freyja's whim; simple ones become sampling constraints. */
   readonly require?: readonly Pred[];
   readonly lies: readonly LieSpec[];
+  /** Words its souls' lines use, by pool (`{ pool.weapons: seax }`). A fact's own words still win. */
+  readonly words?: Readonly<Record<string, string>>;
 }
 
 export type SpeechSlot =
@@ -461,6 +463,8 @@ export interface ScriptedCaseDef {
   readonly look: Look;
   /** Extra lines the soul says (string keys). They claim nothing, so they can't change a judgment. */
   readonly lines?: readonly string[];
+  /** Words its generated lines use, by pool: a fisherwoman's knife is a seax (`{ pool.weapons: seax }`). */
+  readonly words?: Readonly<Record<string, string>>;
   /** Where the soul belongs; the compiler checks the generated case agrees. */
   readonly expect: Destination;
   /** Only in the queue when this holds as the shift begins. */

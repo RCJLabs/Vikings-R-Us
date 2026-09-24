@@ -18,6 +18,8 @@ params:
 queue:
   count: [12, 14]
   teachFirst: arch.baptized
+  scripted:
+    - { case: case.bard, at: 5 }
   archetypes:
     - { id: arch.honest_warrior, w: 3 }
     - { id: arch.freyja_pick, w: 2 }

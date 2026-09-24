@@ -1,0 +1,20 @@
+# DRAFT writing. Day 4's story soul, if you paid for the roof on Day 2
+# (roof_mended): Old Hrolf, whose nets Ulf mended, helped him patch the roof,
+# and died in his chair two days later. Honest, and plainly Hel's. The night's
+# letter says so (scene.d4.night).
+id: case.hrolf
+personas: [honest]
+truth:
+  cause: { is: oldAge }
+  grip: { is: none }
+  woundsFront: { is: 0 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+lies: []
+look: { gender: m, name: Hrolf, patronym: Oddsson, age: 81, build: lean, beard: long }
+lines: [case.hrolf.roof, case.hrolf.drum, case.hrolf.winter]
+words: { pool.weapons: seax }
+expect: HEL
+when: { state: flags.roof_mended, gte: 1 }
+onStamp:
+  - { stamped: '*', effects: [{ flag: hrolf_judged }] }

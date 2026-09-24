@@ -1,5 +1,6 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
+EXTERNAL flag(name)
 EXTERNAL rings()
 "Draupnir drips tonight," says Skögul. "For the last time." # speaker: skogul
 "And they say the ship's nearly built. The dead who came up from the north this week all had very short nails and very tired hands." # speaker: skogul
@@ -7,6 +8,9 @@ She isn't eating. She's sharpening a spear, which you've never seen her do.
 Down the table the clerk clears his throat, and clears it again, and comes over with a sheet of vellum held in both hands.
 "A contract. Quite standard. When the horn blows, our department will be unaffected. We aren't in the song. We'd like to offer you a transfer." # speaker: clerk
 "A table of your own. A warm room. A pension. There's a small fee for the paperwork, ten rings. It's the vellum, you see. Calves don't grow on trees." # speaker: clerk
+{ flag("heard_pension"):
+  "You asked me once what it's like, down our end. This is what it's like." # speaker: clerk
+}
 Skögul goes on sharpening the spear.
 * [Sign it and pay the ten rings. #needs: rings 10]
   # fx: rings -10

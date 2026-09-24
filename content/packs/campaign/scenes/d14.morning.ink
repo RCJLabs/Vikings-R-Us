@@ -1,5 +1,6 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
+EXTERNAL flag(name)
 Today's decree isn't from the quartermaster. It's on a strip of grey hide, the writing is small and cold, and it's signed with a single rune: Hel's.
 "Her hall is full," says Skögul. "She says." # speaker: skogul
 "Anyone who died in bed, of sickness or old age, who'd have gone to her, goes to the clerk now. Everyone else she takes as before: the outlaws, the cowards, the borrowers." # speaker: skogul
@@ -8,6 +9,9 @@ At the end of the table the clerk has already set out a fresh stack of forms, an
 "We have plenty of room," he says. "Plenty. It's written down." # speaker: clerk
 "How much is plenty?" # speaker: skogul
 "We've never had to count." # speaker: clerk
+{ flag("helped_clerk"):
+  "Your man with twenty shirts is settling in, by the way. He's asked for a twenty-first." # speaker: clerk
+}
 * ["Is Hel's hall really full?"]
   Skögul chews for a while.
   "Hel's hall has been full since the first winter. She's never minded before. Something's changed." # speaker: skogul

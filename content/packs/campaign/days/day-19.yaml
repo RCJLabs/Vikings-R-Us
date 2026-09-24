@@ -1,6 +1,6 @@
 # Day 19: every rule in force, the hardest queue. The last night before Ragnarök.
 day: 19
-sunS: 920
+sunS: 950
 decree: decree.d19
 scenes: { morning: scene.d19.morning, night: scene.d19.night }
 economy:
@@ -21,6 +21,8 @@ params:
       - { id: whim.odin.ulfberht, text: whim.odin.ulfberht, is: { fact: blade, is: ulfberht } }
 queue:
   count: [15, 17]
+  scripted:
+    - { case: case.halla, at: 7 }
   archetypes:
     - { id: arch.honest_warrior, w: 2 }
     - { id: arch.freyja_pick, w: 2 }

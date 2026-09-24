@@ -2,6 +2,9 @@
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
 EXTERNAL flag(name)
 The last night. Nobody sleeps. Up at the hall they are singing, and it doesn't sound like a celebration.
+{ flag("broke_loki"):
+  There's nobody at the far end of your table tonight in a borrowed face. You hadn't expected to miss him.
+}
 Skögul sits on the end of your table with her spear across her knees, and for once she isn't eating.
 "Tomorrow I ride. All of us do. Choosers ride out with the host. You'll stay at the gate. Someone has to stamp the ones who come up the path." # speaker: skogul
 { flag("owes_skogul"):
@@ -9,6 +12,12 @@ Skögul sits on the end of your table with her spear across her knees, and for o
   "Call it wages." # speaker: skogul
   # fx: flag owes_skogul = 0
   The page curls and goes out.
+}
+{ flag("told_skogul"):
+  "You told me about the stranger, the day he came in a borrowed face. You didn't have to. I wrote it down, the way I write everything down." # speaker: skogul
+}
+{ flag("kept_quiet"):
+  "You kept something from me, the day he came in a borrowed face. I knew. You'd have been a poor chooser if you told me everything." # speaker: skogul
 }
 * { flag("truth") >= 1 } ["What happens after?"]
   # fx: flag truth +1
@@ -24,12 +33,21 @@ Skögul sits on the end of your table with her spear across her knees, and for o
 * ["Odin."]
   # fx: standing odin +3
   "Good. He'll need it." # speaker: skogul
+  { flag("sided_odin"):
+    "You told Freyja as much, the day they both wanted the same souls. He heard." # speaker: skogul
+  }
 * ["Freyja."]
   # fx: standing freyja +3
   "She'll know. She always knows." # speaker: skogul
+  { flag("sided_freyja"):
+    "You told her so once already. She keeps a list too." # speaker: skogul
+  }
 * ["Hel, and the quiet dead."]
   # fx: standing hel +3
   "Someone should." # speaker: skogul
+  { flag("sided_hel"):
+    "You said it at the gate once, with the whole queue listening. Down there, they remember." # speaker: skogul
+  }
 * ["Nobody. I stamp."]
   Skögul smiles, for the first time since you've known her.
   "Then you're a chooser." # speaker: skogul

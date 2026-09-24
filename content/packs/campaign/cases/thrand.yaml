@@ -1,0 +1,21 @@
+# DRAFT writing. Day 17, the spear mark: Thrand, an old skald who died in bed
+# with a spear cut over his heart, the way Odin marked himself. It counts.
+id: case.thrand
+personas: [honest]
+truth:
+  cause: { is: oldAge }
+  grip: { is: none }
+  blade: { is: plain }
+  spearMark: { is: true }
+  woundsFront: { is: 0 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+  outlaw: { is: false }
+  faith: { is: heathen }
+  trickster: { is: false }
+  nailsGrown: { is: false }
+lies: []
+look: { gender: m, name: Thrand, patronym: Eyvindsson, age: 78, build: lean, beard: long }
+lines: [case.thrand.spear, case.thrand.poems, case.thrand.count]
+words: { pool.weapons: spear }
+expect: VALHALLA

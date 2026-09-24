@@ -1,0 +1,23 @@
+# DRAFT writing. Day 13, if you reported the tally carver on Day 11
+# (reported_carver): Bjarni, drowned in the fjord at the jarl's order. His own
+# tally is his best forgery. Case.bjarni_old comes on Day 15 if you didn't.
+id: case.bjarni_drowned
+personas: [braggart]
+truth:
+  cause: { is: drowned }
+  grip: { is: none }
+  blade: { is: plain }
+  woundsFront: { is: 0 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+  outlaw: { is: false }
+  faith: { is: heathen }
+  trickster: { is: false }
+  nailsGrown: { is: false }
+lies:
+  - { fact: cause, claim: battle, p: 100, via: tally, motive: wantsValhalla, onQuestion: { confess: 2, excuse: 1 } }
+look: { gender: m, name: Bjarni, patronym: Sveinsson, age: 68, build: lean, beard: braided }
+lines: [case.bjarni.list, case.bjarni.tally, case.bjarni.cold]
+words: { pool.weapons: seax }
+expect: RAN
+when: { state: flags.reported_carver, gte: 1 }

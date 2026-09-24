@@ -444,16 +444,21 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
       if (!pools.has(pool)) problems.push(`template ${t.id} uses unknown pool "${pool}".`);
     }
   }
+  // Words a fact, an archetype or a story soul fixes for its lines: each from a pool that has it.
+  const fixes = (owner: string, words: Readonly<Record<string, string>> | undefined) => {
+    for (const [pool, word] of Object.entries(words ?? {})) {
+      if (!pools.has(pool)) problems.push(`${owner} fixes a word from unknown pool "${pool}".`);
+      else if (!content.pools[pool]?.includes(word))
+        problems.push(`${owner} fixes "${word}", which ${pool} doesn't have.`);
+    }
+  };
   for (const f of content.facts) {
     for (const [value, words] of Object.entries(f.words ?? {})) {
       if (!valuesOf(f).includes(value)) problems.push(`fact ${f.id} has words for "${value}", which it can't be.`);
-      for (const [pool, word] of Object.entries(words)) {
-        if (!pools.has(pool)) problems.push(`fact ${f.id} fixes a word from unknown pool "${pool}".`);
-        else if (!content.pools[pool]?.includes(word))
-          problems.push(`fact ${f.id} fixes "${word}", which ${pool} doesn't have.`);
-      }
+      fixes(`fact ${f.id}`, words);
     }
   }
+  for (const s of content.scripted ?? []) fixes(`story soul ${s.id}`, s.words);
   for (const q of content.questions) {
     if (q.on.fact !== '*') fact(q.on.fact, `template ${q.id}`);
     for (const m of q.msgs) key(m, `template ${q.id}`);
@@ -464,6 +469,7 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
   for (const a of content.archetypes) {
     for (const f of Object.keys(a.truth)) fact(f, `archetype ${a.id}`);
     for (const p of a.require ?? []) pred(p, `archetype ${a.id}`);
+    fixes(`archetype ${a.id}`, a.words);
     for (const lie of a.lies) {
       fact(lie.fact, `archetype ${a.id}`);
       for (const [k, w] of Object.entries(lie.onQuestion)) if ((w ?? 0) > 0) kindsUsed.add(k);
@@ -685,6 +691,12 @@ function lintScripted(content: Content, strings: Readonly<Record<string, string>
   const defs = new Map<string, ScriptedCaseDef>();
   const facts = new Set(content.facts.map((f) => f.id));
   const family = new Set((content.campaign?.family ?? []).map((m) => m.id));
+  // A story soul's name is kept from generated souls (engine gen/look.ts), so nobody else in the queue has it.
+  const reserved = new Set(
+    Object.entries(content.pools)
+      .filter(([id]) => id.startsWith('names.reserved'))
+      .flatMap(([, names]) => names),
+  );
   const walk = (p: StatePred, where: string): void => {
     if ('all' in p) for (const q of p.all) walk(q, where);
     else if ('any' in p) for (const q of p.any) walk(q, where);
@@ -702,6 +714,9 @@ function lintScripted(content: Content, strings: Readonly<Record<string, string>
       if (!facts.has(f)) problems.push(`${where} refers to unknown fact "${f}".`);
     }
     for (const k of def.lines ?? []) if (!(k in strings)) problems.push(`${where} uses missing string "${k}".`);
+    if (!reserved.has(def.look.name)) {
+      problems.push(`${where} is named ${def.look.name}, which no names.reserved pool keeps from generated souls.`);
+    }
     if (def.when) walk(def.when, where);
     for (const rule of def.onStamp ?? []) for (const e of rule.effects) effect(e, where);
   }

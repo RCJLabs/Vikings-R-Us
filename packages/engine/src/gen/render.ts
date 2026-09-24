@@ -100,9 +100,10 @@ export function planRavens(truth: Truth, decisive: readonly string[], ctx: DayCt
 /**
  * Words the soul's facts and claims fix (a fact's `words`: an Ulfberht is a sword), claims last, so a
  * soul who says its blade is an Ulfberht calls it a sword in every line. The art draws that weapon.
+ * The archetype's or story soul's own words come first, so a fact can still overrule them.
  */
 function pinnedWords(input: RenderInput, ctx: DayCtx): Map<string, string> {
-  const shared = new Map<string, string>();
+  const shared = new Map<string, string>(Object.entries(input.words ?? {}));
   const pin = (fact: string, value: Value) => {
     const words = ctx.facts.get(fact)?.def.words?.[String(value)];
     for (const [pool, word] of Object.entries(words ?? {})) shared.set(pool, word);
@@ -309,6 +310,8 @@ export interface RenderInput {
   readonly persona: string;
   /** Set on days that spread their lines (knobs.spreadLines); otherwise each line is drawn at random. */
   readonly voice?: Voice;
+  /** Words the archetype or story soul fixes (a fisherwoman's seax); the facts' own words win. */
+  readonly words?: Readonly<Record<string, string>>;
 }
 
 export interface Rendered {

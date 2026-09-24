@@ -17,6 +17,12 @@ Loki is sitting on the end of your table in no borrowed face at all, only his ow
 { flag("ulf_shipyard") && home("brother"):
   "Your brother did the rail. Lovely work. He doesn't know what it's for, and I haven't told him. I thought you'd rather." # speaker: loki
 }
+{ flag("covered_loki"):
+  "You left me out of your report, once. I noticed. I notice everything that's left out." # speaker: loki
+}
+{ flag("reported_loki"):
+  "You put my name in your report, once. Odin's people came up the path with torches. I was very flattered." # speaker: loki
+}
 * { flag("loki_deal") } ["We're still friends."]
   # fx: standing loki +1
   "Good. I'd hate to rub the names out. Chalk smudges." # speaker: loki
@@ -41,5 +47,8 @@ Loki is sitting on the end of your table in no borrowed face at all, only his ow
 * { not flag("loki_deal") } ["No."]
   # fx: standing loki -1
   "No," he agrees. "You never did like me. Most people don't, at the end." # speaker: loki
+  { flag("refused_loki"):
+    "You said no on the nail day, too. I liked that. It's so rare to meet someone consistent." # speaker: loki
+  }
 - When you look up he's gone. Draupnir's eight rings are on the table where he sat. You count them twice, and there are eight both times, and you still don't trust it.
 -> END

@@ -185,10 +185,38 @@ export function describe(e: Expr, w: Wording, negated = false): string {
     if (negated) op = NEGATE[op];
     const n = 'num' in b ? b.num : null;
     if ('call' in a && n !== null) return called(a, w, op, n);
+    // Two of the run's numbers against each other: "letters_honest is more than letters_kind".
+    if ('call' in a && 'call' in b) return `${term(a, w)} is ${RELATION[op]} ${term(b, w)}`;
     return `${negated ? 'not: ' : ''}${JSON.stringify(e)}`;
   }
   if ('call' in e) return called(e, w, negated ? '==' : '!=', 0);
   return negated ? 'never' : 'always';
+}
+
+const RELATION: Readonly<Record<Cmp, string>> = {
+  '==': 'the same as',
+  '!=': 'not the same as',
+  '<': 'less than',
+  '<=': 'at most',
+  '>': 'more than',
+  '>=': 'at least',
+};
+
+/** One of the run's numbers, named as a reader would: a flag, "your rings", "Odin's standing". */
+function term(e: { readonly call: string; readonly args: readonly (string | number)[] }, w: Wording): string {
+  const arg = String(e.args[0] ?? '');
+  switch (e.call) {
+    case 'flag':
+      return w.flag(arg);
+    case 'rings':
+      return 'your rings';
+    case 'standing':
+      return `${w.power(arg)}'s standing`;
+    case 'day':
+      return 'the day';
+    default:
+      return `${e.call}(${e.args.map((x) => JSON.stringify(x)).join(', ')})`;
+  }
 }
 
 /** One external compared with a number (a bare call means "is not 0"). */

@@ -9,6 +9,7 @@ EXTERNAL rings()
   Your mother's letter smells of the peat fire. It's been folded and unfolded many times before it was sent.
   { flag("ulf_shipyard") && home("brother"):
     "No word from Ulf this week. They say the north has a great deal of weather." # speaker: mother
+    "A man from his shipyard fell off the scaffold into the fjord. Not Ulf. I made them say it twice." # speaker: mother
   }
   { flag("ulf_debt") && flag("ulf_home") && home("brother"):
     "Ulf spoke at the Thing. The jarl fined him anyway, but only half, and said he'd never heard a man say sorry so well." # speaker: mother

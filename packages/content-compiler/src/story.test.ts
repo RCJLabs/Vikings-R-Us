@@ -147,11 +147,16 @@ describe('story souls in a target', { timeout: 30_000 }, () => {
     );
   });
 
-  it('rejects unknown facts, missing lines and unplaced or unknown souls', () => {
+  it('rejects unknown facts, missing lines, unreserved names, unknown words and unplaced or unknown souls', () => {
     const packs = packsWith((p) => {
       const t = thorvald(p);
       replace(p, { ...t, truth: { ...t.truth, luck: { is: 0 } }, lines: ['case.thorvald1.missing'] });
-      demoPack(p).content.scripted.push({ ...t, id: 'case.nobody' });
+      demoPack(p).content.scripted.push({
+        ...t,
+        id: 'case.nobody',
+        look: { ...t.look, name: 'Ketil' },
+        words: { 'pool.weapons': 'banjo', 'pool.nope': 'x' },
+      });
       withDay(p, 2, (d) => ({ ...d, queue: { ...d.queue, scripted: [{ case: 'case.ghost', at: 0 }] } }));
     });
     const error = (() => {
@@ -165,6 +170,11 @@ describe('story souls in a target', { timeout: 30_000 }, () => {
     expect(error).toMatch(/story soul case.thorvald1 refers to unknown fact "luck"/);
     expect(error).toMatch(/story soul case.thorvald1 uses missing string "case.thorvald1.missing"/);
     expect(error).toMatch(/No day places story soul "case.nobody"/);
+    // Ketil is a generated soul's name too; Thorvald is kept for the story.
+    expect(error).toMatch(/story soul case.nobody is named Ketil, which no names.reserved pool keeps/);
+    expect(error).not.toMatch(/case.thorvald1 is named/);
+    expect(error).toMatch(/story soul case.nobody fixes "banjo", which pool.weapons doesn't have/);
+    expect(error).toMatch(/story soul case.nobody fixes a word from unknown pool "pool.nope"/);
     expect(error).toMatch(/day 2 places unknown story soul "case.ghost"/);
   });
 });

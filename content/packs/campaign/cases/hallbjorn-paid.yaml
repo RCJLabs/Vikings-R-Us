@@ -1,0 +1,24 @@
+# DRAFT writing. Day 8: Hallbjorn, the smith Ulf swept for (scene.d7.night),
+# killed by the jarl's cousin over a copied Ulfberht. He swears his own copy is
+# real. This one comes if you paid Ulf's share of the fine on Day 7
+# (ulf_fine_paid); case.hallbjorn_debt if you didn't.
+id: case.hallbjorn_paid
+personas: [braggart]
+truth:
+  cause: { is: battle }
+  grip: { is: weapon }
+  weaponOwner: { is: self }
+  blade: { is: fakeUlfberht }
+  woundsFront: { is: 1 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+  outlaw: { is: false }
+  nailsGrown: { is: false }
+require:
+  - { not: { param: freyjaWhim } }
+lies:
+  - { fact: blade, claim: ulfberht, p: 100, motive: wantsValhalla, onQuestion: { confess: 1, excuse: 1 } }
+look: { gender: m, name: Hallbjorn, patronym: Grimsson, age: 52, build: heavy, beard: short }
+lines: [case.hallbjorn.paid, case.hallbjorn.real, case.hallbjorn.cousin]
+expect: VALHALLA
+when: { state: flags.ulf_fine_paid, gte: 1 }

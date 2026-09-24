@@ -45,6 +45,9 @@ group('conditions', () => {
     // Said the other way round, as "otherwise" and "not" need it.
     expect(words('not (flag("a") && home("brother"))')).toBe("a isn't set, or Ulf isn't at home");
     expect(words('not (rings() < 5)')).toBe('you have 5 rings or more');
+    // Two of the run's numbers against each other.
+    expect(words('flag("letters_honest") > flag("letters_kind")')).toBe('letters_honest is more than letters_kind');
+    expect(words('not (flag("a") > flag("b"))')).toBe('a is at most b');
   });
 
   it('lists the flags a condition reads, and refuses what isn’t a condition', () => {

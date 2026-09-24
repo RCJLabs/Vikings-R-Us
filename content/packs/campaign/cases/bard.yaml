@@ -1,0 +1,22 @@
+# DRAFT writing. Day 10, if Ulf took the shipyard work in the north
+# (ulf_shipyard): Bard, a shipwright from the same yard, fallen from the
+# scaffold into the fjord. His foreman told him never to trim his nails, so the
+# Naglfar decree wants them clipped before he's stamped.
+id: case.bard
+personas: [honest]
+truth:
+  cause: { is: drowned }
+  grip: { is: none }
+  blade: { is: plain }
+  nailsGrown: { is: true }
+  woundsFront: { is: 0 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+  outlaw: { is: false }
+  faith: { is: heathen }
+lies: []
+look: { gender: m, name: Bard, patronym: Ottarsson, age: 38, build: lean, beard: short }
+lines: [case.bard.ulf, case.bard.nails, case.bard.ship]
+words: { pool.weapons: axe }
+expect: RAN
+when: { state: flags.ulf_shipyard, gte: 1 }

@@ -23,6 +23,12 @@ Three days to the horn. Everyone at the gate knows it, the way you know rain is 
   Folded inside is a scrap from Ulf, in the north.
   "The ship's nearly done. There's room aboard for all of us, the foreman says. He says you'll know what he means." # speaker: ulf
 }
+{ flag("letters_honest") > flag("letters_kind"):
+  Your letters home have always told them the truth, even when it cost. They'll believe this one.
+}
+{ flag("letters_kind") > flag("letters_honest"):
+  Your letters home have always said that all was well. You wonder whether they'll believe this one.
+}
 You sit with it until the lamp burns low.
 * { flag("loki_deal") || (flag("ulf_shipyard") && home("brother")) } [The ship.]
   # fx: flag loki_deal
@@ -36,6 +42,9 @@ You sit with it until the lamp burns low.
   # fx: flag ferryman
   # fx: flag loki_deal = 0
   You wrap twenty rings in your answer for a place on the ferry, and write that there'll be a hundred more on the day.
+  { flag("ferryman_doubted"):
+    You told them to wait, the first time. The raven comes back before the lamp is out, with a scrap of bark in a hand you don't know. One word: "Finally."
+  }
 * { flag("wood_known") } [Hoddmímir's wood.]
   # fx: flag wood
   # fx: flag loki_deal = 0

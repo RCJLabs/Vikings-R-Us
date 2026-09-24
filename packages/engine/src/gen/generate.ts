@@ -177,6 +177,7 @@ export function dressCase(
       look,
       persona,
       tally,
+      ...(arch.words ? { words: arch.words } : {}),
       ...(knobs.spreadLines && voice ? { voice } : {}),
     },
     ctx,
