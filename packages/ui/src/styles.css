@@ -1375,3 +1375,34 @@ a.btn {
   flex: 1 1 auto;
   margin: 0;
 }
+
+/* Standing: the strip on the morning and night screens, the notes after a choice, the audit's note. */
+.standing-strip {
+  margin: 0;
+}
+
+.standing-strip .is-up {
+  color: var(--good);
+}
+
+.standing-strip .is-down {
+  color: var(--bad);
+}
+
+.scene__note {
+  margin: 0;
+  padding: 0.15rem 0.6rem;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.ledger__note {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+.verdict__note {
+  color: var(--muted);
+  font-style: italic;
+}

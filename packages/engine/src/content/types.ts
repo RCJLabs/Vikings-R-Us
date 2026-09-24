@@ -472,6 +472,15 @@ export interface CampaignDef {
   readonly endings: readonly EndingDef[];
   /** The named predicate that makes a Valhalla stamp a worthy einherjar. */
   readonly worthy: string;
+  /** Who a power seems to be before the story names it (the stranger is Loki until Day 12). */
+  readonly aliases?: readonly FactionAlias[];
+}
+
+/** A power's name (a string key) until the day the story gives its real one. */
+export interface FactionAlias {
+  readonly faction: Faction;
+  readonly name: string;
+  readonly untilDay: number;
 }
 
 export interface Content {

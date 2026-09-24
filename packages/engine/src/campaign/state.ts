@@ -1,4 +1,4 @@
-import type { Destination, Faction, StatePred } from '../content/types';
+import { type Destination, FACTIONS, type Faction, type StatePred } from '../content/types';
 import type { ShiftState } from '../shift/shift';
 
 /**
@@ -36,7 +36,13 @@ export interface DayLedger {
   readonly pay: number;
   readonly bonus: number;
   readonly fines: number;
+  /** Standing moved by today's mistakes at the gate (right stamps never move it). */
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
+  /**
+   * Standing moved by the story since the previous audit: last night's scene, this morning's,
+   * today's story souls (and in a vertical slice, its jump). Absent in saves from before it was kept.
+   */
+  readonly story?: Readonly<Partial<Record<Faction, number>>>;
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;
@@ -79,6 +85,8 @@ export interface RunState {
   readonly scenes: readonly string[];
   /** Rings gained or lost to story effects today, for the night's accounts. */
   readonly storyRings: number;
+  /** Standing moved by the story since the last audit; the next audit files it in its ledger. */
+  readonly storyStanding?: Readonly<Partial<Record<Faction, number>>>;
   /** Tonight's bills as the player has set them (night only). */
   readonly bills: Bills | null;
   /** Rings spent in the shop tonight. */
@@ -112,6 +120,21 @@ export function standingLead(run: RunState, faction: Faction): number {
   let best = Number.NEGATIVE_INFINITY;
   for (const [f, n] of Object.entries(run.standing)) if (f !== faction) best = Math.max(best, n);
   return (run.standing[faction] ?? 0) - (best === Number.NEGATIVE_INFINITY ? 0 : best);
+}
+
+/**
+ * The powers the player has dealings with so far: those whose standing has moved, by a mistake or by
+ * the story, on any day, even if it has come back to 0 (or that is off zero, for saves from before
+ * story standing was kept). The rest stay out of sight, so a power turns up when the story brings it in.
+ */
+export function factionsMet(run: RunState): Faction[] {
+  const moved = (s: Readonly<Partial<Record<Faction, number>>> | undefined, f: Faction) => s !== undefined && f in s;
+  return FACTIONS.filter(
+    (f) =>
+      run.standing[f] !== 0 ||
+      moved(run.storyStanding, f) ||
+      run.ledger.some((l) => moved(l.standing, f) || moved(l.story, f)),
+  );
 }
 
 /**

@@ -128,16 +128,28 @@ function nextMorning(run: RunState, campaign: CampaignDef): RunState {
 /** The slice's late day, with what the skipped days would have brought (the run's own flags win). */
 function jump(run: RunState, slice: SliceDef): RunState {
   const standing = { ...run.standing };
+  const story = { ...run.storyStanding };
   for (const [f, by] of Object.entries(slice.preset.standing ?? {})) {
     standing[f as Faction] = (standing[f as Faction] ?? 0) + (by ?? 0);
+    story[f as Faction] = (story[f as Faction] ?? 0) + (by ?? 0);
   }
   return {
     ...run,
     day: slice.day,
     rings: run.rings + (slice.preset.rings ?? 0),
     standing,
+    storyStanding: story,
     flags: { ...slice.preset.flags, ...run.flags },
   };
+}
+
+/**
+ * The string key a power goes by on `day`: its own name, or the alias it wears before the story
+ * names it (the stranger is Loki, but nobody says so until Day 12).
+ */
+export function factionKey(content: Content, faction: Faction, day: number): string {
+  const alias = content.campaign?.aliases?.find((a) => a.faction === faction && day < a.untilDay);
+  return alias?.name ?? `faction.${faction}`;
 }
 
 /** The upgrades' combined effect on today's shift. */
@@ -210,16 +222,19 @@ export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
   return cases;
 }
 
+/** What stamping a story soul `stamped` does to the story (nothing for a generated soul). */
+export function stampEffects(content: Content, c: CaseSpec, stamped: Destination): Effect[] {
+  if (!c.script) return [];
+  const def = content.scripted?.find((d) => d.id === c.script);
+  return (def?.onStamp ?? []).filter((rule) => matches(rule.stamped, stamped)).flatMap((rule) => rule.effects);
+}
+
 /** The story consequences of how today's story souls were stamped. */
 function storyEffects(shift: ShiftState, content: Content): Effect[] {
   const out: Effect[] = [];
   for (const v of shift.verdicts) {
     const c = shift.cases[v.index];
-    if (!c?.script || v.stamped === null) continue;
-    const def = content.scripted?.find((d) => d.id === c.script);
-    for (const rule of def?.onStamp ?? []) {
-      if (matches(rule.stamped, v.stamped)) out.push(...rule.effects);
-    }
+    if (c && v.stamped !== null) out.push(...stampEffects(content, c, v.stamped));
   }
   return out;
 }
@@ -296,8 +311,13 @@ function applyEffects(run: RunState, effects: readonly Effect[], events: RunEven
   let r = run;
   for (const e of effects) {
     if ('rings' in e) r = { ...r, rings: r.rings + e.rings, storyRings: r.storyRings + e.rings };
-    else if ('standing' in e) r = { ...r, standing: { ...r.standing, [e.standing]: r.standing[e.standing] + e.by } };
-    else if ('flag' in e) {
+    else if ('standing' in e) {
+      r = {
+        ...r,
+        standing: { ...r.standing, [e.standing]: r.standing[e.standing] + e.by },
+        storyStanding: { ...r.storyStanding, [e.standing]: (r.storyStanding?.[e.standing] ?? 0) + e.by },
+      };
+    } else if ('flag' in e) {
       const now = r.flags[e.flag] ?? 0;
       r = { ...r, flags: { ...r.flags, [e.flag]: e.set ?? now + (e.inc ?? 1) } };
     } else if ('family' in e) {
@@ -414,13 +434,19 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       if (r.state === run.shift) return { state: run, events };
       if (r.state.phase !== 'done') return { state: { ...run, shift: r.state }, events };
       const a = audit({ ...run, shift: r.state }, r.state, env);
-      events.push({ e: 'audited', ledger: a.ledger });
-      const audited = applyEffects(
+      const news: RunEvent[] = [];
+      const withStory = applyEffects(
         { ...a.run, flags: a.flags, phase: 'audit' },
         storyEffects(r.state, env.content),
-        events,
+        news,
       );
-      return { state: audited, events };
+      // The audit files the story's standing since the last audit beside today's mistakes, so they add up.
+      const ledger: DayLedger = { ...a.ledger, story: withStory.storyStanding ?? {} };
+      events.push({ e: 'audited', ledger }, ...news);
+      return {
+        state: { ...withStory, storyStanding: {}, ledger: [...withStory.ledger.slice(0, -1), ledger] },
+        events,
+      };
     }
     case 'endAudit': {
       if (run.phase !== 'audit') return reject(run, 'nothing to audit');

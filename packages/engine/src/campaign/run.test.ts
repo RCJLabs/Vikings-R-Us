@@ -1,6 +1,6 @@
 import { loadContent } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
-import type { Content, Destination } from '../content/types';
+import type { Content, Destination, Effect } from '../content/types';
 import { generateDay } from '../gen/generate';
 import type { DayCtx } from '../logic/context';
 import {
@@ -8,15 +8,17 @@ import {
   campaignQueue,
   defaultBills,
   endingFor,
+  factionKey,
   newRun,
   type RunAction,
   type RunEnv,
   type RunEvent,
   shiftMods,
+  stampEffects,
   stepRun,
 } from './run';
 import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
-import type { RunState } from './state';
+import { factionsMet, type RunState } from './state';
 
 const demo = loadContent('web-demo');
 const full = loadContent('dev-full');
@@ -194,6 +196,82 @@ describe('a campaign run', () => {
     const { afterShift } = playDay(demo, newRun(demo, 'stand'));
     expect(afterShift.ledger.at(-1)?.correct).toBeGreaterThan(0);
     expect(afterShift.standing).toEqual({ odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 });
+  });
+});
+
+describe('standing in the accounts', () => {
+  const scene = (id: string, effects: readonly Effect[]): RunAction => ({ t: 'scene', id, effects });
+
+  /** Every audit's mistakes and story, plus what the story has moved since the last one, is where the run stands. */
+  function filed(run: RunState): Record<string, number> {
+    const total: Record<string, number> = { odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 };
+    for (const l of run.ledger) {
+      for (const [f, n] of Object.entries(l.standing)) total[f] = (total[f] ?? 0) + (n ?? 0);
+      for (const [f, n] of Object.entries(l.story ?? {})) total[f] = (total[f] ?? 0) + (n ?? 0);
+    }
+    for (const [f, n] of Object.entries(run.storyStanding ?? {})) total[f] = (total[f] ?? 0) + (n ?? 0);
+    return total;
+  }
+
+  it('files the story beside the day’s mistakes, from last night’s scene to this audit, so the columns add up', () => {
+    let run = newRun(demo, 'accounts');
+    expect(factionsMet(run)).toEqual([]);
+    const day1 = drive(demo, run, [
+      scene('scene.m1', [{ standing: 'odin', by: 1 }]),
+      ...shiftActions(run, demo, { wrong: (i) => i === 0 }),
+    ]).run;
+    const first = day1.ledger.at(-1);
+    expect(first?.story).toEqual({ odin: 1 });
+    expect(Object.values(first?.standing ?? {}).some((n) => n !== 0)).toBe(true);
+    expect(day1.storyStanding).toEqual({});
+    expect(filed(day1)).toEqual(day1.standing);
+
+    // Last night's scene waits for the next audit, with the next morning's.
+    run = drive(demo, day1, [
+      { t: 'endAudit' },
+      scene('scene.n1', [
+        { standing: 'loki', by: 1 },
+        { standing: 'freyja', by: -1 },
+      ]),
+      { t: 'endNight' },
+    ]).run;
+    expect(run.storyStanding).toEqual({ loki: 1, freyja: -1 });
+    expect(filed(run)).toEqual(run.standing);
+    expect(factionsMet(run)).toEqual(expect.arrayContaining(['odin', 'loki', 'freyja']));
+    const day2 = drive(demo, run, [scene('scene.m2', [{ standing: 'freyja', by: 1 }]), ...shiftActions(run, demo)]).run;
+    expect(day2.ledger.at(-1)?.story).toEqual({ loki: 1, freyja: 0 });
+    expect(filed(day2)).toEqual(day2.standing);
+    // Freyja is back to 0, but the player has had dealings with her.
+    expect(day2.standing.freyja).toBe(0);
+    expect(factionsMet(day2)).toContain('freyja');
+  });
+
+  it('counts a story soul’s stamp as story, and says what each stamp does', () => {
+    const run = newRun(full, 'loki-accounts', { slice: 'fromJump' });
+    const { afterShift } = playDay(full, run);
+    const loki = afterShift.shift?.cases.find((c) => c.script === 'case.loki12');
+    if (!loki) throw new Error('no story Loki');
+    expect(stampEffects(full, loki, 'DETAIN')).toEqual([
+      { flag: 'loki_judged' },
+      { flag: 'loki_detained' },
+      { standing: 'odin', by: 1 },
+    ]);
+    expect(stampEffects(full, loki, 'VALHALLA')).toContainEqual({ standing: 'loki', by: 2 });
+    const generated = afterShift.shift?.cases.find((c) => !c.script);
+    if (generated) expect(stampEffects(full, generated, 'HEL')).toEqual([]);
+    // The slice's jump is story too: it lands in the late day's first audit.
+    const preset = campaignOf(full).slice?.preset.standing ?? {};
+    const story = afterShift.ledger.at(-1)?.story ?? {};
+    expect(story.odin).toBe((preset.odin ?? 0) + 1);
+    expect(story.freyja).toBe(preset.freyja ?? 0);
+    expect(filed(afterShift)).toEqual(afterShift.standing);
+  });
+
+  it('calls Loki the stranger until the story names him', () => {
+    expect(factionKey(demo, 'loki', 3)).toBe('faction.stranger');
+    expect(factionKey(full, 'loki', 11)).toBe('faction.stranger');
+    expect(factionKey(full, 'loki', 12)).toBe('faction.loki');
+    expect(factionKey(full, 'odin', 1)).toBe('faction.odin');
   });
 });
 

@@ -143,7 +143,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     for (let i = parts.length - 1; i >= 0; i--) if (parts[i]?.[k] !== undefined) return parts[i]?.[k];
     return undefined;
   };
-  const all = <K extends 'standing' | 'shop' | 'endings'>(k: K) =>
+  const all = <K extends 'standing' | 'shop' | 'endings' | 'aliases'>(k: K) =>
     parts.flatMap((p) => (p[k] ?? []) as NonNullable<CampaignPart[K]>[number][]);
   const required = ['lastDay', 'finale', 'startRings', 'family', 'draupnir', 'debtFloor', 'care', 'worthy'] as const;
   const missing = required.filter((k) => last(k) === undefined);
@@ -164,6 +164,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
       .map((x) => x.r),
     shop: all('shop'),
     endings: all('endings'),
+    ...(all('aliases').length > 0 ? { aliases: all('aliases') } : {}),
   };
 }
 
@@ -527,6 +528,7 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     seen.add(m.id);
     key(m.name, `family member ${m.id}`);
   }
+  for (const a of c.aliases ?? []) key(a.name, `the alias for ${a.faction}`);
   const shopIds = new Set<string>();
   for (const u of c.shop) {
     if (shopIds.has(u.id)) problems.push(`Duplicate shop item "${u.id}".`);

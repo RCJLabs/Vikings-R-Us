@@ -100,6 +100,8 @@ You send what you can. # fx: rings -5
 
 A tag on its own line attaches to the next line of text, which is fine inside a choice's branch. **Don't put fx tags on a choice line.** Ink can attach them to the choice instead of the text, and then they never fire. The compiler rejects them there.
 
+**The player sees standing change.** After the text that follows a choice, just before the next choice or the end of the scene, the game adds a note for each power whose standing that stretch moved: "Hel will remember that (+3)." Effects before the first choice get their note just before it. So put a standing effect in the branch of the choice that earns it, and don't count on a standing change staying secret. Before Day 12 Loki's notes say "The stranger" (`aliases` in the demo's `campaign.yaml`); don't name him in text before then either. Rings, flags and the family get no notes: the purse, the story and the night's news show those.
+
 **Choices.** Write each choice's whole text in brackets and what happens on the following lines:
 
 ```ink

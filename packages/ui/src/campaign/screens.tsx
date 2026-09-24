@@ -4,16 +4,20 @@ import {
   billTotal,
   type Content,
   campaignOf,
+  type DayLedger,
   defaultBills,
+  type Effect,
   economyOf,
-  FACTIONS,
   type Faction,
+  factionKey,
+  factionsMet,
   type RunEvent,
   type RunState,
   replayableDays,
   shiftMods,
   shiftScore,
   shopFor,
+  stampEffects,
 } from '@cots/engine';
 import { playScene, sceneEnv } from '@cots/story';
 import { useState } from 'preact/hooks';
@@ -57,6 +61,38 @@ export async function enterCampaign(): Promise<void> {
 const familyName = (content: Content, id: string) => t(campaignOf(content).family.find((m) => m.id === id)?.name ?? id);
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+/** The name a power goes by on `day` (the stranger is Loki, but nobody says so until Day 12). */
+const factionName = (f: Faction, day: number) => t(factionKey(gameContent, f, day));
+
+/** "Hel will remember that (+3)." for each power the effects move, in the order they first move it. */
+function standingNotes(effects: readonly Effect[] | undefined, day: number): string[] {
+  const by = new Map<Faction, number>();
+  for (const e of effects ?? []) if ('standing' in e) by.set(e.standing, (by.get(e.standing) ?? 0) + e.by);
+  return [...by]
+    .filter(([, n]) => n !== 0)
+    .map(([f, n]) => t('ui.remember', { name: factionName(f, day), change: signed(n) }));
+}
+
+/** Where the player stands with each power they've had dealings with, on one line. */
+function StandingStrip({ run }: { run: RunState }) {
+  const met = factionsMet(run);
+  if (met.length === 0) return null;
+  return (
+    <p class="standing-strip" data-testid="standing-strip">
+      <span class="muted">{t('ui.audit.standing')}:</span>{' '}
+      {met.map((f, i) => (
+        <span key={f} class="standing-strip__item">
+          {i > 0 ? ' · ' : ''}
+          {factionName(f, run.day)}{' '}
+          <b class={run.standing[f] > 0 ? 'is-up' : run.standing[f] < 0 ? 'is-down' : undefined}>
+            {signed(run.standing[f])}
+          </b>
+        </span>
+      ))}
+    </p>
+  );
+}
 
 // ---------- save slots ----------
 
@@ -239,15 +275,20 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
           {t('ui.campaign.draft')}
         </p>
       ) : null}
-      {frame.lines.map((line, i) => (
+      {frame.lines.flatMap((line, i) => [
         <p
           key={`${choices.length}:${i}`}
           class={`scene__line${line.chosen ? ' scene__line--chosen' : line.speaker ? ' scene__line--said' : ''}`}
         >
           {line.speaker ? <b class="scene__speaker">{t(`speaker.${line.speaker}`)}: </b> : null}
           {line.text}
-        </p>
-      ))}
+        </p>,
+        ...standingNotes(line.effects, run.day).map((note) => (
+          <p key={`${choices.length}:${i}:${note}`} class="scene__note" data-testid="scene-note">
+            {note}
+          </p>
+        )),
+      ])}
       <div class="scene__choices">
         {frame.done ? (
           <button
@@ -349,6 +390,7 @@ function Morning() {
         {t('ui.campaign.purse', { n: run.rings })}
         {run.story ? ` · ${t('ui.campaign.story')}` : ''}
       </p>
+      <StandingStrip run={run} />
       {a.rewound ? (
         <div class="banner" role="status">
           <p>{t('ui.campaign.rewound')}</p>
@@ -433,7 +475,7 @@ function Audit() {
           </tr>
         </tbody>
       </table>
-      <StandingTable run={a.run} today={ledger.standing} />
+      <StandingTable run={a.run} ledger={ledger} />
       <ol class="verdicts">
         {shift.verdicts.map((v) => {
           const c = shift.cases[v.index];
@@ -451,7 +493,15 @@ function Audit() {
                 </span>
               ) : (
                 <span class="muted"> ({t('ui.summary.you', { dest: t(`dest.${v.stamped}`) })})</span>
-              )}{' '}
+              )}
+              {c && v.stamped !== null
+                ? standingNotes(stampEffects(gameContent, c, v.stamped), a.run.day).map((note) => (
+                    <span key={note} class="verdict__note" data-testid="verdict-note">
+                      {' '}
+                      {note}
+                    </span>
+                  ))
+                : null}{' '}
               {s ? (
                 <button
                   type="button"
@@ -478,29 +528,38 @@ function Audit() {
   );
 }
 
-/** Where the player stands with each power, once any of them has an opinion. */
-function StandingTable({ run, today }: { run: RunState; today: Readonly<Partial<Record<Faction, number>>> }) {
-  const rows = FACTIONS.filter((f) => (today[f] ?? 0) !== 0 || run.standing[f] !== 0);
+/**
+ * Where the player stands with each power they've had dealings with, and what moved it since the
+ * last audit: today's mistakes at the gate, and the story (last night's scene, this morning's, the
+ * story souls). The last audit's standing plus both columns is the standing now.
+ */
+function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
+  const rows = factionsMet(run);
   if (rows.length === 0) return null;
   return (
-    <table class="ledger" data-testid="standing">
-      <thead>
-        <tr>
-          <th>{t('ui.audit.standing')}</th>
-          <th class="num">{t('ui.audit.today')}</th>
-          <th class="num">{t('ui.audit.total')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((f) => (
-          <tr key={f}>
-            <td>{t(`faction.${f}`)}</td>
-            <td class="num">{signed(today[f] ?? 0)}</td>
-            <td class="num">{signed(run.standing[f])}</td>
+    <>
+      <table class="ledger" data-testid="standing">
+        <thead>
+          <tr>
+            <th>{t('ui.audit.standing')}</th>
+            <th class="num">{t('ui.audit.mistakes')}</th>
+            <th class="num">{t('ui.audit.story')}</th>
+            <th class="num">{t('ui.audit.now')}</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((f) => (
+            <tr key={f}>
+              <td>{factionName(f, run.day)}</td>
+              <td class="num">{signed(ledger.standing[f] ?? 0)}</td>
+              <td class="num">{signed(ledger.story?.[f] ?? 0)}</td>
+              <td class="num">{signed(run.standing[f])}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="muted ledger__note">{t('ui.audit.standingNote')}</p>
+    </>
   );
 }
 
@@ -636,6 +695,7 @@ function Night() {
       <p class="muted" data-testid="night-rings">
         {t('ui.campaign.purse', { n: run.rings })}
       </p>
+      <StandingStrip run={run} />
       {scene ? (
         <SceneView key={scene} id={scene} run={run} />
       ) : (

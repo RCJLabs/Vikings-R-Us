@@ -1352,6 +1352,24 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - Spreading helps most with lines many souls say. A claim few souls make can still repeat a few souls apart (a deck is only as long as its variants' weights), so the real fix for repetition is still more variants: about 770 new words here, all first draft.
 - Honest and veteran souls still have no flavour lines. Adding them would add a line where there was none, which moves field ids in the day goldens, so it's left for a content pass.
 
+## 20. After M7: showing what choices do (audit item 2)
+
+**What changed**
+- **The audit's standing adds up.** It had shown today's mistakes under "Today" while story effects moved "In all" unseen. The run now keeps the story's standing since the last audit (`storyStanding`: scenes, story souls' stamps, the slice's jump), and each audit files it in its ledger (`DayLedger.story`) beside the day's mistakes. The table shows Mistakes, Story and Now: the last audit's Now plus both columns is today's.
+- **A standing strip** on the morning and night screens, for the powers the player has had dealings with (`factionsMet`: any whose standing has moved on the record, even back to 0). The rest stay out of sight until the story brings them in.
+- **Notes after choices.** A scene's frame files what each choice did on the last line before the next choice (or the end); the scene then shows "Hel will remember that (+3)." for each power moved. Ink gives a tag written under a line to the next line, so a line's own tags can't say which choice an effect belongs to; filing by stretch puts the note in one predictable place. The audit adds the same note to a story soul's verdict (`stampEffects`).
+- **Aliases.** `aliases` in a campaign's config gives a power another name until a day: Loki is "The stranger" until Day 12, when Skögul names him, in the strip, the table and the notes. Before this, the full game's Day 4 audit already listed "Loki" after the Day 3 stranger scene.
+
+**Tests**
+- Engine: the ledger files story standing from last night's scene to this audit, the columns add up over several days, a power that moved back to 0 stays met, story souls' stamps and the slice's jump count as story, and the alias holds until Day 12.
+- Story: where effects are filed, including a choice with no text after it.
+- e2e (phone and desktop): the Day 1 note and strip, a Day 1 audit row whose columns add up (a mistake −1, a choice +1, now 0), and Day 3's stranger named only as the stranger.
+
+**Known limits**
+- A note can come a few lines after the reply it belongs to (on Day 1 it comes after three closing lines), because it waits for the end of the choice's stretch.
+- Saves from before this change have no story column for days already audited; their rows show 0 there, so those days don't add up.
+- The notes are plain text under the choice. Whether players want them, or would rather discover standing on their own, is a playtest question.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

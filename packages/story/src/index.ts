@@ -32,6 +32,12 @@ export interface SceneLine {
   readonly tags: readonly string[];
   /** The option the player picked, echoed so the reply that follows makes sense. */
   readonly chosen?: boolean;
+  /**
+   * On the last line before a choice (or the end): the effects since the previous choice, which is
+   * what that choice did. (Ink gives a tag written under a line to the next line, so a line's own
+   * tags don't say which choice an effect belongs to.)
+   */
+  readonly effects?: readonly Effect[];
 }
 
 /** A scene's view of the run as it stands; the seed is fixed per run, day and scene. */
@@ -121,6 +127,7 @@ export function playScene(json: string | object, env: SceneEnv, choices: readonl
   const draft = (story.globalTags ?? []).some((t) => t.trim() === 'draft');
   const lines: SceneLine[] = [];
   const effects: Effect[] = [];
+  let pending: Effect[] = [];
   let i = 0;
   for (;;) {
     while (story.canContinue) {
@@ -128,13 +135,18 @@ export function playScene(json: string | object, env: SceneEnv, choices: readonl
       const tags = story.currentTags ?? [];
       for (const t of tags) {
         const fx = parseFx(t);
-        if (fx) effects.push(fx);
+        if (fx) pending.push(fx);
       }
       if (text) {
         const speaker = speakerOf(tags);
         lines.push({ text, tags, ...(speaker ? { speaker } : {}) });
       }
     }
+    // What happened since the last choice goes with the last line before the next one (or the end).
+    const last = lines[lines.length - 1];
+    if (pending.length > 0 && last) lines[lines.length - 1] = { ...last, effects: pending };
+    effects.push(...pending);
+    pending = [];
     const open = story.currentChoices;
     if (open.length === 0) return { draft, lines, choices: [], effects, done: true };
     if (i >= choices.length) return { draft, lines, choices: open.map((c) => c.text), effects, done: false };

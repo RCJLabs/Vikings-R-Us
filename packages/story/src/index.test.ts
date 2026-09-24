@@ -61,8 +61,45 @@ describe('playScene', () => {
     expect(keep.lines.slice(-3)).toEqual([
       { text: 'Keep the rings', tags: [], chosen: true },
       { text: 'You keep them.', tags: ['fx: flag kept_rings'] },
-      { text: 'The day begins.', tags: ['fx: standing odin +1'] },
+      {
+        text: 'The day begins.',
+        tags: ['fx: standing odin +1'],
+        effects: [
+          { flag: 'kept_rings', set: 1 },
+          { standing: 'odin', by: 1 },
+        ],
+      },
     ]);
+  });
+
+  it('files what a choice did on the last line before the next choice, or the end', () => {
+    const json = compile(
+      [
+        'Morning. # fx: rings 1',
+        '* [Help] You help.',
+        '  # fx: standing hel +2',
+        '* [Refuse] You refuse. # fx: standing hel -1',
+        '- Noon.',
+        '* [Go on]',
+        '  # fx: flag went_on',
+        '- ',
+      ].join('\n'),
+    );
+    const first = playScene(json, env(), []);
+    expect(first.lines).toEqual([{ text: 'Morning.', tags: ['fx: rings 1'], effects: [{ rings: 1 }] }]);
+    const help = playScene(json, env(), [0]);
+    // Ink gives the tag under "You help." to "Noon."; either way it's what the choice did.
+    expect(help.lines.map((l) => [l.text, l.effects ?? []])).toEqual([
+      ['Morning.', [{ rings: 1 }]],
+      ['Help', []],
+      ['You help.', []],
+      ['Noon.', [{ standing: 'hel', by: 2 }]],
+    ]);
+    // A choice with no text after it keeps its effects on its own line.
+    const end = playScene(json, env(), [1, 0]);
+    expect(end.done).toBe(true);
+    expect(end.lines.at(-1)).toEqual({ text: 'Go on', tags: [], chosen: true, effects: [{ flag: 'went_on', set: 1 }] });
+    expect(end.effects).toEqual([{ rings: 1 }, { standing: 'hel', by: -1 }, { flag: 'went_on', set: 1 }]);
   });
 
   it('is the same every time for the same seed and choices', () => {
