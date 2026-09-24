@@ -32,6 +32,7 @@ import {
   soulFacts,
   startShift,
   stepShift,
+  sunLeft,
   type Verdict,
 } from '@cots/engine';
 import { isPersisted, type KeyValueStore, memoryStore, requestPersistence, type ShareResult } from '@cots/platform';
@@ -227,9 +228,17 @@ export function updateSettings(patch: Partial<Settings>): void {
   void store?.set('settings', settings.value);
 }
 
+/**
+ * From this text size up, a phone's shift scrolls like a page instead of fitting the screen: fixed heights
+ * would leave the evidence a few lines and push Pause and Judge off a small phone (docs/tech-spec.md §35).
+ */
+export const LARGE_TEXT = 1.4;
+
 function applySettings(): void {
   const root = document.documentElement;
   root.style.fontSize = `${Math.round(settings.value.textScale * 100)}%`;
+  if (settings.value.textScale >= LARGE_TEXT) root.dataset.text = 'large';
+  else delete root.dataset.text;
   // The stylesheet stills every animation under this, as it does for the device's own setting.
   if (settings.value.reduceMotion) root.dataset.motion = 'reduced';
   else delete root.dataset.motion;
@@ -1140,6 +1149,23 @@ function pauseIfPlaying(): void {
   }
 }
 
+/** How much sun is left when the shift says it's running low. */
+export const SUN_LOW_MS = 60_000;
+/** Shifts (by their first state) already told. */
+const toldLow = new WeakSet<object>();
+
+/**
+ * Says once a shift, as the last minute of sun begins, that it's running low: the sun bar shows it, and
+ * this says it, to screen readers too (the toast is a live region). Dusk says itself (onEvent).
+ */
+function warnSunLow(s: Session): void {
+  const st = s.state;
+  if (st.config.untimed || st.phase !== 'shift' || st.clock.dusk || toldLow.has(s.initial)) return;
+  if (sunLeft(st, clock()) > SUN_LOW_MS) return;
+  toldLow.add(s.initial);
+  say(t('ui.sun.low'), 'bad');
+}
+
 /** Starts the sun ticker, the auto-pause listeners and the update watch. Call once. */
 export function startClock(): void {
   if (ticker) return;
@@ -1152,6 +1178,7 @@ export function startClock(): void {
     const s = session.peek();
     if (s?.state.phase === 'shift' && s.state.clock.pausedAt === null) {
       act({ t: 'tick' });
+      warnSunLow(session.peek() ?? s);
       if (++beats % 20 === 0) {
         const current = session.peek() ?? s;
         // The Daily keeps how far its sun got; Endless has no sun, and saves on every action anyway.

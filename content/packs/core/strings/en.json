@@ -461,5 +461,8 @@
   "ui.achievements.hiddenText": "Something in the story. Keep playing.",
   "ui.achievements.earned": "Earned {date}",
   "ui.achievements.notYet": "Not yet earned",
-  "ui.achievements.note": "{n, plural, one {Achievement} other {Achievements}}"
+  "ui.achievements.note": "{n, plural, one {Achievement} other {Achievements}}",
+  "ui.share.textLabel": "The result as text, to copy",
+  "ui.report.textLabel": "The report as text, to copy",
+  "ui.sun.low": "A minute of sun left."
 }
