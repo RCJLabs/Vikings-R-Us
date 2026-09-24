@@ -59,7 +59,11 @@ The art draws dead souls standing at a gate. The game reads **signs** off the bo
 - Palette, as named tokens, with the UI's own (dark brown ground, parchment, gold).
 - Line weights or pixel rules, shading, texture codes for each sign.
 - Typography: a body face covering Old Norse letters (á ǫ ø ð þ) and a rune face for rune text.
-- Motion: what moves, and its reduced-motion fallback.
+- Motion: what moves, and its reduced-motion fallback. What moves today, as placeholders to restyle ([`docs/tech-spec.md`](tech-spec.md) §33):
+  - A soul walks up from the queue in 0.36 s. A sent soul leaves the way its stamp sends it in 0.42 s: up to the halls, down to Hel and Rán, back home, or aside to the clerk.
+  - The stamp's ink lands on the soul's legs, below every hotspot (the lowest ends at y 336 of 420).
+  - The soul's papers slide in, and the sky behind the desk goes from warm to rose to dusk blue with the sun.
+  - Whatever the art does instead: under half a second, nothing that takes a click, the ink clear of the hotspots, and still under Reduce motion (the device's or the game's).
 - **Symbols to avoid.** No runes or signs that extremists have appropriated: the Othala rune (above all with serifs or wings), doubled Sowilo, the Wolfsangel, the black sun, a lone Tyr rune as an emblem, Algiz as a "life rune", the valknut as a logo. Rune text in the game stays as abstract staves read out in text.
 
 ## Store capsules (for the Steam page, M6)

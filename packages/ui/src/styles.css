@@ -339,11 +339,21 @@ kbd {
 }
 
 .shift__desk {
+  position: relative;
+  isolation: isolate;
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
   transition: filter 0.2s;
+}
+
+/* The sky behind the desk, going down with the sun (shift/motion.ts). The stage and the papers keep their own grounds. */
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
 }
 
 /* Pausing hides the desk, so a pause can't be used to think for free. */
@@ -396,6 +406,7 @@ kbd {
 .stage {
   position: relative;
   margin: 0;
+  overflow: hidden;
   container-type: size;
   display: flex;
   align-items: center;
@@ -407,6 +418,179 @@ kbd {
   position: relative;
   height: min(100cqh, calc(100cqw * 1.4));
   aspect-ratio: 300 / 420;
+  container-type: inline-size;
+  animation: soul-arrive 360ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* A new soul walks up to the desk from the queue, a step or two (docs/tech-spec.md §33). */
+@keyframes soul-arrive {
+  from {
+    translate: 28% 0;
+    opacity: 0;
+  }
+  40% {
+    translate: 12% -1.2%;
+    opacity: 1;
+  }
+  75% {
+    translate: 3% 0;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+/*
+ * The stamp's ink on the soul: low over the legs, below every hotspot (the lowest ends at y 336 of 420),
+ * and it takes no clicks. The walking-off copy wears the same ink.
+ */
+.ink,
+.departure__ink {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  translate: -50% 0;
+  rotate: -8deg;
+  padding: 0.05em 0.45em;
+  border: 0.14em double currentColor;
+  border-radius: 0.25em;
+  font-size: clamp(0.8rem, 10cqi, 2.4rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.85;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.ink {
+  animation: ink-land 240ms cubic-bezier(0.3, 0.6, 0.3, 1);
+}
+
+@keyframes ink-land {
+  from {
+    scale: 1.8;
+    opacity: 0;
+  }
+  55% {
+    scale: 0.95;
+    opacity: 0.95;
+  }
+  to {
+    scale: 1;
+    opacity: 0.85;
+  }
+}
+
+/* Inks dark enough to read on the parchment, each its stamp's colour family. */
+.ink--valhalla {
+  color: #8e1f14;
+}
+
+.ink--folkvangr {
+  color: #2c6a37;
+}
+
+.ink--hel {
+  color: #3f2f73;
+}
+
+.ink--ran {
+  color: #155b7a;
+}
+
+.ink--return {
+  color: #6a4b1f;
+}
+
+.ink--transfer {
+  color: #28457e;
+}
+
+.ink--detain {
+  color: #1e1a17;
+}
+
+/*
+ * A sent soul walks off the way its stamp sends it: up, down, back home or aside. Only a picture; no clicks.
+ * It fades early, so the next soul, walking up underneath, can be looked at straight away.
+ */
+.departure {
+  position: fixed;
+  z-index: 4;
+  pointer-events: none;
+  container-type: inline-size;
+  /* Longhands: the minifier reads a shorthand without a name as "none". The way sets the name. */
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0.5);
+  animation-fill-mode: forwards;
+}
+
+.departure__art,
+.departure__art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.departure[data-way="up"] {
+  animation-name: leave-up;
+}
+
+.departure[data-way="down"] {
+  animation-name: leave-down;
+}
+
+.departure[data-way="back"] {
+  animation-name: leave-back;
+}
+
+.departure[data-way="aside"] {
+  animation-name: leave-aside;
+}
+
+@keyframes leave-up {
+  45% {
+    opacity: 0.45;
+  }
+  to {
+    translate: 0 -40%;
+    scale: 0.92;
+    opacity: 0;
+  }
+}
+
+@keyframes leave-down {
+  45% {
+    opacity: 0.45;
+  }
+  to {
+    translate: 0 35%;
+    scale: 0.96;
+    opacity: 0;
+  }
+}
+
+@keyframes leave-back {
+  45% {
+    opacity: 0.45;
+  }
+  to {
+    translate: 40% 0;
+    opacity: 0;
+  }
+}
+
+@keyframes leave-aside {
+  45% {
+    opacity: 0.45;
+  }
+  to {
+    translate: -40% 0;
+    opacity: 0;
+  }
 }
 
 .stage__art,
@@ -609,7 +793,11 @@ kbd {
   color: #e8876e;
 }
 
-/* Choosing a stamp lands it: a quick press down (none with reduced motion). */
+/* A stamp presses down under the hand; choosing one lands it with a thunk (none with reduced motion). */
+.stamp:active {
+  translate: 0 2px;
+}
+
 .stamp[aria-pressed="true"] {
   background: currentColor;
   animation: thunk 160ms ease-out;
@@ -846,6 +1034,7 @@ kbd {
 
 /* Desk: desktop, Steam Deck, landscape tablets */
 .desk {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -905,10 +1094,68 @@ kbd {
   flex-direction: column;
   gap: 1rem;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
+/* The soul's papers slide onto the desk as it walks up, one after another; the rules stay put. */
+.desk.is-arriving .paper--soul {
+  animation: paper-in 260ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+}
+
+.desk.is-arriving .desk__right .paper--soul:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.desk.is-arriving .desk__right .paper--soul:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.desk.is-arriving .desk__right .paper--soul:nth-child(4) {
+  animation-delay: 150ms;
+}
+
+@keyframes paper-in {
+  from {
+    translate: 0 0.9rem;
+    rotate: 0.6deg;
+    opacity: 0;
+  }
+}
+
+/* A paper's title picks it up (shift/desk.ts). */
+.desk .paper__title {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/*
+ * A paper put down somewhere else lies loose on the desk, over the others. It leaves its grid area (a
+ * placed grid item would be positioned inside its area), so its spot is a fraction of the whole desk.
+ */
+.paper.is-loose {
+  position: absolute;
+  grid-area: auto;
+  max-height: 70%;
+  overflow-y: auto;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.55);
+}
+
+.paper.is-moving {
+  rotate: -0.6deg;
+  box-shadow: 0 22px 48px rgb(0 0 0 / 0.6);
+}
+
+.paper.is-moving .paper__title {
+  cursor: grabbing;
+}
+
+/* The stamps stay on top: a paper put down over them slides underneath. */
 .desk__bottom {
+  position: relative;
+  z-index: 9;
   grid-area: bottom;
   display: flex;
   gap: 1rem;
@@ -1110,6 +1357,14 @@ a.btn {
     /* biome-ignore lint/complexity/noImportantStyles: global reduced-motion override */
     transition: none !important;
   }
+}
+
+/* The same when the player turns on Reduce motion in the settings (docs/tech-spec.md §33). */
+:where(:root[data-motion="reduced"]) * {
+  /* biome-ignore lint/complexity/noImportantStyles: global reduced-motion override */
+  animation: none !important;
+  /* biome-ignore lint/complexity/noImportantStyles: global reduced-motion override */
+  transition: none !important;
 }
 
 /* Case Lab (dev-full only) */

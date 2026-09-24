@@ -247,6 +247,15 @@ function SettingsCard() {
       <label>
         <input
           type="checkbox"
+          checked={s.reduceMotion}
+          data-testid="setting-motion"
+          onChange={(e) => set({ reduceMotion: (e.target as HTMLInputElement).checked })}
+        />{' '}
+        {t('ui.settings.motion')}
+      </label>
+      <label>
+        <input
+          type="checkbox"
           checked={s.holdToSend}
           onChange={(e) => set({ holdToSend: (e.target as HTMLInputElement).checked })}
         />{' '}

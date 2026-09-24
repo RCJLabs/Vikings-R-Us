@@ -2,6 +2,7 @@ import type { Hotspot } from '@cots/art';
 import {
   type CaseSpec,
   currentCase,
+  type Destination,
   ENDLESS_STRIKES,
   type Field,
   type Lesson,
@@ -15,6 +16,8 @@ import {
   type Verdict,
 } from '@cots/engine';
 import { copyText } from '@cots/platform';
+import { effect } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { art, usePixelFrame } from '../art';
 import { clockText, listText, t } from '../i18n';
@@ -28,6 +31,7 @@ import {
   coachState,
   compareFirst,
   comparing,
+  departed,
   drawerTab,
   effectiveLayout,
   noteCoached,
@@ -42,9 +46,13 @@ import {
   updateSettings,
 } from '../store';
 import { activeLesson, coachStep } from './coach';
+import { dragging, grab, place, spotOf, tidyDesk } from './desk';
 import { fieldText, regionFields, regionSeen, registryEntry, sceneFor, skippedText } from './evidence';
 import { hintsAllowed, pendingHintFocus } from './hint';
+import { walkOff } from './motion';
+import type { PaperId, PaperSpot } from './papers';
 import { RulesPanel } from './Rules';
+import { skyBackground } from './sky';
 
 /** Focuses an element once, when it mounts (dialogs, the briefing's Begin button). */
 export function useAutoFocus<T extends HTMLElement>() {
@@ -112,7 +120,24 @@ function SunBar({ s }: { s: Session }) {
   );
 }
 
+/** The sky over the desk, going down with the sun: warm, then rose, then dusk (shift/sky.ts). */
+function Sky({ s }: { s: Session }) {
+  now.value; // re-render on every tick
+  const st = s.state;
+  const daylight = st.config.untimed ? 1 : st.clock.dusk ? 0 : sunLeft(st, clock()) / st.sunMs;
+  return <div class="sky" aria-hidden="true" style={{ background: skyBackground(daylight) }} />;
+}
+
 const pctOf = (v: number, of: number) => `${(v * 100) / of}%`;
+
+/** The stamp's ink on the soul, over its legs and clear of every sign (docs/tech-spec.md §33). */
+function Ink({ dest }: { dest: Destination }) {
+  return (
+    <div class={`ink ink--${dest.toLowerCase()}`} aria-hidden="true">
+      {t(`dest.${dest}`)}
+    </div>
+  );
+}
 
 function BodyStage({ s, c }: { s: Session; c: CaseSpec }) {
   const provider = art.value;
@@ -153,6 +178,7 @@ function BodyStage({ s, c }: { s: Session; c: CaseSpec }) {
             />
           );
         })}
+        {soul.stamp ? <Ink key={soul.stamp} dest={soul.stamp} /> : null}
       </div>
       <div class="stage__tools">
         {tools.has('flip') ? (
@@ -473,6 +499,39 @@ function trackerOut(s: Session): ReadonlySet<string> | undefined {
   return s.state.config.assists?.tracker ? new Set(ruledOut(s.state, s.ctx)) : undefined;
 }
 
+interface PaperDef {
+  readonly id: PaperId;
+  readonly title: string;
+  readonly body: ComponentChildren;
+  /** The soul's own paper, which comes in with it; the rules stay on the desk. */
+  readonly soul: boolean;
+}
+
+/**
+ * A paper on the desk layout, in its place or lying where it was put (shift/desk.ts). Its title picks it
+ * up; a double click on the title puts it back.
+ */
+function DeskPaper({ p, spot, rank }: { p: PaperDef; spot?: PaperSpot; rank?: number }) {
+  const moving = dragging.value?.id === p.id;
+  const cls = `paper paper--${p.id}${p.soul ? ' paper--soul' : ''}${spot ? ' is-loose' : ''}${moving ? ' is-moving' : ''}`;
+  const style = spot
+    ? { left: `${spot.x * 100}%`, top: `${spot.y * 100}%`, width: `${spot.w * 100}%`, zIndex: 3 + (rank ?? 0) }
+    : undefined;
+  return (
+    <div class={cls} style={style}>
+      <h2
+        class="paper__title"
+        title={t('ui.desk.move')}
+        onPointerDown={(e) => grab(e, p.id)}
+        onDblClick={() => place(p.id, null)}
+      >
+        {t(p.title)}
+      </h2>
+      {p.body}
+    </div>
+  );
+}
+
 function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 'drawer' }) {
   // Keyboard players land on the first thing to look at when a new soul arrives.
   useEffect(() => {
@@ -480,38 +539,49 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
       document.querySelector<HTMLElement>('.chip--look')?.focus({ preventScroll: true });
     }
   }, [c.id]);
+  // The soul's papers slide in as it walks up, and only then: a paper picked up later doesn't slide again.
+  const [arriving, setArriving] = useState(true);
+  useEffect(() => {
+    const done = setTimeout(() => setArriving(false), 600);
+    return () => clearTimeout(done);
+  }, []);
 
   if (layout === 'desk') {
+    const papers: PaperDef[] = [
+      {
+        id: 'rules',
+        title: 'ui.tab.rules',
+        body: <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />,
+        soul: false,
+      },
+      { id: 'words', title: 'ui.tab.words', body: <Words s={s} c={c} />, soul: true },
+      { id: 'ravens', title: 'ui.tab.ravens', body: <Ravens s={s} c={c} />, soul: true },
+      ...(s.ctx.tools.has('registry')
+        ? [{ id: 'registry', title: 'ui.tab.registry', body: <Registry s={s} c={c} />, soul: true } as const]
+        : []),
+      ...(hasTally(c)
+        ? [{ id: 'tally', title: 'ui.tab.tally', body: <Tally s={s} c={c} />, soul: true } as const]
+        : []),
+    ];
+    const loose = papers
+      .map((p) => ({ p, spot: spotOf(p.id) }))
+      .filter((x): x is { p: PaperDef; spot: PaperSpot } => x.spot !== undefined)
+      .sort((a, b) => a.spot.z - b.spot.z);
+    const docked = papers.filter((p) => spotOf(p.id) === undefined);
+    const rules = docked.find((p) => p.id === 'rules');
     return (
-      <div class="desk">
-        <section class="paper paper--rules" aria-label={t('ui.tab.rules')}>
-          <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />
-        </section>
+      <div class={`desk${arriving ? ' is-arriving' : ''}`}>
+        {rules ? <DeskPaper p={rules} /> : null}
         <section class="desk__center">
           <BodyStage s={s} c={c} />
           <Clues s={s} c={c} />
         </section>
         <section class="desk__right">
-          <div class="paper paper--words">
-            <h2>{t('ui.tab.words')}</h2>
-            <Words s={s} c={c} />
-          </div>
-          <div class="paper paper--ravens">
-            <h2>{t('ui.tab.ravens')}</h2>
-            <Ravens s={s} c={c} />
-          </div>
-          {s.ctx.tools.has('registry') ? (
-            <div class="paper paper--registry">
-              <h2>{t('ui.tab.registry')}</h2>
-              <Registry s={s} c={c} />
-            </div>
-          ) : null}
-          {hasTally(c) ? (
-            <div class="paper paper--tally">
-              <h2>{t('ui.tab.tally')}</h2>
-              <Tally s={s} c={c} />
-            </div>
-          ) : null}
+          {docked
+            .filter((p) => p.id !== 'rules')
+            .map((p) => (
+              <DeskPaper key={p.id} p={p} />
+            ))}
         </section>
         <section class="desk__bottom">
           <button
@@ -525,7 +595,15 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           </button>
           <HintButton s={s} />
           <StampRack s={s} />
+          {loose.length > 0 ? (
+            <button type="button" class="btn btn--quiet" data-testid="tidy" onClick={tidyDesk}>
+              {t('ui.desk.tidy')}
+            </button>
+          ) : null}
         </section>
+        {loose.map(({ p, spot }, i) => (
+          <DeskPaper key={p.id} p={p} spot={spot} rank={i} />
+        ))}
         <CompareBar />
       </div>
     );
@@ -809,7 +887,26 @@ export function ToastView() {
   );
 }
 
+/**
+ * A sent soul walks off the way its stamp sends it while the next one walks up (shift/motion.ts). A plain
+ * signal effect runs as soon as the send's batch ends, before the desk re-renders (useSignalEffect would wait
+ * for the next frame, after it), so the copy is of the soul where it stood, ink and all.
+ */
+function useWalkOff(): void {
+  useEffect(() => {
+    let seen = departed.peek();
+    return effect(() => {
+      const sent = departed.value;
+      if (!sent || sent === seen) return;
+      seen = sent;
+      const frame = document.querySelector<HTMLElement>('.shift .stage__frame');
+      if (frame) walkOff(frame, sent.dest);
+    });
+  }, []);
+}
+
 export function ShiftScreen() {
+  useWalkOff();
   const s = session.value;
   if (!s) return null;
   const layout = effectiveLayout();
@@ -825,6 +922,7 @@ export function ShiftScreen() {
       data-coach={coach?.focus ?? pendingHintFocus(s.state)}
     >
       <div class="shift__desk" inert={blocked}>
+        <Sky s={s} />
         <SunBar s={s} />
         <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}

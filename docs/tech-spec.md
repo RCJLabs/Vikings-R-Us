@@ -1646,6 +1646,43 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - A story soul also says generated lines (how it died, its weapon, its back), fixed per content version and day param. Each new soul's lines were read together with its generated ones, and the clashes rewritten, but a later change to the templates can bring a new one. The script shows only the written lines.
 - The sims' story policies choose by effects. None pays 5 rings for the roof, so Old Hrolf never appears in the economy sims; the compiler still proves his day works.
 
+## 33. After M7: the desk's feel
+
+**What changed**
+- **Ink.** A chosen stamp leaves its ink on the soul: the destination's name in a double border, rotated, in a dark ink of the stamp's colour family, landing with a thud. It sits over the legs, below every hotspot (the lowest ends at y 336 of the 420-unit frame), takes no clicks and is hidden from screen readers; the stamp button already says which stamp is chosen. Choosing another stamp re-inks. A stamp button also presses down under the hand.
+- **Souls walk up and off.** A new soul walks up from the queue (0.36 s). A sent soul walks off the way its stamp sends it (0.42 s): up for Valhalla and Fólkvangr, down for Hel and Rán, back the way it came for RETURN, aside for TRANSFER and DETAIN. The one walking off is a copy (`shift/motion.ts`): its drawing and ink only, with no buttons, roles, labels or test ids, inert and hidden from screen readers. It fades early, so the next soul can be looked at straight away. The copy is taken in a plain signal effect on `departed`, which runs as the send's batch ends, before the desk re-renders. Taken later, it would be of the next soul, or of a squeezed stage while both are mounted.
+- **Papers.** On the desk layout the soul's papers slide in as it walks up, one after another; the rules stay put.
+- **Moving papers** (the plan's "papers can be dragged around", `shift/desk.ts`, `shift/papers.ts`). Each paper on the desk layout has a title strip that picks it up. A press that doesn't move is a click, not a drag.
+  - A moved paper leaves its column and lies loose, over the others, the last moved on top. It's positioned across the whole desk, not in its grid area.
+  - Its spot is a fraction of the desk, so it survives a resize. It keeps its width and stays on the desk with its title in reach, and the stamp rack stays on top of it.
+  - The settings keep the spots (`deskPapers`) for the next shift and a reload.
+  - A double click on a title puts that paper back; "Tidy the desk" puts them all back.
+  - The drag listens on the window, because a paper leaving its column replaces its element.
+  - The drawer layout (phones) has no loose papers.
+- **The sky** (`shift/sky.ts`). The ground behind the desk goes from warm to rose (a third of the day left) to dusk blue as the sun goes down, a two-colour gradient re-rendered with the sun's tick. The style only changes when the daylight moves a hundredth.
+  - The stage and the papers keep their own grounds, so the signs are as easy to see as the art promises.
+  - Every sky colour keeps the desk's text (ink, muted, accent) at 4.5:1 or better. The first draft's day colour had muted text at 3.9:1 and was darkened.
+- **Reduce motion.** A new setting, `reduceMotion`. With it, or the device's own reduced-motion setting, the stylesheet stills every animation and no soul walks off. The ink is simply there, and the sky still changes colour, since that's the time of day rather than movement.
+- None of it changes the game: no state, no timing, no focus, and the Daily is unchanged.
+
+**Tests**
+- Unit (`shift/sky.test.ts`, `shift/papers.test.ts`):
+  - the sky darkens at every step from dawn to dusk, and the text stays at 4.5:1 on it;
+  - loose papers stay on the desk, and the pile renumbers in order.
+- e2e (`tests/e2e/desk.spec.ts`), phone and desktop:
+  - A fast player plays the Daily at full speed. Each soul is stamped and sent as it walks up, and each new soul's first sign is clicked straight after a send, which the copy walking off must not intercept. Every soul's ink is checked. Every soul walks off the right way with its ink, holding nothing but a picture, and is gone afterwards. 8 of 8 judged rightly.
+  - With the setting, and separately with the device's reduced-motion setting: no animations, no soul walking off, the ink still shown.
+  - Desktop only: a paper dragged by its title lands where it was put. It stays there for the next soul and after a reload. A click isn't a drag, a double click puts it back, and "Tidy the desk" puts all back.
+  - Under a fake clock: the sky is darker four minutes in, and darker still at dusk.
+- `art.spec.ts` now waits for the soul to finish walking up before measuring where it stands.
+
+**Known limits**
+- The motion is a placeholder for the art direction to restyle ([`docs/art-brief.md`](art-brief.md), "Motion"). No sound was added: the stamp and send already have their placeholder sounds.
+- Dragging is for a pointer (mouse, pen or touch on a tablet's desk layout). Keyboard and screen-reader players keep the papers in their places, which lose nothing.
+- A paper can be put down over the body. That's the player's arrangement, and "Tidy the desk" undoes it.
+- The walking-off copy duplicates the drawing's SVG ids for 0.4 s. The shared hatching patterns are identical for every soul, and each soul's clip path has its own id, so nothing draws wrongly.
+- Whether the motion feels right is a matter for playtesters, not tests.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
