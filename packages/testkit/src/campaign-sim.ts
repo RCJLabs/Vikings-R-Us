@@ -65,6 +65,13 @@ function shiftActions(run: RunState, content: Content, ctx: DayCtx, judging: Jud
     }
     const wrongs = stamps.filter((d) => d !== c.expect.dest);
     const dest: Destination = right ? c.expect.dest : (rng.pick(wrongs) ?? c.expect.dest);
+    // Judging a soul right includes what must be done to it first (from Day 8, clipping long nails).
+    if (right) {
+      for (const id of c.expect.procedures ?? []) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+      }
+    }
     actions.push({ t: 'shift', action: { t: 'stamp', dest, at } }, { t: 'shift', action: { t: 'send', at } });
   }
   return actions;

@@ -8,7 +8,7 @@ economy:
   docBonus: 1
   warnings: 2
   fines: [5, 10, 15]
-  costs: { hearth: 9, food: 4, medicine: 13 }
+  costs: { hearth: 22, food: 10, medicine: 20 }
 params:
   freyjaWhim:
     pool:

@@ -240,6 +240,8 @@ function audit(
   let fines = 0;
   const standing: Partial<Record<Faction, number>> = {};
   const einherjar = { ...run.einherjar };
+  const sent: Partial<Record<Destination, number>> = { ...run.sent };
+  let naglfar = run.naglfar ?? 0;
   const flags: Record<string, number> = { ...run.flags };
   shift.verdicts.forEach((v: Verdict) => {
     const c = shift.cases[v.index];
@@ -258,15 +260,19 @@ function audit(
         fines += economy.fines[i] ?? 0;
       }
     }
-    const rule = campaign.standing.find(
-      (r) => matches(r.expected, v.expected) && matches(r.stamped, v.stamped as Destination),
-    );
+    // Only mistakes move standing: a god isn't angered (or flattered) by a soul sent where it belongs.
+    const rule = v.correct
+      ? undefined
+      : campaign.standing.find((r) => matches(r.expected, v.expected) && matches(r.stamped, v.stamped as Destination));
     for (const [f, n] of Object.entries(rule?.fx ?? {}))
       standing[f as Faction] = (standing[f as Faction] ?? 0) + (n ?? 0);
     if (v.stamped === 'VALHALLA' && c) {
       if (eval2({ ref: campaign.worthy }, c.truth, env.ctx)) einherjar.worthy++;
       else einherjar.unworthy++;
     }
+    sent[v.stamped] = (sent[v.stamped] ?? 0) + 1;
+    // Every soul sent on with a procedure skipped (so far only nails left uncut) builds Naglfar.
+    naglfar += v.skipped?.length ?? 0;
   });
   const ledger: DayLedger = { day: run.day, correct, wrong, unjudged, pay, bonus, fines, standing };
   const nextStanding = { ...run.standing };
@@ -277,6 +283,8 @@ function audit(
       rings: run.rings + pay + bonus - fines,
       standing: nextStanding,
       einherjar,
+      sent,
+      naglfar,
       ledger: [...run.ledger, ledger],
     },
     ledger,

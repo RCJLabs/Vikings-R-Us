@@ -182,6 +182,12 @@ describe('a campaign run', () => {
     const valhalla = cases.filter((c) => c.expect.dest === 'VALHALLA').length;
     expect(afterShift.standing).toMatchObject({ odin: -hel - valhalla, hel: -hel, freyja: 0 });
   });
+
+  it('leaves standing alone when every soul goes where it belongs', () => {
+    const { afterShift } = playDay(demo, newRun(demo, 'stand'));
+    expect(afterShift.ledger.at(-1)?.correct).toBeGreaterThan(0);
+    expect(afterShift.standing).toEqual({ odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 });
+  });
 });
 
 describe('the family at night', () => {

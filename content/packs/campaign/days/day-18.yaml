@@ -1,22 +1,25 @@
-# Day 14: Hel's hall is full. Straw deaths no earlier rule claims go to the clerk (TRANSFER).
-day: 14
-sunS: 820
-decree: decree.d14
+# Day 18: no new rule. Draupnir drips again; Naglfar is nearly built, and Loki makes his last offer.
+day: 18
+sunS: 900
+decree: decree.d18
 economy:
   wage: 8
   docBonus: 1
   warnings: 2
   fines: [5, 10, 15]
-  costs: { hearth: 24, food: 10, medicine: 21 }
+  costs: { hearth: 32, food: 13, medicine: 27 }
 params:
   freyjaWhim:
     pool:
       - { id: whim.leftHanded, text: whim.leftHanded, is: { fact: gripHand, is: left } }
       - { id: whim.redHair, text: whim.redHair, is: { fact: hair, is: red } }
       - { id: whim.amber, text: whim.amber, is: { fact: ornament, is: amber } }
+  odinClaim:
+    pool:
+      - { id: whim.odin.scarred, text: whim.odin.scarred, is: { fact: woundsFront, gte: 2 } }
+      - { id: whim.odin.ulfberht, text: whim.odin.ulfberht, is: { fact: blade, is: ulfberht } }
 queue:
-  count: [13, 15]
-  teachFirst: arch.bedridden
+  count: [14, 16]
   archetypes:
     - { id: arch.honest_warrior, w: 2 }
     - { id: arch.freyja_pick, w: 2 }
@@ -35,14 +38,18 @@ queue:
     - { id: arch.prime_signed, w: 1 }
     - { id: arch.false_convert, w: 1 }
     - { id: arch.loki, w: 2 }
-    - { id: arch.bedridden, w: 2 }
+    - { id: arch.bedridden, w: 1 }
+    - { id: arch.contested, w: 1 }
+    - { id: arch.proud_liar, w: 2 }
+    - { id: arch.spear_marked, w: 2 }
+    - { id: arch.marked_boaster, w: 1 }
   mix: { VALHALLA: [10, 30], FOLKVANGR: [5, 20], HEL: [20, 45], RETURN: [5, 10], RAN: [5, 20], TRANSFER: [15, 35], DETAIN: [5, 12] }
   knobs:
     lieRate: 100
     maxLies: 1
     decoyRate: 20
     ravenRate: 20
-    forgetRate: 20
+    forgetRate: 30
     proofCostS: [0, 50]
     maxTools: 3
     maxDocs: 5

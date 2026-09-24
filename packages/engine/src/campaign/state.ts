@@ -1,4 +1,4 @@
-import type { Faction, StatePred } from '../content/types';
+import type { Destination, Faction, StatePred } from '../content/types';
 import type { ShiftState } from '../shift/shift';
 
 /**
@@ -66,6 +66,10 @@ export interface RunState {
   readonly standing: Readonly<Record<Faction, number>>;
   /** Souls stamped VALHALLA who were worthy, and those who weren't (they flee at Ragnarök). */
   readonly einherjar: { readonly worthy: number; readonly unworthy: number };
+  /** Souls sent to each hall, rightly or not (absent in saves from before M7). */
+  readonly sent?: Readonly<Partial<Record<Destination, number>>>;
+  /** Souls sent on with nails that should have been cut: Naglfar's progress (absent before M7). */
+  readonly naglfar?: number;
   readonly family: readonly FamilyMember[];
   readonly upgrades: readonly string[];
   /** Story memory across days. Integers only (Ink reads them). */
@@ -87,14 +91,47 @@ export interface RunState {
 }
 
 /**
+ * The host at Ragnarök (docs/m7-design.md): worthy einherjar count double, the
+ * unworthy (who flee) count against, Freyja's host and Hel's legion count
+ * double, and every soul sent on with its nails uncut builds Naglfar. The
+ * plan's formula times two, so it stays in whole numbers.
+ */
+export function ragnarokStrength(run: RunState): number {
+  const sent = run.sent ?? {};
+  return (
+    2 * run.einherjar.worthy -
+    run.einherjar.unworthy +
+    2 * (sent.FOLKVANGR ?? 0) +
+    2 * (sent.HEL ?? 0) -
+    2 * (run.naglfar ?? 0)
+  );
+}
+
+/** A god's standing minus the highest standing of the others: above 0, they lead. */
+export function standingLead(run: RunState, faction: Faction): number {
+  let best = Number.NEGATIVE_INFINITY;
+  for (const [f, n] of Object.entries(run.standing)) if (f !== faction) best = Math.max(best, n);
+  return (run.standing[faction] ?? 0) - (best === Number.NEGATIVE_INFINITY ? 0 : best);
+}
+
+/**
  * The numbers a StatePred can read:
- * `day`, `rings`, `debtNights`, `standing.<faction>`, `einherjar.worthy`,
- * `einherjar.unworthy`, `flags.<name>`, `family.well`, `family.sick`,
- * `family.home` (not gone) and `family.gone`.
+ * `day`, `rings`, `debtNights`, `standing.<faction>`, `lead.<faction>`,
+ * `einherjar.worthy`, `einherjar.unworthy`, `sent.<DESTINATION>`, `naglfar`,
+ * `ragnarok`, `flags.<name>`, `family.well`, `family.sick`, `family.home`
+ * (not gone) and `family.gone`.
  */
 export function stateValue(run: RunState, path: string): number {
   const [head, key] = path.split('.', 2) as [string, string | undefined];
   switch (head) {
+    case 'lead':
+      return standingLead(run, key as Faction);
+    case 'sent':
+      return run.sent?.[key as Destination] ?? 0;
+    case 'naglfar':
+      return run.naglfar ?? 0;
+    case 'ragnarok':
+      return ragnarokStrength(run);
     case 'day':
       return run.day;
     case 'rings':
@@ -128,4 +165,4 @@ export function evalState(p: StatePred, run: RunState): boolean {
 
 /** Paths a StatePred may use (the content linter checks endings against it). */
 export const STATE_PATHS =
-  /^(day|rings|debtNights|standing\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;
+  /^(day|rings|debtNights|naglfar|ragnarok|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;
