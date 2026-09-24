@@ -25,17 +25,26 @@ export function assistText(a: Assists | undefined): string | null {
 
 /**
  * The assists' controls, in the title screen's settings and on a campaign morning (where Story Mode,
- * with no sun and no fines already, leaves only the rule tracker).
+ * with no sun and no fines already, leaves only the rule tracker). `titled` shows their heading, which a
+ * morning's own "Assists" toggle already gives.
  */
-export function AssistSettings({ campaign, sun = true }: { campaign: boolean; sun?: boolean }) {
+export function AssistSettings({
+  campaign,
+  sun = true,
+  titled = true,
+}: {
+  campaign: boolean;
+  sun?: boolean;
+  titled?: boolean;
+}) {
   const s = settings.value;
   const set = (patch: Partial<Settings>) => updateSettings(patch);
   return (
     <fieldset class="assists" data-testid="assists">
-      <legend>{t('ui.settings.assists')}</legend>
+      <legend class={titled ? undefined : 'sr-only'}>{t('ui.settings.assists')}</legend>
       {sun ? (
-        <label>
-          {t('ui.assist.sun')}{' '}
+        <label class="assists__sun">
+          <span>{t('ui.assist.sun')}</span>
           <select
             value={String(s.sunPct)}
             data-testid="setting-sun"

@@ -1581,6 +1581,15 @@ a.btn {
   accent-color: var(--accent);
 }
 
+.assists__sun span {
+  white-space: nowrap;
+}
+
+.assists__sun select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .assists select {
   color: var(--ink);
   background: var(--bg);

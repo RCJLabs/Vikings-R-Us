@@ -758,7 +758,7 @@ function Morning() {
               {t('ui.settings.assists')}
               {assisted ? <span class="muted">: {assisted}</span> : null}
             </summary>
-            <AssistSettings campaign={!run.story} sun={!run.story} />
+            <AssistSettings campaign={!run.story} sun={!run.story} titled={false} />
           </details>
           <div class="row">
             <button type="button" class="btn btn--primary btn--big" data-testid="to-gate" onClick={toGate}>
