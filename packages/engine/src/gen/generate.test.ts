@@ -62,19 +62,28 @@ describe('fairness contract (F1–F8)', () => {
     TIMEOUT_MS,
   );
 
+  const neverMoreCertain = (seed: string, day: number, pick: number) => {
+    const ctx = createDayContext(content, day, seed);
+    const rng = new Rng(`subset|${pick}`);
+    for (const c of generateDay(seed, ctx).cases) {
+      const subset = c.evidence.fields.filter(() => rng.chance(1, 2));
+      const s = solve(subset, ctx).judgment;
+      if (s.kind === 'determined') expect(oracleSolve(subset, ctx)).toEqual({ kind: 'determined', dest: s.dest });
+    }
+  };
   test.prop([seedArb, dayArb, fc.integer()], { numRuns: RUNS })(
     'on partial evidence the solver is never more certain than the oracle',
-    (seed, day, pick) => {
-      const ctx = createDayContext(content, day, seed);
-      const rng = new Rng(`subset|${pick}`);
-      for (const c of generateDay(seed, ctx).cases) {
-        const subset = c.evidence.fields.filter(() => rng.chance(1, 2));
-        const s = solve(subset, ctx).judgment;
-        if (s.kind === 'determined') expect(oracleSolve(subset, ctx)).toEqual({ kind: 'determined', dest: s.dest });
-      }
-    },
+    neverMoreCertain,
     TIMEOUT_MS,
   );
+  // What random runs found (M7.7): a raven's "never fled" refutes a tally's "died in battle" when there's no
+  // wound in front; "died in battle" and "never fled" can't both be true without one, so the soul lied; and
+  // a presumption (heathen, until the amulet is seen) never proves a lie.
+  it.each([
+    ['VuxO+4%94*,:', 16, -20],
+    ["'PYvB", 17, -1958572512],
+    [']tTI3MG.&r', 16, -416200289],
+  ] as const)('on partial evidence the solver agrees with the oracle: seed %s, day %i', neverMoreCertain);
 });
 
 describe('determinism', () => {

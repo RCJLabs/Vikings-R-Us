@@ -105,15 +105,16 @@ export function oracleSolve(fields: readonly Field[], ctx: DayCtx): OracleResult
     for (const f of factsIn(law.if, ctx)) roots(f, on);
     checks.push({ on, holds: (t) => !eval2(law.if, t, ctx) || law.then.in.includes(t[law.then.fact] as Value) });
   }
-  // A liar (Day 16) is a soul with a claim that's false in the world, or a tally known to be forged.
+  // What the soul claims, aloud or on its tally. Whether it lied is decided from these below, so a liar fact
+  // (Day 16) only joins the claims' facts into one group here.
   const claims = perceived
     .filter((f) => (f.item === 'testimony' || f.item === 'tally') && f.says && f.says.value !== null)
     .map(says);
-  for (const [id, af] of ctx.facts) {
-    if (!af.def.fromLies || af.pinned) continue;
+  const liars = [...ctx.facts].filter(([, af]) => af.def.fromLies && !af.pinned).map(([id]) => id);
+  for (const id of liars) {
     const on = roots(id);
     for (const c of claims) roots(c.fact, on);
-    checks.push({ on, holds: (t) => t[id] === (forgerySeen || claims.some((c) => t[c.fact] !== c.value)) });
+    checks.push({ on, holds: () => true });
   }
   if (impossible || [...domain.values()].some((d) => d.length === 0)) return UNDETERMINED;
 
@@ -205,6 +206,11 @@ export function oracleSolve(fields: readonly Field[], ctx: DayCtx): OracleResult
     const agree = worlds.filter((t) => carved.every((line) => t[line.fact] === line.value));
     if (agree.length > 0) worlds = agree;
   }
+  // A liar (Day 16) is a soul the evidence proves lied: a tally known to be forged, or claims false in every
+  // world the evidence allows (claims that can't all be true together count). Nothing else makes one, not
+  // even another presumption: until a lie is caught, the soul is honest.
+  const proven = forgerySeen || worlds.every((t) => claims.some((c) => t[c.fact] !== c.value));
+  for (const id of liars) if (find(id) === ruled) worlds = worlds.filter((t) => t[id] === proven);
   // Presumptions fill facts nothing constrains (only the rules' group can change the destination).
   for (const [id, af] of ctx.facts) {
     const p = af.def.presumption;

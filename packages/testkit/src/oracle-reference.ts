@@ -42,7 +42,7 @@ export function oracleSolveReference(fields: readonly Field[], ctx: DayCtx): Ora
     (f) => (f.item === 'huginn' || f.item === 'muninn') && f.says && f.says.value !== null,
   );
   const forgerySeen = perceived.some((f) => f.tell !== undefined);
-  // A liar (Day 16) is a soul with a claim that's false in the world, or a tally known to be forged.
+  // What the soul claims, aloud or on its tally: a liar (Day 16) is proven by these, below.
   const claims = perceived.filter(
     (f) => (f.item === 'testimony' || f.item === 'tally') && f.says && f.says.value !== null,
   );
@@ -70,8 +70,6 @@ export function oracleSolveReference(fields: readonly Field[], ctx: DayCtx): Ora
         if (eval2(law.if, t, ctx) && !law.then.in.includes(t[law.then.fact] as Value)) return;
       }
       for (const s of statements) if (t[s.says?.fact as string] !== s.says?.value) return;
-      const lied = forgerySeen || claims.some((c) => t[c.says?.fact as string] !== c.says?.value);
-      for (const id of liars) if (t[id] !== lied) return;
       consistent.push(t);
       return;
     }
@@ -89,6 +87,13 @@ export function oracleSolveReference(fields: readonly Field[], ctx: DayCtx): Ora
   if (carved.length > 0) {
     const agree = worlds.filter((t) => carved.every((line) => t[line.says?.fact as string] === line.says?.value));
     if (agree.length > 0) worlds = agree;
+  }
+  // A liar (Day 16) is a soul the evidence proves lied: a tally known to be forged, or claims false in every
+  // world the evidence allows (claims that can't all be true together count). Nothing else makes one, not
+  // even another presumption: until a lie is caught, the soul is honest.
+  if (liars.length > 0) {
+    const proven = forgerySeen || worlds.every((t) => claims.some((c) => t[c.says?.fact as string] !== c.says?.value));
+    worlds = worlds.filter((t) => liars.every((id) => t[id] === proven));
   }
   for (const [id, af] of ctx.facts) {
     const p = af.def.presumption;
