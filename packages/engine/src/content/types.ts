@@ -432,6 +432,31 @@ export type StatePred =
   | { readonly not: StatePred };
 
 /**
+ * How a shift is being played, as achievements see it: `daily` is the day's Daily played for the record,
+ * `archive` any other Daily (a past one, or today's again).
+ */
+export type PlayMode = 'daily' | 'archive' | 'practice' | 'endless' | 'primer' | 'campaign';
+
+/** When an achievement is checked, and its test: a StatePred over that moment's numbers (engine/achievements.ts). */
+export type AchievementWhen =
+  | { readonly at: 'soul'; readonly modes: readonly PlayMode[]; readonly test: StatePred }
+  | { readonly at: 'shift'; readonly modes: readonly PlayMode[]; readonly test: StatePred }
+  | { readonly at: 'endless'; readonly test: StatePred }
+  | { readonly at: 'run'; readonly test: StatePred }
+  | { readonly at: 'ending'; readonly endings: readonly string[] };
+
+/** Something to earn for skill or for finding something, never for grinding (docs/tech-spec.md §34). */
+export interface AchievementDef {
+  readonly id: string;
+  /** String keys. */
+  readonly title: string;
+  readonly text: string;
+  /** Unnamed in the gallery until it's earned: a part of the story to find. */
+  readonly hidden?: boolean;
+  readonly when: AchievementWhen;
+}
+
+/**
  * Something the player must do to a soul before sending it on, beyond the
  * stamp: clipping untrimmed nails under the Naglfar decree. A judgment is the
  * destination plus every procedure whose condition holds (docs/tech-spec.md §2).
@@ -618,4 +643,6 @@ export interface Content {
   readonly tallies?: readonly TallyTemplate[];
   /** Endless's twists for rounds that bring nothing new. */
   readonly twists?: readonly EndlessTwist[];
+  /** What can be earned in this build: each pack brings its own. */
+  readonly achievements?: readonly AchievementDef[];
 }

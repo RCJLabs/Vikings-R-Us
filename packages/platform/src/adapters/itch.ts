@@ -1,5 +1,5 @@
 import type { Platform } from '../index';
-import { noUpdates, shareWithFallback } from '../share';
+import { noAchievements, noUpdates, shareWithFallback } from '../share';
 import { openStore } from '../storage';
 
 /**
@@ -13,4 +13,5 @@ export const platform: Platform = {
   shareUrl: () => undefined,
   openStore: () => openStore(),
   watchForUpdate: noUpdates,
+  unlockAchievement: noAchievements,
 };

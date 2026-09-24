@@ -23,6 +23,7 @@ import {
   saveDailyRecord,
   saveEndlessProgress,
   settings,
+  settleAchievements,
   today,
   UNREAD_KEYS,
   updateSettings,
@@ -180,6 +181,8 @@ export async function restoreBackup(text: string): Promise<Restored> {
   if (next.dailyProgress !== here.dailyProgress) saveDailyProgress(next.dailyProgress);
   if (next.endless !== here.endless) saveEndlessProgress(next.endless);
   await Promise.all(next.slots.map((r, i) => (r && r !== here.slots[i] ? writeSlot(i, r) : Promise.resolve())));
+  // What the backup's records show, earned here too (the backup's own achievements came in with its settings).
+  settleAchievements();
   void keepStorage();
   return { ok: true, report };
 }

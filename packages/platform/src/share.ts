@@ -42,3 +42,6 @@ export async function shareWithFallback(text: string, url?: string): Promise<Sha
 
 /** For builds with no update channel of their own. */
 export const noUpdates = (): (() => Promise<void>) => async () => {};
+
+/** For builds with no achievements of their own: the game's gallery is all there is. */
+export const noAchievements = (_id: string): void => {};

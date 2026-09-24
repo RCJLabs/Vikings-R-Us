@@ -1,4 +1,5 @@
 import type {
+  AchievementDef,
   ArchetypeDef,
   CueDef,
   DaySpec,
@@ -484,3 +485,23 @@ export const CampaignPartSchema = z.strictObject({
     .optional(),
 });
 export type CampaignPart = z.infer<typeof CampaignPartSchema>;
+
+// ---- Achievements (achievements.yaml, any pack) ----
+
+const PlayModeSchema = z.enum(['daily', 'archive', 'practice', 'endless', 'primer', 'campaign']);
+const Modes = z.array(PlayModeSchema).min(1);
+
+/** Something to earn (docs/tech-spec.md §34): when it's checked, and the test at that moment. */
+export const AchievementSchema: z.ZodType<AchievementDef> = z.strictObject({
+  id: Id,
+  title: Key,
+  text: Key,
+  hidden: z.boolean().optional(),
+  when: z.discriminatedUnion('at', [
+    z.strictObject({ at: z.literal('soul'), modes: Modes, test: StatePredSchema }),
+    z.strictObject({ at: z.literal('shift'), modes: Modes, test: StatePredSchema }),
+    z.strictObject({ at: z.literal('endless'), test: StatePredSchema }),
+    z.strictObject({ at: z.literal('run'), test: StatePredSchema }),
+    z.strictObject({ at: z.literal('ending'), endings: z.array(Id).min(1) }),
+  ]),
+});

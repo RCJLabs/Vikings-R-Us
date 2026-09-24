@@ -1,0 +1,20 @@
+# Achievements any build can earn, in any mode with souls to judge (docs/tech-spec.md §34). The primer
+# walks the player through its souls, so it earns nothing. DRAFT text.
+- id: ach.askedNicely
+  title: ach.askedNicely.title
+  text: ach.askedNicely.text
+  when: { at: soul, modes: [daily, archive, practice, endless, campaign], test: { state: confessed, gte: 1 } }
+- id: ach.lastLight
+  title: ach.lastLight.title
+  text: ach.lastLight.text
+  when:
+    at: soul
+    modes: [daily, archive, practice, endless, campaign]
+    test: { all: [{ state: afterDusk, is: 1 }, { state: correct, is: 1 }] }
+- id: ach.nothingGetsPast
+  title: ach.nothingGetsPast.title
+  text: ach.nothingGetsPast.text
+  when:
+    at: shift
+    modes: [daily, archive, practice, endless, campaign]
+    test: { all: [{ state: lies, gte: 3 }, { state: missedLies, is: 0 }] }

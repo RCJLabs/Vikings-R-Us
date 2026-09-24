@@ -20,7 +20,14 @@ export interface Platform {
    * on the title screen, never mid-shift.
    */
   watchForUpdate(ready: () => void): () => Promise<void>;
+  /**
+   * Tells the platform an achievement is earned (docs/tech-spec.md §34), by the game's id; the adapter maps
+   * it to the platform's own (Google Play makes up its own ids). Called when one is earned, and again for
+   * every one earned on each start, so it must take the same id twice without harm. The web builds keep
+   * achievements only in the game.
+   */
+  unlockAchievement(id: string): void;
 }
 
-export { copyText, noUpdates, shareWithFallback } from './share';
+export { copyText, noAchievements, noUpdates, shareWithFallback } from './share';
 export { isPersisted, type KeyValueStore, memoryStore, openStore, requestPersistence } from './storage';

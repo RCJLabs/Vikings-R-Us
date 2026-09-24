@@ -51,20 +51,37 @@ const REACH: readonly [ending: string, judging: string, night: NightStrategy, st
 ];
 
 describe('the endings', () => {
-  it('can each be reached by a bot that plays for it', () => {
+  it('can each be reached by a bot that plays for it, and so can what the campaign alone can earn', () => {
     const content = loadContent('dev-full');
     const scenes = loadScenes('dev-full');
+    const achievements = content.achievements ?? [];
     const missed: string[] = [];
+    const earned = new Set<string>();
     for (const [ending, judging, night, story] of REACH) {
       const seen: string[] = [];
       for (let i = 0; i < 6 && !seen.includes(ending); i++) {
-        const r = simulateRun(content, `reach${i}`, bot(judging), night, { story: storyPolicy(story), scenes });
+        const r = simulateRun(content, `reach${i}`, bot(judging), night, {
+          story: storyPolicy(story),
+          scenes,
+          achievements,
+        });
         seen.push(r.ending ?? 'none');
+        for (const id of r.achievements) earned.add(id);
       }
       if (!seen.includes(ending)) missed.push(`${ending} (${judging}, ${night}, ${story}): got ${seen.join(', ')}`);
     }
     expect(missed).toEqual([]);
-  }, 240_000);
+    // docs/tech-spec.md §34: every achievement of the run, its endings and its shifts alone, a bot earns too.
+    // (Those any mode can earn are shown earnable in the engine's tests, on the Daily.)
+    const campaignOnly = achievements.filter(
+      (a) =>
+        a.when.at === 'run' ||
+        a.when.at === 'ending' ||
+        (a.when.at === 'shift' && a.when.modes.every((m) => m === 'campaign')),
+    );
+    expect(campaignOnly.length).toBeGreaterThan(0);
+    expect(campaignOnly.map((a) => a.id).filter((id) => !earned.has(id))).toEqual([]);
+  }, 300_000);
 
   it('covers every ending the full campaign can end on', () => {
     // Endings with a condition, and the finale; the demo's and the slice's finales end other runs.

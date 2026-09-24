@@ -1,0 +1,9 @@
+# Endless's achievements (docs/tech-spec.md §34): a long run, and a clean one. DRAFT text.
+- id: ach.longWatch
+  title: ach.longWatch.title
+  text: ach.longWatch.text
+  when: { at: endless, test: { state: score, gte: 25 } }
+- id: ach.notAScratch
+  title: ach.notAScratch.title
+  text: ach.notAScratch.text
+  when: { at: endless, test: { all: [{ state: score, gte: 15 }, { state: strikes, is: 0 }] } }

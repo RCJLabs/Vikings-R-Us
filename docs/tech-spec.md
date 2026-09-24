@@ -1683,6 +1683,83 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - The walking-off copy duplicates the drawing's SVG ids for 0.4 s. The shared hatching patterns are identical for every soul, and each soul's clip path has its own id, so nothing draws wrongly.
 - Whether the motion feels right is a matter for playtesters, not tests.
 
+## 34. After M7: achievements (phase 6)
+
+**Rules**
+- Achievements reward skill or finding something, never playing a lot: no counts of Dailies played, souls judged in total or days survived.
+- Accuracy counts with assists on. Speed, and doing it without help, don't.
+- Daily achievements count only the day's Daily played for the record (`ranked`). A past Daily from the archive, or today's played again, doesn't count, because its answers can be known.
+- The primer walks the player through its souls, so it earns nothing. The failure endings (demoted, an empty house) earn nothing.
+
+**Content** (`achievements.yaml` in any pack, `AchievementSchema`). Each achievement has:
+- an id;
+- title and text string keys;
+- `hidden`: unnamed in the gallery until earned;
+- `when`: the moment it's checked at and a test there. The test is a StatePred, the same form endings use, over that moment's numbers (`engine/achievements.ts`):
+
+| Moment | Checked | Numbers |
+|---|---|---|
+| `soul` | as each soul is judged | `correct`, `lies`, `caught`, `questioned`, `confessed`, `hints`, `afterDusk`, `story`, `day`, `assisted`, `stamped.<DEST>` |
+| `shift` | as a shift ends | `total`, `judged`, `correct`, `wrong`, `perfect`, `lies`, `caught`, `missedLies`, `hints`, `questions`, `confessions`, `sunLeft` (percent), `dusk`, `day`, `assisted`, `untimed` |
+| `endless` | as each Endless soul is scored | `score`, `round`, `strikes` |
+| `run` | whenever the campaign run changes | the run's own paths (`STATE_PATHS`: flags, standing, family, day…) |
+| `ending` | as a run ends | the ending's id |
+
+- `soul` and `shift` also name the modes that count: `daily`, `archive`, `practice`, `endless`, `primer`, `campaign`.
+- A soul's numbers come from the shift as it stood just before the send, while its hints and questions are still on it.
+- A shift's numbers are rebuilt from its action log (`traceShift`), so hints on every soul count.
+- The compiler checks strings, unique ids, that each test reads only what its moment has, and that each ending exists. Achievement ids join their pack's leak tokens, so the campaign's stay out of the demo builds.
+
+**The first 21** (first-draft text; the demo builds have the first 8):
+
+| Pack | Achievement | Earned by |
+|---|---|---|
+| core | Asked nicely | questioning a liar until they confess |
+| core | Last light | judging a soul rightly after the sun has set |
+| core | Nothing gets past you | calling out every lie in a shift that tells at least three |
+| daily | Clean slate | a perfect Daily (assists allowed) |
+| daily | Nobody's help | a perfect Daily with no hints and no assists |
+| daily | Home before dark | a perfect Daily with half the sun left, no assists |
+| demo | The long watch | 25 souls rightly in one Endless run |
+| demo | Not a scratch | 15 souls rightly in Endless before the first strike |
+| campaign | the nine story endings | each ending, hidden, titled as the ending |
+| campaign | Stitched | detaining Loki (hidden) |
+| campaign | Unlucky, not dead | sending Thorvald home on Day 3 and on Day 16 (hidden) |
+| campaign | Nobody left behind | reaching Ragnarök with the whole family home |
+| campaign | Spotless | a perfect campaign day, Day 10 or later |
+
+**In the game**
+- The settings keep what's earned (`achievements`: id → the time first earned), so it's on the device and in backups like the other records.
+- A backup merges by id, keeping the earlier time. Ids the build doesn't have come along, as endings do, so a full-game backup keeps them when it goes through the demo.
+- A notice names what was just earned. Earned during a shift, it waits for the next screen that isn't the shift, so nothing covers the desk while the sun runs; a shift begun while one is showing hides it. It sits at the top for a few seconds, takes no clicks, and is a polite live region for screen readers.
+- The gallery is a card on the title screen: earned ones with their date, the rest marked "Not yet earned", hidden ones as "Hidden" until found.
+- Records from before achievements count. On every start, and after restoring a backup, the game grants what they show: endings found, the Endless best, and Dailies played for the record. A test that reads a number a record doesn't keep, such as hints or strikes, isn't guessed at: it isn't earned that way.
+- `Platform.unlockAchievement(id)` tells the platform. It's called for each new achievement, and for all of them on every start, so an adapter must take the same id twice. The web builds do nothing with it. The Steam adapter (M6) and the Play adapter (M9) map the game's ids to the platform's own. Google Play makes up its own ids, so its adapter needs a table.
+
+**Tests**
+- Engine (`achievements.test.ts`), on real content, with a bot playing Daily #41:
+  - fast, alone and perfect earns the Daily's three, but only as `daily`;
+  - a hint, a slower sun, a late finish or a wrong stamp each cost the right ones;
+  - a confession found by calling out a lie and questioning it;
+  - every lie called out, and one left;
+  - a soul judged in the grace after dusk;
+  - Endless scores, and a best score kept without strikes, which can't earn the clean run;
+  - run flags, the family at Ragnarök, the story endings, and the failure endings earning nothing.
+- The campaign sim notes achievements as it plays. The "every ending is reachable" test now also requires each achievement only the campaign can earn to be earned by some bot. A misspelt flag in a test fails it.
+- Compiler: missing strings, duplicates, a number a moment doesn't have, an unknown ending, and unknown modes or moments. Also that achievement ids are leak tokens.
+- Backups (`save-data.test.ts`): merged by id at the earlier time, unknown ids kept, junk dropped, no change when there's nothing new.
+- e2e (`achievements.spec.ts`), phone and desktop:
+  - A Daily played with one liar questioned. "Asked nicely" is kept the moment the liar is sent but not announced during the shift. The summary announces it with the Daily's three.
+  - The gallery shows 4 of 8, with dates, and so it stays after a reload, with no second notice.
+  - In the full game, a hidden achievement is unnamed. Records seeded from before achievements (an ending, an Endless best of 30) earn the ending's and the long watch after a reload, but not the clean run.
+
+**Known limits**
+- The achievements are kept in the browser's storage and can be edited there. There's no protection, and the Steam and Play builds will pass on whatever the game says.
+- "Home before dark" asks for half the sun. Bots spend 26–50 s of the Daily's 360 s on the evidence itself, but how long players take to read is a guess until playtests.
+- Hidden achievements are hidden in the gallery only: their strings are in the full build.
+- Steam and Google Play achievements need those builds. Nothing is sent anywhere from the web.
+- The text is a first draft.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

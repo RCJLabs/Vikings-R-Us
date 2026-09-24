@@ -25,5 +25,11 @@
   "primer.c3.stamp": "The feather stirs: this one still breathes. The living go back. Stamp RETURN.",
   "primer.done.title": "You're ready",
   "primer.done.body": "Two more rules wait in the Daily. Sea-foam on the lips means the sea took them: that's Rán. And each day Freyja names a whim; worthy souls who match it are hers, in Fólkvangr. In the Daily the sun runs, and every tool, question and wrong compare costs some of it.",
-  "primer.toDaily": "Play today's Daily"
+  "primer.toDaily": "Play today's Daily",
+  "ach.cleanSlate.title": "Clean slate",
+  "ach.cleanSlate.text": "Judge every soul in today's Daily rightly.",
+  "ach.nobodysHelp.title": "Nobody's help",
+  "ach.nobodysHelp.text": "Judge every soul in today's Daily rightly, with no hints and no assists.",
+  "ach.homeBeforeDark.title": "Home before dark",
+  "ach.homeBeforeDark.text": "Judge every soul in today's Daily rightly with half the sun still up, and no assists."
 }

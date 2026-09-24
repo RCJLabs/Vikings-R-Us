@@ -4,6 +4,7 @@ import { dailyDate, ENDLESS_SOULS, ENDLESS_STRIKES, endlessTwist, shiftScore } f
 import type { ShareResult } from '@cots/platform';
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { AchievementsCard } from './achievements-ui';
 import { artStyle } from './art';
 import { AssistSettings, assistText, atSunSpeed } from './assists';
 import { openCampaign } from './campaign/lazy';
@@ -333,6 +334,7 @@ export function Title() {
         <p class="muted">{t('ui.practice.hint')}</p>
       </section>
       <EndlessCard />
+      <AchievementsCard />
       {manifest.edition === 'demo' && links.steam ? (
         <a class="btn btn--big wishlist" href={links.steam} target="_blank" rel="noopener noreferrer">
           {t('demo.wishlist')}

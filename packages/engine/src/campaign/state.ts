@@ -198,13 +198,26 @@ export function stateValue(run: RunState, path: string): number {
 }
 
 export function evalState(p: StatePred, run: RunState): boolean {
-  if ('all' in p) return p.all.every((q) => evalState(q, run));
-  if ('any' in p) return p.any.some((q) => evalState(q, run));
-  if ('not' in p) return !evalState(p.not, run);
-  const v = stateValue(run, p.state);
+  return evalPred(p, (path) => stateValue(run, path));
+}
+
+/** A StatePred over any numbers read by path: the run's, or an achievement moment's. */
+export function evalPred(p: StatePred, read: (path: string) => number): boolean {
+  if ('all' in p) return p.all.every((q) => evalPred(q, read));
+  if ('any' in p) return p.any.some((q) => evalPred(q, read));
+  if ('not' in p) return !evalPred(p.not, read);
+  const v = read(p.state);
   return (
     (p.is === undefined || v === p.is) && (p.gte === undefined || v >= p.gte) && (p.lte === undefined || v <= p.lte)
   );
+}
+
+/** Every path a StatePred reads. */
+export function predPaths(p: StatePred): string[] {
+  if ('all' in p) return p.all.flatMap(predPaths);
+  if ('any' in p) return p.any.flatMap(predPaths);
+  if ('not' in p) return predPaths(p.not);
+  return [p.state];
 }
 
 /** Paths a StatePred may use (the content linter checks endings against it). */

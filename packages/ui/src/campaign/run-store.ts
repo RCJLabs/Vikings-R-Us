@@ -32,6 +32,7 @@ import {
   say,
   screen,
   session,
+  unlock,
 } from '../store';
 
 /*
@@ -101,6 +102,11 @@ export function dispatch(action: RunAction): { run: RunState; events: readonly R
   const record = write(a.slot, recordAction(save, a.run, action, r.state));
   const ctx = r.state.day === a.run.day ? a.ctx : runContext(gameContent, r.state);
   active.value = { ...a, record, run: r.state, ctx };
+  // Achievements (docs/tech-spec.md §34): the run as it is now, and an ending as it's reached.
+  unlock(
+    { at: 'run', run: r.state },
+    ...r.events.flatMap((e) => (e.e === 'ended' ? [{ at: 'ending' as const, ending: e.ending }] : [])),
+  );
   return { run: r.state, events: r.events };
 }
 
@@ -168,8 +174,9 @@ export function openSlot(slot: number): void {
     return;
   }
   const { run, rewound, ctx } = resumed;
-  // Runs that ended before the gallery kept count still count.
+  // Runs that ended before the gallery kept count still count, and what a run shows before achievements were kept.
   if (run.ending) noteEnding(run.ending);
+  unlock({ at: 'run', run }, ...(run.ending ? [{ at: 'ending' as const, ending: run.ending }] : []));
   // An older engine can't replay today's actions: start the day again from its morning.
   const record =
     rewound || found.save.engine !== ENGINE_MAJOR

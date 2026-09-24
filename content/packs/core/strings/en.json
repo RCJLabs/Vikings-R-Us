@@ -447,5 +447,19 @@
   "ui.ending.unfound": "An ending you haven't found",
   "ui.ending.standing": "Standing at the end",
   "ui.ending.led": "(ahead of the rest)",
-  "ui.ending.sent": "Where the souls went"
+  "ui.ending.sent": "Where the souls went",
+  "ach.askedNicely.title": "Asked nicely",
+  "ach.askedNicely.text": "Question a liar until they confess.",
+  "ach.lastLight.title": "Last light",
+  "ach.lastLight.text": "Judge a soul rightly after the sun has set.",
+  "ach.nothingGetsPast.title": "Nothing gets past you",
+  "ach.nothingGetsPast.text": "Call out every lie in a shift that tells at least three.",
+  "ui.achievements": "Achievements",
+  "ui.achievements.count": "{n} of {total}",
+  "ui.achievements.hint": "Earned by judging well or by finding things, never by playing a lot. Kept on this device, and in backups.",
+  "ui.achievements.hidden": "Hidden",
+  "ui.achievements.hiddenText": "Something in the story. Keep playing.",
+  "ui.achievements.earned": "Earned {date}",
+  "ui.achievements.notYet": "Not yet earned",
+  "ui.achievements.note": "{n, plural, one {Achievement} other {Achievements}}"
 }

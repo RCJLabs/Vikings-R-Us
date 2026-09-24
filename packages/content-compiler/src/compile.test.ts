@@ -63,6 +63,23 @@ describe('content compiler', () => {
     });
   });
 
+  it('counts a pack’s achievements among its leak tokens', () => {
+    const secret =
+      '- { id: ach.secret, title: ach.secret.title, text: ach.secret.text, hidden: true, when: { at: run, test: { state: flags.found, gte: 1 } } }\n';
+    const packs = loadPacks(
+      fixture({
+        campaign: {
+          yaml: 'id: campaign\ndependsOn: [core, demo]\ncanary: test-canary-campaign-0001\n',
+          strings: { 'campaign.days': 'Days 4-20', 'ach.secret.title': 'Secret', 'ach.secret.text': 'Find it.' },
+          files: { 'achievements.yaml': secret },
+        },
+      }),
+    );
+    writeLeakTokens(packs, join(root, 'generated'));
+    const tokens = JSON.parse(readFileSync(join(root, 'generated', 'leak', 'campaign.tokens.json'), 'utf8'));
+    expect(tokens.tokens).toEqual(expect.arrayContaining(['ach.secret', 'ach.secret.title', 'ach.secret.text']));
+  });
+
   it('rejects a demo pack that depends on the campaign', () => {
     const dir = fixture({ demo: { yaml: 'id: demo\ndependsOn: [core, campaign]\n' } });
     expect(() => loadPacks(dir)).toThrow(/may not depend on "campaign"/);
@@ -286,6 +303,43 @@ describe('gameplay content lints', () => {
     );
     expect(() => compile({ core: base, demo: twists(ok.replace('[60, 80]', '[80, 60]')) })).toThrow(
       /empty share for HEL/,
+    );
+  });
+
+  it('lints achievements', () => {
+    const base = core({ 'archetypes.yaml': archetype('') });
+    const earn = (yaml: string, strings: Record<string, string> = { 'ach.a.title': 'A', 'ach.a.text': 'Do A.' }) => {
+      const d = day('arch.liar');
+      return { ...d, strings: { ...d.strings, ...strings }, files: { ...d.files, 'achievements.yaml': yaml } };
+    };
+    const ok =
+      '- { id: ach.a, title: ach.a.title, text: ach.a.text, when: { at: shift, modes: [daily], test: { state: perfect, is: 1 } } }\n';
+    expect(() => compile({ core: base, demo: earn(ok) })).not.toThrow();
+    expect(() => compile({ core: base, demo: earn(ok + ok) })).toThrow(/Duplicate achievement "ach\.a"/);
+    expect(() => compile({ core: base, demo: earn(ok, {}) })).toThrow(
+      /achievement ach\.a uses missing string "ach\.a\.title"/,
+    );
+    // Each moment has its own numbers: a soul has no `perfect`, a shift no `rings`.
+    expect(() => compile({ core: base, demo: earn(ok.replace('at: shift', 'at: soul')) })).toThrow(
+      /achievement ach\.a reads "perfect", which a soul doesn't have/,
+    );
+    expect(() => compile({ core: base, demo: earn(ok.replace('perfect', 'rings')) })).toThrow(
+      /reads "rings", which a shift doesn't have/,
+    );
+    const run =
+      '- { id: ach.a, title: ach.a.title, text: ach.a.text, when: { at: run, test: { state: flags.met, gte: 1 } } }\n';
+    expect(() => compile({ core: base, demo: earn(run) })).not.toThrow();
+    expect(() => compile({ core: base, demo: earn(run.replace('flags.met', 'flag.met')) })).toThrow(
+      /reads "flag\.met", which a run doesn't have/,
+    );
+    const ending = '- { id: ach.a, title: ach.a.title, text: ach.a.text, when: { at: ending, endings: [ending.x] } }\n';
+    expect(() => compile({ core: base, demo: earn(ending) })).toThrow(
+      /waits on ending "ending\.x", which the build doesn't have/,
+    );
+    // Modes and moments the game doesn't have don't parse.
+    expect(() => compile({ core: base, demo: earn(ok.replace('[daily]', '[weekly]')) })).toThrow(/achievements\.yaml/);
+    expect(() => compile({ core: base, demo: earn(ok.replace('at: shift', 'at: dawn')) })).toThrow(
+      /achievements\.yaml/,
     );
   });
 
