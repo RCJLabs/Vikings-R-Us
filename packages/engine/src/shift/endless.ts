@@ -48,11 +48,13 @@ export function endlessSpec(content: Content, seed: string, round: number): DayS
   if (!base) throw new Error(`No day spec for day ${day}`);
   const twist = endlessTwist(content, seed, round);
   if (!twist) return base;
+  // Nothing new to teach, so no teaching soul comes first: the round's first soul is as open as the rest.
+  const { teachFirst: _, ...queue } = base.queue;
   return {
     ...base,
     decree: twist.decree,
     queue: {
-      ...base.queue,
+      ...queue,
       knobs: { ...base.queue.knobs, ...twist.knobs },
       mix: { ...base.queue.mix, ...twist.mix },
     },

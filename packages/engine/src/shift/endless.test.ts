@@ -93,6 +93,12 @@ describe('Endless twists', () => {
     for (const r of [3, 4, 5, 6]) expect(endlessTwist(demo, 'e', r)?.since).toBeLessThanOrEqual(3);
   });
 
+  it('don’t put the day’s teaching soul first: past Day 3, the demo’s rounds open on different souls', () => {
+    expect(endlessSpec(demo, 'e', 3).queue.teachFirst).toBeUndefined();
+    const first = new Set(Array.from({ length: 12 }, (_, i) => endlessRound(demo, 'e', 3 + i).cases[0]?.archetype));
+    expect(first.size).toBeGreaterThan(1);
+  });
+
   it('each makes fair souls on every day it can come to', () => {
     for (const twist of full.twists ?? []) {
       for (const day of full.days.map((d) => d.day).filter((d) => d >= twist.since)) {
