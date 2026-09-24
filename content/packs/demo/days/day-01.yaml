@@ -26,3 +26,4 @@ queue:
     maxTools: 0
     maxDocs: 3
     salienceFloor: 2
+    spreadLines: true

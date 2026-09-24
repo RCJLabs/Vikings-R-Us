@@ -13,8 +13,9 @@
 - id: q.blade.plain.confess
   on: { fact: blade, claimed: ulfberht, truth: [plain], kind: confess }
   msgs: [q.blade.plain.confess.1]
-# A forger questioned about the tally.
-- { id: q.tally.confess, on: { fact: '*', kind: confess, via: tally }, msgs: [q.tally.confess.1, q.tally.confess.2] }
+# A forger questioned about the tally: one story or the other, never both.
+- { id: q.tally.confess, on: { fact: '*', kind: confess, via: tally }, msgs: [q.tally.confess.1] }
+- { id: q.tally.confess.brother, on: { fact: '*', kind: confess, via: tally }, msgs: [q.tally.confess.2] }
 - { id: q.tally.excuse, on: { fact: '*', kind: excuse, via: tally }, msgs: [q.tally.excuse.1] }
 - id: q.creed.hid.confess
   on: { fact: faith, claimed: heathen, truth: [baptized], kind: confess }

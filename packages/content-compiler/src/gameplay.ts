@@ -258,6 +258,14 @@ export function idsOf(c: PackContent): string[] {
   ];
 }
 
+/** A fact's values as strings, the way `words` and speech `chances` name them. */
+function valuesOf(f: FactDef): string[] {
+  const d = f.domain;
+  if (d.kind === 'enum') return d.values.map(String);
+  if (d.kind === 'bool') return ['false', 'true'];
+  return Array.from({ length: d.max - d.min + 1 }, (_, i) => String(d.min + i));
+}
+
 function walkPred(p: Pred, visit: (p: Pred) => void): void {
   visit(p);
   if ('all' in p) for (const q of p.all) walkPred(q, visit);
@@ -383,7 +391,15 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     pred(r.when, `rule ${r.id}`);
     key(r.text, `rule ${r.id}`);
   }
-  for (const s of content.speech) if (s.fact) fact(s.fact, `speech slot ${s.slot}`);
+  for (const s of content.speech) {
+    if (s.fact) fact(s.fact, `speech slot ${s.slot}`);
+    const def = content.facts.find((f) => f.id === s.fact);
+    for (const value of Object.keys(s.chances ?? {})) {
+      if (!def) problems.push(`speech slot ${s.slot} has chances by value but no fact.`);
+      else if (!valuesOf(def).includes(value))
+        problems.push(`speech slot ${s.slot} has a chance for "${value}", which ${def.id} can't be.`);
+    }
+  }
   dupes(
     'procedure',
     (content.procedures ?? []).map((p) => p.id),
@@ -408,6 +424,16 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     key(t.msg, `template ${t.id}`);
     for (const pool of Object.values(t.params ?? {})) {
       if (!pools.has(pool)) problems.push(`template ${t.id} uses unknown pool "${pool}".`);
+    }
+  }
+  for (const f of content.facts) {
+    for (const [value, words] of Object.entries(f.words ?? {})) {
+      if (!valuesOf(f).includes(value)) problems.push(`fact ${f.id} has words for "${value}", which it can't be.`);
+      for (const [pool, word] of Object.entries(words)) {
+        if (!pools.has(pool)) problems.push(`fact ${f.id} fixes a word from unknown pool "${pool}".`);
+        else if (!content.pools[pool]?.includes(word))
+          problems.push(`fact ${f.id} fixes "${word}", which ${pool} doesn't have.`);
+      }
     }
   }
   for (const q of content.questions) {

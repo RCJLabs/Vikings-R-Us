@@ -43,6 +43,16 @@ From the build plan's word budget: a morning is about 350 words with one choice;
 
 Skögul (with the ö). Valhalla, Hel (the place and the goddess), Fólkvangr, Rán, Naglfar. Ragna, Ulf, Asa. Rings, not coins. The gate of the slain, the queue, the stamp, the slate. "The fled", not "deserters". A soul's weapon is whatever the soul calls it; the art draws that weapon.
 
+## Lines for the dead
+
+The dead speak from templates (`templates/*.yaml`, strings `tm.*`, `rv.*`, `tl.*`, `q.*`): a soul's lines are picked for it, so a line has to be true of every soul that can say it. What went wrong before (audit item 1) and the rules that came out of it:
+
+- **Nothing the soul's body can contradict.** Name the weapon with `{weapon}`, never "axe": the soul's lines share one weapon, and the art draws it. No ages ("seventy winters"): the old dead are 64 to 85. Anything gendered goes through `{gender, select, f {…} other {…}}`. A confession names the real cause with `{truth, select, …}`.
+- **A fact decides its words.** An Ulfberht is a sword: the blade fact's `words` makes every line of a soul with a marked blade, or who claims one, say sword, and the art draws one.
+- **No line gives the answer away.** A line only liars say is a free answer: Loki's "plain man" line was. Honest souls say Loki's lines too now, and a test fails if any line is spoken as a lie 80% of the time or more. Persona-only variants are where this creeps in (only cowards and the confused claimed baptism, and they were nearly all liars), so give every claim variants anyone can say. When liars always make a claim and honest souls seldom do, raise the honest chance for that value (`speech.yaml` `chances`).
+- **One story per answer.** Every message of a question template plays, in order. Two alternative stories go in two templates.
+- **Enough variants to go round.** A long day hears the common lines (who they are, how they died, the weapon, the back) a dozen times. Story days spread each kind of line across the queue (`spreadLines`), but that can't stretch three variants over twenty souls. Write new variants in the campaign pack; core lines are the Daily's.
+
 ## Content rules
 
 The dead are adults. No self-harm, no sexual violence, no slurs. Religion is played as rival afterlife departments, never as mockery of belief. The Christian clerk's storyline gets a sensitivity read.

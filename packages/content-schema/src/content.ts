@@ -90,6 +90,7 @@ export const FactSchema: z.ZodType<FactDef, unknown> = z
     presumption: ValueSchema.optional(),
     derived: PredSchema.optional(),
     fromLies: z.literal(true).optional(),
+    words: z.record(z.string(), z.record(z.string(), z.string())).optional(),
   })
   .refine(
     (f) =>
@@ -227,6 +228,7 @@ export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
   slot: SpeechSlotNameSchema,
   fact: z.string().optional(),
   chance: Percent,
+  chances: z.record(z.string(), Percent).optional(),
   since: Day,
 });
 
@@ -322,6 +324,7 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       tallyRate: Percent.optional(),
       muninnRecall: Percent.optional(),
       huginnAside: Percent.optional(),
+      spreadLines: z.boolean().optional(),
     }),
   }),
 });

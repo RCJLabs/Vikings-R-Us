@@ -63,6 +63,11 @@ export interface FactDef {
    * catching a lie; until then it is presumed false.
    */
   readonly fromLies?: true;
+  /**
+   * Words a soul's lines must use when it has this value, or claims it: `{ ulfberht: { pool.weapons: sword } }`
+   * (an Ulfberht is a sword, so its owner never calls it an axe). Keyed by String(value), then pool id.
+   */
+  readonly words?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 export type ObsSource =
@@ -212,6 +217,11 @@ export interface SpeechSlotDef {
   readonly fact?: string;
   /** Percent chance the slot is spoken when the soul isn't lying about its fact. */
   readonly chance: number;
+  /**
+   * The chance for particular true values, by String(value): the truly baptized mention it more than
+   * the heathen do, so the claim alone isn't nearly always a lie. Lies are spoken either way.
+   */
+  readonly chances?: Readonly<Record<string, number>>;
   readonly since: number;
 }
 
@@ -273,6 +283,11 @@ export interface Knobs {
   readonly muninnRecall?: number;
   /** Percent chance Huginn adds a true fact that doesn't decide the judgment, so the ravens can seem to disagree (Day 13 on). */
   readonly huginnAside?: number;
+  /**
+   * Story days: the day's souls take turns through each kind of line's variants, instead of each
+   * drawing one at random, so a day repeats itself less (gen/render.ts). Never on the Daily.
+   */
+  readonly spreadLines?: boolean;
 }
 
 export interface DayParam {

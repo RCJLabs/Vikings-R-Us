@@ -18,6 +18,7 @@ Everything listed here is **draft writing**. Days 1–3 are on their second draf
 | Days 10 and 12 (M5): the clerk and the baptized, Loki in borrowed faces | campaign strings `decree.d10`/`d12`, `rule.transfer`, `rule.detain`, `law.cross`/`primeSigned`/`hammer`/`stitchedLips`/`plainLips`, `obs.amulet.*`, `obs.lipScars.*`, `tm.creed.*`, `tm.guise.*`, `q.creed.*`, `q.guise.*`, `q.any.deflect.1`, `rv.huginn.baptized`/`primeSigned` | ~420 |
 | Days 9 and 13–20 (M7): decrees, rules, Odin's claims, Muninn's lines, the spear mark | campaign strings `decree.d9`, `decree.d13`–`d20`, `rule.helFull`/`odinClaim`/`liars`/`spearMark`, `whim.odin.*`, `law.noMark`, `obs.spearCut.*`, `rv.muninn.*`, `q.blade.plain.*` | ~500 |
 | The campaign's endings (M7) | campaign strings `ending.*` | ~320 |
+| More ways to say the common lines, Loki's disguise lines, fixed lines (after M7: audit item 1) | campaign strings `tm.identity.4`–`10`, `tm.death.battle.5`–`9`, `tm.weapon.yes.3`–`6`, `tm.back.no.3`–`6`, `tm.flavor.*.2`/`.3`, `tm.oath.kept.4`–`6`, `tm.owner.self.*`, `tm.blade.ulfberht.*`, `tm.creed.*`, `tm.guise.*`, `rv.muninn.forgot.2`–`7`, `rv.muninn.identity.2`–`4`, `rv.*.2`/`.3`, `tl.*.2`/`.3`, `tl.owner.self`, `q.creed.hid.confess.1`; core `tm.death.oldAge.1`, `q.cause.braggart.confess.1` | ~770 |
 | Speaker names | strings `speaker.*` (demo, campaign) | — |
 | Family, shop and ending text (M4.1, M7) | strings `family.*`, `shop.*`, demo `ending.*` | ~250 |
 

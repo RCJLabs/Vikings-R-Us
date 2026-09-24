@@ -51,3 +51,4 @@ queue:
     tallyRate: 40
     muninnRecall: 60
     huginnAside: 30
+    spreadLines: true

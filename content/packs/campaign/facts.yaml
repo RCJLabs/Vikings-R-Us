@@ -25,6 +25,8 @@
   since: 7
   inert: plain
   prior: { plain: 6, ulfberht: 1, fakeUlfberht: 1 }
+  # Ulfberhts are swords: a soul whose blade is marked, or who says it is, calls it a sword in every line.
+  words: { ulfberht: { pool.weapons: sword }, fakeUlfberht: { pool.weapons: sword } }
 # Day 8: Naglfar is built from dead men's untrimmed nails.
 - id: nailsGrown
   domain: { bool: true }

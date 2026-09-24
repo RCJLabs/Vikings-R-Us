@@ -157,6 +157,33 @@ describe('gameplay content lints', () => {
     ).toThrow(/Invalid ICU message:\n"core.bad"/);
   });
 
+  it('rejects words a fact fixes that its values or pools do not have', () => {
+    const withWords = (words: string) =>
+      core({
+        'archetypes.yaml': archetype(''),
+        'facts.yaml': `- { id: cause, domain: { enum: [battle, sickness] }, words: ${words} }\n`,
+        'pools.yaml': 'pool.weapons: [axe, sword]\n',
+      });
+    const build = (words: string) => () => compile({ core: withWords(words), demo: day('arch.liar') });
+    expect(build('{ battle: { pool.weapons: sword } }')).not.toThrow();
+    expect(build('{ drowned: { pool.weapons: sword } }')).toThrow(/words for "drowned", which it can't be/);
+    expect(build('{ battle: { pool.boats: sword } }')).toThrow(/unknown pool "pool.boats"/);
+    expect(build('{ battle: { pool.weapons: spear } }')).toThrow(/fixes "spear", which pool.weapons doesn't have/);
+  });
+
+  it('rejects speaking chances for values a slot’s fact cannot have', () => {
+    const speech = (slot: string) =>
+      core({ 'archetypes.yaml': archetype(''), 'speech.yaml': `- ${slot}\n` }, { 'tm.d': 'Died.' });
+    const build = (slot: string) => () => compile({ core: speech(slot), demo: day('arch.liar') });
+    expect(build('{ slot: death, fact: cause, chance: 20, chances: { sickness: 60 }, since: 1 }')).not.toThrow();
+    expect(build('{ slot: death, fact: cause, chance: 20, chances: { drowned: 60 }, since: 1 }')).toThrow(
+      /chance for "drowned", which cause can't be/,
+    );
+    expect(build('{ slot: flavor, chance: 20, chances: { sickness: 60 }, since: 1 }')).toThrow(
+      /chances by value but no fact/,
+    );
+  });
+
   const dailyPack = (archetype: string): PackFixture => {
     const spec = day(archetype).files['days/day-01.yaml'].replace('decree: decree.d1', 'decree: daily.decree');
     return {

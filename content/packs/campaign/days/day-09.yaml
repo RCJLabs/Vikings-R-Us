@@ -40,3 +40,4 @@ queue:
     maxTools: 3
     maxDocs: 4
     salienceFloor: 2
+    spreadLines: true

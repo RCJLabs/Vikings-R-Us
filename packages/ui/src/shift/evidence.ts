@@ -94,7 +94,10 @@ export function fieldText(f: Field, c?: CaseSpec): string {
   return f.id;
 }
 
-/** What the body art draws for a soul: every sign it carries, its cues, the tools used on it and the weapon its words name. */
+/**
+ * What the body art draws for a soul: every sign it carries, its cues, the tools used on it and the
+ * weapon its words name, or would (an Ulfberht is a sword even when nobody says so).
+ */
 export function sceneFor(c: CaseSpec, soul: SoulState): BodyScene {
   const obs: Record<string, string | number | boolean> = {};
   const cues: string[] = [];
@@ -105,6 +108,7 @@ export function sceneFor(c: CaseSpec, soul: SoulState): BodyScene {
     const named = f.text?.params.weapon;
     if (weapon === undefined && typeof named === 'string') weapon = named;
   }
+  weapon ??= c.evidence.words?.['pool.weapons'];
   return { view: soul.view, look: c.evidence.look, obs, cues, tools: soul.tools, ...(weapon ? { weapon } : {}) };
 }
 

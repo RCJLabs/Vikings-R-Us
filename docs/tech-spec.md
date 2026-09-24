@@ -1325,6 +1325,33 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - The partial-evidence property runs 150 random seeds per CI run; it took 12,000 more runs to show the fixes held. The nightly's larger runs are the real guard.
 - All M7 writing is first draft; the clerk's storyline needs its sensitivity read.
 
+## 19. After M7: what the dead say (audit item 1)
+
+**Where things live**
+- Picking lines: `packages/engine/src/gen/render.ts` (`choose`, `deal`, `pinnedWords`); the soul's place in its day reaches it through `dressCase`'s `voice`.
+- Content: `spreadLines` in the story days' knobs (demo Days 1–3, campaign Days 4–20), `words` on the campaign's `blade` fact, `chances` in the campaign's `speech.yaml`. New variants are in the campaign pack's templates and strings.
+- Tests: `packages/engine/src/gen/voice.test.ts` (tells, weapons, repeats, and that spreading changes only words), `packages/ui/src/dialogue.test.ts` (the fixed strings), compiler lints for `words` and `chances`.
+
+**Decisions**
+- **Spreading lines keeps every soul a pure function of (seed, day, index).** A day deals each kind of line (a slot and claim, a raven report, a tally line) into a deck: its variants in a per-day order, each as often as its weight, spaced out (smooth weighted round-robin), cut at a per-day point. Soul *i* says the variant at position *i*. A soul whose persona can't say it takes the variant whose places in the deck are furthest from its own. It only chooses among the same templates, so judgments, proofs, lies and field ids are unchanged (a metamorphic test checks this). Avoiding "the last 20 lines heard", as §3.5 planned, would make each soul depend on the souls before it.
+- **The Daily keeps its words.** Its spec has no `spreadLines`, the new variants are in the campaign pack, and the core strings changed only in wording, so its pinned checksums hold. Without the knob, lines are drawn exactly as before (same draws, same order).
+- **Facts can fix words.** A fact's `words` (value → pool → word) fixes the word for a soul that has the value or claims it; its lines use it, and the evidence records it (`evidence.words`, only when set) so the art draws it when no line names it.
+- **Honest souls vouch for themselves too.** The guise slot is spoken at 15% by honest souls from Day 12, and Loki can wear any persona, so neither the line nor how he talks gives him away.
+- **Per-value speaking chances.** Liars always speak their claim; honest souls speak by chance. For claims that liars favour (baptism from Day 10, a true Ulfberht from Day 7) the honest chance is 60%, so the claim alone stops being nearly always a lie. A chance draw is one draw whatever its odds, so nothing else in the plan moves.
+
+**Measured** (16–30 seeds of Days 1–20 in the full build, before → after)
+- Lines that repeat one heard earlier that day: 59% → 31% (Day 20: 68% → 43%). The same line as one of the last three souls: 42% → 10%; as the soul just before: 21% → 3%. Variants alone got near repeats to 18%; spreading halved that.
+- Day 20's most-used line: 10 times a day on average (14 at worst) → 5 (7 at worst). Muninn forgets about 8 souls a day; his most-used forgetting line went from all 8 (12 at worst) to 2.4 (3 at worst).
+- Loki's lines: a lie 100% of the time → 35% (13–46% by line). Highest lie share of any line: 100% → 65% (a baptism claim).
+- Contradictions: "my father's axe" with another weapon (27% of those lines), an Ulfberht drawn or named as a non-sword (91% of marked or claimed blades), "seventy winters" at any age, a braggart who died old confessing to a cough, a forger telling both tally stories: all 0.
+- Day goldens (12 seeds × 20 days) and the Daily checksums are unchanged.
+
+**Known limits**
+- Some claims stay soft tells: a coward's "I did not run" is a lie 63% of the time, because cowards who claim it mostly fled. It's never proof, and the body decides.
+- An axe can't be an Ulfberht, so a player who knows that can skip the lens on axe-bearers. That's true to the world; it makes the Ulfberht check a little easier than the validator's proof cost assumes.
+- Spreading helps most with lines many souls say. A claim few souls make can still repeat a few souls apart (a deck is only as long as its variants' weights), so the real fix for repetition is still more variants: about 770 new words here, all first draft.
+- Honest and veteran souls still have no flavour lines. Adding them would add a line where there was none, which moves field ids in the day goldens, so it's left for a content pass.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

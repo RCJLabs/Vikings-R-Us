@@ -9,3 +9,26 @@
 - { id: rv.muninn.primeSigned, raven: muninn, asserts: { fact: faith, value: primeSigned }, msg: rv.muninn.primeSigned }
 - { id: rv.muninn.ownWeapon, raven: muninn, asserts: { fact: weaponOwner, value: self }, msg: rv.muninn.ownWeapon }
 - { id: rv.muninn.borrowedWeapon, raven: muninn, asserts: { fact: weaponOwner, value: other }, msg: rv.muninn.borrowedWeapon }
+# More ways to say the common reports (campaign builds only; the Daily keeps its words).
+- { id: rv.muninn.forgot.2, raven: muninn, tag: forgot, msg: rv.muninn.forgot.2 }
+- { id: rv.muninn.forgot.3, raven: muninn, tag: forgot, msg: rv.muninn.forgot.3 }
+- { id: rv.muninn.forgot.4, raven: muninn, tag: forgot, msg: rv.muninn.forgot.4 }
+- { id: rv.muninn.forgot.5, raven: muninn, tag: forgot, msg: rv.muninn.forgot.5 }
+- { id: rv.muninn.forgot.6, raven: muninn, tag: forgot, msg: rv.muninn.forgot.6 }
+- { id: rv.muninn.forgot.7, raven: muninn, tag: forgot, msg: rv.muninn.forgot.7 }
+- { id: rv.muninn.identity.2, raven: muninn, tag: identity, msg: rv.muninn.identity.2 }
+- { id: rv.muninn.identity.3, raven: muninn, tag: identity, msg: rv.muninn.identity.3 }
+- { id: rv.muninn.identity.4, raven: muninn, tag: identity, msg: rv.muninn.identity.4 }
+- { id: rv.muninn.heathen.2, raven: muninn, asserts: { fact: faith, value: heathen }, msg: rv.muninn.heathen.2 }
+- { id: rv.muninn.oathKept.2, raven: muninn, asserts: { fact: outlaw, value: false }, msg: rv.muninn.oathKept.2 }
+- { id: rv.huginn.battle.2, raven: huginn, asserts: { fact: cause, value: battle }, msg: rv.huginn.battle.2, params: { place: pool.places } }
+- { id: rv.huginn.battle.3, raven: huginn, asserts: { fact: cause, value: battle }, msg: rv.huginn.battle.3, params: { place: pool.places } }
+- { id: rv.huginn.sickness.2, raven: huginn, asserts: { fact: cause, value: sickness }, msg: rv.huginn.sickness.2 }
+- { id: rv.huginn.oldAge.2, raven: huginn, asserts: { fact: cause, value: oldAge }, msg: rv.huginn.oldAge.2 }
+- { id: rv.huginn.drowned.2, raven: huginn, asserts: { fact: cause, value: drowned }, msg: rv.huginn.drowned.2 }
+- { id: rv.huginn.fledTrue.2, raven: huginn, asserts: { fact: fled, value: true }, msg: rv.huginn.fledTrue.2 }
+- { id: rv.huginn.fledFalse.2, raven: huginn, asserts: { fact: fled, value: false }, msg: rv.huginn.fledFalse.2 }
+- { id: rv.huginn.fledFalse.3, raven: huginn, asserts: { fact: fled, value: false }, msg: rv.huginn.fledFalse.3 }
+- { id: rv.huginn.weapon.2, raven: huginn, asserts: { fact: grip, value: weapon }, msg: rv.huginn.weapon.2 }
+- { id: rv.huginn.weapon.3, raven: huginn, asserts: { fact: grip, value: weapon }, msg: rv.huginn.weapon.3 }
+- { id: rv.huginn.noWeapon.2, raven: huginn, asserts: { fact: grip, value: none }, msg: rv.huginn.noWeapon.2 }

@@ -10,7 +10,7 @@ import type {
 import type { DayCtx } from '../logic/context';
 import { observe } from '../logic/judge';
 import { eval2, type Truth } from '../logic/pred';
-import type { Rng } from '../rng/rng';
+import { Rng } from '../rng/rng';
 import type { PlannedLie } from './lies';
 import { weightedPick } from './pick';
 import type { Evidence, Field, ForgeryTell, Lie, Look } from './types';
@@ -35,7 +35,10 @@ export function planSpeech(truth: Truth, lies: readonly PlannedLie[], ctx: DayCt
     const lie = lies.findIndex((l) => l.fact === slot.fact);
     if (lie >= 0) {
       lines.push({ slot: slot.slot, asserts: { fact: slot.fact, value: (lies[lie] as PlannedLie).claimed }, lie });
-    } else if (rng.chance(slot.chance, 100) && ctx.facts.get(slot.fact)?.pinned === false) {
+    } else if (
+      rng.chance(slot.chances?.[String(truth[slot.fact])] ?? slot.chance, 100) &&
+      ctx.facts.get(slot.fact)?.pinned === false
+    ) {
       lines.push({ slot: slot.slot, asserts: { fact: slot.fact, value: truth[slot.fact] as Value } });
     }
   }
@@ -95,6 +98,22 @@ export function planRavens(truth: Truth, decisive: readonly string[], ctx: DayCt
 }
 
 /**
+ * Words the soul's facts and claims fix (a fact's `words`: an Ulfberht is a sword), claims last, so a
+ * soul who says its blade is an Ulfberht calls it a sword in every line. The art draws that weapon.
+ */
+function pinnedWords(input: RenderInput, ctx: DayCtx): Map<string, string> {
+  const shared = new Map<string, string>();
+  const pin = (fact: string, value: Value) => {
+    const words = ctx.facts.get(fact)?.def.words?.[String(value)];
+    for (const [pool, word] of Object.entries(words ?? {})) shared.set(pool, word);
+  };
+  for (const [fact, value] of Object.entries(input.truth)) pin(fact, value);
+  for (const line of input.speech) if (line.asserts) pin(line.asserts.fact, line.asserts.value);
+  for (const line of input.tally?.lines ?? []) pin(line.fact, line.value);
+  return shared;
+}
+
+/**
  * Fills template placeholders. Each pool is drawn once per soul, so every line
  * that mentions the place, foe or weapon agrees; a mismatch would look like a lie.
  */
@@ -118,36 +137,117 @@ function fillParams(
   return out;
 }
 
-function pickTestimony(line: SpeechLine, persona: string, ctx: DayCtx, rng: Rng): TestimonyTemplate | null {
-  const matches = ctx.content.testimony.filter(
+/** Where a soul stands in its day, on days that spread their lines (knobs.spreadLines). */
+export interface Voice {
+  /** Seeds the day's decks; the same for every soul of the day. */
+  readonly deck: string;
+  /** The soul's place in the day's queue. */
+  readonly index: number;
+}
+
+/**
+ * One kind of line's deck for the day: its variants in a per-day order, each as often as its
+ * weight and spaced out (smooth weighted round-robin), cut at a per-day point.
+ */
+function deal<T extends { readonly weight: number }>(all: readonly T[], seed: string): T[] {
+  const rng = new Rng(seed);
+  const order = rng.shuffle(all);
+  const weights = order.map((t) => (t.weight > 0 ? t.weight : 0));
+  const total = weights.reduce((a, b) => a + b, 0);
+  const credit = order.map(() => 0);
+  const deck: T[] = [];
+  for (let n = 0; n < total; n++) {
+    let best = 0;
+    for (let i = 0; i < order.length; i++) {
+      credit[i] = (credit[i] ?? 0) + (weights[i] ?? 0);
+      if ((credit[i] ?? 0) > (credit[best] ?? 0)) best = i;
+    }
+    credit[best] = (credit[best] ?? 0) - total;
+    deck.push(order[best] as T);
+  }
+  const cut = total > 0 ? rng.int(0, total - 1) : 0;
+  return [...deck.slice(cut), ...deck.slice(0, cut)];
+}
+
+/**
+ * Picks one of `fits` (the variants this soul can say) from `all` (every variant of this kind of line).
+ * Without a voice it's a weighted draw, as it always was. With one, the soul says its turn's variant
+ * in the day's deck, so neighbours in the queue rarely say the same thing; if its persona can't say
+ * that one, it says the variant it can whose turns are furthest from its own. Either way the pick
+ * depends only on (seed, day, index).
+ */
+function choose<T extends { readonly weight: number }>(
+  fits: readonly T[],
+  all: readonly T[],
+  kind: string,
+  voice: Voice | undefined,
+  rng: Rng,
+): T {
+  if (!voice) {
+    return weightedPick(
+      fits,
+      fits.map((t) => t.weight),
+      rng,
+    );
+  }
+  const deck = deal(all, `${voice.deck}|${kind}`);
+  if (deck.length === 0) return fits[0] as T;
+  const turn = voice.index % deck.length;
+  const own = deck[turn] as T;
+  if (fits.includes(own)) return own;
+  // Only variants that are in the deck: a weight of 0 means never, as in a weighted draw.
+  const dealt = fits.filter((t) => deck.includes(t));
+  if (dealt.length === 0) return fits[0] as T;
+  let best = dealt[0] as T;
+  let bestGap = -1;
+  for (const t of dealt) {
+    let gap = deck.length;
+    deck.forEach((d, p) => {
+      if (d !== t) return;
+      const away = Math.abs(p - turn);
+      gap = Math.min(gap, away, deck.length - away);
+    });
+    if (gap > bestGap) {
+      best = t;
+      bestGap = gap;
+    }
+  }
+  return best;
+}
+
+const kindOf = (asserts: { readonly fact: string; readonly value: Value } | undefined): string =>
+  asserts ? `${asserts.fact}=${String(asserts.value)}` : '';
+
+function pickTestimony(
+  line: SpeechLine,
+  persona: string,
+  ctx: DayCtx,
+  voice: Voice | undefined,
+  rng: Rng,
+): TestimonyTemplate | null {
+  const all = ctx.content.testimony.filter(
     (t) =>
       t.slot === line.slot &&
-      (t.personas === undefined || t.personas.includes(persona)) &&
       (line.asserts
         ? t.asserts?.fact === line.asserts.fact && t.asserts.value === line.asserts.value
         : t.asserts === undefined),
   );
-  if (matches.length === 0) return null;
-  return weightedPick(
-    matches,
-    matches.map((t) => t.weight),
-    rng,
-  );
+  const fits = all.filter((t) => t.personas === undefined || t.personas.includes(persona));
+  if (fits.length === 0) return null;
+  return choose(fits, all, `testimony|${line.slot}|${kindOf(line.asserts)}`, voice, rng);
 }
 
 function pickRaven(
   raven: 'huginn' | 'muninn',
+  kind: string,
   test: (t: RavenTemplate) => boolean,
   ctx: DayCtx,
+  voice: Voice | undefined,
   rng: Rng,
 ): RavenTemplate | null {
   const matches = ctx.content.ravens.filter((t) => t.raven === raven && test(t));
   if (matches.length === 0) return null;
-  return weightedPick(
-    matches,
-    matches.map((t) => t.weight),
-    rng,
-  );
+  return choose(matches, matches, `${raven}|${kind}`, voice, rng);
 }
 
 /** The tool that shows a forged tally's tell (the carving has to be read closely). */
@@ -191,14 +291,10 @@ export function planTally(
   return { lines: truths.slice(0, 2), tell: null };
 }
 
-function pickTally(fact: string, value: Value, ctx: DayCtx, rng: Rng): TallyTemplate | null {
+function pickTally(fact: string, value: Value, ctx: DayCtx, voice: Voice | undefined, rng: Rng): TallyTemplate | null {
   const matches = (ctx.content.tallies ?? []).filter((t) => t.asserts.fact === fact && t.asserts.value === value);
   if (matches.length === 0) return null;
-  return weightedPick(
-    matches,
-    matches.map((t) => t.weight),
-    rng,
-  );
+  return choose(matches, matches, `tally|${kindOf({ fact, value })}`, voice, rng);
 }
 
 export interface RenderInput {
@@ -211,6 +307,8 @@ export interface RenderInput {
   readonly cues: readonly { readonly key: string; readonly decoy: boolean }[];
   readonly look: Look;
   readonly persona: string;
+  /** Set on days that spread their lines (knobs.spreadLines); otherwise each line is drawn at random. */
+  readonly voice?: Voice;
 }
 
 export interface Rendered {
@@ -223,9 +321,10 @@ export interface Rendered {
 
 /** Turns the truth and plans into the fields the player sees. */
 export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
-  const { truth, look, persona } = input;
+  const { truth, look, persona, voice } = input;
   const fields: Field[] = [];
-  const shared = new Map<string, string>();
+  const pinned = pinnedWords(input, ctx);
+  const shared = new Map(pinned);
 
   for (const obs of ctx.observations) {
     if (obs.when && !eval2(obs.when, truth, ctx)) continue;
@@ -253,7 +352,7 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
   let unspoken = 0;
   let n = 0;
   for (const line of input.speech) {
-    const tpl = pickTestimony(line, persona, ctx, rng);
+    const tpl = pickTestimony(line, persona, ctx, voice, rng);
     if (!tpl) {
       if (line.lie !== undefined) unspoken++;
       continue;
@@ -275,7 +374,14 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
 
   let h = 0;
   for (const s of input.ravens.huginn) {
-    const tpl = pickRaven('huginn', (t) => t.asserts?.fact === s.fact && t.asserts.value === s.value, ctx, rng);
+    const tpl = pickRaven(
+      'huginn',
+      kindOf(s),
+      (t) => t.asserts?.fact === s.fact && t.asserts.value === s.value,
+      ctx,
+      voice,
+      rng,
+    );
     if (!tpl) continue;
     fields.push({
       id: `huginn.${h++}`,
@@ -288,7 +394,7 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
   }
   if (input.ravens.muninn) {
     const tag = input.ravens.muninn;
-    const tpl = pickRaven('muninn', (t) => t.tag === tag, ctx, rng);
+    const tpl = pickRaven('muninn', tag, (t) => t.tag === tag, ctx, voice, rng);
     if (tpl) {
       fields.push({
         id: 'muninn.0',
@@ -303,8 +409,10 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
   if (recall) {
     const tpl = pickRaven(
       'muninn',
+      kindOf(recall),
       (t) => t.asserts?.fact === recall.fact && t.asserts.value === recall.value,
       ctx,
+      voice,
       rng,
     );
     if (tpl) {
@@ -323,7 +431,7 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
   if (input.tally) {
     const tallyRng = rng.fork('tally');
     input.tally.lines.forEach((line, i) => {
-      const tpl = pickTally(line.fact, line.value, ctx, tallyRng);
+      const tpl = pickTally(line.fact, line.value, ctx, voice, tallyRng);
       if (!tpl) {
         if (line.lie !== undefined) unspoken++;
         return;
@@ -353,5 +461,6 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
     }
   }
 
-  return { evidence: { fields, look, persona }, lies, decoys, unspoken };
+  const words = pinned.size > 0 ? { words: Object.fromEntries(pinned) } : {};
+  return { evidence: { fields, look, persona, ...words }, lies, decoys, unspoken };
 }

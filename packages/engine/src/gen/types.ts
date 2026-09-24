@@ -36,6 +36,11 @@ export interface Evidence {
   readonly fields: readonly Field[];
   readonly look: Look;
   readonly persona: string;
+  /**
+   * Words the soul's facts or claims fix, by pool id (a fact's `words`: an Ulfberht is a sword).
+   * Its lines already use them; this lets the art draw them when no line names them. Absent if none.
+   */
+  readonly words?: Readonly<Record<string, string>>;
 }
 
 /** How a forged tally gives itself away (never spelling: Younger Futhark spelling varied too much). */

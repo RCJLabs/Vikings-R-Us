@@ -47,3 +47,4 @@ queue:
     maxDocs: 5
     salienceFloor: 2
     tallyRate: 40
+    spreadLines: true
