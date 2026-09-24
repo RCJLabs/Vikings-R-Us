@@ -60,3 +60,9 @@ queue:
     muninnRecall: 50
     huginnAside: 25
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d16.catch, text: coach.d16.catch, focus: 'words compare', until: { flagged: true } }
+    - { id: d16.stamp, text: coach.d16.stamp, focus: judge }

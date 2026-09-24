@@ -289,6 +289,28 @@ export const EconomySchema: z.ZodType<Economy> = z.strictObject({
   costs: z.strictObject({ hearth: Int.min(0), food: Int.min(0), medicine: Int.min(0) }),
 });
 
+const LessonUntilSchema = z.union([
+  z.strictObject({ seen: z.string().min(1) }),
+  z.strictObject({ tool: ToolIdSchema }),
+  z.strictObject({ flipped: z.literal(true) }),
+  z.strictObject({ flagged: z.literal(true) }),
+]);
+
+const LessonSchema = z.strictObject({
+  primer: z.literal(true).optional(),
+  steps: z
+    .array(
+      z.strictObject({
+        id: Id,
+        text: Key,
+        focus: z.string().min(1),
+        next: z.literal(true).optional(),
+        until: LessonUntilSchema.optional(),
+      }),
+    )
+    .min(1),
+});
+
 export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
   day: Day,
   sunS: Int.positive(),
@@ -327,6 +349,7 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       spreadLines: z.boolean().optional(),
     }),
   }),
+  lesson: LessonSchema.optional(),
 });
 
 // ---- Campaign (campaign.yaml) ----

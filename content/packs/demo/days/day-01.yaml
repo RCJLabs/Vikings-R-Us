@@ -27,3 +27,12 @@ queue:
     maxDocs: 3
     salienceFloor: 2
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  primer: true
+  steps:
+    - { id: d1.look, text: coach.d1.look, focus: hands, until: { seen: body.front.grip } }
+    - { id: d1.chest, text: coach.d1.chest, focus: chest, until: { seen: body.front.woundsFront } }
+    - { id: d1.rules, text: coach.d1.rules, focus: rules, next: true }
+    - { id: d1.stamp, text: coach.d1.stamp, focus: judge }

@@ -311,6 +311,59 @@ export interface Economy {
   readonly costs: { readonly hearth: number; readonly food: number; readonly medicine: number };
 }
 
+/**
+ * What ends a lesson step (docs/tech-spec.md §25): a field looked at (its id, or `whim:<param>` for the
+ * sign the day's whim reads), a tool used, the body turned over, or a lie caught.
+ */
+export type LessonUntil =
+  | { readonly seen: string }
+  | { readonly tool: ToolId }
+  | { readonly flipped: true }
+  | { readonly flagged: true };
+
+/** One instruction of a lesson, shown until the player does what it asks (or presses Next). */
+export interface LessonStep {
+  readonly id: string;
+  readonly text: string;
+  /**
+   * What to highlight, as the coach names it: hands, hair, face, neck, chest, back, flip, feather, registry,
+   * runeLens, clippers, rules, words, ravens, tally, compare, judge, or `whim:<param>`. Several may be joined
+   * with spaces.
+   */
+  readonly focus: string;
+  /** A reading step, ended by Next. */
+  readonly next?: true;
+  readonly until?: LessonUntil;
+}
+
+/** The coach's lesson for a day's first soul, which teaches the day's new rule or tool. */
+export interface Lesson {
+  /** The primer teaches this too: a player who has played it isn't taught again. */
+  readonly primer?: true;
+  readonly steps: readonly LessonStep[];
+}
+
+/** The names a lesson may highlight (besides `whim:<param>`). */
+export const COACH_FOCUS: readonly string[] = [
+  'hands',
+  'hair',
+  'face',
+  'neck',
+  'chest',
+  'back',
+  'flip',
+  'feather',
+  'registry',
+  'runeLens',
+  'clippers',
+  'rules',
+  'words',
+  'ravens',
+  'tally',
+  'compare',
+  'judge',
+];
+
 export interface DaySpec {
   readonly day: number;
   readonly sunS: number;
@@ -333,6 +386,8 @@ export interface DaySpec {
     readonly mix: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
     readonly knobs: Knobs;
   };
+  /** The coach's lesson for the day's first soul (the teaching one), when the day brings something new. */
+  readonly lesson?: Lesson;
 }
 
 /** A condition on the campaign run (endings); two-valued. Paths are listed in engine/campaign/state.ts. */

@@ -52,3 +52,9 @@ queue:
     salienceFloor: 1
     tallyRate: 40
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d12.lips, text: coach.d12.lips, focus: face, until: { seen: body.front.lipScars } }
+    - { id: d12.stamp, text: coach.d12.stamp, focus: judge }

@@ -45,3 +45,9 @@ queue:
     maxDocs: 5
     salienceFloor: 2
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d10.neck, text: coach.d10.neck, focus: neck, until: { seen: body.front.amulet } }
+    - { id: d10.stamp, text: coach.d10.stamp, focus: judge }

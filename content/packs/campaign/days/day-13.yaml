@@ -52,3 +52,9 @@ queue:
     muninnRecall: 60
     huginnAside: 30
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d13.ravens, text: coach.d13.ravens, focus: ravens, next: true }
+    - { id: d13.stamp, text: coach.d13.stamp, focus: judge }

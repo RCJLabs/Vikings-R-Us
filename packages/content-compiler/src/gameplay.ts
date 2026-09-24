@@ -47,7 +47,7 @@ import type {
   ToolDef,
   WorldConstraint,
 } from '@cots/engine';
-import { createDayContext, type Effect, STATE_PATHS, type StatePred, scriptedCase } from '@cots/engine';
+import { COACH_FOCUS, createDayContext, type Effect, STATE_PATHS, type StatePred, scriptedCase } from '@cots/engine';
 import { z } from 'zod';
 
 /** The gameplay content one pack defines. Every list is optional in the pack's folder. */
@@ -475,6 +475,7 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
 
   if (content.campaign) problems.push(...lintCampaign(content, strings));
   problems.push(...lintScripted(content, strings));
+  problems.push(...lintLessons(content, strings));
 
   const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
   if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
@@ -511,6 +512,53 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
       .sort((a, b) => a.order - b.order);
     const last = inForce[inForce.length - 1];
     if (!last || !('always' in last.when)) problems.push(`${name}: the last rule in force must always apply.`);
+  }
+  return problems;
+}
+
+/**
+ * The coach's lessons (docs/tech-spec.md §25): each rides on its day's teaching soul, names things the
+ * coach can highlight, and waits on tools the day has. Whether each step can be done on the soul the
+ * day actually makes is for the tests, which generate it.
+ */
+function lintLessons(content: Content, strings: Readonly<Record<string, string>>): string[] {
+  const problems: string[] = [];
+  const ids = new Set<string>();
+  const specs: { d: DaySpec; name: string }[] = content.days.map((d) => ({ d, name: `day ${d.day}` }));
+  if (content.daily) specs.push({ d: content.daily, name: 'the Daily' });
+  if (content.primer) specs.push({ d: content.primer, name: 'the primer' });
+  for (const { d, name } of specs) {
+    if (!d.lesson) continue;
+    const where = `${name}'s lesson`;
+    if (!d.queue.teachFirst) problems.push(`${where} has no teaching soul (queue.teachFirst) to ride on.`);
+    const whim = (ref: string, what: string) => {
+      const param = ref.slice('whim:'.length);
+      const pool = d.params?.[param]?.pool;
+      if (!pool) problems.push(`${where} ${what} "${ref}", but the day has no param "${param}".`);
+      else if (pool.some((c) => !('fact' in c.is))) {
+        problems.push(`${where} ${what} "${ref}", whose choices don't each read one fact.`);
+      }
+    };
+    const steps = d.lesson.steps;
+    steps.forEach((step, i) => {
+      const at = `${where} step ${step.id}`;
+      if (ids.has(step.id)) problems.push(`Duplicate lesson step "${step.id}" (${where}).`);
+      ids.add(step.id);
+      if (!(step.text in strings)) problems.push(`${at} uses missing string "${step.text}".`);
+      for (const f of step.focus.split(/\s+/)) {
+        if (f.startsWith('whim:')) whim(f, 'highlights');
+        else if (!COACH_FOCUS.includes(f)) problems.push(`${at} highlights "${f}", which the coach doesn't know.`);
+      }
+      if (step.next && step.until) problems.push(`${at} is both a reading step and waits on something.`);
+      const until = step.until;
+      if (until && 'seen' in until && until.seen.startsWith('whim:')) whim(until.seen, 'waits on');
+      const tool = until && 'tool' in until ? until.tool : until && 'flipped' in until ? 'flip' : undefined;
+      if (tool && !content.tools.some((t) => t.id === tool && t.since <= d.day)) {
+        problems.push(`${at} waits on the ${tool}, which isn't taught by day ${d.day}.`);
+      }
+      const last = i === steps.length - 1;
+      if (last && (step.next || step.until)) problems.push(`${at}: the last step lasts until the soul is judged.`);
+    });
   }
   return problems;
 }

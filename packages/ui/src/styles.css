@@ -967,6 +967,14 @@ kbd {
 .shift[data-coach~="feather"] [data-testid="feather"],
 .shift[data-coach~="rules"] :is([data-tab="rules"], .paper--rules),
 .shift[data-coach~="words"] :is([data-tab="words"], .paper--words, .drawer .words),
+.shift[data-coach~="hair"] [data-region="hair"],
+.shift[data-coach~="neck"] [data-region="neck"],
+.shift[data-coach~="registry"] :is([data-testid="registry"], [data-tab="registry"], .paper--registry),
+.shift[data-coach~="runeLens"] [data-testid="runeLens"],
+.shift[data-coach~="clippers"] [data-testid="clippers"],
+.shift[data-coach~="ravens"] :is([data-tab="ravens"], .paper--ravens),
+.shift[data-coach~="tally"] :is([data-tab="tally"], .paper--tally),
+.shift[data-coach~="compare"] [data-testid="compare"],
 .shift[data-coach~="judge"] :is([data-testid="judge"], .stamps) {
   outline: 3px solid #9fdc8f;
   outline-offset: 2px;

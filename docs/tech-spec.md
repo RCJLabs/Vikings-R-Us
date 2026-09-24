@@ -1458,6 +1458,25 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - The tracker only greys rules out. It never says which rule applies, and it reads nothing from testimony or a tally, so it rules out less than a player who reads an honest tally rightly.
 - Endless keeps one best score, with or without the tracker.
 
+## 25. After M7: a lesson for each new mechanic (audit item 7)
+
+**What changed**
+- **The coach teaches every day that brings something new**, not just the primer. Each such day already puts a teaching soul first (`queue.teachFirst`); its spec now has a `lesson`, a few coach steps for that soul: Days 1–8 and 10–17 (Day 9 brings nothing new). The lessons are content, in each pack's day files with their text in the pack's strings, so the campaign's never reach a demo build.
+- **A step** names what to highlight (`focus`) and what ends it (`until`): a field looked at (by id, or `whim:<param>` for the sign the day's whim reads, worked out on the day), a tool used, the body turned over, or a lie caught; or it's a reading step ended by Next. The last step lasts until the soul is judged. Steps a soul can't give are left out: on Day 2, "catch the lie" only shows when the fled soul lies (35 of 40 teaching souls).
+- **Who is taught**: campaign and practice shifts, on the day's first soul, when it is the teaching soul. A lesson is taught once per device: judging its soul, or skipping it, records the day (`coached` in the settings). Days 1–3 are skipped for anyone who has played the primer, which teaches the same. A setting turns the lessons off.
+- **The primer's steps now use the same form**, so one coach runs both.
+- **New highlights**: hair, neck, the registry, the rune-lens, the clippers, the ravens, the tally and Compare.
+- **The compiler checks** each lesson: a teaching soul to ride on, known highlights, strings that exist, tools taught by that day, a whim param the day has, and a last step that waits for the stamp.
+
+**Tests**
+- Unit: every lesson can be followed to its stamp on 25 generated teaching souls a day, by a player who does only what each step asks; lessons show once, not after the primer for Days 1–3, and not when turned off; the primer's steps are as they were.
+- e2e: Day 6's lesson in practice (the registry highlighted, then the stamp), gone for the next soul and the next practice; skipping Day 8's; the setting off for Day 7; Day 1's lesson in a new campaign.
+
+**Known limits**
+- The sun keeps running during a lesson. Most steps ask for what the soul needs anyway; the reading steps cost a few seconds.
+- The lesson texts are first drafts for the writing pass.
+- A lesson rides on the day's first soul only. A player who fumbles it gets no second lesson that day, though replaying the day doesn't bring it back either (it's recorded once the soul is judged).
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

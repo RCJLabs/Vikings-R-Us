@@ -28,3 +28,12 @@ queue:
     maxDocs: 3
     salienceFloor: 2
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  primer: true
+  steps:
+    - { id: d2.flip, text: coach.d2.flip, focus: flip, until: { flipped: true } }
+    - { id: d2.back, text: coach.d2.back, focus: back, until: { seen: body.back.woundsBack } }
+    - { id: d2.compare, text: coach.d2.compare, focus: 'words back', until: { flagged: true } }
+    - { id: d2.stamp, text: coach.d2.stamp, focus: judge }

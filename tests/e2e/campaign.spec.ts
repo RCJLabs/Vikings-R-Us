@@ -77,6 +77,8 @@ test('a first day: morning scene, a shift judged rightly, the audit, the night, 
   await page.getByTestId('to-gate').click();
 
   await expect(page.getByTestId('soul-count')).toHaveText('Soul 1 of 6');
+  // A player who hasn't played the primer is coached through Day 1's first soul.
+  await expect(page.getByTestId('coach')).toContainText('A soul has reached your gate.');
   const answers = await judgeAll(page, 0);
 
   await expect(page.getByTestId('audit-title')).toHaveText('Day 1: the audit');

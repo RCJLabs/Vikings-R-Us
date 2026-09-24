@@ -4,6 +4,7 @@ import {
   currentCase,
   ENDLESS_STRIKES,
   type Field,
+  type Lesson,
   PENALTY,
   ruledOut,
   stampsFor,
@@ -21,10 +22,12 @@ import {
   citation,
   clock,
   coachAcks,
+  coachState,
   compareFirst,
   comparing,
   drawerTab,
   effectiveLayout,
+  noteCoached,
   now,
   quitToSlots,
   type Session,
@@ -35,7 +38,7 @@ import {
   toTitle,
   updateSettings,
 } from '../store';
-import { coachStep } from './coach';
+import { activeLesson, coachStep } from './coach';
 import { fieldText, regionFields, regionSeen, registryEntry, sceneFor, skippedText } from './evidence';
 import { RulesPanel } from './Rules';
 
@@ -706,10 +709,15 @@ function ReportBox({ r }: { r: SoulReport }) {
   );
 }
 
-/** The primer's coach: one instruction at a time, with Next for reading steps. */
-function CoachBar({ s }: { s: Session }) {
-  const step = coachStep(s, coachAcks.value);
-  if (s.mode.kind !== 'primer') return null;
+/**
+ * The coach: the primer's steps, or the lesson of a day's first soul. One instruction at a time, with Next
+ * for reading steps. Skipping the primer leaves it; skipping a lesson only puts it away.
+ */
+function CoachBar({ s, lesson }: { s: Session; lesson: Lesson | null }) {
+  const now = coachStep(s, coachAcks.value, lesson);
+  const primer = s.mode.kind === 'primer';
+  if (!primer && !lesson) return null;
+  const step = now?.step;
   return (
     <div class="coach" data-testid="coach" data-step={step?.id ?? 'none'}>
       <p class="coach__text" role="status" aria-live="polite">
@@ -723,7 +731,7 @@ function CoachBar({ s }: { s: Session }) {
             data-testid="coach-next"
             onClick={() => (coachAcks.value = [...coachAcks.value, step.id])}
           >
-            {t('primer.next')}
+            {t(primer ? 'primer.next' : 'ui.coach.next')}
           </button>
         ) : null}
         <button
@@ -731,11 +739,13 @@ function CoachBar({ s }: { s: Session }) {
           class="btn btn--quiet btn--small"
           data-testid="coach-skip"
           onClick={() => {
-            updateSettings({ primerDone: true });
-            toTitle();
+            if (primer) {
+              updateSettings({ primerDone: true });
+              toTitle();
+            } else noteCoached(s.ctx.day);
           }}
         >
-          {t('primer.skip')}
+          {t(primer ? 'primer.skip' : 'ui.coach.skip')}
         </button>
       </div>
     </div>
@@ -762,16 +772,17 @@ export function ShiftScreen() {
   const paused = s.state.clock.pausedAt !== null;
   const blocked = paused || answer.value !== null || citation.value !== null || reportFor.value !== null;
   const c = currentCase(s.state);
-  const step = coachStep(s, coachAcks.value);
+  const lesson = activeLesson(s, coachState());
+  const coach = coachStep(s, coachAcks.value, lesson);
   return (
     <div
       class={`shift shift--${layout}${paused ? ' is-paused' : ''}${comparing.value ? ' is-comparing' : ''}`}
       data-layout={layout}
-      data-coach={step?.focus}
+      data-coach={coach?.focus}
     >
       <div class="shift__desk" inert={blocked}>
         <SunBar s={s} />
-        <CoachBar s={s} />
+        <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>
       {paused ? <PauseOverlay /> : null}

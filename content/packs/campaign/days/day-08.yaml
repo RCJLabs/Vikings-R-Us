@@ -42,3 +42,10 @@ queue:
     maxDocs: 4
     salienceFloor: 2
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d8.nails, text: coach.d8.nails, focus: hands, until: { seen: body.front.nails } }
+    - { id: d8.clip, text: coach.d8.clip, focus: clippers, until: { tool: clippers } }
+    - { id: d8.stamp, text: coach.d8.stamp, focus: judge }

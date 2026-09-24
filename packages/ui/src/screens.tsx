@@ -209,6 +209,17 @@ function SettingsCard() {
         />{' '}
         {t('ui.settings.untimed')}
       </label>
+      {gameContent.campaign ? (
+        <label>
+          <input
+            type="checkbox"
+            checked={s.coach}
+            data-testid="setting-coach"
+            onChange={(e) => set({ coach: (e.target as HTMLInputElement).checked })}
+          />{' '}
+          {t('ui.settings.coach')}
+        </label>
+      ) : null}
       <AssistSettings campaign={gameContent.campaign !== undefined} />
       {telemetryAvailable() ? (
         <label>

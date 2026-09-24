@@ -31,6 +31,7 @@ import { holdAudio, play, soundFor } from './audio';
 import { t } from './i18n';
 import { type LayoutMode, layoutMode } from './layout';
 import { links } from './links';
+import { activeLesson, type CoachState } from './shift/coach';
 import { sendGuard, sendShift } from './telemetry';
 import { type BuildInfo, shiftRecord } from './telemetry-payload';
 
@@ -75,6 +76,9 @@ export interface Settings {
   readonly sunPct: number;
   readonly ruleTracker: boolean;
   readonly noFines: boolean;
+  /** The coach's lessons for each day's new rule or tool (docs/tech-spec.md §25), and the days taught here. */
+  readonly coach: boolean;
+  readonly coached: readonly number[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -92,6 +96,8 @@ export const DEFAULT_SETTINGS: Settings = {
   sunPct: 100,
   ruleTracker: false,
   noFines: false,
+  coach: true,
+  coached: [],
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -112,6 +118,17 @@ export function currentAssists(campaign = false, untimed = false): Assists {
     tracker: s.ruleTracker,
     ...(campaign ? { noFines: s.noFines } : {}),
   });
+}
+
+/** Who still needs a lesson (reactive when read in a component). */
+export function coachState(): CoachState {
+  const s = settings.value;
+  return { coached: s.coached, primerDone: s.primerDone, on: s.coach };
+}
+
+/** Remembers that a day's lesson has been taught (or skipped) on this device. */
+export function noteCoached(day: number): void {
+  if (!settings.peek().coached.includes(day)) updateSettings({ coached: [...settings.peek().coached, day] });
 }
 
 /** Remembers that a campaign ending was reached here (for the endings gallery). */
@@ -387,6 +404,8 @@ export function act(input: ActionInput): void {
   if (r.state === s.state && r.events.length === 0) return;
   const changed = r.state !== s.state;
   const next: Session = { ...s, state: r.state, actions: changed ? [...s.actions, action] : s.actions };
+  // A lesson is taught once its soul has been judged.
+  if (r.state.cursor > s.state.cursor && activeLesson(s, coachState())) noteCoached(s.ctx.day);
   batch(() => {
     session.value = next;
     for (const e of r.events) onEvent(e, next);

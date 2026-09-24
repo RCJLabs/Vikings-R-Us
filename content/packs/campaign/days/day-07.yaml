@@ -41,3 +41,10 @@ queue:
     maxDocs: 4
     salienceFloor: 2
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d7.lens, text: coach.d7.lens, focus: runeLens, until: { tool: runeLens } }
+    - { id: d7.owner, text: coach.d7.owner, focus: hands, next: true }
+    - { id: d7.stamp, text: coach.d7.stamp, focus: judge }

@@ -238,6 +238,36 @@ describe('gameplay content lints', () => {
     );
   });
 
+  it('lints a day’s lesson', () => {
+    const lesson = (lines: string, teach = true): PackFixture => {
+      const d = day('arch.liar');
+      let spec = d.files['days/day-01.yaml'];
+      if (teach) spec = spec.replace('  count: [6, 6]', '  count: [6, 6]\n  teachFirst: arch.liar');
+      return {
+        ...d,
+        strings: { ...d.strings, 'coach.d1.look': 'Look', 'coach.d1.stamp': 'Stamp' },
+        files: { 'days/day-01.yaml': `${spec}\nlesson:\n  steps:\n${lines}` },
+      };
+    };
+    const base = core({ 'archetypes.yaml': archetype('') });
+    const look = '    - { id: d1.look, text: coach.d1.look, focus: face, until: { seen: body.front.skin } }\n';
+    const stamp = '    - { id: d1.stamp, text: coach.d1.stamp, focus: judge }\n';
+    expect(() => compile({ core: base, demo: lesson(look + stamp) })).not.toThrow();
+    expect(() => compile({ core: base, demo: lesson(look + stamp, false) })).toThrow(
+      /day 1's lesson has no teaching soul/,
+    );
+    expect(() => compile({ core: base, demo: lesson(look.replace('focus: face', 'focus: toes') + stamp) })).toThrow(
+      /highlights "toes", which the coach doesn't know/,
+    );
+    const lens = '    - { id: d1.lens, text: coach.d1.look, focus: runeLens, until: { tool: runeLens } }\n';
+    expect(() => compile({ core: base, demo: lesson(lens + stamp) })).toThrow(
+      /waits on the runeLens, which isn't taught by day 1/,
+    );
+    expect(() => compile({ core: base, demo: lesson(stamp + look) })).toThrow(/the last step lasts until the soul/);
+    const whim = '    - { id: d1.whim, text: coach.d1.look, focus: face, until: { seen: "whim:freyjaWhim" } }\n';
+    expect(() => compile({ core: base, demo: lesson(whim + stamp) })).toThrow(/the day has no param "freyjaWhim"/);
+  });
+
   it('requires the last rule in force to always apply', () => {
     const partial = core({
       'rules.yaml':

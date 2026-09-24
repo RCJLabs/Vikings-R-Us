@@ -37,3 +37,9 @@ queue:
     maxDocs: 3
     salienceFloor: 2
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d5.lips, text: coach.d5.lips, focus: face, until: { seen: body.front.lips } }
+    - { id: d5.stamp, text: coach.d5.stamp, focus: judge }

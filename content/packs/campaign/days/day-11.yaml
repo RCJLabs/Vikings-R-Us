@@ -48,3 +48,10 @@ queue:
     salienceFloor: 2
     tallyRate: 40
     spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d11.tally, text: coach.d11.tally, focus: tally, next: true }
+    - { id: d11.lens, text: coach.d11.lens, focus: runeLens, until: { tool: runeLens } }
+    - { id: d11.stamp, text: coach.d11.stamp, focus: judge }
