@@ -14,3 +14,4 @@ export {
   writeLeakTokens,
 } from './compile';
 export { lintContent, mergeContent, type PackContent } from './gameplay';
+export type { CompiledScene } from './scenes';

@@ -30,6 +30,8 @@
     "icons": "tsx tools/icons/make-icons.ts",
     "sim": "tsx tools/sim/cli.ts",
     "art:sheet": "tsx tools/art-sheet/cli.ts",
+    "story:script": "tsx tools/story-script/cli.ts script",
+    "story:approve": "tsx tools/story-script/cli.ts approve",
     "golden:update": "UPDATE_GOLDEN=1 vitest run tests/golden"
   },
   "pnpm": {
@@ -44,6 +46,7 @@
     "@cots/content-compiler": "workspace:*",
     "@cots/content-schema": "workspace:*",
     "@cots/engine": "workspace:*",
+    "@cots/story": "workspace:*",
     "@cots/testkit": "workspace:*",
     "@fast-check/vitest": "0.5.0",
     "@playwright/test": "1.56.1",

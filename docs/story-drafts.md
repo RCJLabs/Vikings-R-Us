@@ -1,6 +1,26 @@
 # Story drafts and how to write scenes
 
-Everything listed here is **draft writing**. Days 1–3 are on their second draft (M5), written against `docs/voice.md` for you to edit and sign off; everything after Day 3 is first draft. Days 7–11 and 13–20 got theirs in M7. A scene stays marked `# draft` until you sign it off (delete the tag). The compiler counts the drafts: `pnpm content:compile --all` prints `N scenes, N draft, ~W words` per target.
+Everything listed here is **draft writing**. Days 1–3 are on their second draft (M5), written against `docs/voice.md` for you to edit and sign off; everything after Day 3 is first draft. Days 7–11 and 13–20 got theirs in M7. A scene stays marked `# draft` until you sign it off (delete the tag, or run `pnpm story:approve`). The compiler counts the drafts: `pnpm content:compile --all` prints `N scenes, N draft, ~W words` per target.
+
+## Reviewing the story
+
+`pnpm story:script` writes the whole story as one page, `dist/story-script/index.html`: every day's scenes in order, as the game plays them. Each line keeps its line number in the `.ink` file. The page shows:
+
+- who speaks each line;
+- each option, when it's offered at all, and what it needs (rings);
+- conditions, in words ("If Ulf is at home");
+- what a choice changes: rings, a power's standing, a family member, a story flag;
+- for each flag a choice sets, where the story reads it again.
+
+The page also has:
+
+- the day's decree and the story souls at the gate, with what their stamps set;
+- the endings and the journal's threads, with their conditions in words;
+- an index of every flag: what sets it, and which scenes, endings and threads read it. A flag nothing reads yet is a choice with no later consequence.
+
+Every scene has **Approve** and **Needs changes** buttons and a note. Claude can publish the page to you as a private artifact. There, your review is kept with the page, and Claude can read it and apply it. Opened as a local file, the page keeps the review in your browser instead: **Copy review** gives you text to paste to Claude, including the command that signs off the approved scenes. A scene that has been rewritten since you reviewed it says so.
+
+`pnpm story:approve d1.morning d3.night` signs scenes off. It removes each one's `# draft` line and the draft note under it, and changes nothing else.
 
 ## What is draft
 
