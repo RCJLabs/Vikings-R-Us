@@ -1,10 +1,14 @@
 import type { Look, ObservationDef, ToolId, Value } from '@cots/engine';
 import { loadContent } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
-import { type BodyArtProvider, type BodyScene, placeholderBody, placeholderPortrait } from './body';
+import type { BodyArtProvider, BodyScene } from './contract';
+import { WEAPON_KINDS } from './layout';
+import { pixelBody } from './pixel';
+import { placeholderBody } from './placeholder';
+import { woodcutBody } from './woodcut';
 
-// The body-art contract (docs/tech-spec.md §6.5). Any provider must pass these.
-const providers: BodyArtProvider[] = [placeholderBody];
+// The body-art contract (docs/tech-spec.md §6.5). Every provider must pass these.
+const providers: BodyArtProvider[] = [placeholderBody, woodcutBody, pixelBody];
 const content = loadContent('dev-full');
 // Body signs only: readings from a document (the registry) are drawn elsewhere.
 const bodyObservations = content.observations.filter((o) => o.doc === undefined);
@@ -68,6 +72,17 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
     }
   });
 
+  it('draws the weapon the soul names, and the same drawing for the same kind', () => {
+    const held = (weapon?: string) => art.draw({ ...scene('grip', 'weapon'), ...(weapon ? { weapon } : {}) });
+    const kinds = WEAPON_KINDS.map((k) => held(k));
+    expect(new Set(kinds).size).toBe(WEAPON_KINDS.length);
+    expect(held('bearded axe')).toBe(held('axe'));
+    expect(held(undefined)).toBe(held('axe'));
+    // Empty hands draw no weapon, whatever the words say.
+    const empty = (weapon: string) => art.draw({ ...scene('grip', 'none'), weapon });
+    expect(empty('sword')).toBe(empty('spear'));
+  });
+
   it('draws each sign on its view, as visibly as gameplay requires, under a hotspot', () => {
     const signs = [
       ...bodyObservations.map((o) => ({ key: o.key, view: o.view, salience: o.salience })),
@@ -92,7 +107,8 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
         const spots = art.hotspots({ ...scene('hair', 'dark'), view, look: look({ build }) });
         for (const h of spots) {
           expect(h.x >= 0 && h.y >= 0 && h.x + h.w <= art.frame.w && h.y + h.h <= art.frame.h, h.id).toBe(true);
-          expect(Math.min(h.w, h.h), h.id).toBeGreaterThanOrEqual(36);
+          // At least 12% of the frame's width each way, so a region is a comfortable tap on a phone.
+          expect(Math.min(h.w, h.h) / art.frame.w, h.id).toBeGreaterThanOrEqual(0.12);
         }
         for (const a of spots) {
           for (const b of spots) {
@@ -118,14 +134,13 @@ describe.each(providers.map((p) => [p.id, p] as const))('body art provider %s', 
       }
     }
   });
-});
 
-describe('registry portraits', () => {
-  it('show the hair and beard that set one face apart from another', () => {
-    const face = (hair: string, beard: Look['beard']) =>
-      placeholderPortrait({ gender: 'm', hair, beard, build: 'broad' });
+  it('draws registry portraits that set one face apart from another', () => {
+    const face = (hair: string, beard: 'none' | 'long') => art.portrait({ gender: 'm', hair, beard, build: 'broad' });
     const faces = ['dark', 'fair', 'red', 'grey'].flatMap((hair) => [face(hair, 'none'), face(hair, 'long')]);
     expect(new Set(faces).size).toBe(faces.length);
-    for (const svg of faces) expect(svg).toMatch(/^<svg [^>]*viewBox="86 34 128 150"/);
+    for (const svg of faces) expect(svg).toMatch(/^<svg [^>]*viewBox="[\d. ]+"/);
+    const woman = art.portrait({ gender: 'f', hair: 'red', beard: 'none', build: 'lean' });
+    expect(woman).not.toMatch(/undefined|NaN|null/);
   });
 });

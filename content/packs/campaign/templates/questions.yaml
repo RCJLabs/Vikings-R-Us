@@ -13,3 +13,20 @@
 # A forger questioned about the tally.
 - { id: q.tally.confess, on: { fact: '*', kind: confess, via: tally }, msgs: [q.tally.confess.1, q.tally.confess.2] }
 - { id: q.tally.excuse, on: { fact: '*', kind: excuse, via: tally }, msgs: [q.tally.excuse.1] }
+- id: q.creed.hid.confess
+  on: { fact: faith, claimed: heathen, truth: [baptized], kind: confess }
+  msgs: [q.creed.hid.confess.1]
+- id: q.creed.claimed.confess
+  on: { fact: faith, claimed: baptized, truth: [heathen], kind: confess }
+  msgs: [q.creed.claimed.confess.1]
+- id: q.creed.excuse
+  on: { fact: faith, kind: excuse }
+  msgs: [q.creed.excuse.1]
+# Loki never confesses. He answers a question with a better one.
+- id: q.guise.deflect
+  on: { fact: trickster, kind: deflect }
+  msgs: [q.guise.deflect.1]
+- id: q.guise.deflect.braggart
+  on: { fact: trickster, kind: deflect, persona: [braggart] }
+  msgs: [q.guise.deflect.2]
+- { id: q.any.deflect, on: { fact: '*', kind: deflect }, msgs: [q.any.deflect.1] }

@@ -31,7 +31,10 @@ queue:
     - { id: arch.long_nails, w: 1 }
     - { id: arch.tally_forger, w: 3 }
     - { id: arch.coward_forger, w: 2 }
-  mix: { VALHALLA: [15, 35], FOLKVANGR: [5, 20], HEL: [35, 55], RETURN: [5, 10], RAN: [10, 25] }
+    - { id: arch.baptized, w: 2 }
+    - { id: arch.prime_signed, w: 1 }
+    - { id: arch.false_convert, w: 1 }
+  mix: { VALHALLA: [10, 35], FOLKVANGR: [5, 20], HEL: [30, 55], RETURN: [5, 10], RAN: [5, 25], TRANSFER: [5, 15] }
   knobs:
     lieRate: 100
     maxLies: 1

@@ -11,7 +11,7 @@ truth:
   woundsBack: { is: 0 }
 lies: []
 look: { gender: m, name: Thorvald, patronym: Ketilsson, age: 31, build: broad, beard: braided }
-lines: [case.thorvald1.hall, case.thorvald1.luck]
+lines: [case.thorvald1.hall, case.thorvald1.luck, case.thorvald1.warm]
 expect: RETURN
 onStamp:
   - { stamped: '*', effects: [{ flag: thorvald_met }] }

@@ -1,1 +1,3 @@
 - { id: rv.huginn.outlaw, raven: huginn, asserts: { fact: outlaw, value: true }, msg: rv.huginn.outlaw }
+- { id: rv.huginn.baptized, raven: huginn, asserts: { fact: faith, value: baptized }, msg: rv.huginn.baptized }
+- { id: rv.huginn.primeSigned, raven: huginn, asserts: { fact: faith, value: primeSigned }, msg: rv.huginn.primeSigned }

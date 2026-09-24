@@ -157,6 +157,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     debtFloor: last('debtFloor') as number,
     care: last('care') as CampaignDef['care'],
     worthy: last('worthy') as string,
+    ...(last('slice') ? { slice: last('slice') as NonNullable<CampaignDef['slice']> } : {}),
     standing: all('standing')
       .map((r, i) => ({ r, i }))
       .sort((a, b) => wildcards(a.r) - wildcards(b.r) || a.i - b.i)

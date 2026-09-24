@@ -1,0 +1,46 @@
+import type { ShiftEvent } from '@cots/engine';
+import { afterEach, describe, expect, it } from 'vitest';
+import { play, setVolume, soundFor, unlockAudio } from './audio';
+
+describe('placeholder sound', () => {
+  it('gives the shift events their sounds, and leaves the rest silent', () => {
+    const e = (x: object) => x as ShiftEvent;
+    expect(soundFor(e({ e: 'stamped', dest: 'HEL' }))).toBe('stamp');
+    expect(soundFor(e({ e: 'toolUsed', tool: 'feather', fields: [], penaltyMs: 0 }))).toBe('feather');
+    expect(soundFor(e({ e: 'toolUsed', tool: 'flip', fields: [], penaltyMs: 0 }))).toBe('tool');
+    expect(soundFor(e({ e: 'contradiction', lie: 'a', fact: 'b', with: 'c' }))).toBe('found');
+    expect(soundFor(e({ e: 'noConflict', a: 'a', b: 'b', penaltyMs: 0 }))).toBe('miss');
+    expect(soundFor(e({ e: 'dusk' }))).toBe('dusk');
+    expect(soundFor(e({ e: 'begun' }))).toBeNull();
+    expect(soundFor(e({ e: 'rejected', reason: 'x' }))).toBeNull();
+  });
+
+  it('stays silent, without errors, where there is no audio', () => {
+    setVolume(1);
+    expect(() => {
+      unlockAudio();
+      play('stamp');
+    }).not.toThrow();
+  });
+
+  describe('with an audio context', () => {
+    const g = globalThis as { AudioContext?: unknown };
+    let made = 0;
+    afterEach(() => {
+      delete g.AudioContext;
+    });
+
+    it('makes none at volume 0', () => {
+      made = 0;
+      g.AudioContext = class {
+        constructor() {
+          made += 1;
+        }
+      };
+      setVolume(0);
+      unlockAudio();
+      play('dusk');
+      expect(made).toBe(0);
+    });
+  });
+});

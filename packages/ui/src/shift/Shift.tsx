@@ -1,7 +1,8 @@
-import { type Hotspot, placeholderBody, placeholderPortrait } from '@cots/art-placeholder';
+import type { Hotspot } from '@cots/art';
 import { type CaseSpec, currentCase, type Field, PENALTY, stampsFor, sunLeft, type Verdict } from '@cots/engine';
 import { copyText } from '@cots/platform';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { art, usePixelFrame } from '../art';
 import { clockText, listText, t } from '../i18n';
 import { openReport, reportFor, reportTitle, reportUrl, type SoulReport } from '../report';
 import {
@@ -91,21 +92,24 @@ function SunBar({ s }: { s: Session }) {
 const pctOf = (v: number, of: number) => `${(v * 100) / of}%`;
 
 function BodyStage({ s, c }: { s: Session; c: CaseSpec }) {
+  const provider = art.value;
   const { soul } = s.state;
   const scene = sceneFor(c, soul);
-  const svg = useMemo(() => placeholderBody.draw(scene), [c.id, soul.view, soul.tools.join()]);
-  const { w, h } = placeholderBody.frame;
+  const svg = useMemo(() => provider.draw(scene), [provider, c.id, soul.view, soul.tools.join()]);
+  const { w, h } = provider.frame;
+  const stage = useRef<HTMLElement>(null);
+  const pixelSize = usePixelFrame(stage, provider.frame);
   const tools = s.ctx.tools;
   return (
-    <figure class="stage">
-      <div class="stage__frame">
+    <figure class="stage" data-art={provider.id} ref={stage}>
+      <div class="stage__frame" style={pixelSize}>
         <div
           class="stage__art"
           role="img"
           aria-label={t(soul.view === 'front' ? 'ui.body.front' : 'ui.body.back')}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
-        {placeholderBody.hotspots(scene).map((spot) => {
+        {provider.hotspots(scene).map((spot) => {
           const fields = regionFields(spot, s.state, s.ctx);
           if (fields.length === 0) return null;
           return (
@@ -212,7 +216,7 @@ const regionLabel = (spot: Hotspot) =>
 
 function Clues({ s, c }: { s: Session; c: CaseSpec }) {
   const st = s.state;
-  const spots = placeholderBody.hotspots(sceneFor(c, st.soul));
+  const spots = art.value.hotspots(sceneFor(c, st.soul));
   const seen = c.evidence.fields.filter((f) => f.item === 'body' && st.soul.seen.includes(f.id));
   const pending: Hotspot[] = [];
   const pendingFields = new Set<string>();
@@ -308,7 +312,7 @@ function Registry({ s, c }: { s: Session; c: CaseSpec }) {
           class="registry__portrait"
           role="img"
           aria-label={t('ui.registry.portrait', { name, patronym })}
-          dangerouslySetInnerHTML={{ __html: placeholderPortrait(entry) }}
+          dangerouslySetInnerHTML={{ __html: art.value.portrait(entry) }}
         />
       )}
       <Lines s={s} c={c} items={[f]} empty="" />

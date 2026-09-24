@@ -23,6 +23,7 @@ import {
 import { type KeyValueStore, memoryStore, requestPersistence, type ShareResult } from '@cots/platform';
 import { platform } from '@platform';
 import { batch, signal } from '@preact/signals';
+import { holdAudio, play, soundFor } from './audio';
 import { t } from './i18n';
 import { type LayoutMode, layoutMode } from './layout';
 import { links } from './links';
@@ -60,6 +61,8 @@ export interface Settings {
   /** Whether the one-time telemetry question has been answered. */
   readonly telemetryAsked: boolean;
   readonly primerDone: boolean;
+  /** Sound volume, 0 (off) to 1. */
+  readonly sound: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -71,6 +74,7 @@ export const DEFAULT_SETTINGS: Settings = {
   telemetry: false,
   telemetryAsked: false,
   primerDone: false,
+  sound: 0.6,
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -329,6 +333,9 @@ export function act(input: ActionInput): void {
 
 function onEvent(e: ShiftEvent, s: Session): void {
   const cases = s.state.cases;
+  const sound = soundFor(e);
+  if (sound) play(sound);
+  if (e.e === 'paused' || e.e === 'resumed') holdAudio(e.e === 'paused');
   switch (e.e) {
     case 'contradiction':
       say(t('ui.compare.found'), 'good');

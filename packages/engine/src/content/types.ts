@@ -188,7 +188,17 @@ export interface ArchetypeDef {
   readonly lies: readonly LieSpec[];
 }
 
-export type SpeechSlot = 'identity' | 'death' | 'weapon' | 'owner' | 'blade' | 'back' | 'oath' | 'flavor';
+export type SpeechSlot =
+  | 'identity'
+  | 'death'
+  | 'weapon'
+  | 'owner'
+  | 'blade'
+  | 'back'
+  | 'oath'
+  | 'creed'
+  | 'guise'
+  | 'flavor';
 
 /** One slot of a soul's speech: which fact it talks about and how often. */
 export interface SpeechSlotDef {
@@ -394,6 +404,24 @@ export interface StandingRule {
   readonly fx: Readonly<Partial<Record<Faction, number>>>;
 }
 
+/**
+ * The vertical slice (M5): the first days, then a jump over the unwritten
+ * middle to one late day, with what the skipped days would have brought.
+ */
+export interface SliceDef {
+  /** The last day played before the jump. */
+  readonly after: number;
+  /** The day jumped to; its night ends the slice with `finale`. */
+  readonly day: number;
+  readonly finale: string;
+  /** Added to the run when it jumps: rings earned, standing moved and story flags set in the skipped days. */
+  readonly preset: {
+    readonly rings?: number;
+    readonly standing?: Readonly<Partial<Record<Faction, number>>>;
+    readonly flags?: Readonly<Record<string, number>>;
+  };
+}
+
 /** The campaign's economy, family, shop and endings (the demo and campaign packs each supply part). */
 export interface CampaignDef {
   /** The last playable day in this build; its night ends with `finale` unless another ending comes first. */
@@ -412,6 +440,8 @@ export interface CampaignDef {
    * medicine before they're lost.
    */
   readonly care: { readonly needNights: number; readonly sickChance: number; readonly sickNights: number };
+  /** The vertical slice, when this build has one. */
+  readonly slice?: SliceDef;
   readonly standing: readonly StandingRule[];
   readonly shop: readonly UpgradeDef[];
   readonly endings: readonly EndingDef[];

@@ -31,3 +31,26 @@
   since: 8
   inert: false
   prior: { 'false': 2, 'true': 1 }
+# Day 10: the clerk of the White Christ arrives. The baptized are his (TRANSFER). The prime-signed,
+# who took only the sign of the cross (to trade with Christians, as Egill did in England), stay ours.
+# Only archetypes that ask for it are anything but heathen.
+- id: faith
+  domain: { enum: [heathen, primeSigned, baptized] }
+  since: 10
+  inert: heathen
+  presumption: heathen
+  prior: { heathen: 1, primeSigned: 0, baptized: 0 }
+# Whether a heathen wears Thor's hammer at the neck (it only shows what they are).
+- id: thorsHammer
+  domain: { bool: true }
+  since: 10
+  inert: false
+  prior: { 'false': 1, 'true': 1 }
+# Day 12: Loki walks in wearing a dead man's face. Everything about him fits the face he wears,
+# except the scars on his lips where the dwarf Brokkr sewed them shut. Only his archetype sets it.
+- id: trickster
+  domain: { bool: true }
+  since: 12
+  inert: false
+  presumption: false
+  prior: { 'false': 1, 'true': 0 }

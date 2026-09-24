@@ -1,0 +1,18 @@
+{
+  "name": "@cots/art",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Body art behind a swappable provider contract: the placeholder and the candidate art directions.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./woodcut": "./src/woodcut.ts",
+    "./pixel": "./src/pixel.ts",
+    "./sheet": "./src/sheet.ts"
+  },
+  "dependencies": {
+    "@cots/engine": "workspace:*"
+  },
+  "sideEffects": false
+}

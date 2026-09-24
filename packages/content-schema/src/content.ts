@@ -203,7 +203,18 @@ export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   lies: z.array(LieSpecSchema),
 });
 
-const SpeechSlotNameSchema = z.enum(['identity', 'death', 'weapon', 'owner', 'blade', 'back', 'oath', 'flavor']);
+const SpeechSlotNameSchema = z.enum([
+  'identity',
+  'death',
+  'weapon',
+  'owner',
+  'blade',
+  'back',
+  'oath',
+  'creed',
+  'guise',
+  'flavor',
+]);
 
 export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
   slot: SpeechSlotNameSchema,
@@ -392,7 +403,19 @@ const StandingRuleSchema: z.ZodType<StandingRule> = z.strictObject({
  * Days 1-3; the campaign pack overrides `lastDay` and `finale` and adds shop
  * items, standing rules and endings (see mergeCampaign in the compiler).
  */
+const SliceSchema = z.strictObject({
+  after: Day,
+  day: Day,
+  finale: Id,
+  preset: z.strictObject({
+    rings: Int.optional(),
+    standing: z.partialRecord(FactionSchema, Int).optional(),
+    flags: z.record(z.string().regex(/^[A-Za-z0-9_]+$/), Int).optional(),
+  }),
+});
+
 export const CampaignPartSchema = z.strictObject({
+  slice: SliceSchema.optional(),
   lastDay: Day.optional(),
   finale: Id.optional(),
   startRings: Int.optional(),

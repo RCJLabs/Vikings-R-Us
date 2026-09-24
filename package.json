@@ -29,6 +29,7 @@
     "e2e": "playwright test -c tests/e2e/playwright.config.ts",
     "icons": "tsx tools/icons/make-icons.ts",
     "sim": "tsx tools/sim/cli.ts",
+    "art:sheet": "tsx tools/art-sheet/cli.ts",
     "golden:update": "UPDATE_GOLDEN=1 vitest run tests/golden"
   },
   "pnpm": {
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@babel/core": "7.29.7",
     "@biomejs/biome": "2.5.14",
+    "@cots/art": "workspace:*",
     "@cots/content-compiler": "workspace:*",
     "@cots/content-schema": "workspace:*",
     "@cots/engine": "workspace:*",

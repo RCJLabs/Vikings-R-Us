@@ -77,7 +77,8 @@ describe('compiling a scene', () => {
   });
 });
 
-describe('scenes in a target', () => {
+// These build whole targets (content, scenes, story souls, the Daily check table): seconds on a busy CI runner.
+describe('scenes in a target', { timeout: 30_000 }, () => {
   it('ships only the target’s packs’ scenes, and they play', () => {
     const packs = loadPacks(packsDir);
     const result = build(packs, 'web-demo');
@@ -126,7 +127,7 @@ describe('scenes in a target', () => {
   });
 });
 
-describe('story souls in a target', () => {
+describe('story souls in a target', { timeout: 30_000 }, () => {
   const thorvald = (packs: Packs) => {
     const def = demoPack(packs).content.scripted.find((d) => d.id === 'case.thorvald1');
     if (!def) throw new Error('no Thorvald');

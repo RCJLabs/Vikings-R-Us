@@ -44,7 +44,7 @@ Vikings-R-Us/                         (public; see §8.4 for license)
 │  ├─ content-schema/    zod schemas; z.infer types are the single source of truth
 │  ├─ content-compiler/  YAML + Ink + strings -> generated/<target>/**, lints, leak tokens, TS codegen (FactId/ObsKey unions)
 │  ├─ ui/                Preact components, layouts, input/commands, i18n runtime, art interfaces
-│  ├─ art-placeholder/   procedural SVG BodyArtProvider plus manifest
+│  ├─ art/               BodyArtProvider contract, shared layout, placeholder + candidate art (woodcut, pixel)
 │  ├─ art-final/         (M5+) sprite provider, same contract
 │  ├─ platform/          Platform interface; adapters web | itch | electron | android (aliased per target)
 │  └─ testkit/           fast-check arbitraries, brute-force oracle solver, bots, sweep harness, golden utils
@@ -1127,8 +1127,8 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - Shift engine: `packages/engine/src/shift/shift.ts` (state machine, scoring, share text, `queueChecksum`).
 - The Daily's spec: `content/packs/daily/daily.yaml`, compiled to `generated/<target>/daily.json`.
 - UI: `packages/ui/src/store.ts` (time, persistence, session), `screens.tsx` (title, briefing, summary) and `shift/` (the shift screen, keyboard map, evidence text).
-- Body art: `packages/art-placeholder/src/body.ts`. Storage and sharing: `packages/platform/src/{storage,share}.ts`.
-- Tests: `packages/engine/src/shift/shift.test.ts`, `packages/art-placeholder/src/body.test.ts`, `tests/golden/dailies.test.ts`, `tests/e2e/daily.spec.ts`.
+- Body art: `packages/art/src/placeholder.ts` (was `packages/art-placeholder/src/body.ts` until M5). Storage and sharing: `packages/platform/src/{storage,share}.ts`.
+- Tests: `packages/engine/src/shift/shift.test.ts`, `packages/art/src/contract.test.ts`, `tests/golden/dailies.test.ts`, `tests/e2e/daily.spec.ts`.
 
 **Decisions**
 - **The shift is a pure state machine**, `stepShift(state, action, ctx) → {state, events}`.
@@ -1258,6 +1258,38 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - Minimal proofs are 1-minimal, not cheapest: with a tool, the proof can keep the tool reading where a raven line would do. Proof costs run a little high on those days.
 - A forged tally is always also contradicted by the body, so the rune-lens is a second route rather than the only one. Forgeries that only the lens can catch need facts with no cheap physical sign.
 - Web demo JS is 63.6 KB gzipped on first load (the campaign screens and the Ink runtime, 40.8 KB, load when the campaign is opened; the demo's scenes are 2.6 KB).
+
+## 17. M5 implementation notes (the vertical slice as built)
+
+**Where things live**
+- Art: `packages/art` (was `art-placeholder`): the contract (`contract.ts`), the shared figure layout and hotspot regions (`layout.ts`), the placeholder, the two candidates (`woodcut.ts`, `pixel.ts`, loaded on demand), and the comparison sheet (`sheet.ts`). The UI's art switch is `packages/ui/src/art.ts`; `pnpm art:sheet` writes the trial page; dev-full's title screen has a Body Lab.
+- Days 10 and 12: the campaign pack (`faith`, `thorsHammer`, `trickster`, the `amulet` and `lipScars` signs, `rule.transfer`, `rule.detain`, five archetypes, templates, `days/day-10.yaml`, `day-12.yaml`).
+- The slice: `campaign.yaml` `slice`; Day 12's scenes and story soul (`scenes/d12.*.ink`, `cases/loki-12.yaml`).
+- Sound: `packages/ui/src/audio.ts`. Writing: `docs/voice.md`. Art and store briefs: `docs/art-brief.md`. Next Fest: `docs/next-fest.md`.
+
+**Decisions**
+- **The art contract grew.** Each provider draws its own registry portraits. Pixel art declares its grid, and the stage sizes it so each art pixel covers whole device pixels (a ResizeObserver; the frame is letterboxed). Every provider shares one layout, so taps land in the same places and a region's signs are one decision.
+- **Choosing art.** `?art=woodcut|pixel|placeholder` picks the art and the device remembers it. Feedback links name it. Art never changes a case.
+- **The weapon a soul names is the weapon drawn.** Testimony already shares one weapon word per soul; the shift passes it to the art (axe, sword, spear, seax). No generation change, so Dailies and goldens stay put.
+- **Day 10:** faith is heathen by presumption. The amulet is the sign: a cross means baptized, a hammer heathen, and both on one cord prime-signed (who stay ours). TRANSFER comes after outlaws. A false convert's claim is caught by his hammer.
+- **Day 12:** `trickster` (not `loki`, which is a faction id in shared code and would trip the leak check). Its only sign is stitch scars on the lips (salience 1), so the day's floor drops to 1. DETAIN comes first. Loki's one lie is "just a plain man", and questioning it gets a `deflect`, which reveals nothing.
+- **Rules accumulate,** so Day 11 now includes the Day 10 souls; the Days 6-on golden pins Days 10–12 (Days 6–8 unchanged).
+- **The slice** is a run flag. After the slice's first day range it jumps to the late day, adding what the skipped days would have brought (the run's own flags win), and the late day's night ends with the slice's finale. It can also start on the late day.
+- **Sound** is synthesised (no files). `soundFor()` maps shift events to sounds, so the audio pass replaces only the recipes. Nothing is created at volume 0; audio starts on the first gesture and holds while paused.
+
+**Measured**
+- The body on screen: 166×232 CSS px on a 360×740 phone; 216×302 on a 740×360 landscape phone (it was 74×103 before the landscape layout: the body now runs down the left with the tools beside it).
+- Every sign reads at phone size in all three styles except the feather, whose "stirs" was weak everywhere; all three now draw air lines beside the head.
+- Days 10–12, 500 seeds: every generation gate met, the trusting bot at 57%, DETAIN about one soul a day on Day 12. Fairness properties pass at 800 runs with the new days included.
+- Web demo first load 66.3 KB gzip; each art candidate is a 4.6 KB chunk loaded only when chosen.
+
+**Known limits**
+- The candidates are drawn in code: they show readability and cost, not how commissioned art would look.
+- Loki's scars read at a glance in the woodcut, which may make him too easy. The pixel scars show only through the loupe, and on a bearded face they can look like teeth.
+- The slice's stand-in for Days 4–11 (rings, standing, `ulf_shipyard`) is a guess. Day 12 has a generated teaching Loki as well as the story Loki. The slice plays only in full builds, which aren't deployed anywhere public.
+- Days 7–11 still have no story; the plain campaign still ends after Day 6.
+- The brute-force oracle enumerates every world the evidence allows, which is exponential in the free facts. Days 10–12 made the partial-evidence property the slowest check (about 100 ms a run); its budget is now 250 ms a run. M7's days will need the oracle to enumerate only the facts the day's rules, laws and constraints can reach.
+- Everything written in M5 is draft (`docs/story-drafts.md`). The sound is a placeholder.
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

@@ -1,7 +1,7 @@
 import type { Content } from '../content/types';
 import type { CaseSpec } from '../gen/types';
 import { createDayContext, type DayCtx } from '../logic/context';
-import { newRun, type RunAction, type RunEnv, stepRun } from './run';
+import { type NewRunOptions, newRun, type RunAction, type RunEnv, stepRun } from './run';
 import type { RunState } from './state';
 
 /**
@@ -27,7 +27,7 @@ export function runContext(content: Content, run: RunState): DayCtx {
   return createDayContext(content, run.day, run.seed);
 }
 
-export function startSave(content: Content, seed: string, engine: number, opts: { story?: boolean } = {}): RunSave {
+export function startSave(content: Content, seed: string, engine: number, opts: NewRunOptions = {}): RunSave {
   return { format: 'cots.run', v: 1, engine, mornings: [newRun(content, seed, opts)], log: [], queue: null };
 }
 

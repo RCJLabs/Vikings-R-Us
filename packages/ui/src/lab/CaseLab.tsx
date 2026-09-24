@@ -1,5 +1,4 @@
 import { dailyContent, gameContent } from 'virtual:content';
-import { placeholderBody } from '@cots/art-placeholder';
 import {
   type CaseSpec,
   type Content,
@@ -16,6 +15,7 @@ import {
   solve,
 } from '@cots/engine';
 import { useMemo, useState } from 'preact/hooks';
+import { art } from '../art';
 import { t } from '../i18n';
 import { sceneFor } from '../shift/evidence';
 
@@ -215,7 +215,7 @@ export function CaseLab() {
             key={view}
             class="lab__body"
             dangerouslySetInnerHTML={{
-              __html: placeholderBody.draw({ ...sceneFor(c, { ...FRESH_SOUL, view }), tools: ['feather'] }),
+              __html: art.value.draw({ ...sceneFor(c, { ...FRESH_SOUL, view }), tools: ['feather'] }),
             }}
           />
         ))}

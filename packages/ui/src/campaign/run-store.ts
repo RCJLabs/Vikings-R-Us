@@ -217,10 +217,10 @@ export function openSlot(slot: number): void {
   screen.value = screenFor(run);
 }
 
-export function newCampaign(slot: number, story: boolean): void {
+export function newCampaign(slot: number, story: boolean, slice?: 'play' | 'fromJump'): void {
   // Run seeds are random; everything after is deterministic from the seed.
   const seed = `run:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e9).toString(36)}`;
-  write(slot, startSave(gameContent, seed, ENGINE_MAJOR, { story }));
+  write(slot, startSave(gameContent, seed, ENGINE_MAJOR, { story, ...(slice ? { slice } : {}) }));
   openSlot(slot);
 }
 

@@ -1,30 +1,34 @@
 # Story drafts and how to write scenes
 
-Everything listed here is **placeholder writing** made so the campaign systems can be built and tested. Rewrite it (or have it rewritten) before the M5 vertical slice. The compiler counts the drafts: `pnpm content:compile --all` prints `N scenes, N draft, ~W words` per target.
+Everything listed here is **draft writing**. Days 1–3 are on their second draft (M5), written against `docs/voice.md` for you to edit and sign off; everything after Day 3 is still first-draft placeholder. A scene stays marked `# draft` until you sign it off (delete the tag). The compiler counts the drafts: `pnpm content:compile --all` prints `N scenes, N draft, ~W words` per target.
 
 ## What is draft
 
 | Piece | Where | Words |
 |---|---|---|
-| Morning and night scenes, Days 1–3 | `content/packs/demo/scenes/d{1,2,3}.{morning,night}.ink` | ~860 |
+| Morning and night scenes, Days 1–3 (second draft) | `content/packs/demo/scenes/d{1,2,3}.{morning,night}.ink` | ~1,820 |
 | Morning and night scenes, Days 4–6 | `content/packs/campaign/scenes/d{4,5,6}.{morning,night}.ink` | ~860 |
-| Thorvald's first visit (Day 3): two lines | `content/packs/demo/cases/thorvald-1.yaml`, strings `case.thorvald1.*` | 20 |
+| Thorvald's first visit (Day 3): three lines | `content/packs/demo/cases/thorvald-1.yaml`, strings `case.thorvald1.*` | 30 |
 | Geir Hallsson, the oathbreaker you knew (Day 6): two lines | `content/packs/campaign/cases/geir.yaml`, strings `case.geir.*` | 20 |
 | Oath lines, question answers, Huginn's line, registry crimes (Day 6) | strings `tm.oath.*`, `q.oath.*`, `rv.huginn.outlaw`; core `pool.crimes` | ~90 |
 | Decrees, laws, lines and answers for Days 7, 8 and 11 (weapons, nails, tallies) | campaign strings `decree.d7`/`d8`/`d11`, `law.*Blade`, `law.*Ulfberht`, `tm.owner.*`, `tm.blade.*`, `q.owner.*`, `q.blade.*`, `tl.*`, `tell.*`, `q.tally.*` | ~450 |
+| Day 12 in the vertical slice (M5): morning and night scenes, Loki's story soul (two lines), the slice's ending | `content/packs/campaign/scenes/d12.{morning,night}.ink`, `cases/loki-12.yaml`, strings `case.loki12.*`, `ending.sliceEnd.*`, `speaker.clerk` | ~780 |
+| Days 10 and 12 (M5): the clerk and the baptized, Loki in borrowed faces | campaign strings `decree.d10`/`d12`, `rule.transfer`, `rule.detain`, `law.cross`/`primeSigned`/`hammer`/`stitchedLips`/`plainLips`, `obs.amulet.*`, `obs.lipScars.*`, `tm.creed.*`, `tm.guise.*`, `q.creed.*`, `q.guise.*`, `q.any.deflect.1`, `rv.huginn.baptized`/`primeSigned` | ~420 |
 | Speaker names | strings `speaker.*` (demo, campaign) | — |
 | Family, shop and ending text (M4.1) | strings `family.*`, `shop.*`, `ending.*` | ~150 |
 
 What the drafts set up, so a rewrite can keep or change it on purpose:
 
-- **Day 1:** Skögul trains you. The first letter home is from Ulf; Grandfather died of sickness (so he's in Hel, not Valhalla, and Asa doesn't know).
-- **Day 2:** Ulf loses his boatyard work; the roof needs 5 rings (`roof_mended`).
-- **Day 3:** Skögul hints that one soul has come back twice (Thorvald). At night a stranger (Loki, unnamed) says "Lovely nails." and reacts to how you stamped Thorvald. The dead woman's nails grow: Naglfar foreshadowing.
+- **Day 1:** Skögul trains you: the stamp, the wage, two forgiven mistakes, the brass pin for catching liars. The first letter home is from Ulf; Grandfather died of sickness (so he's in Hel, not Valhalla, and Asa doesn't know). Writing the truth tells only Ulf.
+- **Day 2:** The quartermaster's birch-bark decree. Ulf loses his boatyard work; the roof over Asa's bed needs 5 rings (`roof_mended`).
+- **Day 3:** Skögul hints that one soul has come back twice (Thorvald). Thorvald mentions he feels fine while everyone else looks cold. At night a stranger (Loki, unnamed) says "Lovely nails." and reacts to how you stamped Thorvald (home, Valhalla or Hel). His lips are crossed with small stitch scars: the Day 12 tell. The dead woman's nails grow: Naglfar foreshadowing.
 - **Day 4:** Freyja claims her share. Your answer moves Freyja's or Odin's standing.
 - **Day 5:** Rán and the drowned. At night Asa has the winter fever (`fx: family sister sick`) unless she's already sick or away. Skögul can lend you 10 rings (`owes_skogul`).
+- **The slice's jump (Days 4–11):** a vertical-slice run jumps from Day 3's night to Day 12 (`campaign.yaml` `slice`). The jump stands in for the skipped days: +30 rings, Odin, Freyja and the clerk +1, and the flags `slice` and `ulf_shipyard` (Ulf found work at a shipyard in the north). Day 12's morning opens with a paragraph summing up those days when `slice` is set.
+- **Day 12 (slice):** Skögul explains Brokkr's scars; the clerk of the White Christ has his own table. If you met the stranger on Day 3 you can tell Skögul (`told_skogul`, Odin +1) or keep quiet (`kept_quiet`, Loki +1). The story soul Hrafn Sigurdsson is Loki and knows you: DETAIN sets `loki_detained` (Odin +1), VALHALLA `loki_in_valhalla` (Loki +2). At night the stranger comes back either way: Ulf is building his ship (Naglfar) in the north, and he'll leave Ulf out of his report if you leave him out of yours. Name him (`reported_loki`, Odin +2, Loki −2) or cover for him (`covered_loki`, Loki +2, Odin −1).
 - **Day 6:** Odin's clerks bring the registry. Oathbreakers keep the ring they broke (the cue). Geir Hallsson, who sat at your father's table, is in the registry and says he isn't. The night depends on his stamp: his widow's bread (`geir_hel`), or the stranger praising your mercy (`geir_spared`, +1 Loki).
 
-Flags the drafts set: `asked_about_lies`, `asked_twice`, `asked_namesake`, `letters_kind`, `letters_honest`, `roof_mended`, `met_loki`, `promised_medicine`, `owes_skogul`; from Thorvald's stamp `thorvald_met`, `thorvald_returned`, `thorvald_valhalla`; from Geir's `geir_judged`, `geir_hel`, `geir_spared`. Nothing reads most of them yet; they exist for later days and endings.
+Flags the drafts set: `told_skogul`, `kept_quiet`, `loki_judged`, `loki_detained`, `loki_in_valhalla`, `reported_loki`, `covered_loki` (Day 12); `asked_about_lies`, `asked_twice`, `asked_namesake`, `letters_kind`, `letters_honest`, `roof_mended`, `met_loki`, `promised_medicine`, `owes_skogul`; from Thorvald's stamp `thorvald_met`, `thorvald_returned`, `thorvald_valhalla`; from Geir's `geir_judged`, `geir_hel`, `geir_spared`. Nothing reads most of them yet; they exist for later days and endings.
 
 ## Writing a scene
 

@@ -1,8 +1,9 @@
 import { dailyContent, gameContent, manifest } from 'virtual:content';
-import { placeholderSigil } from '@cots/art-placeholder';
+import { placeholderSigil } from '@cots/art';
 import { shiftScore } from '@cots/engine';
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import { artStyle } from './art';
 import { openCampaign } from './campaign/lazy';
 import { clockText, listText, t } from './i18n';
 import { issueFormUrl, links } from './links';
@@ -35,20 +36,22 @@ import {
   updateSettings,
 } from './store';
 
-/** Loads the Case Lab only in dev-full; the MODE check is replaced at build time, so other builds drop it. */
+/** Loads the Case Lab and Body Lab only in dev-full; the MODE check is replaced at build time, so other builds drop them. */
 function LabLoader() {
-  const [Lab, setLab] = useState<ComponentType | null>(null);
+  const [labs, setLabs] = useState<readonly ComponentType[] | null>(null);
   useEffect(() => {
     if (import.meta.env.MODE === 'dev-full') {
-      void import('./lab/CaseLab').then((m) => setLab(() => m.CaseLab));
+      void Promise.all([import('./lab/CaseLab'), import('./lab/BodyLab')]).then(([a, b]) =>
+        setLabs([a.CaseLab, b.BodyLab]),
+      );
     }
   }, []);
-  return Lab ? <Lab /> : null;
+  return labs ? labs.map((Lab, i) => <Lab key={i} />) : null;
 }
 
 /** One line identifying this build and device, for feedback forms. */
 function buildLine(): string {
-  return `${manifest.target} ${manifest.contentHash} · ${effectiveLayout()} · ${window.innerWidth}x${window.innerHeight} · ${navigator.userAgent}`;
+  return `${manifest.target} ${manifest.contentHash} · ${effectiveLayout()} · art ${artStyle.value} · ${window.innerWidth}x${window.innerHeight} · ${navigator.userAgent}`;
 }
 
 function feedbackUrl(): string | undefined {
@@ -168,6 +171,18 @@ function SettingsCard() {
           step="0.05"
           value={s.textScale}
           onInput={(e) => set({ textScale: Number((e.target as HTMLInputElement).value) })}
+        />
+      </label>
+      <label>
+        {t('ui.settings.sound')}{' '}
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          value={s.sound}
+          data-testid="setting-sound"
+          onInput={(e) => set({ sound: Number((e.target as HTMLInputElement).value) })}
         />
       </label>
       <label>

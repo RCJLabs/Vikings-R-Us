@@ -6,7 +6,7 @@
   },
   "include": [
     "packages/engine/src/**/*.test.ts",
-    "packages/art-placeholder/src/**/*.test.ts",
+    "packages/art/src/**/*.test.ts",
     "packages/ui/src/telemetry-payload.ts",
     "packages/ui/src/telemetry.ts",
     "packages/ui/src/telemetry.test.ts",

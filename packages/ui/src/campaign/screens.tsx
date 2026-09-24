@@ -68,6 +68,7 @@ function SlotSummary({ record }: { record: SlotRecord }) {
     <p data-testid="slot-summary">
       {t('ui.campaign.summary', { day: run.day, rings: run.rings, home, family: run.family.length })}
       {run.story ? ` · ${t('ui.campaign.story')}` : ''}
+      {run.slice ? ` · ${t('ui.campaign.slice')}` : ''}
     </p>
   );
 }
@@ -77,8 +78,33 @@ function hasEnded(record: SlotRecord): boolean {
   return record.save.log[record.save.log.length - 1]?.t === 'endNight';
 }
 
+type Start = 'campaign' | 'play' | 'fromJump';
+
+/** How a new run can start: the campaign, or (in builds that have one) the vertical slice, played or from its jump. */
+function StartChoice({ i, value, onChange }: { i: number; value: Start; onChange: (s: Start) => void }) {
+  if (!gameContent.campaign?.slice) return null;
+  const options: Start[] = ['campaign', 'play', 'fromJump'];
+  return (
+    <fieldset class="slot__start">
+      {options.map((o) => (
+        <label key={o}>
+          <input
+            type="radio"
+            name={`start-${i}`}
+            checked={value === o}
+            data-testid={`start-${o}-${i}`}
+            onChange={() => onChange(o)}
+          />{' '}
+          {t(`ui.campaign.start.${o}`, { day: gameContent.campaign?.slice?.day ?? 0 })}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
 function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
   const [story, setStory] = useState(false);
+  const [start, setStart] = useState<Start>('campaign');
   const [confirm, setConfirm] = useState(false);
   const days = record ? replayableDays(record.save) : [];
   const [day, setDay] = useState(days[days.length - 1] ?? 1);
@@ -96,8 +122,14 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
           />{' '}
           {t('ui.campaign.storyMode')}
         </label>
+        <StartChoice i={i} value={start} onChange={setStart} />
         <div class="row">
-          <button type="button" class="btn btn--primary" data-testid={`new-${i}`} onClick={() => newCampaign(i, story)}>
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-testid={`new-${i}`}
+            onClick={() => newCampaign(i, story, start === 'campaign' ? undefined : start)}
+          >
             {t('ui.campaign.new')}
           </button>
         </div>

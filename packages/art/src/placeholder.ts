@@ -1,52 +1,28 @@
-import type { Look, Salience, ToolId, Value } from '@cots/engine';
+import type { Look, Value } from '@cots/engine';
+import type { BodyArtProvider, BodyScene, BodyView, Portrait } from './contract';
+import {
+  BACK_WOUNDS,
+  BLADE_Y,
+  CX,
+  FRONT_WOUNDS,
+  H,
+  half,
+  hands,
+  PORTRAIT_VIEWBOX,
+  portraitScene,
+  SIGN_VIEWS,
+  standardHotspots,
+  W,
+  type WeaponKind,
+  weaponKind,
+} from './layout';
 
 /**
- * The placeholder body-art provider (docs/tech-spec.md §6.5): procedural SVG
- * drawn from a soul's look and its body signs. The engine owns what the signs
- * are and how visible they must be; art owns drawing them, the hotspot shapes
- * and a conformance table. Every sign is shape-coded, never colour alone:
- * fever is stipple, sea-foam is bubbles, wounds are slashes, pendants have
- * different silhouettes and each hair colour has its own texture.
+ * The placeholder body-art provider: procedural SVG drawn from a soul's look
+ * and its body signs. Every sign is shape-coded, never colour alone: fever is
+ * stipple, sea-foam is bubbles, wounds are slashes, pendants have different
+ * silhouettes and each hair colour has its own texture.
  */
-
-export type BodyView = 'front' | 'back';
-export type HotspotId = 'hair' | 'face' | 'neck' | 'chest' | 'handR' | 'handL' | 'back';
-
-export interface BodyScene {
-  readonly view: BodyView;
-  readonly look: Look;
-  /** Observation key -> value for every sign the body carries (the art draws the current view's). */
-  readonly obs: Readonly<Record<string, Value>>;
-  /** Cue keys showing on the body (e.g. breathFog). */
-  readonly cues: readonly string[];
-  /** Tools used on this soul; their readings are drawn (the feather at the lips). */
-  readonly tools: readonly ToolId[];
-}
-
-export interface Hotspot {
-  readonly id: HotspotId;
-  readonly x: number;
-  readonly y: number;
-  readonly w: number;
-  readonly h: number;
-  /** Observation and cue keys this region shows. */
-  readonly keys: readonly string[];
-}
-
-export interface BodyArtProvider {
-  readonly id: string;
-  readonly frame: { readonly w: number; readonly h: number };
-  hotspots(scene: BodyScene): Hotspot[];
-  draw(scene: BodyScene): string;
-  /** How visible each drawn sign is, by observation or cue key. Must meet the gameplay salience. */
-  readonly conformance: Readonly<Record<string, Salience>>;
-  /** The view each key is drawn on. */
-  readonly views: Readonly<Record<string, BodyView>>;
-}
-
-const W = 300;
-const H = 420;
-const CX = 150;
 
 const INK = '#2a211a';
 const SKIN = '#d9cdbb';
@@ -70,14 +46,6 @@ const HAIR: Readonly<Record<string, { fill: string; texture: string }>> = {
   },
 };
 
-const half = (look: Look): number => (look.build === 'lean' ? 46 : look.build === 'broad' ? 58 : 64);
-
-/** Where each hand is on screen. The body faces us, so its right hand is on our left (and swaps when flipped). */
-function hands(look: Look, view: BodyView): { R: number; L: number; y: number } {
-  const off = half(look) + 26;
-  return view === 'front' ? { R: CX - off, L: CX + off, y: 300 } : { R: CX + off, L: CX - off, y: 300 };
-}
-
 function hairPath(look: Look, view: BodyView): string {
   if (view === 'back') return 'M104 98C104 44 196 44 196 98C196 124 184 140 150 142C116 140 104 124 104 98Z';
   const cap = 'M106 96C104 48 196 48 194 96C184 76 116 76 106 96Z';
@@ -96,23 +64,41 @@ function slash(x: number, y: number): string {
   ].join('');
 }
 
-const FRONT_WOUNDS: readonly (readonly [number, number])[] = [
-  [CX - 22, 216],
-  [CX + 18, 238],
-  [CX - 8, 262],
-];
-const BACK_WOUNDS: readonly (readonly [number, number])[] = [
-  [CX - 20, 208],
-  [CX + 20, 232],
-  [CX, 258],
-];
+const HAFT = '#6b4a2b';
+const STEEL = '#9aa3a8';
+const STEEL_EDGE = '#2a2f33';
 
-function axe(x: number, y: number, outward: 1 | -1): string {
-  const top = y - 76;
+/** The weapon in the fist, of the kind the soul's words name. The fist is drawn over its grip. */
+function weapon(kind: WeaponKind, x: number, y: number, outward: 1 | -1): string {
   const b = (dx: number) => x + dx * outward;
+  if (kind === 'sword') {
+    return [
+      `<path d="M${x - 4} ${y - 16}V${y - 88}L${x} ${y - 98}L${x + 4} ${y - 88}V${y - 16}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
+      `<path d="M${x} ${y - 86}V${y - 22}" stroke="#6f777c" stroke-width="1.5"/>`,
+      `<rect x="${x - 13}" y="${y - 19}" width="26" height="6" rx="2" fill="#5c4630" stroke="${STEEL_EDGE}" stroke-width="1.5"/>`,
+      `<path d="M${x} ${y - 13}V${y + 14}" stroke="${HAFT}" stroke-width="6"/>`,
+      `<circle cx="${x}" cy="${y + 19}" r="5.5" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="1.5"/>`,
+    ].join('');
+  }
+  if (kind === 'spear') {
+    return [
+      `<path d="M${x} ${y - 112}V${y + 44}" stroke="${HAFT}" stroke-width="5" stroke-linecap="round"/>`,
+      `<path d="M${x} ${y - 146}Q${x + 9} ${y - 126} ${x} ${y - 108}Q${x - 9} ${y - 126} ${x} ${y - 146}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
+      `<path d="M${x} ${y - 140}V${y - 112}" stroke="#6f777c" stroke-width="1.2"/>`,
+    ].join('');
+  }
+  if (kind === 'seax') {
+    // A long single-edged knife: a straight back, the edge rising to an angled point.
+    return [
+      `<path d="M${b(-3)} ${y - 14}V${y - 66}L${b(3)} ${y - 76}L${b(8)} ${y - 58}V${y - 14}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
+      `<rect x="${x - 8}" y="${y - 16}" width="16" height="4" rx="1.5" fill="#5c4630" stroke="${STEEL_EDGE}" stroke-width="1.2"/>`,
+      `<path d="M${x} ${y - 12}V${y + 16}" stroke="${HAFT}" stroke-width="6" stroke-linecap="round"/>`,
+    ].join('');
+  }
+  const top = y - 76;
   return [
-    `<path d="M${x} ${top}V${y + 26}" stroke="#6b4a2b" stroke-width="6" stroke-linecap="round"/>`,
-    `<path d="M${x} ${top + 4}L${b(28)} ${top - 8}Q${b(36)} ${top + 16} ${b(26)} ${top + 34}L${x} ${top + 24}Z" fill="#9aa3a8" stroke="#2a2f33" stroke-width="2"/>`,
+    `<path d="M${x} ${top}V${y + 26}" stroke="${HAFT}" stroke-width="6" stroke-linecap="round"/>`,
+    `<path d="M${x} ${top + 4}L${b(28)} ${top - 8}Q${b(36)} ${top + 16} ${b(26)} ${top + 34}L${x} ${top + 24}Z" fill="${STEEL}" stroke="${STEEL_EDGE}" stroke-width="2"/>`,
   ].join('');
 }
 
@@ -139,8 +125,14 @@ function wrongGrip(x: number, y: number): string {
  * carving under it. Stave patterns stand in for the runes (the text chip
  * reads them out), different for each owner and maker's mark.
  */
-function runeReading(x: number, y: number, inscription: Value | undefined, mark: Value | undefined): string {
-  const top = y - 76;
+function runeReading(
+  x: number,
+  y: number,
+  inscription: Value | undefined,
+  mark: Value | undefined,
+  kind: WeaponKind,
+): string {
+  const top = y + BLADE_Y[kind] - 14;
   const staves = (seed: string, x0: number, y0: number) =>
     [...seed]
       .map((ch, i) => {
@@ -208,9 +200,12 @@ function figure(scene: BodyScene): string {
   const weaponHand = grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
   if (view === 'front' && weaponHand) {
     const x = weaponHand === 'L' ? hp.L : hp.R;
-    parts.push(axe(x, hp.y, x < CX ? -1 : 1));
+    const kind = weaponKind(scene.weapon);
+    parts.push(weapon(kind, x, hp.y, x < CX ? -1 : 1));
     if (scene.cues.includes('wrongGrip')) parts.push(wrongGrip(x, hp.y));
-    if (scene.tools.includes('runeLens')) parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark));
+    if (scene.tools.includes('runeLens')) {
+      parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
+    }
   }
   for (const side of ['R', 'L'] as const) {
     const x = side === 'L' ? hp.L : hp.R;
@@ -280,6 +275,12 @@ function face(scene: BodyScene): string {
   parts.push(
     `<path d="M140 124Q150 128 160 124" fill="none" stroke="#7d5a4c" stroke-width="2.5" stroke-linecap="round"/>`,
   );
+  if (obs.lipScars === 'stitched') {
+    // Brokkr's stitches: small scars across the lips (the subtlest sign in the game).
+    parts.push(
+      `<path d="M142 120V130M146 121V131M150 121V131M154 121V131M158 120V130" stroke="#6b3a2e" stroke-width="1.6" stroke-linecap="round"/>`,
+    );
+  }
   if (obs.lips === 'seaFoam') {
     for (const [x, y, r] of [
       [140, 126, 3.5],
@@ -300,7 +301,7 @@ function face(scene: BodyScene): string {
   }
   if (scene.tools.includes('feather')) {
     const stirs = obs.breath === 'stirs';
-    const tilt = stirs ? -8 : 0;
+    const tilt = stirs ? -16 : 0;
     parts.push(
       `<g transform="rotate(${tilt} 138 126)">`,
       `<path d="M96 156L136 126" stroke="${INK}" stroke-width="2"/>`,
@@ -308,8 +309,9 @@ function face(scene: BodyScene): string {
       '</g>',
     );
     if (stirs) {
+      // Air lines beside the head, clear of the face, so "stirs" reads at phone size.
       parts.push(
-        `<path d="M126 112Q122 118 126 124M120 108Q114 118 120 128" fill="none" stroke="${INK}" stroke-width="1.8"/>`,
+        `<path d="M100 102Q92 112 100 122M88 96Q76 112 88 128" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`,
       );
     }
   }
@@ -322,6 +324,19 @@ function ornament(value: Value | undefined): string {
   return value === 'amber'
     ? `${cord}<path d="M150 172C160 184 158 196 150 198C142 196 140 184 150 172Z" fill="#d98e1f" stroke="#6b3d05" stroke-width="2"/><circle cx="147" cy="186" r="2" fill="#f6d28a"/>`
     : `${cord}<circle cx="150" cy="186" r="9" fill="none" stroke="#c9ced3" stroke-width="5"/><circle cx="150" cy="186" r="9" fill="none" stroke="#5c6166" stroke-width="1"/>`;
+}
+
+/** An amulet on its own cord, left of any ornament: Thor's hammer, a cross, or both on one cord. */
+function amulet(value: Value | undefined): string {
+  if (value !== 'hammer' && value !== 'cross' && value !== 'hammerAndCross') return '';
+  const hammer = (x: number) =>
+    `<path d="M${x - 1.5} 176H${x + 1.5}V186H${x + 7}V192H${x - 7}V186H${x - 1.5}Z" fill="#8c9296" stroke="${INK}" stroke-width="1.5"/>`;
+  const cross = (x: number) =>
+    `<path d="M${x - 1.5} 176H${x + 1.5}V181H${x + 6}V184H${x + 1.5}V196H${x - 1.5}V184H${x - 6}V181H${x - 1.5}Z" fill="#c08a3e" stroke="${INK}" stroke-width="1.5"/>`;
+  const cord = `<path d="M138 152L128 176" fill="none" stroke="#3a2c20" stroke-width="2"/>`;
+  if (value === 'hammer') return `${cord}${hammer(128)}`;
+  if (value === 'cross') return `${cord}${cross(128)}`;
+  return `${cord}<path d="M121 176H135" stroke="#3a2c20" stroke-width="2"/>${hammer(121)}${cross(135)}`;
 }
 
 /** A tally stick tucked in the belt, its notches fresh and pale (drawn only as a cue). */
@@ -373,6 +388,7 @@ function draw(scene: BodyScene): string {
           hair(scene),
           face(scene),
           ornament(scene.obs.ornament),
+          amulet(scene.obs.amulet),
           brokenRing(scene.cues.includes('brokenRing')),
           freshTally(scene.cues.includes('freshCarving'), scene.look),
           wounds(scene.obs.woundsFront, FRONT_WOUNDS),
@@ -386,35 +402,12 @@ function draw(scene: BodyScene): string {
   ].join('');
 }
 
-function hotspots(scene: BodyScene): Hotspot[] {
-  const h = half(scene.look);
-  const hp = hands(scene.look, scene.view);
-  const handSpot = (id: 'handR' | 'handL', x: number): Hotspot => ({
-    id,
-    x: x - 26,
-    y: 226,
-    w: 52,
-    h: 110,
-    keys: ['grip', 'gripHand', 'nails', 'wrongGrip', 'inscription', 'makersMark'],
-  });
-  if (scene.view === 'back') {
-    return [{ id: 'back', x: CX - h, y: 158, w: 2 * h, h: 146, keys: ['woundsBack'] }];
-  }
-  return [
-    { id: 'hair', x: 100, y: 46, w: 100, h: 38, keys: ['hair'] },
-    { id: 'face', x: 100, y: 84, w: 100, h: 56, keys: ['skin', 'lips', 'breath', 'breathFog'] },
-    { id: 'neck', x: 110, y: 140, w: 80, h: 62, keys: ['ornament', 'brokenRing'] },
-    { id: 'chest', x: CX - h, y: 202, w: 2 * h, h: 102, keys: ['woundsFront', 'freshCarving'] },
-    handSpot('handR', hp.R),
-    handSpot('handL', hp.L),
-  ];
-}
-
 export const placeholderBody: BodyArtProvider = {
   id: 'placeholder',
   frame: { w: W, h: H },
-  hotspots,
+  hotspots: standardHotspots,
   draw,
+  portrait,
   conformance: {
     grip: 3,
     gripHand: 2,
@@ -432,38 +425,13 @@ export const placeholderBody: BodyArtProvider = {
     inscription: 2,
     makersMark: 2,
     freshCarving: 2,
+    amulet: 2,
+    lipScars: 1,
   },
-  views: {
-    grip: 'front',
-    gripHand: 'front',
-    woundsFront: 'front',
-    skin: 'front',
-    lips: 'front',
-    hair: 'front',
-    ornament: 'front',
-    woundsBack: 'back',
-    breath: 'front',
-    breathFog: 'front',
-    brokenRing: 'front',
-    nails: 'front',
-    wrongGrip: 'front',
-    inscription: 'front',
-    makersMark: 'front',
-    freshCarving: 'front',
-  },
+  views: SIGN_VIEWS,
 };
 
-/** What a registry portrait shows: a face to compare with the body (docs/tech-spec.md §6.5). */
-export interface Portrait {
-  readonly gender: Look['gender'];
-  readonly hair: string;
-  readonly beard: Look['beard'];
-  readonly build: Look['build'];
-}
-
 /** A registry portrait: the same drawing as the body, cropped to the head and shoulders. */
-export function placeholderPortrait(p: Portrait): string {
-  const look: Look = { gender: p.gender, name: '', patronym: '', age: 35, build: p.build, beard: p.beard };
-  const svg = draw({ view: 'front', look, obs: { hair: p.hair }, cues: [], tools: [] });
-  return svg.replace(/viewBox="[^"]*"/, 'viewBox="86 34 128 150"');
+function portrait(p: Portrait): string {
+  return draw(portraitScene(p)).replace(/viewBox="[^"]*"/, `viewBox="${PORTRAIT_VIEWBOX}"`);
 }

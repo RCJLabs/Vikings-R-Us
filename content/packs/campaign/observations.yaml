@@ -36,3 +36,23 @@
   when: { fact: grip, is: weapon }
 # Day 8: the hands, read directly.
 - { key: nails, view: front, since: 8, salience: 2, cost: 1, from: { fact: nailsGrown } }
+# Day 10: an amulet on a cord at the neck. A cross means baptized, Thor's hammer means heathen, and a
+# hammer and a cross on one cord means prime-signed. Heathens without a hammer wear nothing.
+- key: amulet
+  view: front
+  since: 10
+  salience: 2
+  cost: 1
+  from:
+    map:
+      - { when: { fact: faith, is: baptized }, value: cross }
+      - { when: { fact: faith, is: primeSigned }, value: hammerAndCross }
+      - { when: { fact: thorsHammer, is: true }, value: hammer }
+    otherwise: none
+# Day 12: small stitch scars across the lips. The subtlest sign in the game (salience 1).
+- key: lipScars
+  view: front
+  since: 12
+  salience: 1
+  cost: 1
+  from: { map: [{ when: { fact: trickster, is: true }, value: stitched }], otherwise: none }

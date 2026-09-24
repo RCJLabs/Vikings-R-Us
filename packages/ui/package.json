@@ -10,7 +10,7 @@
     "./styles.css": "./src/styles.css"
   },
   "dependencies": {
-    "@cots/art-placeholder": "workspace:*",
+    "@cots/art": "workspace:*",
     "@cots/engine": "workspace:*",
     "@cots/platform": "workspace:*",
     "@cots/story": "workspace:*",

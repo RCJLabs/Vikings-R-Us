@@ -1,16 +1,28 @@
+import { effect } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
+import { initArt } from './art';
+import { setVolume, unlockAudio } from './audio';
 import { campaignUi } from './campaign/lazy';
 import { Briefing, Summary, Title } from './screens';
 import { onShiftKey } from './shift/keys';
 import { ShiftScreen } from './shift/Shift';
-import { initStorage, screen, startClock } from './store';
+import { initStorage, screen, settings, startClock } from './store';
 
 export function App() {
   useEffect(() => {
     void initStorage();
+    initArt();
+    const stopVolume = effect(() => setVolume(settings.value.sound));
+    window.addEventListener('pointerdown', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
     startClock();
     window.addEventListener('keydown', onShiftKey);
-    return () => window.removeEventListener('keydown', onShiftKey);
+    return () => {
+      stopVolume();
+      window.removeEventListener('keydown', onShiftKey);
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
   }, []);
 
   switch (screen.value) {
