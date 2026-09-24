@@ -36,6 +36,7 @@ queue:
     maxDocs: 3
     salienceFloor: 2
     spreadLines: true
+    spreadLooks: true
 
 # The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
 lesson:

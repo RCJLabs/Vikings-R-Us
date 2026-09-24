@@ -338,7 +338,10 @@ export function Title() {
         <span data-testid="layout">{effectiveLayout()}</span>
         <span class="title__keys">
           <br />
-          {t('ui.keys')}
+          {t('ui.keys', {
+            n: new Set(gameContent.rules.map((r) => r.then)).size,
+            registry: gameContent.tools.some((tool) => tool.id === 'registry') ? 'yes' : 'no',
+          })}
         </span>
       </footer>
       {manifest.lab ? <LabLoader /> : null}

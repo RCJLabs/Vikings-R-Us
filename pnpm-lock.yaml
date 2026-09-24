@@ -181,6 +181,9 @@ importers:
       '@cots/story':
         specifier: workspace:*
         version: link:../story
+      '@fontsource/noto-sans-runic':
+        specifier: 5.3.0
+        version: 5.3.0
       '@preact/signals':
         specifier: 2.11.2
         version: 2.11.2(preact@10.29.8)
@@ -935,6 +938,9 @@ packages:
     resolution: {integrity: sha512-Kgbj2smuq1P4OhGKuPATs5i2fAxNmGbJ/zSmTrzWhQSLUrHREbKWgv9WGbNUOXcx77q6joLVMmTygyXuwP2Bog==}
     peerDependencies:
       vitest: ^4.1.0 || ^5.0.0
+
+  '@fontsource/noto-sans-runic@5.3.0':
+    resolution: {integrity: sha512-MzUcFl+mURDW9NBk4qhZsxrdiNkXNL94mr/LClA05PPnHMINSuxxowmcAeKru1PaepWfztkaCgrVrfExqhJDOw==}
 
   '@formatjs/fast-memoize@3.1.7':
     resolution: {integrity: sha512-zXfhLpvA6T7+efdt9JLbBwZ00tT7NsBMDVnDu8rpHeNNv8KfRZAMo2gkG0k9lK/Nzc//3kJ9pImsfuJxk3KhUA==}
@@ -3488,6 +3494,8 @@ snapshots:
     dependencies:
       fast-check: 4.10.2
       vitest: 5.0.1(@types/node@22.20.4)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  '@fontsource/noto-sans-runic@5.3.0': {}
 
   '@formatjs/fast-memoize@3.1.7': {}
 

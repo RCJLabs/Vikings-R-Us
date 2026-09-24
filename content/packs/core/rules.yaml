@@ -7,5 +7,12 @@
   when: { all: [{ ref: pred.worthy }, { param: freyjaWhim }] }
   then: FOLKVANGR
   text: rule.folkvangr
-- { id: rule.valhalla, order: 700, since: 1, when: { ref: pred.worthy }, then: VALHALLA, text: rule.valhalla }
+- id: rule.valhalla
+  order: 700
+  since: 1
+  when: { ref: pred.worthy }
+  then: VALHALLA
+  text: rule.valhalla
+  # From Day 2, when turning the body over is taught, the rule asks that they never fled.
+  texts: [{ since: 2, text: rule.valhalla.fled }]
 - { id: rule.hel, order: 999, since: 1, when: { always: true }, then: HEL, text: rule.hel }

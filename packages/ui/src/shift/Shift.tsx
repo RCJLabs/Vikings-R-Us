@@ -7,7 +7,9 @@ import {
   type Lesson,
   nextHint,
   PENALTY,
+  questionCostMs,
   ruledOut,
+  ruleText,
   stampsFor,
   sunLeft,
   type Verdict,
@@ -223,7 +225,7 @@ function Evidence({ s, c, f, variant }: { s: Session; c: CaseSpec; f: Field; var
           data-testid="question"
           onClick={() => act({ t: 'question', lie: f.id })}
         >
-          {t('ui.question', { s: PENALTY.question / 1000 })}
+          {t('ui.question', { s: questionCostMs(s.state) / 1000 })}
         </button>
       ) : null}
     </span>
@@ -482,7 +484,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
     return (
       <div class="desk">
         <section class="paper paper--rules" aria-label={t('ui.tab.rules')}>
-          <RulesPanel ctx={s.ctx} out={trackerOut(s)} />
+          <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />
         </section>
         <section class="desk__center">
           <BodyStage s={s} c={c} />
@@ -565,7 +567,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
         ) : tab === 'tally' ? (
           <Tally s={s} c={c} />
         ) : (
-          <RulesPanel ctx={s.ctx} out={trackerOut(s)} />
+          <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />
         )}
       </div>
       <CompareBar />
@@ -575,9 +577,16 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
   );
 }
 
+/** What leaving a paused shift does to it, by mode (a campaign has its own Save and quit). */
+function leaveNote(mode: Session['mode']): string {
+  if (mode.kind === 'daily') return mode.ranked ? 'ui.leave.daily' : 'ui.leave.replay';
+  return `ui.leave.${mode.kind}`;
+}
+
 function PauseOverlay() {
   const focus = useAutoFocus<HTMLButtonElement>();
-  const campaign = session.value?.mode.kind === 'campaign';
+  const mode = session.value?.mode;
+  const campaign = mode?.kind === 'campaign';
   return (
     <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <div class="dialog">
@@ -597,8 +606,18 @@ function PauseOverlay() {
             <button type="button" class="btn" data-testid="save-quit" onClick={quitToSlots}>
               {t('ui.campaign.quit')}
             </button>
+          ) : mode ? (
+            // The shift is paused, and a Daily or Endless run is already saved as it stands.
+            <button type="button" class="btn" data-testid="leave-shift" onClick={toTitle}>
+              {t('ui.leave')}
+            </button>
           ) : null}
         </div>
+        {mode && !campaign ? (
+          <p class="muted" data-testid="leave-note">
+            {t(leaveNote(mode))}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -659,7 +678,7 @@ function CitationBox({ s, v }: { s: Session; v: Verdict }) {
         {v.stamped !== v.expected && skipped.length > 0 ? (
           <p data-testid="citation-skipped">{t('ui.citation.skipped', { procs: listText(skipped) })}</p>
         ) : null}
-        {rule ? <p class="dialog__rule">{t(rule.text)}</p> : null}
+        {rule ? <p class="dialog__rule">{t(ruleText(rule, s.ctx.day))}</p> : null}
         {missed.length > 0 ? <p>{t('ui.citation.missed', { fields: listText(missed) })}</p> : null}
         <div class="row">
           <button

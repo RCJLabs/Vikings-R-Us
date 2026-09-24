@@ -23,6 +23,7 @@ import {
   type RunState,
   reachableEndings,
   replayableDays,
+  ruleText,
   shiftMods,
   shiftScore,
   shopFor,
@@ -745,20 +746,26 @@ function NightNews({ events }: { events: readonly RunEvent[] }) {
 function RulebookChanges({ day }: { day: number }) {
   if (day === 1) return null;
   const added = gameContent.rules.filter((r) => r.since === day);
+  const reworded = gameContent.rules.filter((r) => r.since < day && r.texts?.some((x) => x.since === day));
   const repealed = gameContent.rules.filter((r) => r.until === day);
   const tools = gameContent.tools.filter((x) => x.since === day);
   const procedures = (gameContent.procedures ?? []).filter((p) => p.since === day);
-  if (added.length + repealed.length + tools.length + procedures.length === 0) return null;
+  if (added.length + reworded.length + repealed.length + tools.length + procedures.length === 0) return null;
   return (
     <div class="changes" data-testid="rulebook-changes">
       {added.map((r) => (
         <p key={r.id}>
-          <span class="badge badge--new">{t('ui.campaign.new.badge')}</span> {t(r.text)}
+          <span class="badge badge--new">{t('ui.campaign.new.badge')}</span> {t(ruleText(r, day))}
+        </p>
+      ))}
+      {reworded.map((r) => (
+        <p key={r.id} data-testid="rule-changed">
+          <span class="badge badge--new">{t('ui.campaign.changed.badge')}</span> {t(ruleText(r, day))}
         </p>
       ))}
       {repealed.map((r) => (
         <p key={r.id}>
-          <span class="badge badge--old">{t('ui.campaign.repealed.badge')}</span> {t(r.text)}
+          <span class="badge badge--old">{t('ui.campaign.repealed.badge')}</span> {t(ruleText(r, day - 1))}
         </p>
       ))}
       {procedures.map((p) => (

@@ -160,6 +160,21 @@ test('leaving the page pauses the sun, and a reload resumes the same Daily', asy
   expect(after).toBeGreaterThanOrEqual(before - 6);
 });
 
+test('a paused Daily can be left for the title screen, and waits there as it was', async ({ page }) => {
+  await openDaily(page);
+  await stampAndSend(page, (state.cases[0] as CaseSpec).expect.dest);
+  await expect(page.getByTestId('soul-count')).toHaveText('Soul 2 of 8');
+  await page.getByTestId('pause').click();
+  await expect(page.getByTestId('leave-note')).toHaveText(
+    "Today's shift waits for you on the title screen, paused where you left it.",
+  );
+  await page.getByTestId('leave-shift').click();
+  await expect(page.getByTestId('play-daily')).toHaveText("Resume today's shift");
+  await page.getByTestId('play-daily').click();
+  await page.getByTestId('resume').click();
+  await expect(page.getByTestId('soul-count')).toHaveText('Soul 2 of 8');
+});
+
 function seconds(text: string | null): number {
   const [m, s] = (text ?? '').split(':').map(Number);
   return (m ?? 0) * 60 + (s ?? 0);

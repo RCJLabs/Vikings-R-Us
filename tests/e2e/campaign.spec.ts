@@ -117,6 +117,17 @@ test('a first day: morning scene, a shift judged rightly, the audit, the night, 
   await expect(page.getByTestId('journal-scene')).toHaveCount(2);
   await page.getByTestId('journal-close').click();
   await expect(page.getByTestId('scene')).toBeVisible();
+
+  // Day 2 teaches turning the body over, and the Valhalla rule now says so.
+  await playScene(page);
+  await expect(page.getByTestId('rule-changed')).toHaveText(
+    'Changed The worthy go to Valhalla: fell in battle, weapon in hand, and never fled. Stamp VALHALLA.',
+  );
+  await page.getByTestId('to-gate').click();
+  // The rulebook at the gate counts the horn of mead bought last night.
+  if (await drawer(page)) await page.locator('[data-tab="rules"]').click();
+  await expect(page.locator('.rules')).toContainText('Questioning a liar costs 15s.');
+  await expect(page.locator('.rules [data-rule="rule.valhalla"]')).toContainText('and never fled');
 });
 
 test('a day can be replayed in a new slot, keeping the run it came from', async ({ page }) => {

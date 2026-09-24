@@ -30,6 +30,8 @@ export interface Look {
   readonly age: number;
   readonly build: 'lean' | 'broad' | 'heavy';
   readonly beard: 'none' | 'short' | 'long' | 'braided';
+  /** Which clothing colour, on days that spread their looks; an art style takes it modulo its palette. */
+  readonly tunic?: number;
 }
 
 export interface Evidence {

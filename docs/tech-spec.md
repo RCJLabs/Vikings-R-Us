@@ -1538,6 +1538,32 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - Three late campaigns make a backup of a few hundred KB (a Day 20 save is about 135 KB): fine as a file, heavy to paste on a phone.
 - Only campaign slots, settings and the Daily record are protected from being written over when unreadable. Unreadable unfinished Daily or Endless progress is ignored, as before.
 
+## 29. After M7: small fixes from the audit
+
+**What changed**
+- **Leaving a shift.** The pause screen of a practice, primer, Daily or Endless shift now has Leave (a campaign day keeps its Save and quit). A line under it says what leaving does: a practice shift ends; the primer can be taken again from the title screen; today's Daily and an Endless run wait on the title screen, paused where they were left (both are already saved after every action); a replayed Daily isn't kept.
+- **Costs after upgrades.** The Question button and the rulebook's costs (each tool, and a question) show what they cost in this shift, after the campaign's upgrades (`toolCost`, `questionCostMs`). They used to show the base price (a question always said 20 s).
+- **The keys line** counts the stamps the build has (`1-5 stamps` in the demo, `1-7` in the full game) and names G, the registry, where the build has one.
+- **A rule's wording by day.** A rule can take new wording from a given day (`texts: [{ since, text }]` in the rulebook; `ruleText(rule, day)`), so the rulebook, citations and the morning's list of changes show the wording in force that day. The Valhalla rule no longer says "(from day 2)": on Day 1 it says "fell in battle, weapon in hand", and from Day 2, when turning the body over is taught, it adds "and never fled". Day 2's morning lists it as Changed. (What the rule asks already changed that day, through `pred.worthy`'s versions; only the words lagged.) The compiler checks that each later wording's string exists and that the days go up.
+- **The story's names are kept for the story.** The demo and campaign packs reserve names in `names.reserved.*` pools: the family's (Ragna, Ulf, Asa) and the story's (Thorvald, Geir, Hrafn). No generated soul is given one, or has a father of that name. Before, over 40 runs of 20 days, a run met about 7.5 generated Ulfs, 3 Asas and 8.5 Hrafns, and 48% of Day 12s had a generated Hrafn in the same queue as the story's (Loki, wearing a dead hero's face that day; the audit counted 31% with its own seeds). After: none.
+- **Fewer look-alikes.** Days that spread their looks (`spreadLooks`, set on every demo and campaign day, never the Daily) give each soul its name, and its build, beard and clothing colour, by its place among the day's souls of its gender. Each name and each combination is used once before any is used twice. The clothing colour is now part of the look (`look.tunic`, which the art styles use, else the old hash of the name). Over the same 40 runs, pairs of souls in a day with the same gender, build, beard, hair and clothing went from 1.27 on Day 20 (5.25 when clothing is ignored) to none on any day; the same name twice in a day went from 5 cases to none.
+- **A font for runes.** A forgery sign quotes the rune ᛗ, and a system without a runic font shows a blank box. The game now ships Noto Sans Runic (SIL Open Font License 1.1; the runic block only, 6.6 KB) first in its font list, for U+16A0–16F8 only, so the browser fetches it only when a rune is on screen.
+- (The forged tally's confession giving two contradictory reasons was fixed with audit item 1.)
+
+**The Daily is unchanged.** Its spec spreads nothing, and the reserved pools are in the demo and campaign packs while the Daily is built from the core and daily packs only; its pinned checksums hold. Golden summaries for Days 1–20 changed in names only.
+
+**Tests**
+- Engine: a property test on Days 1–20 (12 random seeds a run): no reserved name given or used as a father; each gender's names, and its build-beard-clothing combinations, are all different until there are more souls of that gender than names or combinations. The Daily's spec and pools are left alone. `ruleText` picks the latest wording by the day.
+- Compiler: a later wording with a missing string, or out of day order, is refused.
+- e2e: leaving a paused practice shift, Daily (resumed on the same soul) and Endless run (kept with its score); the keys line in both builds; on the campaign's Day 2 the Valhalla rule is listed as Changed, and after the horn of mead the rulebook at the gate says a question costs 15 s; on Day 11 the rune in a forgery sign is drawn with the bundled font, read from Chromium's record of the fonts that drew it. Without the fix, a system font drew it (FreeMono, on this machine).
+
+**Known limits**
+- The pools run out on the busiest days. There are 22 men's and 19 women's names to go round, and 48 looks for men but only 12 for women (three builds, four colours). Over 2,000 runs, 2 Day 20s had more than 22 men and repeated a name, and 1 had 13 women and repeated a look: about 1 run in 700. More names in the demo and campaign pools, and more women's looks in the art, would remove it.
+- Souls of the same gender, build, beard and hair still meet on busy days (2.0 pairs on Day 20): their clothing tells them apart. At a glance, the woodcut's clothing colour is the smallest of those differences.
+- The Daily keeps its old names and looks, as changing them would change the live Daily. With 8 souls, repeats there are rare.
+- The runic font isn't in the web demo's offline cache: the demo shows no runes. Other scripts outside the fonts players have would still show blank boxes; the game uses none.
+- What a player sees in the Leave note is a first draft, like the other new texts.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

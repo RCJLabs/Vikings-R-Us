@@ -48,7 +48,9 @@ const OUTLINE = `stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke
 const THIN = `stroke="${INK}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"`;
 const FINE = `stroke="${INK}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"`;
 
-const tunicOf = (look: Look) => TUNICS[fnv1a32(`${look.name}|${look.patronym}|tunic`) % TUNICS.length] ?? TUNICS[0];
+/** The look's clothing colour where the day chose one (spread looks), else one picked by the name. */
+const tunicOf = (look: Look) =>
+  TUNICS[(look.tunic ?? fnv1a32(`${look.name}|${look.patronym}|tunic`)) % TUNICS.length] ?? TUNICS[0];
 
 /** Pattern defs shared by every woodcut drawing (identical everywhere, so repeated ids are harmless). */
 const DEFS = [

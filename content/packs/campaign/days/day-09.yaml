@@ -41,3 +41,4 @@ queue:
     maxDocs: 4
     salienceFloor: 2
     spreadLines: true
+    spreadLooks: true

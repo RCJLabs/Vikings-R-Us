@@ -1,3 +1,17 @@
+/*
+ * Runes (a forgery tell quotes ᛗ): not every system has a font for them, and a
+ * missing glyph shows as a blank box. Noto Sans Runic (SIL Open Font License),
+ * the runic block only: the browser fetches it only when a rune is on screen.
+ */
+@font-face {
+  font-family: "Noto Sans Runic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("@fontsource/noto-sans-runic/files/noto-sans-runic-runic-400-normal.woff2") format("woff2");
+  unicode-range: U+16A0-16F8;
+}
+
 :root {
   color-scheme: dark;
   --bg: #15110d;
@@ -12,7 +26,7 @@
   --good: #79b36f;
   --bad: #d86a52;
   --focus: #8fbcff;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Noto Sans Runic", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.45;
 }
 

@@ -173,6 +173,7 @@ export const RuleSchema: z.ZodType<RuleDef> = z.strictObject({
   when: PredSchema,
   then: DestinationSchema,
   text: Key,
+  texts: z.array(z.strictObject({ since: Day, text: Key })).optional(),
 });
 
 export const ToolSchema: z.ZodType<ToolDef> = z.strictObject({ id: ToolIdSchema, since: Day, cost: Int.min(0) });
@@ -326,6 +327,7 @@ const KnobsSchema = z.strictObject({
   muninnRecall: Percent.optional(),
   huginnAside: Percent.optional(),
   spreadLines: z.boolean().optional(),
+  spreadLooks: z.boolean().optional(),
 });
 
 /** Endless's twists (endless.yaml): a decree and how the souls come, never new rules. */
