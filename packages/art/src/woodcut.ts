@@ -307,23 +307,14 @@ const FIST_THUMB = 'M10 -2.5Q5 -10.5 -4.5 -8';
  * front: the four fingers wrap across the grip, bending at the knuckles on
  * the outer side, their tips pressed against the heel of the hand on the
  * side toward the body; the thumb comes up from the heel, near the wrist,
- * and lies across the index finger. From behind: the back of the hand, the
- * knuckles down its outer side. In the fist's frame: u across toward the
+ * and lies across the index finger. In the fist's frame: u across toward the
  * body, v down, (0, 0) on the grip.
  */
-function fist(t: string, long: boolean, back: boolean): string {
-  const body = 'M-10 -4Q-10 -8 -6 -8H6Q11 -8 11 -2V10Q11 15 6 15H-5Q-10 15 -10 11Z';
-  const mids = BANDS.slice(1).map(([v], i) => (v + (BANDS[i]?.[0] ?? v)) / 2);
-  if (back) {
-    const knuckles = BANDS.map(([v, ku, w]): [string, number] => [`M-4 ${v}L${ku} ${v}`, w]);
-    return `<g ${t}>${[
-      flesh([body], [...knuckles, ['M10 -2.5Q6.5 -9 1 -9', 6]], 2.8),
-      `<path d="${mids.map((m) => `M-12.4 ${m}L-5.5 ${m}`).join('')}M9.6 -3.2Q6 -6.6 1.5 -6" fill="none" ${FINE}/>`,
-    ].join('')}</g>`;
-  }
+function fist(t: string, long: boolean): string {
   const bands = BANDS.map(([v, ku, w]): [string, number] => [`M${TIPS_U} ${v}L${ku} ${v}`, w]);
+  const mids = BANDS.slice(1).map(([v], i) => (v + (BANDS[i]?.[0] ?? v)) / 2);
   const parts = [
-    flesh([body], [...bands, [FIST_THUMB, 6.2]], 2.8),
+    flesh([FIST], [...bands, [FIST_THUMB, 6.2]], 2.8),
     // Where the fingers lie against each other, and their tips.
     `<path d="${mids.map((m) => `M-12.4 ${m}Q-3 ${m + 1.2} ${TIPS_U} ${m}`).join('')}${BANDS.slice(1)
       .map(([v, , w]) => `M${TIPS_U} ${v - w / 2}A${w / 2} ${w / 2} 0 0 1 ${TIPS_U} ${v + w / 2}`)
@@ -336,6 +327,39 @@ function fist(t: string, long: boolean, back: boolean): string {
     `<path d="M7.4 -0.9Q3.7 -7 -3.7 -5A3.1 3.1 0 0 1 -7.4 -9.2" fill="none" ${FINE}/>`,
   );
   return `<g ${t}>${parts.join('')}</g>`;
+}
+
+/** How far a weapon seen from behind leans out from the fist, in degrees, to show past the arm. */
+const BACK_LEAN = 14;
+
+/** The fist's palm and heel, which the fingers and thumb close over. */
+const FIST = 'M-10 -4Q-10 -8 -6 -8H6Q11 -8 11 -2V10Q11 15 6 15H-5Q-10 15 -10 11Z';
+
+/**
+ * The same fist from behind: the fingers and thumb curl round the far side of
+ * the grip, out of sight, so what shows is the back of the hand. It runs from
+ * the wrist, on the side toward the body, to the row of knuckles down the
+ * outer side, where the fingers turn away round the grip; tendons fan out to
+ * the knuckles. Only the curve of the index finger shows over the top.
+ */
+function fistBehind(t: string): string {
+  const back = 'M-9 -6Q-8 -9 -4 -9H5Q11 -9 11.5 -3V10Q11.5 15.5 5.5 15.5H-5Q-9 15.5 -9 11Z';
+  // The knuckles: a rounded bump for each finger along the outer side, the index's at the top.
+  const knuckles = BANDS.map(([v, , w]): [string, number] => [`M-9.6 ${v}L-9.4 ${v}`, w + 0.8]);
+  // Three tendons, from the wrist's side toward the knuckles of the first three fingers.
+  const tendons = BANDS.slice(0, 3)
+    .map(([v]) => `M5.5 ${r2(v * 0.3 - 1.5)}Q0 ${r2(v * 0.65 - 0.5)} -5.5 ${r2(v * 0.95)}`)
+    .join('');
+  return `<g ${t}>${[
+    flesh([back], knuckles, 2.8),
+    // The dips between the knuckles, the tendons, and the fold of the index finger along the top.
+    `<path d="${BANDS.slice(1)
+      .map(([v], i) => {
+        const m = (v + (BANDS[i]?.[0] ?? v)) / 2;
+        return `M-12.6 ${r2(m)}L-10.2 ${r2(m)}`;
+      })
+      .join('')}${tendons}M-6 -6.6Q1 -8.2 8 -6.2" fill="none" ${FINE}/>`,
+  ].join('')}</g>`;
 }
 
 /** Tablet-woven trim: a band of little diamonds. */
@@ -372,6 +396,15 @@ function figure(scene: BodyScene, uid: string): string {
   // Hands hang below the cuffs: an open hand, or the wrist of a fist that closes over the weapon later.
   const grip = scene.obs.grip;
   const weaponHand = grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
+  const kind = weaponKind(scene.weapon);
+  const wx = weaponHand === 'L' ? hp.L : hp.R;
+  // From behind, the arm is between the viewer and the weapon: the weapon goes down first, under the
+  // wrist and the sleeve, leaning out from the fist so it shows past the arm. (From the front it goes
+  // over them, upright, after the torso.)
+  if (weaponHand && !front) {
+    const lean = wx < CX ? -BACK_LEAN : BACK_LEAN;
+    parts.push(`<g transform="rotate(${lean} ${wx} ${hp.y})">${weapon(kind, wx, hp.y, wx < CX ? -1 : 1)}</g>`);
+  }
   const long = front && scene.obs.nails === true && !scene.tools.includes('clippers');
   const arms = (['R', 'L'] as const).map((side) => {
     const x = side === 'L' ? hp.L : hp.R;
@@ -431,18 +464,17 @@ function figure(scene: BodyScene, uid: string): string {
   );
   if (front) parts.push(`<path d="M172 118Q178 108 180 96" fill="none" stroke="url(#wc-hatch)" stroke-width="10"/>`);
 
-  // The weapon under the fist, seen from either side; the wrap and the rune readings are front-view signs.
-  if (weaponHand) {
-    const x = weaponHand === 'L' ? hp.L : hp.R;
-    const kind = weaponKind(scene.weapon);
-    parts.push(weapon(kind, x, hp.y, x < CX ? -1 : 1));
-    if (front && scene.cues.includes('wrongGrip')) parts.push(wrongGrip(x, hp.y));
-    if (front && scene.tools.includes('runeLens')) {
-      parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
+  // The weapon under the fist, from the front; the wrap and the rune readings are front-view signs.
+  if (weaponHand && front) {
+    parts.push(weapon(kind, wx, hp.y, wx < CX ? -1 : 1));
+    if (scene.cues.includes('wrongGrip')) parts.push(wrongGrip(wx, hp.y));
+    if (scene.tools.includes('runeLens')) {
+      parts.push(runeReading(wx, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
     }
   }
   for (const a of arms) {
-    if (a.fist) parts.push(fist(`transform="matrix(${a.inw} 0 0 1 ${a.x} ${hp.y})"`, long, !front));
+    const t = `transform="matrix(${a.inw} 0 0 1 ${a.x} ${hp.y})"`;
+    if (a.fist) parts.push(front ? fist(t, long) : fistBehind(t));
     parts.push(
       `<text x="${a.x}" y="${hp.y + 46}" font-size="14" font-family="Georgia, serif" font-weight="bold" text-anchor="middle" fill="${INK}" stroke="${PAPER}" stroke-width="4" paint-order="stroke">${a.side}</text>`,
     );
