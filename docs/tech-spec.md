@@ -1582,6 +1582,37 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - Overlays (the journal, citations, dialogs) open over the page, which stays where it was underneath, as before.
 - On a small phone, a screen's first button can now start below the fold. It still has the keyboard's focus, so Enter works as before.
 
+## 31. After M7: a readable script for reviewing the story
+
+**What changed**
+- **`pnpm story:script`** (`tools/story-script/`) writes the story as one page (`dist/story-script/index.html`, and `page.html` for publishing as an artifact).
+  - `parse.ts` reads each scene's source into rows in the small part of Ink the scenes are written in: lines with speakers, options (their conditions, `#needs: rings N`, `+`), `{ cond: … }` blocks with `- cond:` and `- else:` branches, gathers, jumps (with and without a condition), parts (knots), effect tags, and inline `{cond:a|b}`. Anything else is refused rather than shown wrong.
+  - `expr.ts` parses the conditions and says them in words ("Ulf is at home", "you have 5 rings or more"), turning them round for "otherwise".
+  - `model.ts` puts together days, scenes, story souls, endings, journal threads and a flag index: every option, story-soul stamp and slice jump that sets a flag, and every scene, story soul, ending and thread that reads it.
+  - `render.ts` makes the page: the game's palette in both themes, and each line with its `.ink` line number.
+- **Review.** Each scene has Approve, Needs changes and a note.
+  - Published as an artifact with the `db` capability, the page keeps one document per scene in `reviews/<scene>`: `{scene, verdict, note, hash, at}`. `hash` is the scene's source hash when reviewed, so the page flags a scene rewritten since. Claude reads the collection to apply a review.
+  - Opened as a local file, the page keeps the review in `localStorage`, and Copy review gives the text, with the `pnpm story:approve` command for the approved scenes.
+- **`pnpm story:approve <scene…>`** signs scenes off. It removes the `# draft` line and the draft comment under it.
+- **What the index found.** 45 flags. None is read without being set somewhere. 22 are set but read nowhere yet, which means choices with no later consequence beyond their own effects: `asked_namesake`, `asked_twice`, `broke_loki`, `covered_loki`, `ferryman_doubted`, `geir_judged`, `heard_pension`, `helped_clerk`, `kept_quiet`, `letters_honest`, `letters_kind`, `loki_in_valhalla`, `promised_medicine`, `refused_loki`, `reported_carver`, `reported_loki`, `roof_mended`, `sided_freyja`, `sided_hel`, `sided_odin`, `told_skogul`, `ulf_fine_paid`. No code reads them either.
+
+**Tests** (`tools/story-script/script.test.ts`)
+- Conditions in words, both ways round, and the flags they read.
+- A sample scene read row by row, with its nesting.
+- Ink the script can't show is refused.
+- Every line and option the game can show, on every path through every scene in three runs (fresh, gone badly, gone well, as the compiler walks them), is in the script: over 2,000 lines.
+- The flag index for known flags (`ulf_shipyard`, `geir_hel`, `wood`), and no flag read without a setter.
+- Signing off changes only the draft mark.
+- The page: every scene, review control and flag entry is present, there is one script (the page's own), and the story's text is escaped.
+
+**Known limits**
+- The script shows each scene as written, with its structure. It doesn't show one playthrough at a time.
+- Only scenes and story souls' lines are in it. The dead's everyday lines, question answers and decrees come from string tables, not from scenes.
+- Word counts are Ink's own, as the writing budget uses them.
+- Reviews are per scene. A note points at lines by their numbers.
+- The review lives with one published artifact. Publishing again from another conversation without its link makes a new, empty one.
+- The page loads its fonts from Google Fonts, and uses system fonts when offline.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
