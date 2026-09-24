@@ -1,0 +1,52 @@
+# Day 13: Muninn remembers how they lived, Huginn how they died. Both are true; when they seem to
+# disagree, the Order of Judgment decides. Muninn forgets more as Ragnarök nears.
+day: 13
+sunS: 800
+decree: decree.d13
+economy:
+  wage: 8
+  docBonus: 1
+  warnings: 2
+  fines: [5, 10, 15]
+  costs: { hearth: 9, food: 4, medicine: 13 }
+params:
+  freyjaWhim:
+    pool:
+      - { id: whim.leftHanded, text: whim.leftHanded, is: { fact: gripHand, is: left } }
+      - { id: whim.redHair, text: whim.redHair, is: { fact: hair, is: red } }
+      - { id: whim.amber, text: whim.amber, is: { fact: ornament, is: amber } }
+queue:
+  count: [12, 14]
+  teachFirst: arch.oathbreaker
+  archetypes:
+    - { id: arch.honest_warrior, w: 2 }
+    - { id: arch.freyja_pick, w: 2 }
+    - { id: arch.disarmed_warrior, w: 2 }
+    - { id: arch.straw_braggart, w: 1 }
+    - { id: arch.fled_coward, w: 1 }
+    - { id: arch.not_quite_dead, w: 1 }
+    - { id: arch.drowned_raider, w: 2 }
+    - { id: arch.oathbreaker, w: 2 }
+    - { id: arch.borrowed_blade, w: 2 }
+    - { id: arch.ulfberht_braggart, w: 1 }
+    - { id: arch.long_nails, w: 1 }
+    - { id: arch.tally_forger, w: 2 }
+    - { id: arch.coward_forger, w: 1 }
+    - { id: arch.baptized, w: 2 }
+    - { id: arch.prime_signed, w: 1 }
+    - { id: arch.false_convert, w: 1 }
+    - { id: arch.loki, w: 2 }
+  mix: { VALHALLA: [10, 30], FOLKVANGR: [5, 20], HEL: [30, 50], RETURN: [5, 10], RAN: [5, 20], TRANSFER: [5, 15], DETAIN: [5, 12] }
+  knobs:
+    lieRate: 100
+    maxLies: 1
+    decoyRate: 20
+    ravenRate: 20
+    forgetRate: 15
+    proofCostS: [0, 50]
+    maxTools: 3
+    maxDocs: 5
+    salienceFloor: 1
+    tallyRate: 40
+    muninnRecall: 60
+    huginnAside: 30

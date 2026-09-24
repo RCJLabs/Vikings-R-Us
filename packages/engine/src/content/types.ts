@@ -263,6 +263,10 @@ export interface Knobs {
   readonly salienceFloor: Salience;
   /** Percent chance an honest soul carries a saga tally (Day 11 on). */
   readonly tallyRate?: number;
+  /** Percent chance Muninn, when he remembers the soul, also reports a decisive fact of its life (Day 13 on). */
+  readonly muninnRecall?: number;
+  /** Percent chance Huginn adds a true fact that doesn't decide the judgment, so the ravens can seem to disagree (Day 13 on). */
+  readonly huginnAside?: number;
 }
 
 export interface DayParam {

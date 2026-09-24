@@ -1,3 +1,11 @@
 - { id: rv.huginn.outlaw, raven: huginn, asserts: { fact: outlaw, value: true }, msg: rv.huginn.outlaw }
 - { id: rv.huginn.baptized, raven: huginn, asserts: { fact: faith, value: baptized }, msg: rv.huginn.baptized }
 - { id: rv.huginn.primeSigned, raven: huginn, asserts: { fact: faith, value: primeSigned }, msg: rv.huginn.primeSigned }
+# Day 13: Muninn remembers how they lived. Like Huginn, he never lies.
+- { id: rv.muninn.oathBroken, raven: muninn, asserts: { fact: outlaw, value: true }, msg: rv.muninn.oathBroken }
+- { id: rv.muninn.oathKept, raven: muninn, asserts: { fact: outlaw, value: false }, msg: rv.muninn.oathKept }
+- { id: rv.muninn.heathen, raven: muninn, asserts: { fact: faith, value: heathen }, msg: rv.muninn.heathen }
+- { id: rv.muninn.baptized, raven: muninn, asserts: { fact: faith, value: baptized }, msg: rv.muninn.baptized }
+- { id: rv.muninn.primeSigned, raven: muninn, asserts: { fact: faith, value: primeSigned }, msg: rv.muninn.primeSigned }
+- { id: rv.muninn.ownWeapon, raven: muninn, asserts: { fact: weaponOwner, value: self }, msg: rv.muninn.ownWeapon }
+- { id: rv.muninn.borrowedWeapon, raven: muninn, asserts: { fact: weaponOwner, value: other }, msg: rv.muninn.borrowedWeapon }

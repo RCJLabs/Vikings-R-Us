@@ -1,0 +1,41 @@
+# Day 9: no new rule. Draupnir drips tonight; the first big family choice (story in M7).
+day: 9
+sunS: 690
+decree: decree.d9
+economy:
+  wage: 8
+  docBonus: 1
+  warnings: 2
+  fines: [5, 10, 15]
+  costs: { hearth: 8, food: 3, medicine: 11 }
+params:
+  freyjaWhim:
+    pool:
+      - { id: whim.leftHanded, text: whim.leftHanded, is: { fact: gripHand, is: left } }
+      - { id: whim.redHair, text: whim.redHair, is: { fact: hair, is: red } }
+      - { id: whim.amber, text: whim.amber, is: { fact: ornament, is: amber } }
+queue:
+  count: [12, 14]
+  archetypes:
+    - { id: arch.honest_warrior, w: 3 }
+    - { id: arch.freyja_pick, w: 2 }
+    - { id: arch.disarmed_warrior, w: 2 }
+    - { id: arch.straw_braggart, w: 2 }
+    - { id: arch.fled_coward, w: 2 }
+    - { id: arch.not_quite_dead, w: 1 }
+    - { id: arch.drowned_raider, w: 2 }
+    - { id: arch.oathbreaker, w: 2 }
+    - { id: arch.borrowed_blade, w: 3 }
+    - { id: arch.ulfberht_braggart, w: 2 }
+    - { id: arch.long_nails, w: 2 }
+  mix: { VALHALLA: [15, 35], FOLKVANGR: [5, 20], HEL: [35, 55], RETURN: [5, 10], RAN: [10, 25] }
+  knobs:
+    lieRate: 100
+    maxLies: 1
+    decoyRate: 20
+    ravenRate: 20
+    forgetRate: 10
+    proofCostS: [0, 50]
+    maxTools: 3
+    maxDocs: 4
+    salienceFloor: 2

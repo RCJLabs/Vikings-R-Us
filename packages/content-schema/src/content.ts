@@ -313,6 +313,8 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       maxDocs: Int.min(1),
       salienceFloor: SalienceSchema,
       tallyRate: Percent.optional(),
+      muninnRecall: Percent.optional(),
+      huginnAside: Percent.optional(),
     }),
   }),
 });

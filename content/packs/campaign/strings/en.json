@@ -109,5 +109,21 @@
   "case.loki12.nails": "You've been biting your nails. Don't. Somebody needs them.",
   "case.loki12.again": "We've met, haven't we? No. I'd remember a face like yours. I collect them.",
   "ending.sliceEnd.title": "The slice ends here",
-  "ending.sliceEnd.text": "Twelve days at the gate. Loki walks among the dead, your brother is building a ship in the north, and Ragnarök is eight days away. The full game tells the rest."
+  "ending.sliceEnd.text": "Twelve days at the gate. Loki walks among the dead, your brother is building a ship in the north, and Ragnarök is eight days away. The full game tells the rest.",
+  "rv.muninn.oathBroken": "Muninn: {name} {patronym}. Swore on the temple ring, then sold the jarl out for silver. I remember.",
+  "rv.muninn.oathKept": "Muninn: {name} {patronym}. Kept every oath. Every one. I remember because it was so rare.",
+  "rv.muninn.heathen": "Muninn: {name} {patronym}. Never went near the water. Sacrificed at Uppsala every ninth year.",
+  "rv.muninn.baptized": "Muninn: {name} {patronym}. Walked into a river after a man in a long robe. Came out a Christian.",
+  "rv.muninn.primeSigned": "Muninn: {name} {patronym}. Took the sign of the cross to trade at an English market. Never the water.",
+  "rv.muninn.ownWeapon": "Muninn: That weapon was {name}'s own. Paid for with a summer's raiding.",
+  "rv.muninn.borrowedWeapon": "Muninn: That weapon isn't {name}'s. Lifted from a dead man's hand.",
+  "decree.d9": "No new decree. Odin's ring Draupnir drips tonight, eight rings for the chooser. Work well until then.",
+  "decree.d13": "Odin decrees: both ravens will speak. Huginn saw how they died; Muninn remembers how they lived. They never lie, but they may seem to disagree. When they do, the Order of Judgment decides. And Muninn forgets more every day.",
+  "decree.d14": "Hel sends word: her hall is full. Until she has room, those who died in their beds, of sickness or old age, go to the clerk, who says he has plenty. Everyone else Hel takes as before.",
+  "decree.d15": "Odin decrees: he names his own claim each day, as Freyja does. When both of them want a worthy soul, Odin's claim wins and the soul goes to Valhalla. A blade with no maker's mark is plain: no Ulfberht.",
+  "rule.helFull": "While Hel's hall is full, straw deaths (sickness, old age) that no earlier rule claims go to the clerk. Stamp TRANSFER.",
+  "rule.odinClaim": "When Freyja's whim and Odin's claim both fit a worthy soul, Odin's claim wins. Stamp VALHALLA.",
+  "whim.odin.scarred": "Odin claims the scarred today: two or more wounds in front.",
+  "whim.odin.ulfberht": "Odin claims whoever carries a true Ulfberht today.",
+  "law.noMark": "A blade with no maker's mark is a plain blade, not an Ulfberht."
 }

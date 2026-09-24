@@ -45,21 +45,53 @@ export function planSpeech(truth: Truth, lies: readonly PlannedLie[], ctx: DayCt
 export interface RavenPlan {
   readonly huginn: readonly { readonly fact: string; readonly value: Value }[];
   readonly muninn: 'identity' | 'forgot' | null;
+  /** A fact of the soul's life Muninn remembers (Day 13 on). */
+  readonly recall?: { readonly fact: string; readonly value: Value };
 }
 
-/** Huginn reports some decisive facts (truthfully); Muninn names the soul or forgets. */
+const hasRavenLine = (ctx: DayCtx, raven: 'huginn' | 'muninn', fact: string, value: Value) =>
+  ctx.content.ravens.some((t) => t.raven === raven && t.asserts?.fact === fact && t.asserts.value === value);
+
+/**
+ * Huginn reports some decisive facts (truthfully); Muninn names the soul or
+ * forgets. From Day 13 Muninn may also remember a decisive fact of the soul's
+ * life, and Huginn may add a true fact that decides nothing, so the two can
+ * seem to disagree: both are true, and the Order of Judgment settles it.
+ * Those draws come after the older ones, so earlier days plan exactly as before.
+ */
 export function planRavens(truth: Truth, decisive: readonly string[], ctx: DayCtx, knobs: Knobs, rng: Rng): RavenPlan {
   const huginn: { fact: string; value: Value }[] = [];
   for (const fact of decisive) {
     if (huginn.length >= 2) break;
     const value = truth[fact] as Value;
-    const hasLine = ctx.content.ravens.some(
-      (t) => t.raven === 'huginn' && t.asserts?.fact === fact && t.asserts.value === value,
-    );
-    if (hasLine && rng.chance(knobs.ravenRate, 100)) huginn.push({ fact, value });
+    if (hasRavenLine(ctx, 'huginn', fact, value) && rng.chance(knobs.ravenRate, 100)) huginn.push({ fact, value });
   }
   const muninn = rng.chance(knobs.forgetRate, 100) ? 'forgot' : rng.chance(1, 2) ? 'identity' : null;
-  return { huginn, muninn };
+
+  if (knobs.huginnAside && huginn.length < 2) {
+    const asides = [...ctx.facts.keys()].filter(
+      (f) =>
+        !decisive.includes(f) &&
+        ctx.facts.get(f)?.pinned === false &&
+        !huginn.some((h) => h.fact === f) &&
+        hasRavenLine(ctx, 'huginn', f, truth[f] as Value),
+    );
+    if (asides.length > 0 && rng.chance(knobs.huginnAside, 100)) {
+      const fact = rng.pick(asides);
+      huginn.push({ fact, value: truth[fact] as Value });
+    }
+  }
+  let recall: RavenPlan['recall'];
+  if (knobs.muninnRecall && muninn !== 'forgot') {
+    const lives = decisive.filter(
+      (f) => !huginn.some((h) => h.fact === f) && hasRavenLine(ctx, 'muninn', f, truth[f] as Value),
+    );
+    if (lives.length > 0 && rng.chance(knobs.muninnRecall, 100)) {
+      const fact = rng.pick(lives);
+      recall = { fact, value: truth[fact] as Value };
+    }
+  }
+  return { huginn, muninn, ...(recall ? { recall } : {}) };
 }
 
 /**
@@ -263,6 +295,25 @@ export function render(input: RenderInput, ctx: DayCtx, rng: Rng): Rendered {
         item: 'muninn',
         salience: 3,
         cost: 2,
+        text: { msg: tpl.msg, params: fillParams(tpl.params, look, ctx, shared, rng) },
+      });
+    }
+  }
+  const recall = input.ravens.recall;
+  if (recall) {
+    const tpl = pickRaven(
+      'muninn',
+      (t) => t.asserts?.fact === recall.fact && t.asserts.value === recall.value,
+      ctx,
+      rng,
+    );
+    if (tpl) {
+      fields.push({
+        id: 'muninn.1',
+        item: 'muninn',
+        salience: 3,
+        cost: 2,
+        says: { fact: recall.fact, value: recall.value },
         text: { msg: tpl.msg, params: fillParams(tpl.params, look, ctx, shared, rng) },
       });
     }

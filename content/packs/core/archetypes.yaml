@@ -22,6 +22,8 @@
     alive: { is: false }
   require:
     - { param: freyjaWhim }
+    # From Day 15 a worthy soul Odin also claims goes to Valhalla instead.
+    - { not: { param: odinClaim } }
   lies: []
 
 - id: arch.disarmed_warrior

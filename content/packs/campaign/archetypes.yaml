@@ -122,3 +122,29 @@
     alive: { is: false }
   lies:
     - { fact: trickster, claim: false, p: 100, motive: mischief, onQuestion: { deflect: 1 } }
+# Day 14's teaching soul: an honest straw death, now the clerk's while Hel's hall is full.
+- id: arch.bedridden
+  since: 14
+  personas: [honest, confused, veteran]
+  truth:
+    cause: { in: [sickness, oldAge] }
+    woundsFront: { is: 0 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+    outlaw: { is: false }
+    faith: { in: [heathen, primeSigned] }
+  lies: []
+# Day 15's teaching soul: worthy, and both gods want it. Odin's claim comes first.
+- id: arch.contested
+  since: 15
+  personas: [veteran, honest, braggart]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  require:
+    - { param: freyjaWhim }
+    - { param: odinClaim }
+  lies: []
