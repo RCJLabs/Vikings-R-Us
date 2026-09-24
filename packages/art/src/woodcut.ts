@@ -37,6 +37,7 @@ const AMBER = '#d98a1c';
 const SILVER = '#c9ced2';
 const GOLD = '#c79a3a';
 const FOAM_EDGE = '#4f7584';
+const HORN = '#efe3c2';
 
 /** Tunic washes, picked per soul for variety (cosmetic only). */
 const TUNICS = ['#a2543a', '#566e84', '#8c7a5c', '#6f7a4c'] as const;
@@ -45,6 +46,7 @@ const HAIR: Readonly<Record<string, string>> = { dark: INK, fair: '#e2c46e', red
 
 const OUTLINE = `stroke="${INK}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`;
 const THIN = `stroke="${INK}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"`;
+const FINE = `stroke="${INK}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"`;
 
 const tunicOf = (look: Look) => TUNICS[fnv1a32(`${look.name}|${look.patronym}|tunic`) % TUNICS.length] ?? TUNICS[0];
 
@@ -168,17 +170,6 @@ function wrongGrip(x: number, y: number): string {
   ].join('');
 }
 
-/** Long nails: curved horn claws past the knuckles. After the clippers, nothing shows. */
-function claws(x: number, y: number): string {
-  return [-9, -3, 3, 9]
-    .map((d) => {
-      const tip = x + d * 1.5;
-      return `<path d="M${x + d - 2} ${y + 9}Q${x + d} ${y + 20} ${tip} ${y + 26}Q${x + d + 3} ${y + 18} ${x + d + 2} ${y + 9}Z" fill="#efe3c2" ${THIN}/>`;
-    })
-    .join('');
-}
-
-/** Abstract staves in a lens: the text chip reads the runes out; the drawing only has to differ. */
 function runeReading(
   x: number,
   y: number,
@@ -212,11 +203,119 @@ function runeReading(
   ].join('');
 }
 
-function hand(x: number, y: number, open: boolean): string {
-  const fingers = open
-    ? [-8, 0, 8].map((d) => `<path d="M${x + d} ${y + 8}L${x + d * 1.4} ${y + 21}" ${THIN}/>`).join('')
-    : '';
-  return `${fingers}<circle cx="${x}" cy="${y}" r="13" fill="${SKIN}" ${OUTLINE}/>`;
+type Pt = { x: number; y: number };
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** An SVG transform into a local frame: u runs across (toward the body), v runs down the arm or hand. */
+const frame = (o: Pt, u: Pt, v: Pt) =>
+  `transform="matrix(${r2(u.x)} ${r2(u.y)} ${r2(v.x)} ${r2(v.y)} ${r2(o.x)} ${r2(o.y)})"`;
+
+/** An arm from the shoulder toward the hand at (x, y), ending at a cuff above the wrist. */
+function armOf(sx: number, x: number, y: number) {
+  const inw = x < CX ? 1 : -1;
+  const dx = x - sx;
+  const dy = y - 12 - 170;
+  const len = Math.hypot(dx, dy);
+  const d = { x: dx / len, y: dy / len };
+  const cuff = { x: x - 8 * d.x, y: y - 12 - 8 * d.y };
+  // The hand hangs a little straighter than the arm.
+  const hl = Math.hypot(d.x * 0.85, d.y);
+  const hd = { x: (d.x * 0.85) / hl, y: d.y / hl };
+  return {
+    inw,
+    d,
+    cuff,
+    arm: frame(cuff, { x: inw * d.y, y: -inw * d.x }, d),
+    hand: frame(cuff, { x: inw * hd.y, y: -inw * hd.x }, hd),
+  };
+}
+
+/** Skin shapes merged under one contour: every part inked wider first, then every part filled. */
+function flesh(fill: string[], lines: [number, number, number, number, number][], contour: number): string {
+  const line = ([x1, y1, x2, y2]: number[]) => `M${x1} ${y1}L${x2} ${y2}`;
+  return [
+    ...fill.map(
+      (d) => `<path d="${d}" fill="${INK}" stroke="${INK}" stroke-width="${contour * 2}" stroke-linejoin="round"/>`,
+    ),
+    ...lines.map(
+      (l) => `<path d="${line(l)}" stroke="${INK}" stroke-width="${l[4] + contour * 2}" stroke-linecap="round"/>`,
+    ),
+    ...fill.map((d) => `<path d="${d}" fill="${SKIN}"/>`),
+    ...lines.map((l) => `<path d="${line(l)}" stroke="${SKIN}" stroke-width="${l[4]}" stroke-linecap="round"/>`),
+  ].join('');
+}
+
+/** A long nail: a horn claw growing on from a fingertip, bending toward the palm. */
+function nail(bx: number, by: number, tx: number, ty: number, w: number, len: number): string {
+  const l = Math.hypot(tx - bx, ty - by);
+  const f = { x: (tx - bx) / l, y: (ty - by) / l };
+  const p = { x: f.y, y: -f.x };
+  const at = (a: number, b: number) => `${r2(tx + f.x * a + p.x * b)} ${r2(ty + f.y * a + p.y * b)}`;
+  const hw = w * 0.42;
+  return `<path d="M${at(-1, hw)}Q${at(len * 0.6, hw)} ${at(len, -1.5)}Q${at(len * 0.45, -hw)} ${at(-1, -hw)}Z" fill="${HORN}" ${THIN}/>`;
+}
+
+/** The fingers of an open hand, little finger first: base u, v, tip u, v, width. Then the thumb. */
+const FINGERS: [number, number, number, number, number][] = [
+  [-7.2, 16.5, -10, 28, 4.3],
+  [-2.5, 17.5, -4.2, 32.5, 4.7],
+  [2.2, 17.5, 2.5, 34.5, 4.9],
+  [6.8, 16.5, 8.6, 31.5, 4.7],
+];
+const THUMB: [number, number, number, number, number] = [8.2, 3, 13.4, 18, 5.6];
+
+/**
+ * A relaxed hand hanging from the cuff: palm, four fingers a little apart,
+ * the thumb on the side toward the body. Drawn in the hand's own frame (u
+ * across toward the body, v down the hand).
+ */
+function openHand(t: string, long: boolean): string {
+  const palm = 'M-7.5 -8L-8 2Q-11 8 -10.5 14L-9 17.5H9L10 9Q9.5 3 7.5 -8Z';
+  const parts = [flesh([palm], [...FINGERS, THUMB], 2.8)];
+  // Where the fingers meet, and the thumb's crease.
+  const seams = FINGERS.slice(1).map(([u, v, tu, tv], i) => {
+    const [pu, pv, ptu, ptv] = FINGERS.at(i) ?? [u, v, tu, tv];
+    return `M${r2((u + pu) / 2)} ${Math.max(v, pv) + 0.5}L${r2((tu + ptu) / 2)} ${r2(Math.min(tv, ptv) - 6)}`;
+  });
+  parts.push(`<path d="${seams.join('')}M8.3 6Q6.8 11 8.8 15.5" fill="none" ${FINE}/>`);
+  if (long) parts.push(...[...FINGERS, THUMB].map(([u, v, tu, tv, w], i) => nail(u, v, tu, tv, w, i < 4 ? 9 : 7)));
+  return `<g ${t}>${parts.join('')}</g>`;
+}
+
+/** Finger bands across a fist, index finger at the top. */
+const BANDS = [-8, -2, 4, 10];
+
+/**
+ * A fist closed over a weapon's grip: four fingers wrapped across it, their
+ * ends in a row on the outer side, the thumb laid over the index finger. In
+ * the fist's frame: u across toward the body, v down, (0, 0) on the grip.
+ */
+function fist(t: string, long: boolean): string {
+  const body = 'M-11 -4.5Q-11 -11 -5 -11H4.5Q10 -11 10 -4.5V7Q10 13 4.5 13H-5Q-11 13 -11 7Z';
+  const parts = [
+    flesh(
+      [body],
+      BANDS.map((v) => [3, v, -11, v, 6]),
+      2.8,
+    ),
+    `<path d="${BANDS.slice(1)
+      .map((v) => `M-13.5 ${v - 3}Q-5.5 ${v - 2.2} 3 ${v - 3.4}`)
+      .join('')}" fill="none" ${FINE}/>`,
+    // The thumb over the index finger, with its nail.
+    `<path d="M8.5 -2L-3 -8" stroke="${INK}" stroke-width="10.4" stroke-linecap="round"/>`,
+    `<path d="M8.5 -2L-3 -8" stroke="${SKIN}" stroke-width="6.2" stroke-linecap="round"/>`,
+    `<path d="M-1.2 -10.4Q-4.8 -8.8 -3.4 -5.6" fill="none" ${FINE}/>`,
+  ];
+  if (long) {
+    parts.push(
+      ...BANDS.map(
+        (v) =>
+          `<path d="M-12.5 ${v - 2.2}Q-19 ${v - 1.6} -22 ${v + 4.2}Q-17.5 ${v + 1.2} -12.5 ${v + 2.2}Z" fill="${HORN}" ${THIN}/>`,
+      ),
+    );
+  }
+  return `<g ${t}>${parts.join('')}</g>`;
 }
 
 /** Tablet-woven trim: a band of little diamonds. */
@@ -250,17 +349,38 @@ function figure(scene: BodyScene, uid: string): string {
     );
   }
 
-  // Sleeves: an ink edge under a coloured sleeve, then the torso.
-  const left = Math.min(hp.R, hp.L);
-  const right = Math.max(hp.R, hp.L);
-  for (const [sx, ex] of [
-    [CX - h + 4, left],
-    [CX + h - 4, right],
-  ] as const) {
+  // Hands hang below the cuffs: an open hand, or the wrist of a fist that closes over the weapon later.
+  const grip = scene.obs.grip;
+  const weaponHand = front && grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
+  const long = front && scene.obs.nails === true && !scene.tools.includes('clippers');
+  const arms = (['R', 'L'] as const).map((side) => {
+    const x = side === 'L' ? hp.L : hp.R;
+    const sx = x < CX ? CX - h + 4 : CX + h - 4;
+    return { side, x, sx, fist: weaponHand === side, ...armOf(sx, x, hp.y) };
+  });
+  for (const a of arms) {
+    if (!a.fist) {
+      parts.push(openHand(a.hand, long));
+      continue;
+    }
+    const from = `M${r2(a.cuff.x - 6 * a.d.x)} ${r2(a.cuff.y - 6 * a.d.y)}L${a.x} ${hp.y}`;
     parts.push(
-      `<path d="M${sx} 170L${ex} ${hp.y - 12}" stroke="${INK}" stroke-width="30" stroke-linecap="round"/>`,
-      `<path d="M${sx} 170L${ex} ${hp.y - 12}" stroke="${tunic}" stroke-width="22" stroke-linecap="round"/>`,
-      `<path d="M${sx + (ex - sx) * 0.55} ${170 + (hp.y - 182) * 0.55}L${ex} ${hp.y - 12}" stroke="url(#wc-hatch)" stroke-width="16" stroke-linecap="round" opacity="0.7"/>`,
+      `<path d="${from}" stroke="${INK}" stroke-width="20" stroke-linecap="round"/>`,
+      `<path d="${from}" stroke="${SKIN}" stroke-width="14" stroke-linecap="round"/>`,
+    );
+  }
+
+  // Sleeves: an ink edge under a coloured sleeve, ending in a cuff, then the torso.
+  for (const a of arms) {
+    const end = `L${r2(a.cuff.x)} ${r2(a.cuff.y)}`;
+    const shade = `M${a.sx + (a.x - a.sx) * 0.55} ${170 + (hp.y - 182) * 0.55}L${r2(a.cuff.x - 18 * a.d.x)} ${r2(a.cuff.y - 18 * a.d.y)}`;
+    parts.push(
+      `<path d="M${a.sx} 170${end}" stroke="${INK}" stroke-width="30"/>`,
+      `<circle cx="${a.sx}" cy="170" r="15" fill="${INK}"/>`,
+      `<path d="M${a.sx} 170${end}" stroke="${tunic}" stroke-width="22"/>`,
+      `<circle cx="${a.sx}" cy="170" r="11" fill="${tunic}"/>`,
+      `<path d="${shade}" stroke="url(#wc-hatch)" stroke-width="16" stroke-linecap="round" opacity="0.7"/>`,
+      `<rect x="-16.5" y="-10" width="33" height="10" rx="2" fill="${tunic}" ${OUTLINE} ${a.arm}/>`,
     );
   }
   const torso = `M${CX - h} 172Q${CX - h} 156 ${CX - h + 16} 156H${CX + h - 16}Q${CX + h} 156 ${CX + h} 172L${CX + h + 4} 312H${CX - h - 4}Z`;
@@ -292,9 +412,7 @@ function figure(scene: BodyScene, uid: string): string {
   if (front) parts.push(`<path d="M172 118Q178 108 180 96" fill="none" stroke="url(#wc-hatch)" stroke-width="10"/>`);
 
   // The weapon under the fist, front view only.
-  const grip = scene.obs.grip;
-  const weaponHand = grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
-  if (front && weaponHand) {
+  if (weaponHand) {
     const x = weaponHand === 'L' ? hp.L : hp.R;
     const kind = weaponKind(scene.weapon);
     parts.push(weapon(kind, x, hp.y, x < CX ? -1 : 1));
@@ -303,12 +421,10 @@ function figure(scene: BodyScene, uid: string): string {
       parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
     }
   }
-  for (const side of ['R', 'L'] as const) {
-    const x = side === 'L' ? hp.L : hp.R;
-    parts.push(hand(x, hp.y, front && grip === 'none'));
-    if (front && scene.obs.nails === true && !scene.tools.includes('clippers')) parts.push(claws(x, hp.y));
+  for (const a of arms) {
+    if (a.fist) parts.push(fist(`transform="matrix(${a.inw} 0 0 1 ${a.x} ${hp.y})"`, long));
     parts.push(
-      `<text x="${x}" y="${hp.y + 46}" font-size="14" font-family="Georgia, serif" font-weight="bold" text-anchor="middle" fill="${INK}">${side}</text>`,
+      `<text x="${a.x}" y="${hp.y + 46}" font-size="14" font-family="Georgia, serif" font-weight="bold" text-anchor="middle" fill="${INK}" stroke="${PAPER}" stroke-width="4" paint-order="stroke">${a.side}</text>`,
     );
   }
   return parts.join('');
