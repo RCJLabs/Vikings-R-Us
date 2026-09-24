@@ -1564,6 +1564,24 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - The runic font isn't in the web demo's offline cache: the demo shows no runes. Other scripts outside the fonts players have would still show blank boxes; the game uses none.
 - What a player sees in the Leave note is a first draft, like the other new texts.
 
+## 30. After M7: screens open at the top
+
+**What changed**
+- **Every screen opens at its top.** Nothing reset the scroll when the screen changed, and a scene gave the keyboard's focus to its first option, at the bottom, with a plain `focus()`, which scrolls the page to it. Measured on the phone before the fix, each screen opened at the very bottom: Day 1's morning at 341 of 341 px, the night at 302 of 302, the night's bills after its scene at 146 of 146, and Day 2's morning at 128 of 128. Now `App` scrolls to the top whenever `screen` changes, and so does each part of a screen: a scene when it starts, and whatever follows it (the day's orders, the night's bills, or the next scene).
+- **Focus never scrolls the page.** `useAutoFocus` and the scene give focus with `preventScroll`, so the keyboard still starts on the same button while the page stays at its top.
+- **A choice in a scene** brings the lines it adds (the chosen line, then what follows) to the top of the view, with a little room above (`scroll-margin-top`), or as near as the page's end allows. The next option takes the focus. Before, the page stayed pinned to its end.
+- **A reload** opens at the top (`history.scrollRestoration = 'manual'`). The browser used to put the page back where it had been scrolled, though the screen it reopens may be a different one.
+- **The phone's evidence tabs** each open at their top (the panel is keyed by tab). Before, a tab opened where the last one had been scrolled to.
+- The helpers are in `packages/ui/src/scroll.ts` (`toTop`, `toTopOf`).
+
+**Tests**
+- e2e (`scroll.spec.ts`, phone and desktop). Each of these opens at the top after the last screen was scrolled to its end: the campaign's slots, Day 1's morning scene, its orders, the audit, the night, its bills, and Day 2's morning. After each scene choice, the first new line is at the top of the view (or the page is at its end) and the next option has the focus. Also covered: the title's way into a practice shift and back, a reload, and the phone's tabs. Without the fix, 6 of the 7 fail; the desktop briefing fits on its screen either way.
+
+**Known limits**
+- The page jumps at once, with no animation.
+- Overlays (the journal, citations, dialogs) open over the page, which stays where it was underneath, as before.
+- On a small phone, a screen's first button can now start below the fold. It still has the keyboard's focus, so Enter works as before.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
