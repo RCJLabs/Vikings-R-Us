@@ -149,6 +149,18 @@ export interface RuleDef {
   readonly when: Pred;
   readonly then: Destination;
   readonly text: string;
+  /**
+   * Later wordings of the same rule: from `since` on, the rulebook says `text` instead, as a later day's
+   * mechanic adds to what the rule asks (Valhalla's rule adds "never fled" the day turning over is taught).
+   */
+  readonly texts?: readonly { readonly since: number; readonly text: string }[];
+}
+
+/** How the rulebook words a rule on `day`: its latest wording by then. */
+export function ruleText(rule: RuleDef, day: number): string {
+  let text = rule.text;
+  for (const later of rule.texts ?? []) if (later.since <= day) text = later.text;
+  return text;
 }
 
 export interface ToolDef {
@@ -288,6 +300,11 @@ export interface Knobs {
    * drawing one at random, so a day repeats itself less (gen/render.ts). Never on the Daily.
    */
   readonly spreadLines?: boolean;
+  /**
+   * Give the day's souls build, beard and clothing from a per-day shuffle, as names are, so no two
+   * look alike at a glance until the combinations run out (gen/look.ts). Never on the Daily.
+   */
+  readonly spreadLooks?: boolean;
 }
 
 /**

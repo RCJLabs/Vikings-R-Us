@@ -97,6 +97,19 @@ test('today’s Endless: resumed after a reload, recorded once, shared without s
   await expect(page.getByTestId('endless-resume')).toHaveText('Resume round 1');
 });
 
+test('a paused run can be left for the title screen, and waits there', async ({ page }) => {
+  await openToday(page);
+  await page.getByTestId('begin').click();
+  await stampAndSend(page, (endlessRound(content, SEED, 0).cases[0] as CaseSpec).expect.dest);
+  await page.getByTestId('pause').click();
+  await expect(page.getByTestId('leave-note')).toHaveText('Your run waits for you on the title screen.');
+  await page.getByTestId('leave-shift').click();
+  await expect(page.getByTestId('endless-saved')).toHaveText(`Endless #${N} · 1 soul judged rightly · strikes 0 of 3`);
+  await page.getByTestId('endless-resume').click();
+  await page.getByTestId('resume').click();
+  await expect(page.getByTestId('soul-count')).toHaveText('Soul 2 of 5');
+});
+
 test('a round past the last new rule brings a twist: its own decree, the same rules', async ({ page }) => {
   await openToday(page);
   for (const r of [0, 1, 2]) {

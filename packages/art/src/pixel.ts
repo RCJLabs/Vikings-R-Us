@@ -179,8 +179,9 @@ function handsOf(look: Look, front: boolean): { R: number; L: number; y: number 
   return front ? { R: CX - off, L: CX + off, y: 100 } : { R: CX + off, L: CX - off, y: 100 };
 }
 
+/** The look's clothing colour where the day chose one (spread looks), else one picked by the name. */
 const tunicOf = (look: Look): readonly [number, number] =>
-  TUNICS[fnv1a32(`${look.name}|${look.patronym}|tunic`) % TUNICS.length] ?? [OUTLINE, OUTLINE];
+  TUNICS[(look.tunic ?? fnv1a32(`${look.name}|${look.patronym}|tunic`)) % TUNICS.length] ?? [OUTLINE, OUTLINE];
 
 function hairTexture(hair: string): (x: number, y: number) => number {
   const [base, shade, light] = HAIR[hair] ?? HAIR.dark ?? [OUTLINE, OUTLINE, OUTLINE];

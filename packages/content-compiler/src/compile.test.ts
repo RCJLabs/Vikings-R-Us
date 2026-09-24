@@ -289,6 +289,25 @@ describe('gameplay content lints', () => {
     );
   });
 
+  it('lints a rule’s later wordings', () => {
+    const worded = (texts: string, strings: Record<string, string> = { 'rule.hel.2': 'Hel, from day 2' }) =>
+      core(
+        {
+          'rules.yaml': `- { id: rule.hel, order: 999, since: 1, when: { always: true }, then: HEL, text: rule.hel, texts: ${texts} }\n`,
+          'archetypes.yaml': archetype(''),
+        },
+        strings,
+      );
+    const ok = '[{ since: 2, text: rule.hel.2 }]';
+    expect(() => compile({ core: worded(ok), demo: day('arch.liar') })).not.toThrow();
+    expect(() => compile({ core: worded(ok, {}), demo: day('arch.liar') })).toThrow(
+      /rule rule\.hel's wording from day 2 uses missing string "rule\.hel\.2"/,
+    );
+    expect(() => compile({ core: worded('[{ since: 1, text: rule.hel.2 }]'), demo: day('arch.liar') })).toThrow(
+      /rule rule\.hel's later wordings must come in day order, after day 1/,
+    );
+  });
+
   it('requires the last rule in force to always apply', () => {
     const partial = core({
       'rules.yaml':

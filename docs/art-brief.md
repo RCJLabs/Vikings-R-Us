@@ -44,7 +44,7 @@ The art draws dead souls standing at a gate. The game reads **signs** off the bo
 | Rune-lens readings (Day 7) | owner's runes, maker's mark | 2 | Abstract staves; the text chip reads them out |
 | Cues | breath fog, broken oath-ring, wrong grip, fresh tally | 2 | Hints to use a tool |
 
-**Variety.** Men and women, three builds, four beards, four hair colours, old age marks (60+), four weapons, and cosmetic tunic colours. Registry portraits are head-and-shoulders crops in the same style.
+**Variety.** Men and women, three builds, four beards, four hair colours, old age marks (60+), four weapons, and cosmetic tunic colours. Registry portraits are head-and-shoulders crops in the same style. On campaign and practice days no two souls of a day share gender, build, beard and tunic colour until those run out, so the four tunic colours have to tell souls apart at a glance, even at phone size.
 
 ## Deliverables by direction
 

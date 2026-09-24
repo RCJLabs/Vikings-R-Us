@@ -42,6 +42,12 @@ async function stampAndSend(page: Page, dest: Destination) {
 
 const needsClipping = (c: CaseSpec) => c.expect.procedures?.includes('proc.clip') === true;
 
+test('the key hint counts the full game’s seven stamps and its registry key', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('.title__keys')).toContainText('T feather · G registry · C compare');
+  await expect(page.locator('.title__keys')).toContainText('1-7 stamps');
+});
+
 test('Day 8: a right stamp on unclipped nails earns a citation; clipping first is right', async ({ page }) => {
   const queue = queueFor(8);
   const firstLong = queue.findIndex(needsClipping);
@@ -83,6 +89,38 @@ test('Day 11: a forged tally shows its sign under the rune-lens', async ({ page 
     await stampAndSend(page, c.expect.dest);
   }
   await expect(page.getByTestId('score')).toHaveText(`${queue.length} of ${queue.length} judged rightly`);
+});
+
+test('Day 11: the rune a forgery sign quotes is drawn in the game’s own runic font', async ({ page }) => {
+  const queue = queueFor(11);
+  const elder = queue.findIndex((c) => c.evidence.fields.some((f) => f.tell === 'elderRune'));
+  expect(elder).toBeGreaterThanOrEqual(0);
+  await openPractice(page, 11);
+  for (const c of queue.slice(0, elder)) {
+    if (needsClipping(c)) await page.getByTestId('clippers').click();
+    await stampAndSend(page, c.expect.dest);
+  }
+  await expect(page.getByTestId('soul-count')).toHaveText(`Soul ${elder + 1} of ${queue.length}`);
+  await page.getByTestId('runeLens').click();
+  if (await drawer(page)) await page.locator('[data-tab="tally"]').click();
+  await expect(page.locator('[data-field="tally.tell"]')).toContainText('one rune, ᛗ,');
+
+  // Chromium's record of the fonts that drew the line: the rune came from the bundled font, not
+  // from whatever this machine has (a system without one shows a blank box).
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('DOM.enable');
+  await cdp.send('CSS.enable');
+  const drawnWith = async () => {
+    const { root } = await cdp.send('DOM.getDocument');
+    const { nodeId } = await cdp.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector: '[data-field="tally.tell"]',
+    });
+    return (await cdp.send('CSS.getPlatformFontsForNode', { nodeId })).fonts;
+  };
+  await expect
+    .poll(drawnWith)
+    .toContainEqual(expect.objectContaining({ familyName: 'Noto Sans Runic', isCustomFont: true, glyphCount: 1 }));
 });
 
 test('Day 10: the baptized are stamped TRANSFER, and the cross is on the neck', async ({ page }) => {

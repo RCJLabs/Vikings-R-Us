@@ -59,3 +59,4 @@ queue:
     muninnRecall: 50
     huginnAside: 25
     spreadLines: true
+    spreadLooks: true

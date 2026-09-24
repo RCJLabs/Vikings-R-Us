@@ -3,37 +3,37 @@
   "golden-0/day-1": {
     "params": {},
     "souls": [
-      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Hallgerd | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Astrid | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Toki | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Skeggi | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2"
+      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Vigdis | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Hallgerd | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Orm | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2"
     ]
   },
   "golden-0/day-2": {
     "params": {},
     "souls": [
-      "Arnbjorn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Hallgerd | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Tofa | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Ketil | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Bjorn | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9"
+      "Bjorn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Hervor | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Freydis | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Hauk | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Kolbein | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Gunnar | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9"
     ]
   },
   "golden-0/day-3": {
     "params": {},
     "souls": [
-      "Hervor | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Arnbjorn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Gunnhild | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Kolbein | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Helga | straw_braggart | HEL | honest | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 18",
       "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Sigrun | straw_braggart | HEL | honest | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 18",
-      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Einar | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
-      "Gunnar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
+      "Skeggi | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
     ]
   },
   "golden-0/day-4": {
@@ -41,14 +41,14 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Thora | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Ulf | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Astrid | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Hauk | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 19",
-      "Starkad | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Einar | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Halfdan | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
+      "Bergthora | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Jorunn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
+      "Thorir | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 19",
+      "Grim | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
+      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Egil | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Starkad | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
     ]
   },
   "golden-0/day-5": {
@@ -56,53 +56,53 @@
       "freyjaWhim": "whim.amber"
     },
     "souls": [
-      "Orm | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Freydis | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
-      "Hrafn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Thorir | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Vigdis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Hallvard | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Svein | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Starkad | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Gunnar | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Eyvind | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22"
+      "Hallvard | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Bergthora | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
+      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
+      "Skeggi | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Astrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
+      "Thorstein | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Sigurd | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Kolbein | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Thorir | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Grim | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22"
     ]
   },
   "golden-1/day-1": {
     "params": {},
     "souls": [
-      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Starkad | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Bjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Hallvard | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Ingrid | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
-      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2"
+      "Sigrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Thorir | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Grim | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Ragnhild | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2"
     ]
   },
   "golden-1/day-2": {
     "params": {},
     "souls": [
-      "Vagn | fled_coward | HEL | lie fled=false/confess | proof body.front.grip 1s | difficulty 9",
-      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Skeggi | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Kolbein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
-      "Gunnar | straw_braggart | HEL | lie cause=battle/confess | proof body.front.grip 1s | difficulty 9",
-      "Starkad | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
-      "Astrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
+      "Eyvind | fled_coward | HEL | lie fled=false/confess | proof body.front.grip 1s | difficulty 9",
+      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Asbjorn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Egil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
+      "Einar | straw_braggart | HEL | lie cause=battle/confess | proof body.front.grip 1s | difficulty 9",
+      "Grim | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
     ]
   },
   "golden-1/day-3": {
     "params": {},
     "souls": [
-      "Svein | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Gudrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Bergthora | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
-      "Orm | fled_coward | HEL | lie fled=false/confess | proof body.front.grip 1s | difficulty 14",
-      "Gunnar | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
-      "Sigrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Grim | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
-      "Arnbjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.grip 1s | difficulty 14"
+      "Orm | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Sigrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Sigrun | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
+      "Thorstein | fled_coward | HEL | lie fled=false/confess | proof body.front.grip 1s | difficulty 14",
+      "Eyvind | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
+      "Vigdis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Egil | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
+      "Kolbein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.grip 1s | difficulty 14"
     ]
   },
   "golden-1/day-4": {
@@ -110,15 +110,15 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Thorstein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Tofa | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Thorir | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
-      "Hallvard | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Asa | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
-      "Hrafn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Egil | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
-      "Kolbein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Helga | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 26"
+      "Gunnar | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Astrid | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Starkad | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Bergthora | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Skeggi | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Bjorn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Ragnhild | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 26"
     ]
   },
   "golden-1/day-5": {
@@ -126,52 +126,52 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Ketil | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Yrsa | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Thorstein | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
-      "Hallvard | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
-      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Helga | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Thorir | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22",
-      "Ulf | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Hrafn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
+      "Vagn | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Thorunn | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Egil | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
+      "Thorir | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
+      "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Svein | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22",
+      "Eyvind | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Halfdan | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
     ]
   },
   "golden-2/day-1": {
     "params": {},
     "souls": [
-      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Thorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Tofa | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Thorir | straw_braggart | HEL | honest | proof body.front.woundsFront 1s | difficulty 6",
-      "Ulf | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9"
+      "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Jorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Thora | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Starkad | straw_braggart | HEL | honest | proof body.front.woundsFront 1s | difficulty 6",
+      "Orm | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9"
     ]
   },
   "golden-2/day-2": {
     "params": {},
     "souls": [
-      "Thorstein | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Gunnar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Starkad | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
-      "Freydis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Hauk | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Skeggi | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16"
+      "Ketil | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Vagn | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Sigrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Einar | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Asbjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16"
     ]
   },
   "golden-2/day-3": {
     "params": {},
     "souls": [
-      "Hallvard | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Bjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Egil | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
       "Helga | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Vagn | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 14",
-      "Kolbein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
-      "Arnbjorn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
-      "Orm | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 14",
-      "Hrafn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
+      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Hallvard | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 14",
+      "Bjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
+      "Toki | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
+      "Kolbein | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 14",
+      "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
     ]
   },
   "golden-2/day-4": {
@@ -179,14 +179,14 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Arnbjorn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Starkad | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
       "Vagn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Halfdan | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 25",
-      "Ulf | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
-      "Svein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Aud | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
+      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Thorstein | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 25",
+      "Thorir | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
+      "Arnbjorn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Sigrid | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
     ]
   },
   "golden-2/day-5": {
@@ -194,51 +194,51 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Eyvind | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Hauk | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Skeggi | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Hallgerd | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
-      "Kolbein | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Halfdan | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Vagn | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Eyvind | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Hervor | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
+      "Hallvard | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
       "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Sigurd | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Bjorn | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9"
+      "Gunnar | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Egil | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9"
     ]
   },
   "golden-3/day-1": {
     "params": {},
     "souls": [
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Freydis | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
       "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Orm | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Ketil | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9"
+      "Thora | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Hallvard | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Gunnar | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9"
     ]
   },
   "golden-3/day-2": {
     "params": {},
     "souls": [
-      "Einar | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
-      "Vagn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Kolbein | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
-      "Gudrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Starkad | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 9",
-      "Asa | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16",
-      "Vigdis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
+      "Thorir | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Skeggi | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Arnbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Egil | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Sigrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Hallvard | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 9",
+      "Hervor | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16",
+      "Thorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
     ]
   },
   "golden-3/day-3": {
     "params": {},
     "souls": [
-      "Halfdan | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Gudrun | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
-      "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Sigurd | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 14",
-      "Arnbjorn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
-      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
+      "Starkad | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Tofa | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
+      "Ragnhild | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Kolbein | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 14",
+      "Ketil | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
+      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
     ]
   },
   "golden-3/day-4": {
@@ -246,14 +246,14 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Toki | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Svein | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 19",
-      "Eyvind | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 26",
-      "Ragnhild | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
-      "Hauk | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Thorstein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Ingrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20"
+      "Einar | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Kolbein | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 19",
+      "Gunnar | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 26",
+      "Aud | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Halfdan | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Orm | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Thorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20"
     ]
   },
   "golden-3/day-5": {
@@ -261,53 +261,53 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Ulf | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Astrid | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Ingrid | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
-      "Hallgerd | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Asbjorn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
-      "Arnbjorn | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Svein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
-      "Vagn | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9"
+      "Eyvind | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Vigdis | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Sigrun | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
+      "Tofa | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Toki | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
+      "Grim | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Sigurd | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
+      "Ketil | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9"
     ]
   },
   "golden-4/day-1": {
     "params": {},
     "souls": [
-      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Hauk | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9",
-      "Asa | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront 1s | difficulty 9",
-      "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Hrafn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Orm | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
+      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Orm | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9",
+      "Ingrid | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront 1s | difficulty 9",
+      "Hallgerd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Thorir | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
     ]
   },
   "golden-4/day-2": {
     "params": {},
     "souls": [
-      "Asbjorn | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 6",
-      "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Halfdan | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Arnbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
       "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Toki | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
-      "Asa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Sigrid | fled_coward | HEL | honest | proof body.back.woundsBack 3s | difficulty 12",
-      "Hallvard | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15"
+      "Sigurd | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Sigrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Gudrun | fled_coward | HEL | honest | proof body.back.woundsBack 3s | difficulty 12",
+      "Asbjorn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15"
     ]
   },
   "golden-4/day-3": {
     "params": {},
     "souls": [
-      "Bergthora | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Skeggi | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 11",
-      "Thorstein | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 14",
-      "Hauk | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
-      "Sigrun | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
-      "Ingrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
+      "Gudrun | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Hallvard | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Einar | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 11",
+      "Vagn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 14",
+      "Orm | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Vigdis | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Astrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
     ]
   },
   "golden-4/day-4": {
@@ -315,14 +315,14 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Thorstein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Vagn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Hallvard | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Svein | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
       "Aud | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Toki | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Asa | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Thorir | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20"
+      "Egil | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
+      "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Helga | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
+      "Orm | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20"
     ]
   },
   "golden-4/day-5": {
@@ -330,52 +330,52 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Skeggi | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
-      "Einar | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
-      "Sigrid | fled_coward | HEL | honest | proof body.front.lips+body.back.woundsBack 4s | difficulty 28",
-      "Sigurd | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
-      "Eyvind | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Hauk | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
-      "Arnbjorn | fled_coward | HEL | lie fled=false/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Ketil | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Freydis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26"
+      "Eyvind | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
+      "Starkad | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
+      "Ingrid | fled_coward | HEL | honest | proof body.front.lips+body.back.woundsBack 4s | difficulty 28",
+      "Einar | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
+      "Egil | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Skeggi | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Hauk | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
+      "Hallvard | fled_coward | HEL | lie fled=false/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Svein | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26"
     ]
   },
   "golden-5/day-1": {
     "params": {},
     "souls": [
-      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Thora | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Hallvard | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Thorstein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Starkad | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
+      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Vigdis | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Gunnar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Yrsa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Bjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Svein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
     ]
   },
   "golden-5/day-2": {
     "params": {},
     "souls": [
-      "Starkad | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
-      "Vigdis | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
-      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Thorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Helga | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Gudrun | fled_coward | HEL | honest | proof body.back.woundsBack 3s | difficulty 12",
-      "Orm | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16"
+      "Vagn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Tofa | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
+      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Yrsa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Freydis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Ingrid | fled_coward | HEL | honest | proof body.back.woundsBack 3s | difficulty 12",
+      "Svein | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16"
     ]
   },
   "golden-5/day-3": {
     "params": {},
     "souls": [
-      "Sigrun | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Skeggi | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
+      "Astrid | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Orm | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
       "Eyvind | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
-      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Hrafn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
-      "Arnbjorn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
-      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
+      "Jorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Vagn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
+      "Asbjorn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
     ]
   },
   "golden-5/day-4": {
@@ -383,15 +383,15 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Yrsa | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Vigdis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Hallvard | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 19",
-      "Sigrid | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Ulf | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
-      "Bjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 26",
-      "Hrafn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Gunnar | straw_braggart | HEL | honest | proof body.front.skin 1s | difficulty 16"
+      "Bergthora | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Gunnhild | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Halfdan | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 19",
+      "Thorunn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Toki | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
+      "Orm | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 26",
+      "Thorstein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Bjorn | straw_braggart | HEL | honest | proof body.front.skin 1s | difficulty 16"
     ]
   },
   "golden-5/day-5": {
@@ -399,52 +399,52 @@
       "freyjaWhim": "whim.amber"
     },
     "souls": [
-      "Vagn | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Eyvind | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
       "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Thorir | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Hrafn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
-      "Vigdis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Svein | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Asa | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Sigurd | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
-      "Thorunn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
+      "Sigurd | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Bjorn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
+      "Sigrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
+      "Thorstein | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Helga | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Orm | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
+      "Yrsa | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14"
     ]
   },
   "golden-6/day-1": {
     "params": {},
     "souls": [
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Arnbjorn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront 1s | difficulty 9",
-      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Bergthora | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Asa | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Starkad | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
+      "Bjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Grim | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront 1s | difficulty 9",
+      "Hallgerd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Jorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Ragnhild | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Halfdan | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
     ]
   },
   "golden-6/day-2": {
     "params": {},
     "souls": [
-      "Arnbjorn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Hallvard | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
       "Starkad | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9",
-      "Ingrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Bergthora | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Thorir | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
-      "Sigurd | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 6"
+      "Astrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Gudrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Sigurd | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
+      "Egil | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 6"
     ]
   },
   "golden-6/day-3": {
     "params": {},
     "souls": [
-      "Halfdan | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Ingrid | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
-      "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Bergthora | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 14",
-      "Skeggi | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Helga | fled_coward | HEL | lie fled=false/confess | proof body.front.grip 1s | difficulty 14",
-      "Thorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Hallvard | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
-      "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
+      "Asbjorn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Hervor | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Ingrid | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 14",
+      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Thorunn | fled_coward | HEL | lie fled=false/confess | proof body.front.grip 1s | difficulty 14",
+      "Jorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Arnbjorn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
+      "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14"
     ]
   },
   "golden-6/day-4": {
@@ -452,14 +452,14 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Halfdan | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Jorunn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Freydis | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Skeggi | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Thora | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
       "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Hervor | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Ulf | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 16",
-      "Einar | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15"
+      "Sigrid | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Tofa | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Hallvard | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 16",
+      "Thorstein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15"
     ]
   },
   "golden-6/day-5": {
@@ -467,53 +467,53 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Tofa | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
-      "Svein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
-      "Hauk | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
-      "Ragnhild | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 24",
-      "Astrid | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Asbjorn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Orm | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Freydis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Arnbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Hervor | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
+      "Sigurd | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
+      "Orm | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
+      "Jorunn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 24",
+      "Thora | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Hauk | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Bjorn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Yrsa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
       "Kolbein | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Bergthora | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22"
+      "Aud | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22"
     ]
   },
   "golden-7/day-1": {
     "params": {},
     "souls": [
-      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Skeggi | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Thora | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Orm | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Starkad | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
+      "Hervor | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Thorstein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Helga | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Eyvind | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Grim | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
     ]
   },
   "golden-7/day-2": {
     "params": {},
     "souls": [
-      "Halfdan | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Hervor | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Sigrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Ulf | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Starkad | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Thora | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Gudrun | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
+      "Egil | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Freydis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Bergthora | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Hallvard | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Jorunn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Ingrid | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Kolbein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
     ]
   },
   "golden-7/day-3": {
     "params": {},
     "souls": [
-      "Egil | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Bergthora | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Eyvind | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
+      "Hallvard | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Helga | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Arnbjorn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
       "Vagn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
-      "Thorunn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
-      "Sigurd | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 14",
+      "Ingrid | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
+      "Thorstein | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 14",
       "Svein | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21"
     ]
   },
@@ -522,15 +522,15 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Asbjorn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Ketil | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Ulf | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Einar | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Arnbjorn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 19",
-      "Vagn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
-      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Toki | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 25",
-      "Ragnhild | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15"
+      "Eyvind | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Asbjorn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Bjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Grim | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
+      "Thorstein | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 19",
+      "Arnbjorn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Gunnhild | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Skeggi | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 25",
+      "Jorunn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15"
     ]
   },
   "golden-7/day-5": {
@@ -538,55 +538,55 @@
       "freyjaWhim": "whim.amber"
     },
     "souls": [
-      "Thora | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Starkad | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Gunnhild | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Bjorn | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Hauk | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
-      "Tofa | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
-      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Vagn | fled_coward | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22",
-      "Thorir | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
-      "Yrsa | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.front.lips+body.back.woundsBack 5s | difficulty 32",
-      "Ketil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26"
+      "Aud | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Asbjorn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Astrid | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Vagn | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Hallvard | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
+      "Helga | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
+      "Gunnar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
+      "Grim | fled_coward | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22",
+      "Halfdan | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
+      "Hervor | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.front.lips+body.back.woundsBack 5s | difficulty 32",
+      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26"
     ]
   },
   "golden-8/day-1": {
     "params": {},
     "souls": [
       "Gunnar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Kolbein | straw_braggart | HEL | honest | proof body.front.woundsFront 1s | difficulty 6",
-      "Ulf | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Hallvard | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Eyvind | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Asbjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
+      "Hallvard | straw_braggart | HEL | honest | proof body.front.woundsFront 1s | difficulty 6",
+      "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Vagn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Toki | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
     ]
   },
   "golden-8/day-2": {
     "params": {},
     "souls": [
-      "Astrid | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
-      "Hallgerd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Orm | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
-      "Gunnhild | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
-      "Skeggi | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Jorunn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
-      "Einar | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
-      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
+      "Gunnhild | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Sigrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Vagn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Thora | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Kolbein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Hallgerd | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Skeggi | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 9",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9"
     ]
   },
   "golden-8/day-3": {
     "params": {},
     "souls": [
-      "Svein | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Orm | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
-      "Vagn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
-      "Ragnhild | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Asbjorn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
-      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Hauk | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 14"
+      "Sigurd | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Egil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
+      "Hauk | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
+      "Ingrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Eyvind | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Thorir | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip 1s | difficulty 14"
     ]
   },
   "golden-8/day-4": {
@@ -594,14 +594,14 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
+      "Egil | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Ketil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
+      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Gunnar | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Toki | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
+      "Kolbein | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 19",
       "Halfdan | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Hauk | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
-      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Ulf | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Egil | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
-      "Orm | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 19",
-      "Hallvard | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20"
+      "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20"
     ]
   },
   "golden-8/day-5": {
@@ -609,51 +609,51 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Svein | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
-      "Egil | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Thorir | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Vagn | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
+      "Sigurd | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Grim | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
       "Toki | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 21",
-      "Starkad | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Hallgerd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Jorunn | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
-      "Hrafn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
-      "Ulf | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 24"
+      "Ketil | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Hervor | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Vigdis | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9",
+      "Bjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.hair+body.back.woundsBack 7s | difficulty 26",
+      "Egil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 24"
     ]
   },
   "golden-9/day-1": {
     "params": {},
     "souls": [
-      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Hrafn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Hervor | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Halfdan | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2"
+      "Thorir | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Gunnar | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Thorunn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Toki | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Hervor | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2"
     ]
   },
   "golden-9/day-2": {
     "params": {},
     "souls": [
-      "Tofa | fled_coward | HEL | honest | proof body.back.woundsBack 3s | difficulty 12",
+      "Gunnhild | fled_coward | HEL | honest | proof body.back.woundsBack 3s | difficulty 12",
       "Sigrid | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Hallvard | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
       "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Toki | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
-      "Skeggi | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6"
+      "Bjorn | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Ketil | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6"
     ]
   },
   "golden-9/day-3": {
     "params": {},
     "souls": [
-      "Thorir | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Einar | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
-      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Sigrid | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
+      "Gunnar | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Hauk | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Toki | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
+      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Vigdis | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
       "Bjorn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
-      "Sigurd | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14"
+      "Ketil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14"
     ]
   },
   "golden-9/day-4": {
@@ -661,15 +661,15 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Kolbein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Eyvind | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
-      "Hallvard | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
-      "Skeggi | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
-      "Gudrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Vagn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
-      "Asbjorn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
-      "Egil | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Halfdan | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Kolbein | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
+      "Arnbjorn | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
+      "Hauk | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
+      "Thorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Thorstein | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 20",
+      "Bjorn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Ketil | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.back.woundsBack 6s | difficulty 15",
       "Einar | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19"
     ]
   },
@@ -679,52 +679,52 @@
     },
     "souls": [
       "Gudrun | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
-      "Kolbein | fled_coward | HEL | lie fled=false/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Eyvind | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Einar | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
-      "Hauk | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
-      "Arnbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
-      "Gunnhild | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
-      "Jorunn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Gunnar | fled_coward | HEL | lie fled=false/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Asbjorn | fled_coward | HEL | lie fled=false/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Orm | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
+      "Starkad | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
+      "Helga | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
+      "Hervor | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
       "Sigurd | drowned_raider | RAN | lie cause=battle/confess | proof body.front.lips 1s | difficulty 9"
     ]
   },
   "golden-10/day-1": {
     "params": {},
     "souls": [
-      "Aud | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Hauk | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Jorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Sigurd | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 6",
       "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Sigurd | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
-      "Arnbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Bjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
+      "Kolbein | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 9",
+      "Skeggi | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Ketil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9"
     ]
   },
   "golden-10/day-2": {
     "params": {},
     "souls": [
-      "Ulf | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Thorir | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15",
+      "Gunnar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
       "Kolbein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Arnbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Skeggi | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16",
-      "Svein | straw_braggart | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Sigurd | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 16",
+      "Egil | straw_braggart | HEL | honest | proof body.front.grip 1s | difficulty 6",
       "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Egil | straw_braggart | HEL | honest | proof body.front.skin 1s | difficulty 6"
+      "Orm | straw_braggart | HEL | honest | proof body.front.skin 1s | difficulty 6"
     ]
   },
   "golden-10/day-3": {
     "params": {},
     "souls": [
-      "Gudrun | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Ulf | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
-      "Hauk | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Egil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
-      "Orm | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
-      "Gunnar | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 14",
-      "Thorstein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Asbjorn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21"
+      "Thorunn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Toki | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 20",
+      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Hallvard | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Grim | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
+      "Kolbein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21",
+      "Eyvind | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.grip 1s | difficulty 14",
+      "Skeggi | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Sigurd | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.back.woundsBack 4s | difficulty 21"
     ]
   },
   "golden-10/day-4": {
@@ -732,16 +732,16 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Hauk | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Grim | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
-      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Halfdan | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Sigrid | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
-      "Sigrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Toki | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 16",
-      "Asbjorn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
-      "Egil | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Kolbein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20"
+      "Thorir | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Svein | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
+      "Einar | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Arnbjorn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Thora | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
+      "Tofa | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Bjorn | fled_coward | HEL | honest | proof body.front.grip 1s | difficulty 16",
+      "Hauk | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 19",
+      "Asbjorn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Toki | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20"
     ]
   },
   "golden-10/day-5": {
@@ -749,53 +749,53 @@
       "freyjaWhim": "whim.leftHanded"
     },
     "souls": [
-      "Skeggi | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
-      "Ketil | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.front.lips+body.back.woundsBack 5s | difficulty 32",
-      "Kolbein | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
-      "Asbjorn | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Starkad | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
-      "Bjorn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
-      "Asa | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
-      "Egil | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21"
+      "Gunnar | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
+      "Vagn | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.woundsFront+body.front.lips+body.back.woundsBack 5s | difficulty 32",
+      "Eyvind | drowned_raider | RAN | honest | proof body.front.lips 1s | difficulty 6",
+      "Svein | fled_coward | HEL | lie fled=false/confess | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
+      "Egil | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 26",
+      "Ragnhild | fled_coward | HEL | lie fled=false/excuse | proof body.front.lips+body.back.woundsBack 4s | difficulty 31",
+      "Hallvard | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.gripHand+body.front.woundsFront+body.front.lips+body.back.woundsBack 7s | difficulty 21"
     ]
   },
   "golden-11/day-1": {
     "params": {},
     "souls": [
-      "Ragnhild | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Ingrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Aud | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9",
-      "Ulf | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
-      "Thorunn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
-      "Eyvind | straw_braggart | HEL | honest | proof body.front.woundsFront 1s | difficulty 6"
+      "Helga | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Astrid | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Jorunn | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9",
+      "Toki | straw_braggart | HEL | lie cause=battle/confess | proof body.front.woundsFront 1s | difficulty 9",
+      "Hervor | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront 2s | difficulty 2",
+      "Ketil | straw_braggart | HEL | honest | proof body.front.woundsFront 1s | difficulty 6"
     ]
   },
   "golden-11/day-2": {
     "params": {},
     "souls": [
-      "Arnbjorn | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Orm | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 15",
+      "Grim | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Skeggi | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 9",
+      "Kolbein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
+      "Halfdan | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9",
       "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Ketil | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 9",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Toki | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 9",
-      "Eyvind | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 9",
-      "Thorstein | straw_braggart | HEL | honest | proof body.front.grip 1s | difficulty 6",
-      "Hauk | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15"
+      "Hauk | straw_braggart | HEL | honest | proof body.front.grip 1s | difficulty 6",
+      "Bjorn | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 15"
     ]
   },
   "golden-11/day-3": {
     "params": {},
     "souls": [
-      "Kolbein | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Vagn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
-      "Halfdan | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Ketil | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 14",
-      "Skeggi | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
-      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Asbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
-      "Tofa | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
-      "Eyvind | straw_braggart | HEL | lie cause=battle/confess | proof body.front.grip 1s | difficulty 14"
+      "Toki | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Orm | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 14",
+      "Vagn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Asbjorn | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 14",
+      "Bjorn | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip 1s | difficulty 14",
+      "Svein | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Sigurd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.back.woundsBack 5s | difficulty 14",
+      "Vigdis | fled_coward | HEL | lie fled=false/confess | proof body.back.woundsBack 3s | difficulty 20",
+      "Ketil | straw_braggart | HEL | lie cause=battle/confess | proof body.front.grip 1s | difficulty 14"
     ]
   },
   "golden-11/day-4": {
@@ -803,16 +803,16 @@
       "freyjaWhim": "whim.redHair"
     },
     "souls": [
-      "Halfdan | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
-      "Starkad | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
-      "Gudrun | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Hauk | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
-      "Arnbjorn | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Hallvard | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 16",
-      "Orm | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
-      "Vigdis | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 19",
-      "Gunnar | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
-      "Hallgerd | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15"
+      "Kolbein | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15",
+      "Svein | fled_coward | HEL | lie fled=false/excuse | proof body.back.woundsBack 3s | difficulty 25",
+      "Hallgerd | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Asbjorn | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 19",
+      "Sigurd | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Thorir | disarmed_warrior | HEL | honest | proof body.front.grip 1s | difficulty 16",
+      "Egil | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 20",
+      "Freydis | straw_braggart | HEL | lie cause=battle/excuse | proof body.front.skin 1s | difficulty 19",
+      "Einar | disarmed_warrior | HEL | lie grip=weapon/excuse | proof body.front.grip 1s | difficulty 19",
+      "Jorunn | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.hair+body.back.woundsBack 6s | difficulty 15"
     ]
   },
   "golden-11/day-5": {
@@ -820,16 +820,16 @@
       "freyjaWhim": "whim.amber"
     },
     "souls": [
-      "Gunnar | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
-      "Vigdis | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Bjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Ulf | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 24",
-      "Asa | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
-      "Aud | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
-      "Ragnhild | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
-      "Halfdan | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
-      "Arnbjorn | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
-      "Sigrun | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22"
+      "Orm | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
+      "Ragnhild | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
+      "Skeggi | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
+      "Svein | straw_braggart | HEL | lie cause=battle/confess | proof body.front.skin 1s | difficulty 24",
+      "Hallgerd | disarmed_warrior | HEL | lie grip=weapon/confess | proof body.front.grip+body.front.lips 2s | difficulty 25",
+      "Vigdis | freyja_pick | FOLKVANGR | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 21",
+      "Thorunn | drowned_raider | RAN | lie cause=battle/excuse | proof body.front.lips 1s | difficulty 9",
+      "Thorstein | not_quite_dead | RETURN | honest | proof tool.feather.breath 10s | difficulty 14",
+      "Hauk | honest_warrior | VALHALLA | honest | proof body.front.grip+body.front.woundsFront+body.front.lips+body.front.ornament+body.back.woundsBack 7s | difficulty 26",
+      "Tofa | disarmed_warrior | HEL | honest | proof body.front.grip+body.front.lips 2s | difficulty 22"
     ]
   }
 }

@@ -17,6 +17,9 @@ test('web demo boots with demo content only', async ({ page }, testInfo) => {
   await expect(page.getByTestId('layout')).toHaveText(testInfo.project.name === 'phone' ? 'drawer' : 'desk');
   // The demo offers practice on Days 1-3 only.
   await expect(page.locator('[data-testid^="practice-"]')).toHaveCount(3);
+  // Its five stamps, and no registry.
+  await expect(page.locator('.title__keys')).toContainText('T feather · C compare');
+  await expect(page.locator('.title__keys')).toContainText('1-5 stamps');
 
   // No missing string keys, no campaign content, no Case Lab.
   const body = await page.locator('body').innerText();
@@ -67,4 +70,16 @@ test('web demo registers its service worker (updates wait for the title screen)'
     return null;
   });
   expect(script).toBe('http://localhost:4173/Vikings-R-Us/sw.js');
+});
+
+test('a practice shift can be left from the pause screen', async ({ page }) => {
+  await page.goto('./');
+  await page.getByTestId('practice-2').click();
+  await page.getByTestId('begin').click();
+  await expect(page.getByTestId('soul-count')).toHaveText(/^Soul 1 of \d+$/);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('leave-note')).toHaveText('Leaving ends this practice shift.');
+  await page.getByTestId('leave-shift').click();
+  await expect(page.getByTestId('practice-2')).toBeVisible();
+  await expect(page.getByTestId('soul-count')).toHaveCount(0);
 });

@@ -1,4 +1,4 @@
-import { type DayCtx, PENALTY } from '@cots/engine';
+import { type DayCtx, PENALTY, questionCostMs, ruleText, type ShiftState, toolCost } from '@cots/engine';
 import { t } from '../i18n';
 
 /** Decree, Freyja's whim and the rulebook in force: shown at the briefing and on the desk. */
@@ -19,7 +19,21 @@ export function Decree({ ctx }: { ctx: DayCtx }) {
  * The rulebook in force. With the rule tracker on (an assist), `out` holds the rules that what the
  * player has seen of the soul already rules out: they're greyed and say so.
  */
-export function RulesPanel({ ctx, decree = true, out }: { ctx: DayCtx; decree?: boolean; out?: ReadonlySet<string> }) {
+/**
+ * The rulebook, the day's decree first unless `decree` is false. With a shift's `state`, the costs are
+ * what they are in that shift, after the campaign's upgrades.
+ */
+export function RulesPanel({
+  ctx,
+  decree = true,
+  out,
+  state,
+}: {
+  ctx: DayCtx;
+  decree?: boolean;
+  out?: ReadonlySet<string>;
+  state?: ShiftState;
+}) {
   return (
     <div class="rules">
       {decree ? <Decree ctx={ctx} /> : null}
@@ -32,7 +46,7 @@ export function RulesPanel({ ctx, decree = true, out }: { ctx: DayCtx; decree?: 
       <ol class="rules__order">
         {ctx.rules.map((r) => (
           <li key={r.id} data-rule={r.id} class={out?.has(r.id) ? 'is-out' : undefined} data-out={out?.has(r.id)}>
-            {t(r.text)}
+            {t(ruleText(r, ctx.day))}
             {out?.has(r.id) ? <span class="rules__out"> ({t('ui.rules.out')})</span> : null}
           </li>
         ))}
@@ -70,12 +84,14 @@ export function RulesPanel({ ctx, decree = true, out }: { ctx: DayCtx; decree?: 
       <h3>{t('ui.rules.tools')}</h3>
       <ul>
         {[...ctx.tools].map(([id, s]) => (
-          <li key={id}>{t('ui.rules.toolCost', { tool: t(`tool.${id}`), s })}</li>
+          <li key={id}>
+            {t('ui.rules.toolCost', { tool: t(`tool.${id}`), s: (state ? toolCost(state, ctx, id) : undefined) ?? s })}
+          </li>
         ))}
         <li>
           {t('ui.rules.costs', {
             bad: PENALTY.badCompare / 1000,
-            q: PENALTY.question / 1000,
+            q: (state ? questionCostMs(state) : PENALTY.question) / 1000,
             h: PENALTY.hint / 1000,
           })}
         </li>

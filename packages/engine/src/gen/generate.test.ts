@@ -1,4 +1,4 @@
-import { loadContent, oracleSolve } from '@cots/testkit';
+import { loadContent, loadDailyContent, oracleSolve } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
 import { createDayContext } from '../logic/context';
@@ -106,6 +106,60 @@ describe('determinism', () => {
       const names = generateDay('names', ctx).cases.map((c) => `${c.evidence.look.name}`);
       expect(new Set(names).size).toBe(names.length);
     }
+  });
+
+  test.prop([seedArb], { numRuns: 12 })(
+    'the story’s people keep their names, and a day repeats no name or look until they run out',
+    (seed) => {
+      // The family's and the story souls' names, from the packs' names.reserved pools.
+      const reserved = new Set(
+        Object.entries(content.pools)
+          .filter(([id]) => id.startsWith('names.reserved'))
+          .flatMap(([, names]) => names),
+      );
+      expect([...reserved]).toEqual(expect.arrayContaining(['Ulf', 'Asa', 'Hrafn', 'Thorvald']));
+      const names = (id: string) => (content.pools[id] ?? []).filter((n) => !reserved.has(n)).length;
+      // What there is to go round: given names, and looks (build × beard × clothing).
+      const room = {
+        m: { names: names('names.m'), looks: 3 * 4 * 4 },
+        f: { names: names('names.f'), looks: 3 * 4 },
+      };
+      for (const d of content.days) {
+        expect(d.queue.knobs.spreadLooks, `day ${d.day}`).toBe(true);
+        const cases = generateDay(seed, createDayContext(content, d.day, seed)).cases;
+        const looks = cases.map((c) => c.evidence.look);
+        for (const l of looks) {
+          expect(reserved.has(l.name), `${l.name} on day ${d.day}`).toBe(false);
+          expect(
+            [...reserved].some((r) => l.patronym.startsWith(r)),
+            `${l.patronym} on day ${d.day}`,
+          ).toBe(false);
+        }
+        // Each name, and each combination of build, beard and clothing, is given once before any is
+        // given twice (a Day 20 with more than 22 men, or 12 women, runs out: about 1 run in 700).
+        for (const g of ['m', 'f'] as const) {
+          const theirs = looks.filter((l) => l.gender === g);
+          const distinct = (key: (l: (typeof theirs)[number]) => string) => new Set(theirs.map(key)).size;
+          expect(
+            distinct((l) => l.name),
+            `${g} names on day ${d.day}`,
+          ).toBe(Math.min(theirs.length, room[g].names));
+          expect(
+            distinct((l) => `${l.build}|${l.beard}|${l.tunic}`),
+            `${g} looks on day ${d.day}`,
+          ).toBe(Math.min(theirs.length, room[g].looks));
+        }
+      }
+    },
+  );
+
+  it('leaves the Daily’s souls as they were: its spec spreads nothing and it reserves no names', () => {
+    const dailyContent = loadDailyContent();
+    const spec = dailyContent.daily;
+    expect(spec).toBeDefined();
+    expect(spec?.queue.knobs.spreadLooks).toBeUndefined();
+    expect(spec?.queue.knobs.spreadLines).toBeUndefined();
+    expect(Object.keys(dailyContent.pools).filter((id) => id.startsWith('names.reserved'))).toEqual([]);
   });
 });
 

@@ -401,6 +401,13 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
   for (const r of content.rules) {
     pred(r.when, `rule ${r.id}`);
     key(r.text, `rule ${r.id}`);
+    let since = r.since;
+    for (const later of r.texts ?? []) {
+      key(later.text, `rule ${r.id}'s wording from day ${later.since}`);
+      if (later.since <= since)
+        problems.push(`rule ${r.id}'s later wordings must come in day order, after day ${since}.`);
+      since = later.since;
+    }
   }
   for (const s of content.speech) {
     if (s.fact) fact(s.fact, `speech slot ${s.slot}`);
