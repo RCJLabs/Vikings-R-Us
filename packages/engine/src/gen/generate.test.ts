@@ -14,11 +14,11 @@ const seedArb = fc.string({ minLength: 1, maxLength: 12 });
 // Every day with a spec, from the demo's first to the full game's latest mechanics.
 const dayArb = fc.constantFrom(...content.days.map((d) => d.day));
 const RUNS = Number(process.env.FAIRNESS_RUNS ?? 150);
-// A run generates a whole day and, for the oracle checks, enumerates every world the evidence allows. That is
-// exponential in the free facts: Days 10-12 (faith, Thor's hammer, the trickster) made the partial-evidence
-// check about 100 ms a run on a laptop. Budget 250 ms a run so a busy CI runner doesn't time out; the nightly's
-// thousands of runs need minutes, not vitest's 5 s.
-const TIMEOUT_MS = Math.max(10_000, RUNS * 250);
+// A run generates a whole day and, for the oracle checks, solves every soul by brute force. The oracle only
+// enumerates the facts the rules can reach (testkit/src/oracle.ts), so a run is about 6 ms on a laptop. Budget
+// 60 ms a run so a busy CI runner and later days have room; the nightly's thousands of runs need minutes, not
+// vitest's 5 s.
+const TIMEOUT_MS = Math.max(10_000, RUNS * 60);
 
 const revalidate = (
   c: CaseSpec,

@@ -12,6 +12,7 @@ export {
 } from './campaign-sim';
 export { loadContent, loadDailyContent } from './content';
 export { type OracleResult, oracleSolve } from './oracle';
+export { oracleSolveReference } from './oracle-reference';
 export { checkThresholds, type SweepOptions, type SweepReport, sweep, THRESHOLDS } from './sweep';
 export { fc };
 
