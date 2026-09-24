@@ -42,7 +42,7 @@ endings:
     text: ending.naglfar.text
   - id: ending.rebirth
     order: 200
-    when: { all: [{ state: day, gte: 20 }, { state: flags.truth, gte: 3 }, { state: ragnarok, gte: 40 }, { state: family.home, gte: 1 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: flags.wood, gte: 1 }, { state: flags.truth, gte: 3 }, { state: ragnarok, gte: 40 }, { state: family.home, gte: 1 }] }
     title: ending.rebirth.title
     text: ending.rebirth.text
   - id: ending.smuggled

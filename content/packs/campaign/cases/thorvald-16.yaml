@@ -1,0 +1,21 @@
+# DRAFT writing. Thorvald Ketilsson, "the Unlucky", back at the gate on Day 16
+# ("Thorvald, finally?", docs/build-plan.md §2). He still isn't dead: the
+# feather stirs, and he goes back again. At dusk he tells you about
+# Hoddmímir's wood (scene.d16.night), whatever you stamped.
+id: case.thorvald16
+personas: [confused]
+truth:
+  alive: { is: true }
+  cause: { is: battle }
+  grip: { is: weapon }
+  woundsFront: { is: 1 }
+  woundsBack: { is: 0 }
+  trickster: { is: false }
+  nailsGrown: { is: false }
+lies: []
+look: { gender: m, name: Thorvald, patronym: Ketilsson, age: 31, build: broad, beard: braided }
+lines: [case.thorvald16.today, case.thorvald16.bear, case.thorvald16.fine]
+expect: RETURN
+onStamp:
+  - { stamped: '*', effects: [{ flag: thorvald16_judged }] }
+  - { stamped: RETURN, effects: [{ flag: thorvald16_returned }] }

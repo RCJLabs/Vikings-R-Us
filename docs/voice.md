@@ -27,6 +27,12 @@ A dry comedy about paperwork at the end of the world, told straight, over a fami
 | **Ragna**, your mother | Heard through Ulf. Proud, worried, feeds people. |
 | **The stranger** (Loki, unnamed until later) | Polite, delighted, precise. Compliments odd details (nails). Never threatens. Always leaves a small wrongness behind. His lips carry small stitch scars (Brokkr sewed them shut), the Day 12 tell. |
 | **The quartermaster** | Never seen. Birch-bark decrees in a very small hand. Enjoys fines. |
+| **Loki**, named from Day 12 | The stranger, once Skögul has named him. The same manners. Deals, never threats; he keeps names "somewhere very dry". |
+| **The clerk** (Day 10) | Of the White Christ's department of the dead. Polite, precise, tired; loves a form, fears a duplicate. Kind to the souls in his care. He never preaches and nobody mocks his faith: the joke is two departments sharing one table. |
+| **Muninn** (Day 13) | Odin's raven of memory, forgetting more each day. Speaks in short, certain sentences, then loses the thread. |
+| **Móðguðr** (Day 14) | Keeper of the bridge to Hel's hall. Pale, formal, literal. Speaks for Hel and waits to be noticed. |
+| **Thorvald the Unlucky** | Cheerful, bewildered and never quite dead. He should have died many times; the joke is that he's the luckiest man alive. |
+| **The ferryman** | Never seen. Older than the rocks, won't give his name, takes rings. |
 | **The dead** | By persona: braggarts perform for an audience, the confused ask about tables, cowards look for a quieter hall. Each line is something a person would say at a gate, not a clue read aloud. |
 
 ## Lengths

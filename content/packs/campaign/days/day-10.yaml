@@ -1,7 +1,8 @@
-# Mechanics day (M5): the clerk and TRANSFER. Playable in Practice; its story comes with M7.
+# Day 10 (M5 mechanics): the clerk and TRANSFER. Story (M7 draft): comedy between afterlife departments.
 day: 10
 sunS: 720
 decree: decree.d10
+scenes: { morning: scene.d10.morning, night: scene.d10.night }
 economy:
   wage: 8
   docBonus: 1

@@ -1,7 +1,8 @@
-# Mechanics day (M4): playable in Practice; its story comes with Days 7-20 (M7).
+# Day 11: forged tallies. Story (M7 draft): who is forging them.
 day: 11
 sunS: 720
 decree: decree.d11
+scenes: { morning: scene.d11.morning, night: scene.d11.night }
 economy:
   wage: 8
   docBonus: 1

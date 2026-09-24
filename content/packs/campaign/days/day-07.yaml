@@ -1,7 +1,8 @@
-# Mechanics day (M4): playable in Practice; its story comes with Days 7-20 (M7).
+# Day 7: borrowed blades and copied Ulfberhts, the rune-lens. Story (M7 draft): a scandal among the smiths.
 day: 7
 sunS: 630
 decree: decree.d7
+scenes: { morning: scene.d7.morning, night: scene.d7.night }
 economy:
   wage: 8
   docBonus: 1

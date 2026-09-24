@@ -1,7 +1,8 @@
-# Mechanics day (M4): playable in Practice; its story comes with Days 7-20 (M7).
+# Day 8: clip long nails against Naglfar. Story (M7 draft): the stranger's offer, "don't clip".
 day: 8
 sunS: 660
 decree: decree.d8
+scenes: { morning: scene.d8.morning, night: scene.d8.night }
 economy:
   wage: 8
   docBonus: 1

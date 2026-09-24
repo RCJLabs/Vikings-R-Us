@@ -2,6 +2,7 @@
 day: 17
 sunS: 880
 decree: decree.d17
+scenes: { morning: scene.d17.morning, night: scene.d17.night }
 economy:
   wage: 8
   docBonus: 1

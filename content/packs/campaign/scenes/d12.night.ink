@@ -1,6 +1,7 @@
 # draft
 // FIRST DRAFT (M5 slice): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
 EXTERNAL flag(name)
+EXTERNAL home(id)
 {
 - flag("loki_detained"):
   The cells behind the long hall are Odin's, which means their walls are very thick and nobody has ever checked the back one.
@@ -13,13 +14,29 @@ EXTERNAL flag(name)
   At dusk a man you never saw in the queue is sitting on the end of your table. When he smiles, his lips are crossed with small pale scars.
   "You missed me. Everyone does." # speaker: stranger
 }
-"Your brother writes a good letter. Careful hand. Square." # speaker: stranger
-He has one of Ulf's letters. You don't know how.
-"He's working for a friend of mine now. We're building a ship up north. A very big ship, out of very small pieces." # speaker: stranger
+{
+- flag("ulf_shipyard") && home("brother"):
+  "Your brother writes a good letter. Careful hand. Square." # speaker: stranger
+  He has one of Ulf's letters. You don't know how.
+  "He's working for a friend of mine now. We're building a ship up north. A very big ship, out of very small pieces." # speaker: stranger
+- home("brother"):
+  "Your brother writes a good letter. Careful hand. Square." # speaker: stranger
+  He has one of Ulf's letters. You don't know how.
+  "He turned down some work with a friend of mine. A pity. I hear he carves a lovely straight line. Ulfberht, spelled beautifully." # speaker: stranger
+- home("mother"):
+  "Your mother writes a good letter. She presses too hard." # speaker: stranger
+  He has one of your mother's letters. You don't know how.
+- else:
+  "Your aunt writes a good letter. Your sister draws a lovely wolf." # speaker: stranger
+  He has one of the letters from home. You don't know how.
+}
+{ flag("loki_deal"):
+  "The names you gave me are safe, by the way. I keep them somewhere very dry." # speaker: stranger
+}
 He looks at his own nails, which are very long and very clean, and smiles at them fondly.
-"Odin's people will want a report from you tonight. Who you saw, what he said, who his friends are. Leave my name out of it, and I'll leave your brother's out of mine." # speaker: stranger
+"Odin's people will want a report from you tonight. Who you saw, what he said, who his friends are. Leave my name out of it, and I'll leave your {home("brother"):brother's|family's} out of mine." # speaker: stranger
 * [Write the report. Name him.]
-  You write it all down: the borrowed face, the scars, the ship in the north. You write Ulf's name last, and your hand shakes on it.
+  You write it all down: the borrowed face, the scars, the ship in the north. {home("brother"):You write Ulf's name last, and your hand shakes on it.|Your hand shakes anyway.}
   Skögul takes the report without reading it and carries it to the hall. She doesn't look at you.
   # fx: flag reported_loki
   # fx: standing odin +2

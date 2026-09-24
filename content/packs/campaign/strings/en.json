@@ -104,6 +104,10 @@
   "rv.huginn.primeSigned": "Huginn: Took the sign of the cross at a market. Never the water. Kept the hammer too.",
   "q.any.deflect.1": "Wouldn't you like to know.",
   "speaker.clerk": "The clerk",
+  "speaker.loki": "Loki",
+  "speaker.muninn": "Muninn",
+  "speaker.modgudr": "Móðguðr",
+  "speaker.thorvald": "Thorvald",
   "case.loki12.nails": "You've been biting your nails. Don't. Somebody needs them.",
   "case.loki12.again": "We've met, haven't we? No. I'd remember a face like yours. I collect them.",
   "ending.sliceEnd.title": "The slice ends here",
@@ -151,7 +155,7 @@
   "ending.smuggled.title": "Smuggled home",
   "ending.smuggled.text": "The ferryman takes your rings and asks nothing. While the gods look the other way, your family crosses to a shore the wolf will never reach. You go back to the gate alone. Someone has to. DRAFT.",
   "ending.transfer.title": "The transfer",
-  "ending.transfer.text": "The clerk's contract was generous and full of small print. When the horn blows, you are reassigned to a warmer office in another department, with a pension. DRAFT.",
+  "ending.transfer.text": "The clerk's contract was generous and full of small print. When the horn blows, you are reassigned to a warmer room in another department, with a pension. DRAFT.",
   "ending.hel.title": "Hel's steward",
   "ending.hel.text": "Hel remembers who filled her hall when the gods wanted only heroes. After the fire, she makes you steward of the quiet dead, and you are good at it. DRAFT.",
   "ending.freyja.title": "Freyja's own",
@@ -161,5 +165,8 @@
   "ending.wolf.title": "The wolf wins",
   "ending.wolf.text": "Too few worthy dead, too many who ran, and Naglfar full to the rails. The gods fall quickly. From the gate you watch the fire come. DRAFT.",
   "ending.lastStand.title": "The last stand",
-  "ending.lastStand.text": "Twenty days at the gate. The host you chose fights, and falls, as the gods do. What comes after is not yours to judge. DRAFT."
+  "ending.lastStand.text": "Twenty days at the gate. The host you chose fights, and falls, as the gods do. What comes after is not yours to judge. DRAFT.",
+  "case.thorvald16.today": "Is it today? I was sure it was today.",
+  "case.thorvald16.bear": "Something big trod on me in the hills last night. I never saw what.",
+  "case.thorvald16.fine": "I feel fine, mostly. Is that bad?"
 }

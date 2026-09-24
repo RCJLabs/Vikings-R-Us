@@ -1,7 +1,8 @@
-# Day 9: no new rule. Draupnir drips tonight; the first big family choice (story in M7).
+# Day 9: no new rule. Draupnir drips tonight. Story (M7 draft): the first big family choice, Ulf's work in the north.
 day: 9
 sunS: 690
 decree: decree.d9
+scenes: { morning: scene.d9.morning, night: scene.d9.night }
 economy:
   wage: 8
   docBonus: 1

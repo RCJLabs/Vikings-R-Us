@@ -80,7 +80,7 @@ Checked each night in this order. The first that holds ends the run. Faction end
 | 10 | Demoted | two nights in a row below −30 rings (exists) |
 | 20 | Alone | the whole family gone (exists) |
 | 100 | Naglfar Sails Early | from Day 18: a deal with Loki, and enough nails left uncut |
-| 200 | Rebirth (true ending) | Day 20: the truth learned (story flags), a strong host, family at home |
+| 200 | Rebirth (true ending) | Day 20: the truth learned (story flags), the family hidden in Hoddmímir's wood, a strong host, someone at home |
 | 300 | Smuggled Home | Day 20: the ferryman paid (story), 60+ rings, someone left to smuggle |
 | 400 | The Transfer | Day 20: the clerk's contract signed, clerk standing 4+ |
 | 500 | Hel's Steward | Day 20: Hel leads the factions, standing 3+ |
@@ -91,6 +91,18 @@ Checked each night in this order. The first that holds ends the run. Faction end
 
 - **Host strength** = 2 × worthy einherjar − unworthy + 2 × Fólkvangr + 2 × Hel − 2 × uncut nails. This is the plan's formula scaled by two, so it stays integer.
 - **Bots must reach every ending.** The campaign sim gains story policies (side with Loki, save for the ferryman, and so on).
+
+## Story (M7.6, first draft)
+
+The scenes carry five threads toward the endings. Each step is an explicit choice; mistakes never advance a plot. Details and flags are in `docs/story-drafts.md`.
+
+- **Ulf and the ship (Naglfar):** Ulf carves copied Ulfberhts for a smith (Day 7), is offered shipyard work in the north by a man with very clean hands (Day 9), and builds Loki's ship if he goes. Loki offers the family a place aboard for uncut nails (Day 8, and a last time on Day 18).
+- **The truth (Rebirth):** Muninn says Odin knows how it ends (Day 13, the midpoint twist). Hel's bridge-keeper says Baldr will walk out afterwards (Day 14). Thorvald has slept in Hoddmímir's wood, where two people survive the fire (Day 16). Skögul sings the rest on the last night (Day 19).
+- **The ferry (Smuggled Home):** a nameless ferryman at the fjord's mouth, 20 rings for a place (Day 15) and 60 on the day.
+- **The clerk (The Transfer):** comedy between departments (Days 10 and 14), then a contract for a post in a department that isn't in the song (Day 18).
+- **Standing (faction endings):** Hel's strike (Day 14), Freyja against Odin's claim (Day 15), and who you ride with on the last night (Day 19).
+
+**Day 17 decides where the family is** when the horn blows: the ship, the ferry, the wood or home. Each choice drops the other plans, so the ending matches it. Taking Loki's deal on Day 18 replaces that plan with the ship.
 
 ## Economy
 
