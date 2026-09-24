@@ -1552,3 +1552,66 @@ a.btn {
   flex: 1 1 100%;
   text-align: center;
 }
+
+/* Assists: their settings, and the rules the tracker greys out. */
+.assists {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.assists legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.assists label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+}
+
+.assists input,
+.assists select {
+  flex: none;
+  font: inherit;
+  accent-color: var(--accent);
+}
+
+.assists select {
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+
+.assists p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.morning__assists summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.rules__order .is-out {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.rules__out {
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+.rules__tracker {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+}

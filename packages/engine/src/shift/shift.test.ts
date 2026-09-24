@@ -5,10 +5,13 @@ import { dailySeed } from '../calendar';
 import { DESTINATIONS, type Destination } from '../content/types';
 import type { DayCtx } from '../logic/context';
 import { solve } from '../logic/solver';
+import { Rng } from '../rng/rng';
 import {
+  assistNotes,
   DUSK_GRACE_MS,
   inspectable,
   PENALTY,
+  ruledOut,
   type ShiftAction,
   type ShiftEvent,
   type ShiftState,
@@ -372,6 +375,64 @@ describe('share text', () => {
     const sec = String(Math.floor((spare % 60_000) / 1000)).padStart(2, '0');
     expect(text.split('\n')[1]).toBe(`🟩🟩🟩🟩🟩🟩🟩🟩 8/8 · ${m}:${sec} to spare`);
   });
+});
+
+describe('assists', () => {
+  it('a slower sun gives more time and a faster one less, set as the shift begins', () => {
+    const { state, ctx } = startDaily();
+    const base = state.sunMs;
+    const begun = (sunPct: number) => stepShift(state, { t: 'begin', at: 0, assists: { sunPct } }, ctx).state;
+    expect(begun(50).sunMs).toBe(base * 2);
+    expect(begun(200).sunMs).toBe(base / 2);
+    expect(begun(50).config.assists).toEqual({ sunPct: 50 });
+    // Only the speeds on offer: anything else is the sun as designed, and no assist is kept.
+    expect(begun(60).sunMs).toBe(base);
+    expect(begun(60).config.assists).toBeUndefined();
+    expect(begun(100).config.assists).toBeUndefined();
+    // Dusk comes when the slower sun runs out, not the designed one.
+    expect(run(begun(50), ctx, [{ t: 'tick', at: base + 1000 }]).events).not.toContainEqual({ e: 'dusk' });
+    expect(run(begun(50), ctx, [{ t: 'tick', at: 2 * base }]).events).toContainEqual({ e: 'dusk' });
+  });
+
+  it('says in the share text which assists were on', () => {
+    const { state, ctx } = startDaily();
+    const assisted = stepShift(state, { t: 'begin', at: 0, assists: { sunPct: 50, tracker: true } }, ctx).state;
+    expect(shareText(assisted, daily, { title: 'T' })).toMatch(/ · sun ×0\.5, rule tracker$/);
+    const plain = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+    expect(shareText(plain, daily, { title: 'T' })).not.toMatch(/sun ×|tracker/);
+    expect(assistNotes({ sunPct: 200 })).toEqual(['sun ×2']);
+    expect(assistNotes({ sunPct: 75 })).toEqual(['sun ×0.75']);
+    // Fines aren't part of a Daily, so waiving them says nothing there.
+    expect(assistNotes({ noFines: true })).toEqual([]);
+  });
+
+  it('the rule tracker rules out a rule once what was seen settles it, and not on a presumption', () => {
+    // Day 1: a weapon in hand goes to Valhalla, anyone else to Hel.
+    const { state, ctx } = startShift(demo, { mode: 'practice', seed: 'tracker', day: 1 });
+    const begun = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+    const i = begun.cases.findIndex((c) => c.expect.dest === 'HEL');
+    const c = begun.cases[i];
+    if (!c) throw new Error('no soul for Hel on Day 1');
+    const weaponRule = ctx.rules[0]?.id ?? '';
+    const at = (seen: readonly string[]) => ruledOut({ ...begun, cursor: i, soul: { ...begun.soul, seen } }, ctx);
+    expect(at([])).toEqual([]);
+    expect(at(c.evidence.fields.map((f) => f.id))).toEqual([weaponRule]);
+  });
+
+  test.prop([fc.integer({ min: 1, max: 20 }), fc.nat(1000)], { numRuns: 40 })(
+    'the rule tracker never rules out the rule that applies, whatever has been seen or asked',
+    (day, n) => {
+      const { state, ctx } = startShift(full, { mode: 'practice', seed: `track${n}`, day });
+      const begun = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+      const rng = new Rng(`track${n}|${day}`);
+      begun.cases.forEach((c, i) => {
+        const seen = c.evidence.fields.filter(() => rng.chance(2, 3)).map((f) => f.id);
+        const questioned = c.lies.filter(() => rng.chance(1, 2)).map((l) => l.field);
+        const soul = { ...begun.soul, seen, questioned };
+        expect(ruledOut({ ...begun, cursor: i, soul }, ctx)).not.toContain(c.expect.rule);
+      });
+    },
+  );
 });
 
 describe('robustness', () => {

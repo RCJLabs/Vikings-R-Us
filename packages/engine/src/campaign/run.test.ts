@@ -200,6 +200,17 @@ describe('a campaign run', () => {
     expect(afterShift.standing).toMatchObject({ odin: -hel - valhalla, hel: -hel, freyja: 0 });
   });
 
+  it('an assist can waive the fines, and the day’s accounts keep which assists were on', () => {
+    const run = newRun(demo, 'nofines');
+    const wrongDay = shiftActions(run, demo, { wrong: () => true });
+    const fined = drive(demo, run, wrongDay).run.ledger[0];
+    expect(fined?.fines).toBeGreaterThan(0);
+    expect(fined?.assists).toBeUndefined();
+    const assists = { sunPct: 50, noFines: true };
+    const waived = drive(demo, run, [{ t: 'beginShift', at: 0, assists }, ...wrongDay.slice(1)]).run.ledger[0];
+    expect(waived).toMatchObject({ fines: 0, wrong: fined?.wrong, assists });
+  });
+
   it('leaves standing alone when every soul goes where it belongs', () => {
     const { afterShift } = playDay(demo, newRun(demo, 'stand'));
     expect(afterShift.ledger.at(-1)?.correct).toBeGreaterThan(0);
@@ -639,6 +650,26 @@ describe('saves', () => {
     expect(save.mornings.map((m) => m.day)).toEqual([1, 2, 3]);
     expect(save.queue).toEqual(run.shift?.cases);
     expect(resumeSave(save, full, 0)).toEqual({ run, rewound: false });
+  });
+
+  it('a day resumed mid-shift keeps the assists its shift began with', () => {
+    let save = startSave(demo, 'assisted', 0);
+    let run = resumeSave(save, demo, 0).run;
+    const ctx = runContext(demo, run);
+    const [, ...rest] = shiftActions(run, demo);
+    const actions: RunAction[] = [
+      { t: 'beginShift', at: 0, assists: { sunPct: 50, tracker: true } },
+      ...rest.slice(0, 2),
+    ];
+    for (const a of actions) {
+      const r = stepRun(run, a, { content: demo, ctx, ...(save.queue ? { queue: save.queue } : {}) });
+      save = recordAction(save, run, a, r.state);
+      run = r.state;
+    }
+    const resumed = resumeSave(save, demo, 0).run;
+    expect(resumed.shift?.config.assists).toEqual({ sunPct: 50, tracker: true });
+    expect(resumed.shift?.sunMs).toBe(2 * (ctx.spec.sunS * 1000));
+    expect(resumed).toEqual(run);
   });
 
   it('uses the saved queue, not a regenerated one', () => {

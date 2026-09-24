@@ -4,6 +4,7 @@ import { ENDLESS_SOULS, ENDLESS_STRIKES, shiftScore } from '@cots/engine';
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { artStyle } from './art';
+import { AssistSettings, assistText, atSunSpeed } from './assists';
 import { openCampaign } from './campaign/lazy';
 import { clockText, listText, t } from './i18n';
 import { issueFormUrl, links } from './links';
@@ -14,6 +15,7 @@ import { ReportDialog, ToastView, useAutoFocus } from './shift/Shift';
 import {
   applyUpdate,
   begin,
+  currentAssists,
   dailyProgress,
   dailyRecord,
   effectiveLayout,
@@ -99,6 +101,11 @@ function DailyCard() {
       {result ? (
         <p class="card__result" data-testid="daily-result">
           {t('ui.daily.result', { correct: result.correct, total: result.total })} {result.marks}
+        </p>
+      ) : null}
+      {result && assistText(result.assists) ? (
+        <p class="muted" data-testid="daily-assisted">
+          {t('ui.daily.assisted', { list: assistText(result.assists) ?? '' })}
         </p>
       ) : null}
       <button
@@ -202,6 +209,7 @@ function SettingsCard() {
         />{' '}
         {t('ui.settings.untimed')}
       </label>
+      <AssistSettings campaign={gameContent.campaign !== undefined} />
       {telemetryAvailable() ? (
         <label>
           <input
@@ -301,6 +309,9 @@ export function Briefing() {
   const s = session.value;
   if (!s) return null;
   const st = s.state;
+  // The shift takes up the assists as it begins; until then, show the sun they'll give it.
+  const assists = currentAssists(false, st.config.untimed);
+  const assisted = assistText(assists);
   return (
     <main class="screen screen--briefing">
       <h1 data-testid="briefing-title">{modeTitle(s)}</h1>
@@ -321,8 +332,13 @@ export function Briefing() {
       <p class="briefing__queue">
         {st.config.untimed
           ? t('ui.briefing.untimed', { n: st.cases.length })
-          : t('ui.briefing.queue', { n: st.cases.length, time: clockText(st.sunMs) })}
+          : t('ui.briefing.queue', { n: st.cases.length, time: clockText(atSunSpeed(st.sunMs, assists.sunPct)) })}
       </p>
+      {assisted ? (
+        <p class="muted" data-testid="briefing-assists">
+          {t('ui.assist.on', { list: assisted })}
+        </p>
+      ) : null}
       <div class="row">
         <button type="button" class="btn btn--primary btn--big" data-testid="begin" ref={focus} onClick={begin}>
           {t('ui.begin')}

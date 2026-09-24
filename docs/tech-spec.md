@@ -1427,6 +1427,37 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - The forecast assumes the family stays as it is tonight: food for everyone at home now, medicine a head for whoever falls sick.
 - Chance is shown as a percentage, not hidden. The design reason to keep it (skipping a bill is a gamble) still holds; the player just knows the odds.
 
+## 24. After M7: assists (audit item 6)
+
+**What changed**
+- **Sun speed**: ×0.5, ×0.75, ×1, ×1.5 or ×2, as the plan had it. A slower sun is the same shift with more of it: the sun's length is divided by the speed, and tool costs and penalties stay as they are, so in effect everything runs at the chosen speed. Shifts with no sun (Story Mode, practice without sun, Endless, the primer) ignore it.
+- **The rule tracker**: the rulebook greys out, and marks "ruled out", the rules that what the player has seen of the soul already rules out. It asks the solver for only what can't be wrong (`certainOnly`): no presumptions, and no saga tally believed, since it may be forged with the sign not yet seen; body signs, the ravens, tool readings, confessions and caught lies count. So it never greys out the rule that applies, which a property test checks on Days 1–20 with random parts of each soul seen and asked. With everything seen it rules out about 6.3 rules a soul (120 queues, Days 1–20), where on average 4.6 rules come before the one that applies.
+- **No fines** in the campaign: citations still come but cost nothing, and the audit counts every mistake forgiven. Story Mode keeps its own no-sun, no-fines rule, and shows only the tracker.
+- **Where they're set and kept**: device settings, in the title screen's settings and on each campaign morning. A shift takes them up with its `begin` action (the campaign's `beginShift`) and keeps them in its config, so a resumed Daily, a resumed campaign day and a bug report's replay all use the assists the shift began with, whatever the settings say now. The day's ledger keeps them too, and the audit says which were on.
+- **Results say so**: a Daily played with another sun speed or the tracker adds them to its share text ("· sun ×0.5, rule tracker") and shows "Played with …" under its result on the title screen.
+- **Telemetry**: shifts played with an assist aren't sent. The worker's schema is strict and has no field for assists, so it would refuse them; sending them means adding the field to the worker and deploying it first.
+
+**Measured** (campaign sim, 40 runs per policy, plain story; `pnpm sim campaign` and `pnpm sim campaign --no-fines`)
+
+| Bot | Night strategy | Demoted | Demoted with no fines |
+|---|---|---|---|
+| novice (65% right) | pays everything | 97.5% | 0% |
+| novice | frugal | 42.5% | 0% |
+| novice | upgrades first | 100% | 37.5% |
+| careless (40%) | pays everything | 100% | 100% |
+| competent (85%) | any | 0% | 0% |
+
+Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill by a quarter instead (fines kept) still left 19 of 30 novices demoted, and at 80% accuracy none were. Novices who get through without fines mostly come to the wolf's ending: their mistakes leave the host at 240 or less. The sim can't measure the sun speed or the tracker, because its bots have an accuracy, not a clock; whether those lift real players' accuracy is for playtests.
+
+**Tests**
+- Engine: the sun speed from the `begin` action (only the speeds on offer) and dusk at the slower sun's end; the share text's notes; the tracker on a Day 1 soul (nothing ruled out before looking, the weapon rule once the empty hand is seen); the tracker's property test; fines waived and the day's ledger keeping the assists; a campaign day resumed mid-shift keeping its assists.
+- e2e: the Daily with the sun at ×0.5 and the tracker (12:00 of sun, the rules the body rules out greyed and the one that applies not, the share text, the note under the result); a campaign day at ×2 with no fines (3:00 of sun, every mistake forgiven, the audit's note).
+
+**Known limits**
+- Assists apply from the next shift; changing one mid-shift does nothing to that shift.
+- The tracker only greys rules out. It never says which rule applies, and it reads nothing from testimony or a tally, so it rules out less than a player who reads an honest tally rightly.
+- Endless keeps one best score, with or without the tracker.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

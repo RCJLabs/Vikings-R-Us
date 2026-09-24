@@ -1,4 +1,5 @@
 import {
+  type Assists,
   billTotal,
   type Content,
   campaignOf,
@@ -163,11 +164,13 @@ function shiftActions(
   judging: Judging,
   rng: Rng,
   longNails: number,
+  assists?: Assists,
 ): RunAction[] {
-  const begun = stepRun(run, { t: 'beginShift', at: 0 }, { content, ctx }).state;
+  const beginShift: RunAction = { t: 'beginShift', at: 0, ...(assists ? { assists } : {}) };
+  const begun = stepRun(run, beginShift, { content, ctx }).state;
   const cases = begun.shift?.cases ?? [];
   const stamps = stampsFor(ctx);
-  const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+  const actions: RunAction[] = [beginShift];
   let at = 0;
   for (const c of cases) {
     at += 25_000;
@@ -253,6 +256,8 @@ export interface SimOptions {
   /** How the bot plays the story; scenes are skipped without `scenes`. */
   readonly story?: StoryPolicy;
   readonly scenes?: SceneTable;
+  /** Assists the bot plays every shift with (only waiving fines changes what a bot's day comes to). */
+  readonly assists?: Assists;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -277,7 +282,7 @@ export function simulateRun(
     if (options.scenes) run = playStory(run, content, ctx, options.scenes, 'morning', policy);
     const nails = policy.longNails;
     const longNails = nails && (!nails.deal || (run.flags.loki_deal ?? 0) > 0) ? nails.perDay : 0;
-    for (const a of shiftActions(run, content, ctx, judging, rng, longNails)) {
+    for (const a of shiftActions(run, content, ctx, judging, rng, longNails, options.assists)) {
       run = stepRun(run, a, { content, ctx }).state;
     }
     run = stepRun(run, { t: 'endAudit' }, { content, ctx }).state;
@@ -337,6 +342,7 @@ export function simulateCampaign(
   strategies: readonly NightStrategy[] = ['payAll', 'frugal', 'upgradesFirst'],
   stories: readonly StoryPolicy[] = [PLAIN],
   scenes?: SceneTable,
+  assists?: Assists,
 ): PolicyReport[] {
   const out: PolicyReport[] = [];
   const mean = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0) / Math.max(1, xs.length);
@@ -344,7 +350,11 @@ export function simulateCampaign(
     for (const strategy of strategies) {
       for (const story of stories) {
         const results = Array.from({ length: seeds }, (_, i) =>
-          simulateRun(content, `c${i}`, judging, strategy, { story, ...(scenes ? { scenes } : {}) }),
+          simulateRun(content, `c${i}`, judging, strategy, {
+            story,
+            ...(scenes ? { scenes } : {}),
+            ...(assists ? { assists } : {}),
+          }),
         );
         const endings: Record<string, number> = {};
         for (const r of results) endings[r.ending ?? 'none'] = (endings[r.ending ?? 'none'] ?? 0) + 1;

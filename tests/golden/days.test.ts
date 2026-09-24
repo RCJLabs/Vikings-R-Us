@@ -48,10 +48,16 @@ function summarize(days: readonly number[]) {
   return out;
 }
 
-it.each(FILES.map((f) => [f.file.split('/').pop(), f] as const))('generated days match %s', (_, { file, days }) => {
-  const actual = summarize(days);
-  if (process.env.UPDATE_GOLDEN === '1' || !existsSync(file)) {
-    writeFileSync(file, `${JSON.stringify(actual, null, 2)}\n`);
-  }
-  expect(actual).toEqual(JSON.parse(readFileSync(file, 'utf8')));
-});
+// Generating 12 seeds of every day takes about 4 s alone, so the default 5 s runs out when the whole suite
+// runs in parallel on a busy machine.
+it.each(FILES.map((f) => [f.file.split('/').pop(), f] as const))(
+  'generated days match %s',
+  (_, { file, days }) => {
+    const actual = summarize(days);
+    if (process.env.UPDATE_GOLDEN === '1' || !existsSync(file)) {
+      writeFileSync(file, `${JSON.stringify(actual, null, 2)}\n`);
+    }
+    expect(actual).toEqual(JSON.parse(readFileSync(file, 'utf8')));
+  },
+  30_000,
+);

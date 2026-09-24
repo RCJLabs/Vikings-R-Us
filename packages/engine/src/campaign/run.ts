@@ -18,6 +18,7 @@ import type { DayCtx } from '../logic/context';
 import { eval2 } from '../logic/pred';
 import { Rng } from '../rng/rng';
 import {
+  type Assists,
   type ShiftAction,
   type ShiftEvent,
   type ShiftMods,
@@ -36,7 +37,12 @@ import { type Bills, type DayLedger, evalState, type FamilyMember, type RunState
  */
 
 export type RunAction =
-  | { readonly t: 'beginShift'; readonly at: number }
+  | {
+      readonly t: 'beginShift';
+      readonly at: number;
+      /** The assists the player has on as the shift begins (they're kept with the day's shift). */
+      readonly assists?: Assists;
+    }
   | { readonly t: 'shift'; readonly action: ShiftAction }
   | { readonly t: 'endAudit' }
   | { readonly t: 'bills'; readonly bills: Bills }
@@ -267,6 +273,8 @@ function audit(
   const sent: Partial<Record<Destination, number>> = { ...run.sent };
   let naglfar = run.naglfar ?? 0;
   const flags: Record<string, number> = { ...run.flags };
+  const assists = shift.config.assists;
+  const fined = !run.story && !assists?.noFines;
   shift.verdicts.forEach((v: Verdict) => {
     const c = shift.cases[v.index];
     if (v.stamped === null) {
@@ -279,7 +287,7 @@ function audit(
       if (v.caught > 0) bonus += economy.docBonus;
     } else {
       wrong++;
-      if (!run.story && wrong > economy.warnings) {
+      if (fined && wrong > economy.warnings) {
         const i = Math.min(wrong - economy.warnings - 1, economy.fines.length - 1);
         fines += economy.fines[i] ?? 0;
       }
@@ -298,7 +306,17 @@ function audit(
     // Every soul sent on with a procedure skipped (so far only nails left uncut) builds Naglfar.
     naglfar += v.skipped?.length ?? 0;
   });
-  const ledger: DayLedger = { day: run.day, correct, wrong, unjudged, pay, bonus, fines, standing };
+  const ledger: DayLedger = {
+    day: run.day,
+    correct,
+    wrong,
+    unjudged,
+    pay,
+    bonus,
+    fines,
+    standing,
+    ...(assists ? { assists } : {}),
+  };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
   return {
@@ -579,7 +597,11 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         mods: shiftMods(run, env.content),
       };
       const { state } = startShift(env.content, config, env.queue ?? campaignQueue(run, env));
-      const begun = stepShift(state, { t: 'begin', at: action.at }, env.ctx);
+      const begun = stepShift(
+        state,
+        { t: 'begin', at: action.at, ...(action.assists ? { assists: action.assists } : {}) },
+        env.ctx,
+      );
       return {
         state: { ...run, phase: 'shift', shift: begun.state },
         events: begun.events.map((event) => ({ e: 'shift', event })),

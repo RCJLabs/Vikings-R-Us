@@ -46,6 +46,11 @@ export interface SolveOptions {
   readonly reveals?: ReadonlyMap<string, { readonly fact: string; readonly value: Value }>;
   /** The "trusting" bot: what the soul says (aloud or on its tally) overrides everything else. */
   readonly trustTestimony?: boolean;
+  /**
+   * Only what can't be wrong, for the rule tracker: no presumptions, and the saga tally isn't believed
+   * (it may be forged, with the sign not yet seen). Lies caught against it still count.
+   */
+  readonly certainOnly?: boolean;
 }
 
 export function isPerceivable(f: Field, ctx: DayCtx): boolean {
@@ -228,7 +233,7 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     }
   }
   const forgerySeen = perceived.some((f) => f.tell !== undefined);
-  if (carved.length > 0 && !refuted && !forgerySeen && !opts.trustTestimony) {
+  if (carved.length > 0 && !refuted && !forgerySeen && !opts.trustTestimony && !opts.certainOnly) {
     const saved = { beliefs: new Map(beliefs), asserted: new Map(asserted), conflicts: conflicts.length };
     let whole = true;
     for (const f of carved) {
@@ -309,7 +314,7 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
   }
 
   // Presumptions fill in only what nothing else established.
-  for (const [id, af] of ctx.facts) {
+  for (const [id, af] of opts.certainOnly ? [] : ctx.facts) {
     const p = af.def.presumption;
     if (p === undefined || af.def.derived) continue;
     const b = beliefs.get(id);

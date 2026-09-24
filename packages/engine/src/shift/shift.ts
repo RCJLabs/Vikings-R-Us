@@ -2,6 +2,7 @@ import type { Content, Destination, ToolId } from '../content/types';
 import { DESTINATIONS } from '../content/types';
 import { generateDay } from '../gen/generate';
 import type { CaseSpec, Field } from '../gen/types';
+import { revealsOf } from '../gen/validate';
 import { createDayContext, type DayCtx } from '../logic/context';
 import { isPerceivable, solve } from '../logic/solver';
 import { type QuestionResponse, questionResponse } from '../narrative/questions';
@@ -22,6 +23,44 @@ export interface ShiftMods {
   readonly sunS?: number;
 }
 
+/**
+ * Assists the player chose as the shift began (docs/tech-spec.md §24). None changes what is true about a
+ * soul: they change how much time there is, what the rulebook shows, and what mistakes cost.
+ */
+export interface Assists {
+  /** The sun's speed in percent: 50 gives twice the time, 200 half; 100 is as designed. */
+  readonly sunPct?: number;
+  /** The rulebook greys out the rules that what the player has seen of a soul already rules out. */
+  readonly tracker?: boolean;
+  /** Citations cost nothing (the campaign's fines). */
+  readonly noFines?: boolean;
+}
+
+/** The sun speeds on offer, in percent. */
+export const SUN_SPEEDS: readonly number[] = [50, 75, 100, 150, 200];
+
+/** Assists as the engine keeps them: a sun speed on offer other than 100, and only the flags that are on. */
+export function cleanAssists(a: Assists | undefined): Assists {
+  const sunPct = a?.sunPct !== undefined && SUN_SPEEDS.includes(a.sunPct) ? a.sunPct : 100;
+  return {
+    ...(sunPct !== 100 ? { sunPct } : {}),
+    ...(a?.tracker ? { tracker: true } : {}),
+    ...(a?.noFines ? { noFines: true } : {}),
+  };
+}
+
+/** How each sun speed on offer reads. */
+const SPEED_TEXT: Readonly<Record<number, string>> = { 50: '0.5', 75: '0.75', 150: '1.5', 200: '2' };
+
+/** What a result says about its assists, for share text: "sun ×0.5", "rule tracker". Empty when there are none. */
+export function assistNotes(a: Assists | undefined): string[] {
+  const clean = cleanAssists(a);
+  return [
+    ...(clean.sunPct !== undefined ? [`sun ×${SPEED_TEXT[clean.sunPct] ?? clean.sunPct}`] : []),
+    ...(clean.tracker ? ['rule tracker'] : []),
+  ];
+}
+
 export interface ShiftConfig {
   readonly mode: 'daily' | 'practice' | 'primer' | 'campaign';
   readonly seed: string;
@@ -31,6 +70,8 @@ export interface ShiftConfig {
   /** No sun timer (Story Mode, practice). */
   readonly untimed?: boolean;
   readonly mods?: ShiftMods;
+  /** Set as the shift begins, from the `begin` action, so replays keep them. */
+  readonly assists?: Assists;
 }
 
 export interface SoulState {
@@ -84,7 +125,7 @@ export interface ShiftState {
 }
 
 export type ShiftAction =
-  | { readonly t: 'begin'; readonly at: number }
+  | { readonly t: 'begin'; readonly at: number; readonly assists?: Assists }
   | { readonly t: 'inspect'; readonly fields: readonly string[]; readonly at: number }
   | { readonly t: 'flip'; readonly at: number }
   | { readonly t: 'tool'; readonly tool: ToolId; readonly at: number }
@@ -198,6 +239,21 @@ export function inspectable(state: ShiftState, ctx: DayCtx): Field[] {
   );
 }
 
+/**
+ * The rule tracker (an assist): today's rules that what the player has seen of the current soul already
+ * rules out. It reads only what can't be wrong (body signs, the ravens, tool readings and confessions), never
+ * a presumption or a tally not yet checked for forgery, so the rule that applies is never among them.
+ */
+export function ruledOut(state: ShiftState, ctx: DayCtx): string[] {
+  const c = currentCase(state);
+  if (!c) return [];
+  const seen = c.evidence.fields.filter((f) => state.soul.seen.includes(f.id));
+  const reveals = new Map([...revealsOf(c.lies)].filter(([lie]) => state.soul.questioned.includes(lie)));
+  return solve(seen, ctx, { reveals, certainOnly: true })
+    .rules.filter((r) => r.result === 'F')
+    .map((r) => r.rule);
+}
+
 /** Stamps available today, in a stable order. */
 export function stampsFor(ctx: DayCtx): Destination[] {
   return DESTINATIONS.filter((d) => ctx.destinations.has(d));
@@ -270,8 +326,17 @@ export function stepShift(
 ): { state: ShiftState; events: ShiftEvent[] } {
   if (action.t === 'begin') {
     if (state.phase !== 'briefing') return reject(state, 'the shift has already begun');
+    const assists = cleanAssists(action.assists);
+    const pct = assists.sunPct ?? 100;
     return {
-      state: { ...state, phase: 'shift', clock: { ...state.clock, startedAt: action.at } },
+      state: {
+        ...state,
+        phase: 'shift',
+        ...(Object.keys(assists).length > 0 ? { config: { ...state.config, assists } } : {}),
+        // A slower sun is the same shift with more of it: tool costs and penalties stay as they are.
+        sunMs: pct === 100 ? state.sunMs : Math.floor((state.sunMs * 100) / pct),
+        clock: { ...state.clock, startedAt: action.at },
+      },
       events: [{ e: 'begun' }],
     };
   }
@@ -466,10 +531,11 @@ export function shareText(
         ? 'Primer'
         : `Day ${state.config.day} practice`);
   const tail = state.endedBy === 'dusk' ? 'sun set' : `${clockText(score.spareMs)} to spare`;
+  const notes = assistNotes(state.config.assists);
   return [
     `${opts.title} · ${label} (g${content.genVersion})`,
     ...(opts.decree ? [opts.decree] : []),
-    `${marks} ${score.correct}/${score.total} · ${tail}`,
+    `${marks} ${score.correct}/${score.total} · ${tail}${notes.length > 0 ? ` · ${notes.join(', ')}` : ''}`,
     ...(opts.url ? [opts.url] : []),
   ].join('\n');
 }

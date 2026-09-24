@@ -1,7 +1,9 @@
 import { dailyChecks, dailyContent, gameContent, manifest } from 'virtual:content';
 import {
+  type Assists,
   type CivilDate,
   type Content,
+  cleanAssists,
   DAILY_EPOCH,
   type DayCtx,
   dailyNumber,
@@ -69,6 +71,10 @@ export interface Settings {
   readonly endlessBest: number;
   /** Campaign endings reached on this device, in any slot or run, first found first. */
   readonly endingsSeen: readonly string[];
+  /** Assists (docs/tech-spec.md §24): the sun's speed in percent, the rule tracker, no campaign fines. */
+  readonly sunPct: number;
+  readonly ruleTracker: boolean;
+  readonly noFines: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -83,6 +89,9 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: 0.6,
   endlessBest: 0,
   endingsSeen: [],
+  sunPct: 100,
+  ruleTracker: false,
+  noFines: false,
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -90,6 +99,19 @@ export const settings = signal<Settings>(DEFAULT_SETTINGS);
 export function effectiveLayout(): LayoutMode {
   const s = settings.value.layout;
   return s === 'auto' ? layoutMode.value : s;
+}
+
+/**
+ * The assists as set now, for the next shift. Waiving fines only means something in the campaign, and the
+ * sun's speed nothing in a shift without a sun.
+ */
+export function currentAssists(campaign = false, untimed = false): Assists {
+  const s = settings.value;
+  return cleanAssists({
+    ...(untimed ? {} : { sunPct: s.sunPct }),
+    tracker: s.ruleTracker,
+    ...(campaign ? { noFines: s.noFines } : {}),
+  });
 }
 
 /** Remembers that a campaign ending was reached here (for the endings gallery). */
@@ -120,6 +142,8 @@ export interface DailyResult {
   readonly marks: string;
   /** Whether this device's Daily matched the build's checksum table. */
   readonly guard?: GuardResult;
+  /** The assists it was played with (absent when none). */
+  readonly assists?: Assists;
 }
 
 export interface DailyRecord {
@@ -447,7 +471,8 @@ function finish(s: Session): void {
     return;
   }
   const telemetry = telemetryBase();
-  if (telemetry && settings.peek().telemetry) {
+  // Assisted shifts stay home until the telemetry schema can say so; the alpha's numbers stay comparable.
+  if (telemetry && settings.peek().telemetry && !s.state.config.assists) {
     sendShift(
       telemetry,
       shiftRecord({
@@ -473,6 +498,7 @@ function finish(s: Session): void {
       endedBy: s.state.endedBy ?? 'queue',
       marks: shareMarks(s.state),
       guard: s.mode.guard,
+      ...(s.state.config.assists ? { assists: s.state.config.assists } : {}),
     };
     dailyRecord.value = { v: 1, results: { ...dailyRecord.value.results, [String(s.mode.n)]: result } };
     dailyProgress.value = null;
@@ -620,7 +646,8 @@ export function startPrimer(): void {
 export const coachAcks = signal<readonly string[]>([]);
 
 export function begin(): void {
-  act({ t: 'begin' });
+  const assists = currentAssists(false, session.peek()?.state.config.untimed === true);
+  act({ t: 'begin', ...(Object.keys(assists).length > 0 ? { assists } : {}) });
   if (session.value?.state.phase === 'shift') screen.value = 'shift';
 }
 

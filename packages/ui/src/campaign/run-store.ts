@@ -21,6 +21,7 @@ import {
 import { batch, signal } from '@preact/signals';
 import {
   clock,
+  currentAssists,
   kvStore,
   mirror,
   noteEnding,
@@ -254,7 +255,10 @@ export function branchFrom(slot: number, day: number): void {
 }
 
 export function toGate(): void {
-  const r = dispatch({ t: 'beginShift', at: clock() });
+  // The day's shift takes up the assists as it begins, and the save keeps them with it.
+  const story = active.peek()?.run.story === true;
+  const assists = currentAssists(!story, story);
+  const r = dispatch({ t: 'beginShift', at: clock(), ...(Object.keys(assists).length > 0 ? { assists } : {}) });
   const a = active.peek();
   if (!r || !a || a.run.phase !== 'shift') return;
   openShift(a);

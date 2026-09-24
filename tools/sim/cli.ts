@@ -2,8 +2,9 @@
  * Generator sweeps and campaign simulations (docs/tech-spec.md §9-10).
  *   pnpm sim sweep [--seeds 200] [--days 1-11] [--prefix sweep] [--no-timing]   (default: every day with a spec)
  *   pnpm sim sweep --daily [--seeds 200]      Dailies #1..#seeds
- *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all]
- *     Bots play the target's scenes with each story policy (plain by default; see STORY_POLICIES).
+ *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all] [--no-fines]
+ *     Bots play the target's scenes with each story policy (plain by default; see STORY_POLICIES);
+ *     --no-fines plays every shift with that assist on.
  * Sweeps print a report and exit 1 if any CI threshold is breached.
  */
 import type { TargetId } from '@cots/content-schema';
@@ -32,9 +33,18 @@ if (cmd === 'campaign') {
   const stories = story === 'all' ? STORY_POLICIES : story.split(',').map(storyPolicy);
   const started = performance.now();
   const strategies = ['payAll', 'frugal', 'upgradesFirst'] as const;
-  const reports = simulateCampaign(loadContent(target), seeds, JUDGING, strategies, stories, loadScenes(target));
+  const noFines = process.argv.includes('--no-fines');
+  const reports = simulateCampaign(
+    loadContent(target),
+    seeds,
+    JUDGING,
+    strategies,
+    stories,
+    loadScenes(target),
+    noFines ? { noFines: true } : undefined,
+  );
   console.log(
-    `campaign sim: ${target}, ${seeds} runs per policy, ${((performance.now() - started) / 1000).toFixed(1)}s`,
+    `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
   );
   console.log(
     'judging    night          story      demoted  family lost  rings (mean / min)  upgrades   host  endings',

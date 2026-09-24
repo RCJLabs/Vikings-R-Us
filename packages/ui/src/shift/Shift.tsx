@@ -5,6 +5,7 @@ import {
   ENDLESS_STRIKES,
   type Field,
   PENALTY,
+  ruledOut,
   stampsFor,
   sunLeft,
   type Verdict,
@@ -439,6 +440,11 @@ function StampSheet({ s }: { s: Session }) {
   );
 }
 
+/** With the rule tracker on (as the shift began), the rules what's been seen of this soul rules out. */
+function trackerOut(s: Session): ReadonlySet<string> | undefined {
+  return s.state.config.assists?.tracker ? new Set(ruledOut(s.state, s.ctx)) : undefined;
+}
+
 function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 'drawer' }) {
   // Keyboard players land on the first thing to look at when a new soul arrives.
   useEffect(() => {
@@ -451,7 +457,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
     return (
       <div class="desk">
         <section class="paper paper--rules" aria-label={t('ui.tab.rules')}>
-          <RulesPanel ctx={s.ctx} />
+          <RulesPanel ctx={s.ctx} out={trackerOut(s)} />
         </section>
         <section class="desk__center">
           <BodyStage s={s} c={c} />
@@ -533,7 +539,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
         ) : tab === 'tally' ? (
           <Tally s={s} c={c} />
         ) : (
-          <RulesPanel ctx={s.ctx} />
+          <RulesPanel ctx={s.ctx} out={trackerOut(s)} />
         )}
       </div>
       <CompareBar />

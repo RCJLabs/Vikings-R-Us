@@ -34,12 +34,13 @@ import {
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
 import { signal } from '@preact/signals';
 import { useState } from 'preact/hooks';
+import { AssistSettings, assistText, atSunSpeed } from '../assists';
 import { clockText, hasText, listText, t } from '../i18n';
 import { openReport } from '../report';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from '../shift/Shift';
-import { type Screen, session, settings, toTitle } from '../store';
+import { currentAssists, type Screen, session, settings, toTitle } from '../store';
 import {
   active,
   branchFrom,
@@ -716,6 +717,9 @@ function Morning() {
   const { run, ctx } = a;
   const scene = pendingScene(run, 'morning');
   const sunS = ctx.spec.sunS + (shiftMods(run, gameContent).sunS ?? 0);
+  // Story Mode has no sun (and no fines): only the rule tracker means anything there.
+  const assists = currentAssists(!run.story, run.story);
+  const assisted = assistText(assists);
   const bills = billTotal(run, economyOf({ content: gameContent, ctx }), defaultBills(run));
   const tonight = bills.hearth + bills.food + bills.medicine;
   return (
@@ -741,12 +745,21 @@ function Morning() {
             <Decree ctx={ctx} />
             <RulebookChanges day={run.day} />
             <p class="briefing__queue">
-              {run.story ? t('ui.campaign.untimed') : t('ui.campaign.sun', { time: clockText(sunS * 1000) })}
+              {run.story
+                ? t('ui.campaign.untimed')
+                : t('ui.campaign.sun', { time: clockText(atSunSpeed(sunS * 1000, assists.sunPct)) })}
             </p>
             <p class="muted" data-testid="tonight-bills">
               {t('ui.campaign.tonightBills', { n: tonight })}
             </p>
           </section>
+          <details class="card morning__assists" data-testid="morning-assists">
+            <summary>
+              {t('ui.settings.assists')}
+              {assisted ? <span class="muted">: {assisted}</span> : null}
+            </summary>
+            <AssistSettings campaign={!run.story} sun={!run.story} />
+          </details>
           <div class="row">
             <button type="button" class="btn btn--primary btn--big" data-testid="to-gate" onClick={toGate}>
               {t('ui.campaign.toGate')}
@@ -776,7 +789,9 @@ function Audit() {
   const shift = a.run.shift;
   if (!ledger || !shift) return null;
   const economy = economyOf({ content: gameContent, ctx: a.ctx });
-  const forgiven = Math.min(ledger.wrong, a.run.story ? ledger.wrong : economy.warnings);
+  const waived = a.run.story || ledger.assists?.noFines === true;
+  const forgiven = Math.min(ledger.wrong, waived ? ledger.wrong : economy.warnings);
+  const assisted = assistText(ledger.assists);
   const score = shiftScore(shift);
   return (
     <main class="screen screen--audit">
@@ -784,6 +799,11 @@ function Audit() {
       <p class="summary__score" data-testid="audit-score">
         {t('ui.summary.score', { correct: ledger.correct, total: ledger.correct + ledger.wrong + ledger.unjudged })}
       </p>
+      {assisted ? (
+        <p class="muted" data-testid="audit-assists">
+          {t('ui.assist.on', { list: assisted })}
+        </p>
+      ) : null}
       <table class="ledger" data-testid="ledger">
         <tbody>
           <tr>

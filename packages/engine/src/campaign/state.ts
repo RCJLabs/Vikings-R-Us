@@ -1,5 +1,5 @@
 import { type Destination, FACTIONS, type Faction, type StatePred } from '../content/types';
-import type { ShiftState } from '../shift/shift';
+import type { Assists, ShiftState } from '../shift/shift';
 
 /**
  * A campaign run (docs/tech-spec.md §4). Plain JSON, never reads a clock:
@@ -43,6 +43,8 @@ export interface DayLedger {
    * today's story souls (and in a vertical slice, its jump). Absent in saves from before it was kept.
    */
   readonly story?: Readonly<Partial<Record<Faction, number>>>;
+  /** The assists the day's shift was played with (absent when none). */
+  readonly assists?: Assists;
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;
