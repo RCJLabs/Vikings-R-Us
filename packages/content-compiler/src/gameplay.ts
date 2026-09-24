@@ -6,6 +6,7 @@ import {
   CampaignPartSchema,
   CueSchema,
   DaySpecSchema,
+  EndlessTwistSchema,
   FactSchema,
   LawSchema,
   NamedPredicateSchema,
@@ -30,6 +31,7 @@ import type {
   Content,
   CueDef,
   DaySpec,
+  EndlessTwist,
   FactDef,
   FactLaw,
   NamedPredicate,
@@ -47,7 +49,7 @@ import type {
   ToolDef,
   WorldConstraint,
 } from '@cots/engine';
-import { createDayContext, type Effect, STATE_PATHS, type StatePred, scriptedCase } from '@cots/engine';
+import { COACH_FOCUS, createDayContext, type Effect, STATE_PATHS, type StatePred, scriptedCase } from '@cots/engine';
 import { z } from 'zod';
 
 /** The gameplay content one pack defines. Every list is optional in the pack's folder. */
@@ -78,6 +80,8 @@ export interface PackContent {
   scripted: ScriptedCaseDef[];
   procedures: ProcedureDef[];
   tallies: TallyTemplate[];
+  /** Endless's twists (`endless.yaml`). */
+  twists: EndlessTwist[];
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -123,6 +127,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     scripted: each('cases', ScriptedCaseSchema),
     procedures: list('procedures.yaml', ProcedureSchema),
     tallies: list('templates/tallies.yaml', TallyTemplateSchema),
+    twists: list('endless.yaml', EndlessTwistSchema),
     ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
     ...(existsSync(primerFile) ? { primer: parse(DaySpecSchema, readYaml(primerFile), primerFile) } : {}),
     ...(existsSync(campaignFile) ? { campaign: parse(CampaignPartSchema, readYaml(campaignFile), campaignFile) } : {}),
@@ -143,7 +148,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     for (let i = parts.length - 1; i >= 0; i--) if (parts[i]?.[k] !== undefined) return parts[i]?.[k];
     return undefined;
   };
-  const all = <K extends 'standing' | 'shop' | 'endings'>(k: K) =>
+  const all = <K extends 'standing' | 'shop' | 'endings' | 'aliases' | 'threads'>(k: K) =>
     parts.flatMap((p) => (p[k] ?? []) as NonNullable<CampaignPart[K]>[number][]);
   const required = ['lastDay', 'finale', 'startRings', 'family', 'draupnir', 'debtFloor', 'care', 'worthy'] as const;
   const missing = required.filter((k) => last(k) === undefined);
@@ -164,6 +169,8 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
       .map((x) => x.r),
     shop: all('shop'),
     endings: all('endings'),
+    ...(all('aliases').length > 0 ? { aliases: all('aliases') } : {}),
+    ...(all('threads').length > 0 ? { threads: all('threads') } : {}),
   };
 }
 
@@ -188,6 +195,7 @@ export function emptyPackContent(): PackContent {
     scripted: [],
     procedures: [],
     tallies: [],
+    twists: [],
   };
 }
 
@@ -206,6 +214,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
   const scripted = cat('scripted');
   const procedures = cat('procedures');
   const tallies = cat('tallies');
+  const twists = cat('twists');
   return {
     genVersion,
     facts: cat('facts'),
@@ -230,6 +239,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     ...(scripted.length > 0 ? { scripted } : {}),
     ...(procedures.length > 0 ? { procedures } : {}),
     ...(tallies.length > 0 ? { tallies } : {}),
+    ...(twists.length > 0 ? { twists } : {}),
   };
 }
 
@@ -246,6 +256,7 @@ export function idsOf(c: PackContent): string[] {
     ...c.testimony.map((x) => x.id),
     ...c.ravens.map((x) => x.id),
     ...c.questions.map((x) => x.id),
+    ...c.twists.map((x) => x.id),
     ...Object.keys(c.pools),
     ...Object.values(c.daily?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
     ...Object.values(c.primer?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
@@ -256,6 +267,14 @@ export function idsOf(c: PackContent): string[] {
     ...c.tallies.map((x) => x.id),
     ...c.days.flatMap((d) => Object.values(d.params ?? {}).flatMap((p) => p.pool.map((x) => x.id))),
   ];
+}
+
+/** A fact's values as strings, the way `words` and speech `chances` name them. */
+function valuesOf(f: FactDef): string[] {
+  const d = f.domain;
+  if (d.kind === 'enum') return d.values.map(String);
+  if (d.kind === 'bool') return ['false', 'true'];
+  return Array.from({ length: d.max - d.min + 1 }, (_, i) => String(d.min + i));
 }
 
 function walkPred(p: Pred, visit: (p: Pred) => void): void {
@@ -383,7 +402,15 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     pred(r.when, `rule ${r.id}`);
     key(r.text, `rule ${r.id}`);
   }
-  for (const s of content.speech) if (s.fact) fact(s.fact, `speech slot ${s.slot}`);
+  for (const s of content.speech) {
+    if (s.fact) fact(s.fact, `speech slot ${s.slot}`);
+    const def = content.facts.find((f) => f.id === s.fact);
+    for (const value of Object.keys(s.chances ?? {})) {
+      if (!def) problems.push(`speech slot ${s.slot} has chances by value but no fact.`);
+      else if (!valuesOf(def).includes(value))
+        problems.push(`speech slot ${s.slot} has a chance for "${value}", which ${def.id} can't be.`);
+    }
+  }
   dupes(
     'procedure',
     (content.procedures ?? []).map((p) => p.id),
@@ -408,6 +435,16 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
     key(t.msg, `template ${t.id}`);
     for (const pool of Object.values(t.params ?? {})) {
       if (!pools.has(pool)) problems.push(`template ${t.id} uses unknown pool "${pool}".`);
+    }
+  }
+  for (const f of content.facts) {
+    for (const [value, words] of Object.entries(f.words ?? {})) {
+      if (!valuesOf(f).includes(value)) problems.push(`fact ${f.id} has words for "${value}", which it can't be.`);
+      for (const [pool, word] of Object.entries(words)) {
+        if (!pools.has(pool)) problems.push(`fact ${f.id} fixes a word from unknown pool "${pool}".`);
+        else if (!content.pools[pool]?.includes(word))
+          problems.push(`fact ${f.id} fixes "${word}", which ${pool} doesn't have.`);
+      }
     }
   }
   for (const q of content.questions) {
@@ -447,6 +484,8 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
 
   if (content.campaign) problems.push(...lintCampaign(content, strings));
   problems.push(...lintScripted(content, strings));
+  problems.push(...lintLessons(content, strings));
+  problems.push(...lintTwists(content, strings));
 
   const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
   if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
@@ -487,6 +526,78 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
   return problems;
 }
 
+/**
+ * Endless's twists (docs/tech-spec.md §27): a decree the build has, a day they can start on, and shares
+ * only of destinations some rule sends souls to by that day. The tests generate every twist on every day
+ * it can come.
+ */
+function lintTwists(content: Content, strings: Readonly<Record<string, string>>): string[] {
+  const problems: string[] = [];
+  const ids = new Set<string>();
+  const lastDay = Math.max(0, ...content.days.map((d) => d.day));
+  for (const tw of content.twists ?? []) {
+    const where = `Endless twist ${tw.id}`;
+    if (ids.has(tw.id)) problems.push(`Duplicate Endless twist "${tw.id}".`);
+    ids.add(tw.id);
+    if (!(tw.decree in strings)) problems.push(`${where} uses missing string "${tw.decree}".`);
+    if (tw.since > lastDay) problems.push(`${where} starts on day ${tw.since}, after the build's last day.`);
+    for (const [dest, range] of Object.entries(tw.mix ?? {})) {
+      if (!content.rules.some((r) => r.then === dest && r.since <= tw.since)) {
+        problems.push(`${where} asks for ${dest} souls, which no rule sends anywhere by day ${tw.since}.`);
+      }
+      if (range && range[0] > range[1]) problems.push(`${where} has an empty share for ${dest}.`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * The coach's lessons (docs/tech-spec.md §25): each rides on its day's teaching soul, names things the
+ * coach can highlight, and waits on tools the day has. Whether each step can be done on the soul the
+ * day actually makes is for the tests, which generate it.
+ */
+function lintLessons(content: Content, strings: Readonly<Record<string, string>>): string[] {
+  const problems: string[] = [];
+  const ids = new Set<string>();
+  const specs: { d: DaySpec; name: string }[] = content.days.map((d) => ({ d, name: `day ${d.day}` }));
+  if (content.daily) specs.push({ d: content.daily, name: 'the Daily' });
+  if (content.primer) specs.push({ d: content.primer, name: 'the primer' });
+  for (const { d, name } of specs) {
+    if (!d.lesson) continue;
+    const where = `${name}'s lesson`;
+    if (!d.queue.teachFirst) problems.push(`${where} has no teaching soul (queue.teachFirst) to ride on.`);
+    const whim = (ref: string, what: string) => {
+      const param = ref.slice('whim:'.length);
+      const pool = d.params?.[param]?.pool;
+      if (!pool) problems.push(`${where} ${what} "${ref}", but the day has no param "${param}".`);
+      else if (pool.some((c) => !('fact' in c.is))) {
+        problems.push(`${where} ${what} "${ref}", whose choices don't each read one fact.`);
+      }
+    };
+    const steps = d.lesson.steps;
+    steps.forEach((step, i) => {
+      const at = `${where} step ${step.id}`;
+      if (ids.has(step.id)) problems.push(`Duplicate lesson step "${step.id}" (${where}).`);
+      ids.add(step.id);
+      if (!(step.text in strings)) problems.push(`${at} uses missing string "${step.text}".`);
+      for (const f of step.focus.split(/\s+/)) {
+        if (f.startsWith('whim:')) whim(f, 'highlights');
+        else if (!COACH_FOCUS.includes(f)) problems.push(`${at} highlights "${f}", which the coach doesn't know.`);
+      }
+      if (step.next && step.until) problems.push(`${at} is both a reading step and waits on something.`);
+      const until = step.until;
+      if (until && 'seen' in until && until.seen.startsWith('whim:')) whim(until.seen, 'waits on');
+      const tool = until && 'tool' in until ? until.tool : until && 'flipped' in until ? 'flip' : undefined;
+      if (tool && !content.tools.some((t) => t.id === tool && t.since <= d.day)) {
+        problems.push(`${at} waits on the ${tool}, which isn't taught by day ${d.day}.`);
+      }
+      const last = i === steps.length - 1;
+      if (last && (step.next || step.until)) problems.push(`${at}: the last step lasts until the soul is judged.`);
+    });
+  }
+  return problems;
+}
+
 /** Campaign cross-references (docs/tech-spec.md §10). */
 function lintCampaign(content: Content, strings: Readonly<Record<string, string>>): string[] {
   const c = content.campaign;
@@ -501,6 +612,7 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     seen.add(m.id);
     key(m.name, `family member ${m.id}`);
   }
+  for (const a of c.aliases ?? []) key(a.name, `the alias for ${a.faction}`);
   const shopIds = new Set<string>();
   for (const u of c.shop) {
     if (shopIds.has(u.id)) problems.push(`Duplicate shop item "${u.id}".`);
@@ -526,6 +638,16 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (e.when) walk(e.when, `ending ${e.id}`);
   }
   if (!endingIds.has(c.finale)) problems.push(`The campaign's finale "${c.finale}" isn't an ending.`);
+  const threadIds = new Set<string>();
+  for (const th of c.threads ?? []) {
+    if (threadIds.has(th.id)) problems.push(`Duplicate thread "${th.id}".`);
+    threadIds.add(th.id);
+    key(th.text, `thread ${th.id}`);
+    walk(th.when, `thread ${th.id}`);
+    if (th.count !== undefined && !STATE_PATHS.test(th.count)) {
+      problems.push(`thread ${th.id} counts unknown run state "${th.count}".`);
+    }
+  }
   if (!content.predicates.some((p) => p.id === c.worthy)) {
     problems.push(`The campaign's worthy predicate "${c.worthy}" doesn't exist.`);
   }

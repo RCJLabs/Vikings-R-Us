@@ -1,6 +1,9 @@
 - { slot: oath, fact: outlaw, chance: 25, since: 6 }
 - { slot: owner, fact: weaponOwner, chance: 20, since: 7 }
-- { slot: blade, fact: blade, chance: 25, since: 7 }
-- { slot: creed, fact: faith, chance: 20, since: 10 }
-# Only Loki says it (as his one lie): nobody else is asked.
-- { slot: guise, fact: trickster, chance: 0, since: 12 }
+# The proud owner of a real Ulfberht, and the truly baptized at the clerk's desk, say so more often
+# than most: liars always claim it, so otherwise the claim alone would nearly always be a lie.
+- { slot: blade, fact: blade, chance: 25, chances: { ulfberht: 60 }, since: 7 }
+- { slot: creed, fact: faith, chance: 20, chances: { baptized: 60 }, since: 10 }
+# Loki always says it (it's his one lie), and some honest souls say it too, so the line alone
+# never gives him away: only his lips do. At 15 about a third of the souls who say it are Loki.
+- { slot: guise, fact: trickster, chance: 15, since: 12 }

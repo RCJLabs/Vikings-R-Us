@@ -9,3 +9,26 @@
 - { id: rule.detain, order: 90, since: 12, when: { fact: trickster, is: true }, then: DETAIN, text: rule.detain }
 # Day 10: the baptized go to the clerk (after outlaws, who are Hel's whoever baptized them).
 - { id: rule.transfer, order: 300, since: 10, when: { fact: faith, is: baptized }, then: TRANSFER, text: rule.transfer }
+# Day 14: Hel's hall is full. Straw deaths nothing earlier claims go to the clerk, who has room.
+- id: rule.helFull
+  order: 950
+  since: 14
+  when: { fact: cause, in: [sickness, oldAge] }
+  then: TRANSFER
+  text: rule.helFull
+# Day 15: Odin names his own claim. It only changes anything when Freyja's whim fits too: then Odin's wins.
+- id: rule.odinClaim
+  order: 590
+  since: 15
+  when: { all: [{ ref: pred.worthy }, { param: freyjaWhim }, { param: odinClaim }] }
+  then: VALHALLA
+  text: rule.odinClaim
+# Day 16: liars forfeit the halls of the worthy. A soul they would take, caught in a lie, goes to Hel.
+- id: rule.liars
+  order: 580
+  since: 16
+  when: { all: [{ fact: liar, is: true }, { ref: pred.honored }] }
+  then: HEL
+  text: rule.liars
+# Day 17: the spear-mark loophole. A straw death marked for Odin before death is his.
+- { id: rule.spearMark, order: 640, since: 17, when: { fact: spearMark, is: true }, then: VALHALLA, text: rule.spearMark }

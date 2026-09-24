@@ -43,12 +43,29 @@ export function daysFromCivil({ year, month, day }: CivilDate): number {
   return era * 146097 + doe - 719468;
 }
 
+/** The date `days` days after 1970-01-01: the inverse of daysFromCivil (Hinnant's civil_from_days). */
+export function civilFromDays(days: number): CivilDate {
+  const z = days + 719468;
+  const era = floorDiv(z, 146097);
+  const doe = z - era * 146097;
+  const yoe = floorDiv(doe - floorDiv(doe, 1460) + floorDiv(doe, 36524) - floorDiv(doe, 146096), 365);
+  const doy = doe - (365 * yoe + floorDiv(yoe, 4) - floorDiv(yoe, 100));
+  const mp = floorDiv(5 * doy + 2, 153);
+  const month = mp < 10 ? mp + 3 : mp - 9;
+  return { year: yoe + era * 400 + (month <= 2 ? 1 : 0), month, day: doy - floorDiv(153 * mp + 2, 5) + 1 };
+}
+
 /** Daily puzzle number for a local calendar date; #1 is DAILY_EPOCH. */
 export function dailyNumber(date: CivilDate): number {
   if (!isValidCivilDate(date)) {
     throw new RangeError(`Invalid date ${date.year}-${date.month}-${date.day}`);
   }
   return daysFromCivil(date) - daysFromCivil(DAILY_EPOCH) + 1;
+}
+
+/** The date of Daily #n (for the archive of past Dailies). */
+export function dailyDate(n: number): CivilDate {
+  return civilFromDays(daysFromCivil(DAILY_EPOCH) + n - 1);
 }
 
 export function dailySeed(n: number): string {

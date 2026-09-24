@@ -18,6 +18,9 @@ At the end of the table the clerk looks up from his ledger.
   Skögul turns, very slowly, to look at you.
   "Where?" # speaker: skogul
   You tell her about the man on the end of your table on your third night, and the dead woman's nails.
+  { flag("loki_deal"):
+    You leave out the names you gave him.
+  }
   "Then he's already picked you out. That's worse." # speaker: skogul
   # fx: flag told_skogul
   # fx: standing odin +1

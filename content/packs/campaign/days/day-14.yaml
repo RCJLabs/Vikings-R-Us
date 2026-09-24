@@ -1,0 +1,61 @@
+# Day 14: Hel's hall is full. Straw deaths no earlier rule claims go to the clerk (TRANSFER).
+day: 14
+sunS: 820
+decree: decree.d14
+scenes: { morning: scene.d14.morning, night: scene.d14.night }
+economy:
+  wage: 8
+  docBonus: 1
+  warnings: 2
+  fines: [5, 10, 15]
+  costs: { hearth: 26, food: 11, medicine: 23 }
+params:
+  freyjaWhim:
+    pool:
+      - { id: whim.leftHanded, text: whim.leftHanded, is: { fact: gripHand, is: left } }
+      - { id: whim.redHair, text: whim.redHair, is: { fact: hair, is: red } }
+      - { id: whim.amber, text: whim.amber, is: { fact: ornament, is: amber } }
+queue:
+  count: [13, 15]
+  teachFirst: arch.bedridden
+  archetypes:
+    - { id: arch.honest_warrior, w: 2 }
+    - { id: arch.freyja_pick, w: 2 }
+    - { id: arch.disarmed_warrior, w: 2 }
+    - { id: arch.straw_braggart, w: 1 }
+    - { id: arch.fled_coward, w: 1 }
+    - { id: arch.not_quite_dead, w: 1 }
+    - { id: arch.drowned_raider, w: 2 }
+    - { id: arch.oathbreaker, w: 2 }
+    - { id: arch.borrowed_blade, w: 2 }
+    - { id: arch.ulfberht_braggart, w: 1 }
+    - { id: arch.long_nails, w: 1 }
+    - { id: arch.tally_forger, w: 2 }
+    - { id: arch.coward_forger, w: 1 }
+    - { id: arch.baptized, w: 2 }
+    - { id: arch.prime_signed, w: 1 }
+    - { id: arch.false_convert, w: 1 }
+    - { id: arch.loki, w: 2 }
+    - { id: arch.bedridden, w: 2 }
+  mix: { VALHALLA: [10, 30], FOLKVANGR: [5, 20], HEL: [20, 45], RETURN: [5, 10], RAN: [5, 20], TRANSFER: [15, 35], DETAIN: [5, 12] }
+  knobs:
+    lieRate: 100
+    maxLies: 1
+    decoyRate: 20
+    ravenRate: 20
+    forgetRate: 20
+    proofCostS: [0, 50]
+    maxTools: 3
+    maxDocs: 5
+    salienceFloor: 1
+    tallyRate: 40
+    muninnRecall: 50
+    huginnAside: 25
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d14.rules, text: coach.d14.rules, focus: rules, next: true }
+    - { id: d14.skin, text: coach.d14.skin, focus: face, until: { seen: body.front.skin } }
+    - { id: d14.stamp, text: coach.d14.stamp, focus: judge }

@@ -3,6 +3,7 @@ import type { DayCtx } from '../logic/context';
 import { judge } from '../logic/judge';
 import { Rng } from '../rng/rng';
 import { dressCase, tierKnobs } from './generate';
+import { pickLies, withLiars } from './lies';
 import { sampleTruth } from './sample';
 import type { CaseSpec } from './types';
 
@@ -39,12 +40,14 @@ export function scriptedCase(def: ScriptedCaseDef, ctx: DayCtx, runSeed: string,
       why = sampled.why;
       continue;
     }
-    const expected = judge(sampled.truth, ctx);
+    const planned = pickLies(arch, sampled.truth, ctx, knobs, rng.fork('lies'));
+    const truth = withLiars(sampled.truth, planned, ctx);
+    const expected = judge(truth, ctx);
     if (expected.dest !== def.expect) {
       why = `it would go to ${expected.dest}`;
       continue;
     }
-    const dressed = dressCase(arch, sampled.truth, expected, def.look, def.lines ?? [], ctx, knobs, rng);
+    const dressed = dressCase(arch, truth, expected, planned, def.look, def.lines ?? [], ctx, knobs, rng);
     if ('code' in dressed) {
       why = `${dressed.code}: ${dressed.detail}`;
       continue;
@@ -57,7 +60,7 @@ export function scriptedCase(def: ScriptedCaseDef, ctx: DayCtx, runSeed: string,
         procIndex,
         script: def.id,
         archetype: def.id,
-        truth: sampled.truth,
+        truth,
         lies: dressed.lies,
         evidence: dressed.evidence,
         expect: expected,

@@ -67,18 +67,30 @@ test.describe('the Body Lab', () => {
 test.describe('a landscape phone', () => {
   test.use({ viewport: { width: 740, height: 360 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
 
-  test('shows the body down the side at full height, with the tools clear of it', async ({ page }, info) => {
-    test.skip(info.project.name === 'desktop', 'the viewport is set here; one run is enough');
+  /** The body's frame on practice Day 3's first soul, and whether every tool button sits clear of it. */
+  async function stage(page: Page, coach: boolean) {
     await page.goto('./');
+    await page.locator('.card--settings summary').click();
+    await page.getByTestId('setting-coach').setChecked(coach);
     await page.getByTestId('practice-3').click();
     await page.getByTestId('begin').click();
+    await expect(page.getByTestId('coach')).toHaveCount(coach ? 1 : 0);
     const frame = await page.locator('.stage__frame').boundingBox();
-    expect(frame?.height ?? 0).toBeGreaterThan(250);
     const right = (frame?.x ?? 0) + (frame?.width ?? 0);
     const tools = await page
       .locator('.stage .btn--tool')
       .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().left));
-    expect(tools.length).toBeGreaterThan(0);
-    for (const left of tools) expect(left).toBeGreaterThanOrEqual(right);
+    return { height: frame?.height ?? 0, clear: tools.length > 0 && tools.every((left) => left >= right) };
+  }
+
+  test('shows the body down the side at full height, with the tools clear of it', async ({ page }, info) => {
+    test.skip(info.project.name === 'desktop', 'the viewport is set here; one run is enough');
+    const plain = await stage(page, false);
+    expect(plain.height).toBeGreaterThan(250);
+    expect(plain.clear).toBe(true);
+    // A lesson's coach takes a line at the top; the body keeps most of the height.
+    const coached = await stage(page, true);
+    expect(coached.height).toBeGreaterThan(200);
+    expect(coached.clear).toBe(true);
   });
 });

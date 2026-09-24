@@ -1,0 +1,7 @@
+# Endless's twists (docs/tech-spec.md §27): the decree for a round that brings nothing new (a day with no
+# teaching soul, or any round past the last day). A twist changes how the day's souls come, never its
+# rules; `since` is the first day whose mechanics it needs. DRAFT text.
+- { id: twist.liars, since: 1, decree: twist.liars, knobs: { lieRate: 200 } }
+- { id: twist.beds, since: 1, decree: twist.beds, mix: { HEL: [60, 80] } }
+- { id: twist.battle, since: 1, decree: twist.battle, mix: { VALHALLA: [50, 70] } }
+- { id: twist.mist, since: 3, decree: twist.mist, knobs: { decoyRate: 60 } }

@@ -23,4 +23,4 @@ export interface Platform {
 }
 
 export { copyText, noUpdates, shareWithFallback } from './share';
-export { type KeyValueStore, memoryStore, openStore, requestPersistence } from './storage';
+export { isPersisted, type KeyValueStore, memoryStore, openStore, requestPersistence } from './storage';

@@ -9,3 +9,8 @@
 - { id: tl.fled.true, asserts: { fact: fled, value: true }, msg: tl.fled.true }
 - { id: tl.owner.self, asserts: { fact: weaponOwner, value: self }, msg: tl.owner.self }
 - { id: tl.outlaw.false, asserts: { fact: outlaw, value: false }, msg: tl.outlaw.false }
+- { id: tl.cause.battle.2, asserts: { fact: cause, value: battle }, msg: tl.cause.battle.2, params: { place: pool.places } }
+- { id: tl.cause.battle.3, asserts: { fact: cause, value: battle }, msg: tl.cause.battle.3, params: { place: pool.places } }
+- { id: tl.grip.weapon.2, asserts: { fact: grip, value: weapon }, msg: tl.grip.weapon.2, params: { weapon: pool.weapons } }
+- { id: tl.fled.false.2, asserts: { fact: fled, value: false }, msg: tl.fled.false.2 }
+- { id: tl.outlaw.false.2, asserts: { fact: outlaw, value: false }, msg: tl.outlaw.false.2 }

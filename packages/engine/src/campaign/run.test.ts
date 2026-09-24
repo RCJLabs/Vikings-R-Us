@@ -1,21 +1,32 @@
 import { loadContent } from '@cots/testkit';
+import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
-import type { Content, Destination } from '../content/types';
+import type { Content, Destination, Effect } from '../content/types';
 import { generateDay } from '../gen/generate';
 import type { DayCtx } from '../logic/context';
 import {
+  billForecast,
   campaignOf,
   campaignQueue,
+  debtLimit,
   defaultBills,
+  endingFor,
+  factionKey,
+  hostMarks,
   newRun,
+  nightOutlook,
   type RunAction,
   type RunEnv,
   type RunEvent,
+  reachableEndings,
   shiftMods,
+  stampEffects,
+  stateMarks,
   stepRun,
+  threadsInPlay,
 } from './run';
 import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
-import type { RunState } from './state';
+import { type FamilyMember, factionsMet, hostParts, type RunState, ragnarokStrength } from './state';
 
 const demo = loadContent('web-demo');
 const full = loadContent('dev-full');
@@ -36,7 +47,7 @@ function drive(content: Content, run0: RunState, actions: readonly RunAction[]) 
   return { run, events, ctx };
 }
 
-/** A whole shift: stamp each soul right, or wrong where `wrong(i)` says so; catch lies if asked. */
+/** A whole shift: judge each soul right (clipping what needs it), or wrong where `wrong(i)` says so; catch lies if asked. */
 function shiftActions(
   run: RunState,
   content: Content,
@@ -53,7 +64,13 @@ function shiftActions(
       // Look at everything, then flag each contradiction the careful player would find.
       actions.push({ t: 'shift', action: { t: 'inspect', fields: c.evidence.fields.map((f) => f.id), at } });
     }
-    const dest: Destination = opts.wrong?.(i) ? (c.expect.dest === 'HEL' ? 'VALHALLA' : 'HEL') : c.expect.dest;
+    const wrong = opts.wrong?.(i) ?? false;
+    const dest: Destination = wrong ? (c.expect.dest === 'HEL' ? 'VALHALLA' : 'HEL') : c.expect.dest;
+    // Judging right includes what must be done first (from Day 8, clipping long nails).
+    for (const id of wrong ? [] : (c.expect.procedures ?? [])) {
+      const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+      if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+    }
     actions.push({ t: 'shift', action: { t: 'stamp', dest, at } }, { t: 'shift', action: { t: 'send', at } });
   });
   return actions;
@@ -182,6 +199,99 @@ describe('a campaign run', () => {
     const valhalla = cases.filter((c) => c.expect.dest === 'VALHALLA').length;
     expect(afterShift.standing).toMatchObject({ odin: -hel - valhalla, hel: -hel, freyja: 0 });
   });
+
+  it('an assist can waive the fines, and the day’s accounts keep which assists were on', () => {
+    const run = newRun(demo, 'nofines');
+    const wrongDay = shiftActions(run, demo, { wrong: () => true });
+    const fined = drive(demo, run, wrongDay).run.ledger[0];
+    expect(fined?.fines).toBeGreaterThan(0);
+    expect(fined?.assists).toBeUndefined();
+    const assists = { sunPct: 50, noFines: true };
+    const waived = drive(demo, run, [{ t: 'beginShift', at: 0, assists }, ...wrongDay.slice(1)]).run.ledger[0];
+    expect(waived).toMatchObject({ fines: 0, wrong: fined?.wrong, assists });
+  });
+
+  it('leaves standing alone when every soul goes where it belongs', () => {
+    const { afterShift } = playDay(demo, newRun(demo, 'stand'));
+    expect(afterShift.ledger.at(-1)?.correct).toBeGreaterThan(0);
+    expect(afterShift.standing).toEqual({ odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 });
+  });
+});
+
+describe('standing in the accounts', () => {
+  const scene = (id: string, effects: readonly Effect[]): RunAction => ({ t: 'scene', id, effects });
+
+  /** Every audit's mistakes and story, plus what the story has moved since the last one, is where the run stands. */
+  function filed(run: RunState): Record<string, number> {
+    const total: Record<string, number> = { odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 };
+    for (const l of run.ledger) {
+      for (const [f, n] of Object.entries(l.standing)) total[f] = (total[f] ?? 0) + (n ?? 0);
+      for (const [f, n] of Object.entries(l.story ?? {})) total[f] = (total[f] ?? 0) + (n ?? 0);
+    }
+    for (const [f, n] of Object.entries(run.storyStanding ?? {})) total[f] = (total[f] ?? 0) + (n ?? 0);
+    return total;
+  }
+
+  it('files the story beside the day’s mistakes, from last night’s scene to this audit, so the columns add up', () => {
+    let run = newRun(demo, 'accounts');
+    expect(factionsMet(run)).toEqual([]);
+    const day1 = drive(demo, run, [
+      scene('scene.m1', [{ standing: 'odin', by: 1 }]),
+      ...shiftActions(run, demo, { wrong: (i) => i === 0 }),
+    ]).run;
+    const first = day1.ledger.at(-1);
+    expect(first?.story).toEqual({ odin: 1 });
+    expect(Object.values(first?.standing ?? {}).some((n) => n !== 0)).toBe(true);
+    expect(day1.storyStanding).toEqual({});
+    expect(filed(day1)).toEqual(day1.standing);
+
+    // Last night's scene waits for the next audit, with the next morning's.
+    run = drive(demo, day1, [
+      { t: 'endAudit' },
+      scene('scene.n1', [
+        { standing: 'loki', by: 1 },
+        { standing: 'freyja', by: -1 },
+      ]),
+      { t: 'endNight' },
+    ]).run;
+    expect(run.storyStanding).toEqual({ loki: 1, freyja: -1 });
+    expect(filed(run)).toEqual(run.standing);
+    expect(factionsMet(run)).toEqual(expect.arrayContaining(['odin', 'loki', 'freyja']));
+    const day2 = drive(demo, run, [scene('scene.m2', [{ standing: 'freyja', by: 1 }]), ...shiftActions(run, demo)]).run;
+    expect(day2.ledger.at(-1)?.story).toEqual({ loki: 1, freyja: 0 });
+    expect(filed(day2)).toEqual(day2.standing);
+    // Freyja is back to 0, but the player has had dealings with her.
+    expect(day2.standing.freyja).toBe(0);
+    expect(factionsMet(day2)).toContain('freyja');
+  });
+
+  it('counts a story soul’s stamp as story, and says what each stamp does', () => {
+    const run = newRun(full, 'loki-accounts', { slice: 'fromJump' });
+    const { afterShift } = playDay(full, run);
+    const loki = afterShift.shift?.cases.find((c) => c.script === 'case.loki12');
+    if (!loki) throw new Error('no story Loki');
+    expect(stampEffects(full, loki, 'DETAIN')).toEqual([
+      { flag: 'loki_judged' },
+      { flag: 'loki_detained' },
+      { standing: 'odin', by: 1 },
+    ]);
+    expect(stampEffects(full, loki, 'VALHALLA')).toContainEqual({ standing: 'loki', by: 2 });
+    const generated = afterShift.shift?.cases.find((c) => !c.script);
+    if (generated) expect(stampEffects(full, generated, 'HEL')).toEqual([]);
+    // The slice's jump is story too: it lands in the late day's first audit.
+    const preset = campaignOf(full).slice?.preset.standing ?? {};
+    const story = afterShift.ledger.at(-1)?.story ?? {};
+    expect(story.odin).toBe((preset.odin ?? 0) + 1);
+    expect(story.freyja).toBe(preset.freyja ?? 0);
+    expect(filed(afterShift)).toEqual(afterShift.standing);
+  });
+
+  it('calls Loki the stranger until the story names him', () => {
+    expect(factionKey(demo, 'loki', 3)).toBe('faction.stranger');
+    expect(factionKey(full, 'loki', 11)).toBe('faction.stranger');
+    expect(factionKey(full, 'loki', 12)).toBe('faction.loki');
+    expect(factionKey(full, 'odin', 1)).toBe('faction.odin');
+  });
 });
 
 describe('the family at night', () => {
@@ -261,7 +371,10 @@ describe('endings', () => {
     for (let d = 1; d <= 3; d++) f = playDay(full, f).run;
     expect(f).toMatchObject({ phase: 'morning', day: 4 });
     for (let d = 4; d <= campaignOf(full).lastDay; d++) f = playDay(full, f).run;
-    expect(f).toMatchObject({ phase: 'ending', ending: campaignOf(full).finale });
+    // To Ragnarök's night. Detaining the story Loki pleased Odin, so a perfect chooser with no story is his;
+    // without that point nothing else holds, and the finale ends the run.
+    expect(f).toMatchObject({ phase: 'ending', day: campaignOf(full).lastDay, ending: 'ending.odin' });
+    expect(endingFor({ ...f, standing: { ...f.standing, odin: 0 } }, full)).toBe(campaignOf(full).finale);
   });
 
   it('Draupnir drips rings on its nights', () => {
@@ -269,6 +382,145 @@ describe('endings', () => {
     const { run, events } = playDay(content, newRun(content, 'ring'));
     expect(events).toContainEqual({ e: 'draupnir', rings: 8 });
     expect(run.ledger[0]?.night?.draupnir).toBe(8);
+  });
+});
+
+describe('planning the night', () => {
+  /** A night on `day` of the full game, with the bills as set. */
+  const night = (run: RunState, patch: Partial<RunState>) => {
+    const r: RunState = { ...run, phase: 'night', ...patch };
+    return { run: r, env: { content: full, ctx: runContext(full, r) } as RunEnv };
+  };
+  const member = (id: string, patch: Partial<FamilyMember> = {}): FamilyMember => ({
+    id,
+    status: 'well',
+    cold: 0,
+    hungry: 0,
+    sickNights: 0,
+    ...patch,
+  });
+  const memberArb = (id: string) =>
+    fc
+      .record({
+        status: fc.constantFrom<FamilyMember['status']>('well', 'sick', 'gone'),
+        cold: fc.integer({ min: 0, max: 1 }),
+        hungry: fc.integer({ min: 0, max: 1 }),
+        sickNights: fc.integer({ min: 0, max: 1 }),
+      })
+      .map((m): FamilyMember => ({ id, ...m, ...(m.status === 'gone' ? { gone: 'died' as const } : {}) }));
+
+  test.prop(
+    [
+      fc.integer({ min: 1, max: 20 }),
+      fc.integer({ min: -80, max: 80 }),
+      fc.integer({ min: 0, max: 1 }),
+      fc.tuple(memberArb('mother'), memberArb('brother'), memberArb('sister')),
+      fc.record({ hearth: fc.boolean(), food: fc.boolean(), medicine: fc.subarray(['mother', 'brother', 'sister']) }),
+      fc.nat(1000),
+    ],
+    { numRuns: 150 },
+  )(
+    'reckons tonight as the night does, all but who falls sick by chance',
+    (day, rings, debtNights, family, bills, n) => {
+      const { run, env } = night(newRun(full, `plan${n}`), { day, rings, debtNights, family, bills });
+      const o = nightOutlook(run, env);
+      const after = stepRun(run, { t: 'endNight' }, env).state;
+      expect(after.rings).toBe(o.rings);
+      expect(after.debtNights).toBe(o.debtNights);
+      after.family.forEach((m, i) => {
+        const n = o.members[i];
+        if (!n) throw new Error(`no outlook for ${m.id}`);
+        if (n.risk === 0 || m.status === n.member.status) expect(m).toEqual(n.member);
+        else expect(m).toEqual({ ...n.member, status: 'sick', sickNights: 0 });
+      });
+      if (o.ends) expect(after.ending).toBe(o.ends.ending);
+      else expect(['ending.demoted', 'ending.alone']).not.toContain(after.ending);
+    },
+  );
+
+  it('says who is lost without medicine tonight, who surely falls sick, and the odds for the rest', () => {
+    const base = newRun(full, 'odds');
+    const family = [
+      member('mother', { status: 'sick', sickNights: 1 }),
+      member('brother', { cold: 1 }),
+      member('sister', { status: 'sick', sickNights: 1 }),
+    ];
+    const { run, env } = night(base, { day: 5, family, bills: { hearth: false, food: true, medicine: [] } });
+    const says = (o: ReturnType<typeof nightOutlook>) =>
+      o.members.map((n) => [n.member.id, n.change ?? null, n.cause ?? null, n.risk]);
+    // A second night sick without medicine: an adult dies, a child is sent to relatives. A second cold night: sick.
+    expect(says(nightOutlook(run, env))).toEqual([
+      ['mother', 'died', null, 0],
+      ['brother', 'sick', 'cold', 0],
+      ['sister', 'left', null, 0],
+    ]);
+    // Medicine makes the sick well; a first cold night is a 30% chance, and a hungry one too makes it 60%.
+    const firstNight = [member('mother', { status: 'sick' }), member('brother'), member('sister')];
+    const cold = night(base, {
+      day: 5,
+      family: firstNight,
+      bills: { hearth: false, food: true, medicine: ['mother'] },
+    });
+    expect(says(nightOutlook(cold.run, cold.env))).toEqual([
+      ['mother', 'well', null, 0],
+      ['brother', null, null, 30],
+      ['sister', null, null, 30],
+    ]);
+    const bare = { hearth: false, food: false, medicine: [] };
+    expect(nightOutlook(cold.run, cold.env, bare).members.map((n) => n.risk)).toEqual([0, 60, 60]);
+  });
+
+  it('counts Draupnir in the purse by morning, and says when the debt would end the run', () => {
+    // Night 9: firewood 14, food 7 for each of three, and Draupnir's 8.
+    const base = newRun(full, 'debt9');
+    const at = (rings: number, debtNights: number) => {
+      const { run, env } = night(base, { day: 9, rings, debtNights, bills: defaultBills(base) });
+      return nightOutlook(run, env);
+    };
+    expect(at(0, 1)).toMatchObject({ cost: { hearth: 14, food: 21, medicine: 0 }, draupnir: 8, rings: -27 });
+    // Draupnir keeps a second night above the floor of -30; without enough, the second night below it ends the run.
+    expect(at(0, 1)).toMatchObject({ debtNights: 0, ends: null });
+    expect(at(-10, 0)).toMatchObject({ rings: -37, debtNights: 1, ends: null });
+    expect(at(-10, 1)).toMatchObject({ debtNights: 2, ends: { ending: 'ending.demoted', why: 'debt' } });
+    expect(debtLimit(full)).toBe(2);
+    expect(debtLimit(demo)).toBe(2);
+  });
+
+  it('says when no one would be left at home', () => {
+    const family = [
+      member('mother', { status: 'gone', gone: 'died' }),
+      member('brother', { status: 'gone', gone: 'died' }),
+      member('sister', { status: 'sick', sickNights: 1 }),
+    ];
+    const { run, env } = night(newRun(full, 'alone'), {
+      day: 6,
+      family,
+      bills: { hearth: true, food: true, medicine: [] },
+    });
+    expect(nightOutlook(run, env).ends).toEqual({ ending: 'ending.alone', why: 'home' });
+    expect(nightOutlook(run, env, { hearth: true, food: true, medicine: ['sister'] }).ends).toBeNull();
+    expect(stateMarks(full, 'family.home').filter((m) => m.atMost !== undefined)).toEqual([
+      { ending: 'ending.alone', atMost: 0 },
+    ]);
+  });
+
+  it('forecasts the coming nights’ bills, as many as the run has left', () => {
+    const run: RunState = { ...newRun(full, 'fc'), day: 6 };
+    expect(billForecast(run, full)).toEqual([
+      { day: 7, hearth: 11, food: 18, medicine: 12, draupnir: 0 },
+      { day: 8, hearth: 12, food: 18, medicine: 13, draupnir: 0 },
+      { day: 9, hearth: 14, food: 21, medicine: 14, draupnir: 8 },
+    ]);
+    // Food is for those at home now.
+    const two = run.family.map((m, i) => (i === 0 ? { ...m, status: 'gone' as const, gone: 'died' as const } : m));
+    expect(billForecast({ ...run, family: two }, full)[0]?.food).toBe(12);
+    expect(billForecast({ ...run, day: 19 }, full).map((b) => b.day)).toEqual([20]);
+    expect(billForecast({ ...run, day: 20 }, full)).toEqual([]);
+    expect(billForecast(newRun(demo, 'fc'), demo).map((b) => b.day)).toEqual([2, 3]);
+    // The slice jumps from Day 3 to its late day, where it ends.
+    const slice: RunState = { ...newRun(full, 'fc', { slice: 'play' }), day: 2 };
+    expect(billForecast(slice, full).map((b) => b.day)).toEqual([3, 12]);
+    expect(billForecast({ ...slice, day: 12 }, full)).toEqual([]);
   });
 });
 
@@ -369,22 +621,25 @@ describe('story souls', () => {
 });
 
 describe('saves', () => {
+  /** Plays whole days (a morning and a night scene each, with made-up effects) and records every action. */
   function playRecorded(content: Content, save0: RunSave, days: number, stopMidDay = false) {
     let save = save0;
     let run = resumeSave(save, content, 0).run;
     let ctx = runContext(content, run);
     const apply = (a: RunAction) => {
       const r = stepRun(run, a, { content, ctx, ...(save.queue ? { queue: save.queue } : {}) });
-      save = recordAction(save, run, a, r.state);
+      if (r.state !== run) save = recordAction(save, run, a, r.state);
       if (r.state.day !== run.day) ctx = runContext(content, r.state);
       run = r.state;
     };
     for (let d = 0; d < days; d++) {
+      apply({ t: 'scene', id: `scene.d${run.day}.morning`, choices: [d], effects: [{ flag: `morning${run.day}` }] });
       const actions = shiftActions(run, content);
       const cut = stopMidDay && d === days - 1 ? Math.floor(actions.length / 2) : actions.length;
       for (const a of actions.slice(0, cut)) apply(a);
       if (cut < actions.length) break;
       apply({ t: 'endAudit' });
+      apply({ t: 'scene', id: `scene.d${run.day}.night`, choices: [1, 0], effects: [{ rings: 1 }] });
       apply({ t: 'endNight' });
     }
     return { save, run };
@@ -395,6 +650,26 @@ describe('saves', () => {
     expect(save.mornings.map((m) => m.day)).toEqual([1, 2, 3]);
     expect(save.queue).toEqual(run.shift?.cases);
     expect(resumeSave(save, full, 0)).toEqual({ run, rewound: false });
+  });
+
+  it('a day resumed mid-shift keeps the assists its shift began with', () => {
+    let save = startSave(demo, 'assisted', 0);
+    let run = resumeSave(save, demo, 0).run;
+    const ctx = runContext(demo, run);
+    const [, ...rest] = shiftActions(run, demo);
+    const actions: RunAction[] = [
+      { t: 'beginShift', at: 0, assists: { sunPct: 50, tracker: true } },
+      ...rest.slice(0, 2),
+    ];
+    for (const a of actions) {
+      const r = stepRun(run, a, { content: demo, ctx, ...(save.queue ? { queue: save.queue } : {}) });
+      save = recordAction(save, run, a, r.state);
+      run = r.state;
+    }
+    const resumed = resumeSave(save, demo, 0).run;
+    expect(resumed.shift?.config.assists).toEqual({ sunPct: 50, tracker: true });
+    expect(resumed.shift?.sunMs).toBe(2 * (ctx.spec.sunS * 1000));
+    expect(resumed).toEqual(run);
   });
 
   it('uses the saved queue, not a regenerated one', () => {
@@ -414,6 +689,84 @@ describe('saves', () => {
   it('rewinds to the morning when the engine changed since the save', () => {
     const { save } = playRecorded(full, startSave(full, 'eng', 0), 2, true);
     expect(resumeSave(save, full, 1)).toEqual({ run: save.mornings[1], rewound: true });
+  });
+
+  it('keeps every scene played in the journal, with the choices and what it read as it began', () => {
+    const { save } = playRecorded(full, startSave(full, 'journal', 0), 3);
+    expect(save.journal?.map((e) => [e.day, e.scene, e.choices])).toEqual([
+      [1, 'scene.d1.morning', [0]],
+      [1, 'scene.d1.night', [1, 0]],
+      [2, 'scene.d2.morning', [1]],
+      [2, 'scene.d2.night', [1, 0]],
+      [3, 'scene.d3.morning', [2]],
+      [3, 'scene.d3.night', [1, 0]],
+    ]);
+    // Day 2's morning scene read the run as that morning began: Day 1's flags, rings after the night.
+    const day2 = save.journal?.[2];
+    expect(day2?.flags).toEqual(save.mornings[1]?.flags);
+    expect(day2?.rings).toBe(save.mornings[1]?.rings);
+    expect(day2?.family).toEqual({ mother: 'well', brother: 'well', sister: 'well' });
+  });
+
+  it('forgets the journal of the days a replay discards, and a replayed scene replaces its entry', () => {
+    const { save } = playRecorded(full, startSave(full, 'journal-replay', 0), 3);
+    const back = replayDay(save, 2);
+    expect(back.journal?.map((e) => e.day)).toEqual([1, 1]);
+    const again = playRecorded(full, back, 1).save;
+    expect(again.journal?.map((e) => `${e.day}:${e.scene}`)).toEqual([
+      '1:scene.d1.morning',
+      '1:scene.d1.night',
+      '2:scene.d2.morning',
+      '2:scene.d2.night',
+    ]);
+    // A restarted day (a new engine) plays its morning scene again: the entry is replaced, not doubled.
+    const restarted = recordAction(
+      again,
+      save.mornings[1] as RunState,
+      { t: 'scene', id: 'scene.d2.morning', choices: [3], effects: [] },
+      {
+        ...(save.mornings[1] as RunState),
+        scenes: ['scene.d2.morning'],
+      },
+    );
+    expect(restarted.journal?.filter((e) => e.scene === 'scene.d2.morning').map((e) => e.choices)).toEqual([[3]]);
+  });
+});
+
+describe('the Ragnarök report', () => {
+  it('breaks the host into its parts, which add up to its strength', () => {
+    let run = newRun(full, 'host');
+    for (let d = 1; d <= 3; d++) run = playDay(full, run, { wrong: (i) => i % 3 === 0 }).run;
+    const withNails = { ...run, naglfar: 4, sent: { ...run.sent, FOLKVANGR: 5, HEL: 7 } };
+    const p = hostParts(withNails);
+    expect(p).toMatchObject({ folkvangr: 5, hel: 7, naglfar: 4 });
+    expect(p.total).toBe(2 * p.worthy - p.unworthy + 2 * p.folkvangr + 2 * p.hel - 2 * p.naglfar);
+    expect(ragnarokStrength(withNails)).toBe(p.total);
+  });
+
+  it('lists the endings a run can reach, and what they ask of the host', () => {
+    expect(reachableEndings(demo).map((e) => e.id)).toEqual(['ending.demoted', 'ending.alone', 'ending.demoEnd']);
+    const full11 = reachableEndings(full).map((e) => e.id);
+    expect(full11).toHaveLength(11);
+    expect(full11).not.toContain('ending.demoEnd');
+    expect(full11.at(-1)).toBe('ending.lastStand');
+    expect(hostMarks(full)).toEqual([
+      { ending: 'ending.rebirth', atLeast: 260 },
+      { ending: 'ending.wolf', atMost: 240 },
+    ]);
+    expect(hostMarks(demo)).toEqual([]);
+  });
+});
+
+describe('story threads', () => {
+  it('lists the threads whose conditions hold, with their counts', () => {
+    const run = newRun(full, 'threads');
+    expect(threadsInPlay(run, full)).toEqual([]);
+    const later = { ...run, day: 17, flags: { loki_deal: 1, truth: 2, owes_skogul: 0 } };
+    const ids = threadsInPlay(later, full).map((th) => th.id);
+    expect(ids).toContain('thread.lokiDeal');
+    expect(ids).not.toContain('thread.owesSkogul');
+    expect(threadsInPlay(later, full).find((th) => th.id === 'thread.truth')).toMatchObject({ n: 2 });
   });
 });
 

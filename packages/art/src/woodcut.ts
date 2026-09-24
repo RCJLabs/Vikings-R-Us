@@ -170,36 +170,50 @@ function wrongGrip(x: number, y: number): string {
   ].join('');
 }
 
+/**
+ * The rune-lens over the blade's inscription: the lens sits beside the blade on the side toward the
+ * body (so it stays in the frame whichever hand holds it), upright however the weapon leans, with the
+ * owner's name above and the maker's mark below.
+ */
 function runeReading(
   x: number,
   y: number,
+  lean: number,
   inscription: Value | undefined,
   mark: Value | undefined,
   kind: WeaponKind,
 ): string {
-  const top = y + BLADE_Y[kind] - 14;
+  // Where the inscription has gone as the weapon leans about the fist at (x, y).
+  const along = BLADE_Y[kind];
+  const sin = lean < 0 ? -LEAN_SIN : lean > 0 ? LEAN_SIN : 0;
+  const cos = lean === 0 ? 1 : LEAN_COS;
+  const inward = x < CX ? 1 : -1;
+  const lx = r2(x - along * sin + 18 * inward);
+  const ly = r2(y + along * cos);
   const staves = (seed: string, x0: number, y0: number) =>
     [...seed]
       .map((ch, i) => {
-        const cx = x0 + i * 5.5;
+        const cx = r2(x0 + i * 5.5);
         const k = ch.charCodeAt(0) % 3;
         const branch =
           k === 0
-            ? `M${cx} ${y0 + 2}L${cx + 3} ${y0 - 1}`
+            ? `M${cx} ${r2(y0 + 2)}L${r2(cx + 3)} ${r2(y0 - 1)}`
             : k === 1
-              ? `M${cx} ${y0 + 5}L${cx - 3} ${y0 + 2}`
-              : `M${cx - 2} ${y0 + 3}L${cx + 2} ${y0 + 3}`;
-        return `<path d="M${cx} ${y0 - 3}V${y0 + 8}${branch}" stroke="${INK}" stroke-width="1.5" fill="none"/>`;
+              ? `M${cx} ${r2(y0 + 5)}L${r2(cx - 3)} ${r2(y0 + 2)}`
+              : `M${r2(cx - 2)} ${r2(y0 + 3)}L${r2(cx + 2)} ${r2(y0 + 3)}`;
+        return `<path d="M${cx} ${r2(y0 - 3)}V${r2(y0 + 8)}${branch}" stroke="${INK}" stroke-width="1.5" fill="none"/>`;
       })
       .join('');
   const owner = inscription === 'other' ? 'xqzv' : inscription === 'own' ? 'amik' : '';
   const maker = mark === 'markTrue' ? '+vlfberh+t' : mark === 'markCopy' ? '+vlfberht+' : '';
+  // The handle points down and away from the blade.
+  const handle = `M${r2(lx + 18 * inward)} ${r2(ly + 20)}L${r2(lx + 32 * inward)} ${r2(ly + 34)}`;
   return [
-    `<path d="M${x + 36} ${top + 34}L${x + 50} ${top + 48}" stroke="${INK}" stroke-width="9" stroke-linecap="round"/>`,
-    `<path d="M${x + 36} ${top + 34}L${x + 50} ${top + 48}" stroke="${WOOD}" stroke-width="5" stroke-linecap="round"/>`,
-    `<circle cx="${x + 18}" cy="${top + 14}" r="24" fill="${PAPER}" fill-opacity="0.9" ${OUTLINE}/>`,
-    owner ? staves(owner, x + 6, top + 4) : '',
-    maker ? staves(maker.slice(-6), x + 2, top + 19) : '',
+    `<path d="${handle}" stroke="${INK}" stroke-width="9" stroke-linecap="round"/>`,
+    `<path d="${handle}" stroke="${WOOD}" stroke-width="5" stroke-linecap="round"/>`,
+    `<circle cx="${lx}" cy="${ly}" r="24" fill="${PAPER}" fill-opacity="0.9" ${OUTLINE}/>`,
+    owner ? staves(owner, lx - 12, ly - 10) : '',
+    maker ? staves(maker.slice(-6), lx - 16, ly + 5) : '',
   ].join('');
 }
 
@@ -307,23 +321,14 @@ const FIST_THUMB = 'M10 -2.5Q5 -10.5 -4.5 -8';
  * front: the four fingers wrap across the grip, bending at the knuckles on
  * the outer side, their tips pressed against the heel of the hand on the
  * side toward the body; the thumb comes up from the heel, near the wrist,
- * and lies across the index finger. From behind: the back of the hand, the
- * knuckles down its outer side. In the fist's frame: u across toward the
+ * and lies across the index finger. In the fist's frame: u across toward the
  * body, v down, (0, 0) on the grip.
  */
-function fist(t: string, long: boolean, back: boolean): string {
-  const body = 'M-10 -4Q-10 -8 -6 -8H6Q11 -8 11 -2V10Q11 15 6 15H-5Q-10 15 -10 11Z';
-  const mids = BANDS.slice(1).map(([v], i) => (v + (BANDS[i]?.[0] ?? v)) / 2);
-  if (back) {
-    const knuckles = BANDS.map(([v, ku, w]): [string, number] => [`M-4 ${v}L${ku} ${v}`, w]);
-    return `<g ${t}>${[
-      flesh([body], [...knuckles, ['M10 -2.5Q6.5 -9 1 -9', 6]], 2.8),
-      `<path d="${mids.map((m) => `M-12.4 ${m}L-5.5 ${m}`).join('')}M9.6 -3.2Q6 -6.6 1.5 -6" fill="none" ${FINE}/>`,
-    ].join('')}</g>`;
-  }
+function fist(t: string, long: boolean): string {
   const bands = BANDS.map(([v, ku, w]): [string, number] => [`M${TIPS_U} ${v}L${ku} ${v}`, w]);
+  const mids = BANDS.slice(1).map(([v], i) => (v + (BANDS[i]?.[0] ?? v)) / 2);
   const parts = [
-    flesh([body], [...bands, [FIST_THUMB, 6.2]], 2.8),
+    flesh([FIST], [...bands, [FIST_THUMB, 6.2]], 2.8),
     // Where the fingers lie against each other, and their tips.
     `<path d="${mids.map((m) => `M-12.4 ${m}Q-3 ${m + 1.2} ${TIPS_U} ${m}`).join('')}${BANDS.slice(1)
       .map(([v, , w]) => `M${TIPS_U} ${v - w / 2}A${w / 2} ${w / 2} 0 0 1 ${TIPS_U} ${v + w / 2}`)
@@ -336,6 +341,45 @@ function fist(t: string, long: boolean, back: boolean): string {
     `<path d="M7.4 -0.9Q3.7 -7 -3.7 -5A3.1 3.1 0 0 1 -7.4 -9.2" fill="none" ${FINE}/>`,
   );
   return `<g ${t}>${parts.join('')}</g>`;
+}
+
+/**
+ * How far a held weapon leans out from the fist, away from the body, in degrees: the same seen from the
+ * front and from behind, where it has to show past the arm. Its sine and cosine, for what follows the
+ * blade (the rune-lens).
+ */
+const LEAN = 14;
+const LEAN_SIN = 0.2419;
+const LEAN_COS = 0.9703;
+
+/** The fist's palm and heel, which the fingers and thumb close over. */
+const FIST = 'M-10 -4Q-10 -8 -6 -8H6Q11 -8 11 -2V10Q11 15 6 15H-5Q-10 15 -10 11Z';
+
+/**
+ * The same fist from behind: the fingers and thumb curl round the far side of
+ * the grip, out of sight, so what shows is the back of the hand. It runs from
+ * the wrist, on the side toward the body, to the row of knuckles down the
+ * outer side, where the fingers turn away round the grip; tendons fan out to
+ * the knuckles. Only the curve of the index finger shows over the top.
+ */
+function fistBehind(t: string): string {
+  const back = 'M-9 -6Q-8 -9 -4 -9H5Q11 -9 11.5 -3V10Q11.5 15.5 5.5 15.5H-5Q-9 15.5 -9 11Z';
+  // The knuckles: a rounded bump for each finger along the outer side, the index's at the top.
+  const knuckles = BANDS.map(([v, , w]): [string, number] => [`M-9.6 ${v}L-9.4 ${v}`, w + 0.8]);
+  // Three tendons, from the wrist's side toward the knuckles of the first three fingers.
+  const tendons = BANDS.slice(0, 3)
+    .map(([v]) => `M5.5 ${r2(v * 0.3 - 1.5)}Q0 ${r2(v * 0.65 - 0.5)} -5.5 ${r2(v * 0.95)}`)
+    .join('');
+  return `<g ${t}>${[
+    flesh([back], knuckles, 2.8),
+    // The dips between the knuckles, the tendons, and the fold of the index finger along the top.
+    `<path d="${BANDS.slice(1)
+      .map(([v], i) => {
+        const m = (v + (BANDS[i]?.[0] ?? v)) / 2;
+        return `M-12.6 ${r2(m)}L-10.2 ${r2(m)}`;
+      })
+      .join('')}${tendons}M-6 -6.6Q1 -8.2 8 -6.2" fill="none" ${FINE}/>`,
+  ].join('')}</g>`;
 }
 
 /** Tablet-woven trim: a band of little diamonds. */
@@ -372,6 +416,14 @@ function figure(scene: BodyScene, uid: string): string {
   // Hands hang below the cuffs: an open hand, or the wrist of a fist that closes over the weapon later.
   const grip = scene.obs.grip;
   const weaponHand = grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
+  const kind = weaponKind(scene.weapon);
+  const wx = weaponHand === 'L' ? hp.L : hp.R;
+  // The weapon leans out from the fist, away from the body, seen from either side.
+  const lean = wx < CX ? -LEAN : LEAN;
+  const held = (svg: string) => `<g transform="rotate(${lean} ${wx} ${hp.y})">${svg}</g>`;
+  // From behind, the arm is between the viewer and the weapon: the weapon goes down first, under the
+  // wrist and the sleeve. (From the front it goes over them, after the torso.)
+  if (weaponHand && !front) parts.push(held(weapon(kind, wx, hp.y, wx < CX ? -1 : 1)));
   const long = front && scene.obs.nails === true && !scene.tools.includes('clippers');
   const arms = (['R', 'L'] as const).map((side) => {
     const x = side === 'L' ? hp.L : hp.R;
@@ -431,18 +483,18 @@ function figure(scene: BodyScene, uid: string): string {
   );
   if (front) parts.push(`<path d="M172 118Q178 108 180 96" fill="none" stroke="url(#wc-hatch)" stroke-width="10"/>`);
 
-  // The weapon under the fist, seen from either side; the wrap and the rune readings are front-view signs.
-  if (weaponHand) {
-    const x = weaponHand === 'L' ? hp.L : hp.R;
-    const kind = weaponKind(scene.weapon);
-    parts.push(weapon(kind, x, hp.y, x < CX ? -1 : 1));
-    if (front && scene.cues.includes('wrongGrip')) parts.push(wrongGrip(x, hp.y));
-    if (front && scene.tools.includes('runeLens')) {
-      parts.push(runeReading(x, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
+  // The weapon under the fist, from the front, with any wrap on its grip; the wrap and the rune readings
+  // are front-view signs.
+  if (weaponHand && front) {
+    const wrap = scene.cues.includes('wrongGrip') ? wrongGrip(wx, hp.y) : '';
+    parts.push(held(weapon(kind, wx, hp.y, wx < CX ? -1 : 1) + wrap));
+    if (scene.tools.includes('runeLens')) {
+      parts.push(runeReading(wx, hp.y, lean, scene.obs.inscription, scene.obs.makersMark, kind));
     }
   }
   for (const a of arms) {
-    if (a.fist) parts.push(fist(`transform="matrix(${a.inw} 0 0 1 ${a.x} ${hp.y})"`, long, !front));
+    const t = `transform="matrix(${a.inw} 0 0 1 ${a.x} ${hp.y})"`;
+    if (a.fist) parts.push(front ? fist(t, long) : fistBehind(t));
     parts.push(
       `<text x="${a.x}" y="${hp.y + 46}" font-size="14" font-family="Georgia, serif" font-weight="bold" text-anchor="middle" fill="${INK}" stroke="${PAPER}" stroke-width="4" paint-order="stroke">${a.side}</text>`,
     );
@@ -579,6 +631,19 @@ function freshTally(on: boolean, look: Look): string {
   ].join('');
 }
 
+/**
+ * Day 17's spear mark: a spear point cut over the heart before death (the soul's left, our right). A
+ * small blade shape with its socket, dark red with an ink edge and no drips: a mark, not a wound.
+ */
+function spearCut(on: boolean): string {
+  if (!on) return '';
+  return [
+    '<path d="M176 202L181.5 214L176 224L170.5 214Z" fill="#8f1d15" stroke="#1c1510" stroke-width="2" stroke-linejoin="round"/>',
+    '<path d="M176 206V220" stroke="#f1e6cc" stroke-width="1.2" stroke-linecap="round"/>',
+    '<path d="M176 224V231M172.5 227H179.5" stroke="#1c1510" stroke-width="2.2" stroke-linecap="round"/>',
+  ].join('');
+}
+
 /** A carved ground under the feet: a hatched band with a few tufts. */
 const GROUND = [
   `<path d="M11 404H${W - 11}V${H - 11}H11Z" fill="url(#wc-hatch)"/>`,
@@ -609,6 +674,7 @@ function draw(scene: BodyScene): string {
         amulet(scene.obs.amulet),
         brokenRing(scene.cues.includes('brokenRing')),
         freshTally(scene.cues.includes('freshCarving'), scene.look),
+        spearCut(scene.obs.spearCut === true),
         wounds(scene.obs.woundsFront, FRONT_WOUNDS),
       ]
     : [figure(scene, uid), hairFill(hair, hairShape(scene.look, false)), wounds(scene.obs.woundsBack, BACK_WOUNDS)];
@@ -652,6 +718,7 @@ export const woodcutBody: BodyArtProvider = {
     freshCarving: 2,
     amulet: 2,
     lipScars: 1,
+    spearCut: 2,
   },
   views: SIGN_VIEWS,
 };

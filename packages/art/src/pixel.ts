@@ -636,6 +636,11 @@ function wound(cv: Canvas, x: number, y: number): void {
   cv.set(x + 5, y + 2, BLOOD_DARK);
 }
 
+/** Day 17's spear mark: a spear point cut over the heart before death (our right). */
+function spearCut(cv: Canvas): void {
+  part(cv, (l) => l.sprite(58, 66, ['.B.', 'BBB', 'BBB', '.B.', '.D.'], { B: BLOOD_DARK, D: OUTLINE }));
+}
+
 const FRONT_WOUNDS = [
   [43, 72],
   [56, 79],
@@ -670,6 +675,7 @@ function paint(scene: BodyScene): Canvas {
     amulet(cv, obs.amulet);
     if (scene.cues.includes('brokenRing')) brokenRing(cv);
     if (scene.cues.includes('freshCarving')) freshTally(cv, look);
+    if (obs.spearCut === true) spearCut(cv);
     if (scene.cues.includes('breathFog')) breathFog(cv);
     if (scene.tools.includes('feather')) feather(cv, obs.breath === 'stirs');
     const n = typeof obs.woundsFront === 'number' ? obs.woundsFront : 0;
@@ -780,6 +786,7 @@ export const pixelBody: BodyArtProvider = {
     freshCarving: 2,
     amulet: 2,
     lipScars: 1,
+    spearCut: 2,
   },
   views: SIGN_VIEWS,
 };

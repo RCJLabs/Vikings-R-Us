@@ -1,11 +1,31 @@
-# The full campaign's part. lastDay grows as days are written (Days 7-20 in
-# M7). DRAFT text.
-lastDay: 6
-finale: ending.tbc
+# The full campaign's part: Days 4-20 on top of the demo's Days 1-3 (docs/m7-design.md).
+# Numbers are first guesses for `pnpm sim campaign` to tune. DRAFT text.
+lastDay: 20
+finale: ending.lastStand
 # Oathbreakers sent to Valhalla will run at Ragnarök: they don't count as worthy einherjar.
 worthy: pred.einherjar
+# Only mistakes move standing (see the audit). These add to the demo's rows: a deliberate mistake can
+# please the god who gains the soul, and letting Loki go pleases Loki.
+standing:
+  - { expected: VALHALLA, stamped: HEL, fx: { odin: -1, hel: 1 } }
+  - { expected: VALHALLA, stamped: TRANSFER, fx: { odin: -1, clerk: 1 } }
+  - { expected: HEL, stamped: TRANSFER, fx: { hel: -1, clerk: 1 } }
+  - { expected: TRANSFER, stamped: HEL, fx: { clerk: -1, hel: 1 } }
+  - { expected: TRANSFER, stamped: '*', fx: { clerk: -1 } }
+  - { expected: DETAIN, stamped: '*', fx: { odin: -2, loki: 2 } }
+# Speed only (docs/build-plan.md §1): cheaper tools and questions, more sun.
 shop:
   - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }
+  - { id: up.registryIndex, name: shop.registryIndex, text: shop.registryIndex.text, price: 20, since: 6, effect: { tool: registry, costS: 2 } }
+  - { id: up.lensPolish, name: shop.lensPolish, text: shop.lensPolish.text, price: 30, since: 7, effect: { tool: runeLens, costS: 4 } }
+  - { id: up.whetstone, name: shop.whetstone, text: shop.whetstone.text, price: 20, since: 8, effect: { tool: clippers, costS: 1 } }
+  - { id: up.hornOfBrass, name: shop.hornOfBrass, text: shop.hornOfBrass.text, price: 35, since: 12, effect: { questionS: 10 } }
+  - { id: up.waterClock, name: shop.waterClock, text: shop.waterClock.text, price: 40, since: 15, effect: { sunS: 60 } }
+  # The late winter's sinks (M7.7): a competent player otherwise banks everything from Day 13 on.
+  - { id: up.goldFeather, name: shop.goldFeather, text: shop.goldFeather.text, price: 40, since: 13, effect: { tool: feather, costS: 3 } }
+  - { id: up.whaleLamp, name: shop.whaleLamp, text: shop.whaleLamp.text, price: 50, since: 16, effect: { sunS: 45 } }
+  - { id: up.runeTable, name: shop.runeTable, text: shop.runeTable.text, price: 40, since: 17, effect: { tool: runeLens, costS: 2 } }
+  - { id: up.silverHorn, name: shop.silverHorn, text: shop.silverHorn.text, price: 45, since: 18, effect: { questionS: 6 } }
 # The vertical slice (M5): Days 1-3, then nine days pass and Day 12 is
 # played, to prove the late game. What the skipped days bring (rings earned,
 # standing, Ulf's new work in the north) is a guess. DRAFT.
@@ -17,6 +37,65 @@ slice:
     rings: 30
     standing: { odin: 1, freyja: 1, clerk: 1 }
     flags: { slice: 1, ulf_shipyard: 1 }
+# Checked every night, lowest order first; the demo's demoted (10) and alone (20) come before these.
+# Faction endings wait for Ragnarök (Day 20's night); Naglfar can sail from Day 18.
 endings:
-  - { id: ending.tbc, order: 1000, title: ending.tbc.title, text: ending.tbc.text }
+  - id: ending.naglfar
+    order: 100
+    when: { all: [{ state: day, gte: 18 }, { state: flags.loki_deal, gte: 1 }, { state: naglfar, gte: 10 }] }
+    title: ending.naglfar.title
+    text: ending.naglfar.text
+  - id: ending.rebirth
+    order: 200
+    when: { all: [{ state: day, gte: 20 }, { state: flags.wood, gte: 1 }, { state: flags.truth, gte: 3 }, { state: ragnarok, gte: 260 }, { state: family.home, gte: 1 }] }
+    title: ending.rebirth.title
+    text: ending.rebirth.text
+  - id: ending.smuggled
+    order: 300
+    when: { all: [{ state: day, gte: 20 }, { state: flags.ferryman, gte: 1 }, { state: rings, gte: 100 }, { state: family.home, gte: 1 }] }
+    title: ending.smuggled.title
+    text: ending.smuggled.text
+  - id: ending.transfer
+    order: 400
+    when: { all: [{ state: day, gte: 20 }, { state: flags.clerk_contract, gte: 1 }, { state: standing.clerk, gte: 4 }] }
+    title: ending.transfer.title
+    text: ending.transfer.text
+  - id: ending.hel
+    order: 500
+    when: { all: [{ state: day, gte: 20 }, { state: lead.hel, gte: 1 }, { state: standing.hel, gte: 3 }] }
+    title: ending.hel.title
+    text: ending.hel.text
+  - id: ending.freyja
+    order: 510
+    when: { all: [{ state: day, gte: 20 }, { state: lead.freyja, gte: 1 }, { state: standing.freyja, gte: 3 }] }
+    title: ending.freyja.title
+    text: ending.freyja.text
+  - id: ending.odin
+    order: 520
+    when: { all: [{ state: day, gte: 20 }, { state: lead.odin, gte: 1 }] }
+    title: ending.odin.title
+    text: ending.odin.text
+  - id: ending.wolf
+    order: 990
+    when: { all: [{ state: day, gte: 20 }, { state: ragnarok, lte: 240 }] }
+    title: ending.wolf.title
+    text: ending.wolf.text
+  - { id: ending.lastStand, order: 1000, title: ending.lastStand.title, text: ending.lastStand.text }
   - { id: ending.sliceEnd, order: 1001, title: ending.sliceEnd.title, text: ending.sliceEnd.text }
+# The journal's list of what's still in play (docs/story-drafts.md, "The journal"), in this order,
+# each while its `when` holds. They name nobody the story hasn't named yet. The texts are DRAFT.
+threads:
+  - { id: thread.owesSkogul, when: { state: flags.owes_skogul, gte: 1 }, text: thread.owesSkogul }
+  - id: thread.ulfDebt
+    when: { all: [{ state: flags.ulf_debt, gte: 1 }, { state: flags.ulf_shipyard, lte: 0 }] }
+    text: thread.ulfDebt
+  - { id: thread.ulfShipyard, when: { state: flags.ulf_shipyard, gte: 1 }, text: thread.ulfShipyard }
+  - { id: thread.lokiDeal, when: { state: flags.loki_deal, gte: 1 }, text: thread.lokiDeal }
+  - { id: thread.ferry, when: { state: flags.ferryman, gte: 1 }, text: thread.ferry }
+  - id: thread.woodKnown
+    when: { all: [{ state: flags.wood_known, gte: 1 }, { state: flags.wood, lte: 0 }] }
+    text: thread.woodKnown
+  - { id: thread.wood, when: { state: flags.wood, gte: 1 }, text: thread.wood }
+  - { id: thread.stayHome, when: { state: flags.stay_home, gte: 1 }, text: thread.stayHome }
+  - { id: thread.clerkContract, when: { state: flags.clerk_contract, gte: 1 }, text: thread.clerkContract }
+  - { id: thread.truth, when: { state: flags.truth, gte: 1 }, text: thread.truth, count: flags.truth }

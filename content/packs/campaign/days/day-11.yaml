@@ -1,13 +1,14 @@
-# Mechanics day (M4): playable in Practice; its story comes with Days 7-20 (M7).
+# Day 11: forged tallies. Story (M7 draft): who is forging them.
 day: 11
 sunS: 720
 decree: decree.d11
+scenes: { morning: scene.d11.morning, night: scene.d11.night }
 economy:
   wage: 8
   docBonus: 1
   warnings: 2
   fines: [5, 10, 15]
-  costs: { hearth: 8, food: 4, medicine: 12 }
+  costs: { hearth: 18, food: 8, medicine: 17 }
 params:
   freyjaWhim:
     pool:
@@ -46,3 +47,11 @@ queue:
     maxDocs: 5
     salienceFloor: 2
     tallyRate: 40
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d11.tally, text: coach.d11.tally, focus: tally, next: true }
+    - { id: d11.lens, text: coach.d11.lens, focus: runeLens, until: { tool: runeLens } }
+    - { id: d11.stamp, text: coach.d11.stamp, focus: judge }

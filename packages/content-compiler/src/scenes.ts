@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { type Content, type Effect, FACTIONS, type Faction } from '@cots/engine';
-import { EXTERNALS, parseFx, type SceneEnv, walkScene } from '@cots/story';
+import { EXTERNALS, parseFx, parseNeeds, type SceneEnv, walkScene } from '@cots/story';
 import { Compiler } from 'inkjs/full';
 import { ContentError } from './errors';
 
@@ -42,6 +42,19 @@ export function compileScene(file: string, source: string): CompiledScene {
     }
   }
   code.split('\n').forEach((line, i) => {
+    // What an option costs goes inside its brackets, where Ink gives the tag to the option itself.
+    for (const m of line.matchAll(/#\s*(needs:[^#\]\n]*)/g)) {
+      if (!/^\s*[*+][^[]*\[[^\]]*#\s*needs:[^\]]*\]/.test(line)) {
+        problems.push(
+          `line ${i + 1}: put a needs tag inside the option's brackets: * [Send twenty rings. #needs: rings 20]`,
+        );
+      }
+      try {
+        parseNeeds((m[1] as string).trim());
+      } catch (e) {
+        problems.push(`line ${i + 1}: ${(e as Error).message}`);
+      }
+    }
     if (!/^\s*[*+]/.test(line)) return;
     // A tag on a choice line can end up on the choice alone, where it never fires.
     if (/#\s*fx:/.test(line)) {

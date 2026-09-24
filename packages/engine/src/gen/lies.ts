@@ -1,5 +1,6 @@
 import type { ArchetypeDef, Knobs, QuestionKind, Value } from '../content/types';
 import type { DayCtx } from '../logic/context';
+import { withOverride } from '../logic/judge';
 import type { Truth } from '../logic/pred';
 import type { Rng } from '../rng/rng';
 import { weightedPick } from './pick';
@@ -35,6 +36,15 @@ export function pickLies(arch: ArchetypeDef, truth: Truth, ctx: DayCtx, knobs: K
       reveals: onQuestion === 'confess' ? [spec.fact] : [],
       ...(spec.via ? { via: spec.via } : {}),
     });
+  }
+  return out;
+}
+
+/** The truth with each fact that tracks lying (`fromLies`, Day 16's liars) set by whether the soul lies. */
+export function withLiars(truth: Truth, lies: readonly PlannedLie[], ctx: DayCtx): Truth {
+  let out = truth;
+  for (const [id, af] of ctx.facts) {
+    if (af.def.fromLies && !af.pinned && out[id] !== lies.length > 0) out = withOverride(out, id, lies.length > 0, ctx);
   }
   return out;
 }

@@ -71,6 +71,15 @@ export async function openStore(name = 'chooser-of-the-slain', timeoutMs = 3000)
   };
 }
 
+/** Whether the browser has agreed to keep our data (false where it can't say). */
+export async function isPersisted(): Promise<boolean> {
+  try {
+    return (await navigator.storage?.persisted?.()) ?? false;
+  } catch {
+    return false;
+  }
+}
+
 /** Asks the browser not to evict our data (Safari drops it after 7 days unused otherwise). */
 export async function requestPersistence(): Promise<boolean> {
   try {

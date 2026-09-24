@@ -46,6 +46,11 @@ export interface SolveOptions {
   readonly reveals?: ReadonlyMap<string, { readonly fact: string; readonly value: Value }>;
   /** The "trusting" bot: what the soul says (aloud or on its tally) overrides everything else. */
   readonly trustTestimony?: boolean;
+  /**
+   * Only what can't be wrong, for the rule tracker: no presumptions, and the saga tally isn't believed
+   * (it may be forged, with the sign not yet seen). Lies caught against it still count.
+   */
+  readonly certainOnly?: boolean;
 }
 
 export function isPerceivable(f: Field, ctx: DayCtx): boolean {
@@ -153,6 +158,19 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     return changed;
   };
 
+  /**
+   * A statement that a fact has a value. A statement about a derived fact constrains what it's made of too
+   * ("never fled" means no wound in the back), so the laws can reason from it.
+   */
+  const state = (fact: string, value: Value, level: number, support: readonly string[]): boolean => {
+    let changed = narrow(fact, [value], level, support);
+    const def = ctx.facts.get(fact)?.def;
+    if (def?.derived && typeof value === 'boolean') {
+      for (const c of inverse(def.derived, value, ctx)) if (narrow(c.fact, c.values, level, support)) changed = true;
+    }
+    return changed;
+  };
+
   const perceived = fields.filter((f) => isPerceivable(f, ctx));
   const seen = new Map<string, { value: Value; field: string }>();
   for (const f of perceived) if (f.obs) seen.set(f.obs.key, { value: f.obs.value, field: f.id });
@@ -171,7 +189,7 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
   // The ravens never lie.
   for (const f of perceived) {
     if ((f.item === 'huginn' || f.item === 'muninn') && f.says && f.says.value !== null) {
-      narrow(f.says.fact, [f.says.value], 4, [f.id]);
+      state(f.says.fact, f.says.value, 4, [f.id]);
     }
   }
   if (opts.trustTestimony) {
@@ -215,7 +233,7 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     }
   }
   const forgerySeen = perceived.some((f) => f.tell !== undefined);
-  if (carved.length > 0 && !refuted && !forgerySeen && !opts.trustTestimony) {
+  if (carved.length > 0 && !refuted && !forgerySeen && !opts.trustTestimony && !opts.certainOnly) {
     const saved = { beliefs: new Map(beliefs), asserted: new Map(asserted), conflicts: conflicts.length };
     let whole = true;
     for (const f of carved) {
@@ -223,13 +241,8 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
       const b = view(says.fact);
       if (b.level >= 3 && !b.values.includes(says.value)) whole = false;
       else {
-        narrow(says.fact, [says.value], 3, [f.id]);
-        // A derived line constrains what it's made of too ("never fled" means no wound in the back),
-        // so lines that can't all be true are caught.
-        const def = ctx.facts.get(says.fact)?.def;
-        if (def?.derived && typeof says.value === 'boolean') {
-          for (const c of inverse(def.derived, says.value, ctx)) narrow(c.fact, c.values, 3, [f.id]);
-        }
+        // So lines that can't all be true are caught.
+        state(says.fact, says.value, 3, [f.id]);
         propagate();
       }
       if (!whole || conflicts.length > saved.conflicts) {
@@ -260,13 +273,48 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     let revealed = false;
     for (const c of contradictions) {
       const r = opts.reveals.get(c.lie);
-      if (r && narrow(r.fact, [r.value], 4, [`q:${c.lie}`])) revealed = true;
+      if (r && state(r.fact, r.value, 4, [`q:${c.lie}`])) revealed = true;
     }
     if (revealed) propagate();
   }
 
+  // A caught lie, or a tally shown to be forged, proves the soul a liar (Day 16). So do claims that can't all
+  // be true together ("I died in battle" and "I never fled", with no wound in front): one of them is a lie,
+  // even if nothing says which. Nothing proves a soul honest: that is presumed below, like any other
+  // presumption.
+  if (!opts.trustTestimony && [...ctx.facts.values()].some((af) => af.def.fromLies && !af.pinned)) {
+    const claims = perceived.filter(
+      (f) => (f.item === 'testimony' || f.item === 'tally') && f.says && f.says.value !== null,
+    );
+    let clash: string[] = [];
+    if (claims.length > 1 && contradictions.length === 0 && !forgerySeen) {
+      const saved = { beliefs: new Map(beliefs), asserted: new Map(asserted), conflicts: conflicts.length };
+      for (const f of claims) {
+        const says = f.says as { fact: string; value: Value };
+        state(says.fact, says.value, 3, [f.id]);
+      }
+      propagate();
+      if (conflicts.length > saved.conflicts) clash = claims.map((f) => f.id);
+      beliefs.clear();
+      for (const [k, v] of saved.beliefs) beliefs.set(k, v);
+      asserted.clear();
+      for (const [k, v] of saved.asserted) asserted.set(k, v);
+      conflicts.length = saved.conflicts;
+    }
+    const caught = union(
+      union(
+        contradictions.flatMap((c) => [c.lie, ...c.against]),
+        forgerySeen ? perceived.filter((f) => f.tell !== undefined).map((f) => f.id) : [],
+      ),
+      clash,
+    );
+    if (caught.length > 0) {
+      for (const [id, af] of ctx.facts) if (af.def.fromLies && !af.pinned) narrow(id, [true], 4, caught);
+    }
+  }
+
   // Presumptions fill in only what nothing else established.
-  for (const [id, af] of ctx.facts) {
+  for (const [id, af] of opts.certainOnly ? [] : ctx.facts) {
     const p = af.def.presumption;
     if (p === undefined || af.def.derived) continue;
     const b = beliefs.get(id);

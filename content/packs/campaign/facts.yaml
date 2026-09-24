@@ -25,6 +25,8 @@
   since: 7
   inert: plain
   prior: { plain: 6, ulfberht: 1, fakeUlfberht: 1 }
+  # Ulfberhts are swords: a soul whose blade is marked, or who says it is, calls it a sword in every line.
+  words: { ulfberht: { pool.weapons: sword }, fakeUlfberht: { pool.weapons: sword } }
 # Day 8: Naglfar is built from dead men's untrimmed nails.
 - id: nailsGrown
   domain: { bool: true }
@@ -53,4 +55,17 @@
   since: 12
   inert: false
   presumption: false
+  prior: { 'false': 1, 'true': 0 }
+# Day 16: whether the soul lies, aloud or on a forged tally. Set by its lies, never sampled; the player
+# learns it by catching a lie, and presumes honesty until then.
+- id: liar
+  domain: { bool: true }
+  since: 16
+  presumption: false
+  fromLies: true
+# Day 17: a spear point cut over the heart before death dedicates a straw death to Odin (Ynglinga saga).
+# Only archetypes that ask for it carry the mark.
+- id: spearMark
+  domain: { bool: true }
+  since: 17
   prior: { 'false': 1, 'true': 0 }

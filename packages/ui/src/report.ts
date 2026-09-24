@@ -76,7 +76,9 @@ export function reportTitle(r: SoulReport): string {
         ? 'Primer'
         : r.mode === 'campaign'
           ? `Day ${r.day} campaign`
-          : `Day ${r.day} practice`;
+          : r.mode === 'endless'
+            ? `Endless on Day ${r.day}'s rules`
+            : `Day ${r.day} practice`;
   return `Soul report: ${what}, soul ${r.soul + 1}`;
 }
 

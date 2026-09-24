@@ -145,6 +145,11 @@ export function validateCase(
       return fail('UNSOUND', `custom ${law.id} does not hold`);
     }
   }
+  for (const [id, af] of ctx.facts) {
+    if (af.def.fromLies && !af.pinned && truth[id] !== lies.length > 0) {
+      return fail('UNSOUND', `${id} is ${String(truth[id])} but the soul tells ${lies.length} lies`);
+    }
+  }
 
   const solved = solve(evidence.fields, ctx, { reveals: revealsOf(lies) });
 

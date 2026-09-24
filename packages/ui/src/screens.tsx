@@ -1,30 +1,43 @@
 import { dailyContent, gameContent, manifest } from 'virtual:content';
 import { placeholderSigil } from '@cots/art';
-import { shiftScore } from '@cots/engine';
+import { dailyDate, ENDLESS_SOULS, ENDLESS_STRIKES, endlessTwist, shiftScore } from '@cots/engine';
+import type { ShareResult } from '@cots/platform';
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { artStyle } from './art';
+import { AssistSettings, assistText, atSunSpeed } from './assists';
 import { openCampaign } from './campaign/lazy';
 import { clockText, listText, t } from './i18n';
 import { issueFormUrl, links } from './links';
 import { openReport } from './report';
+import { SavesSettings } from './saves-ui';
 import { skippedText } from './shift/evidence';
 import { Decree, RulesPanel } from './shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from './shift/Shift';
 import {
   applyUpdate,
   begin,
+  currentAssists,
+  type DatedRun,
   dailyProgress,
   dailyRecord,
+  type EndlessResult,
   effectiveLayout,
+  endlessProgress,
+  endlessResultBody,
   epochText,
+  isoDate,
+  resumeEndless,
   type Session,
   type Settings,
   session,
   settings,
   shareBody,
+  shareEndless,
   shareResult,
   startDaily,
+  startEndless,
+  startEndlessToday,
   startPractice,
   startPrimer,
   storageReady,
@@ -100,12 +113,17 @@ function DailyCard() {
           {t('ui.daily.result', { correct: result.correct, total: result.total })} {result.marks}
         </p>
       ) : null}
+      {result && assistText(result.assists) ? (
+        <p class="muted" data-testid="daily-assisted">
+          {t('ui.daily.assisted', { list: assistText(result.assists) ?? '' })}
+        </p>
+      ) : null}
       <button
         type="button"
         class="btn btn--primary btn--big"
         data-testid="play-daily"
         disabled={!storageReady.value}
-        onClick={startDaily}
+        onClick={() => startDaily()}
       >
         {resumable
           ? t('ui.daily.resume')
@@ -121,7 +139,48 @@ function DailyCard() {
           {t('ui.daily.streak', { n: streak.current, best: streak.best })}
         </p>
       ) : null}
+      <DailyArchive today={n} />
     </section>
+  );
+}
+
+/** Earlier Dailies, newest first, to play for their own sake: never recorded, streak untouched. */
+function DailyArchive({ today: n }: { today: number }) {
+  const [pick, setPick] = useState(n - 1);
+  if (n < 2) return null;
+  const past = Array.from({ length: n - 1 }, (_, i) => n - 1 - i);
+  return (
+    <details class="archive" data-testid="daily-archive">
+      <summary>{t('ui.daily.archive')}</summary>
+      <p class="muted">{t('ui.daily.archiveNote')}</p>
+      <div class="row">
+        <select
+          value={pick}
+          aria-label={t('ui.daily.archive')}
+          data-testid="archive-pick"
+          onChange={(e) => setPick(Number((e.target as HTMLSelectElement).value))}
+        >
+          {past.map((k) => {
+            const r = dailyRecord.value.results[String(k)];
+            return (
+              <option key={k} value={k}>
+                {t('ui.daily.archiveRow', { n: k, date: isoDate(dailyDate(k)) })}
+                {r ? ` · ${r.correct}/${r.total}` : ''}
+              </option>
+            );
+          })}
+        </select>
+        <button
+          type="button"
+          class="btn"
+          data-testid="archive-play"
+          disabled={!storageReady.value}
+          onClick={() => startDaily(pick)}
+        >
+          {t('ui.daily.archivePlay')}
+        </button>
+      </div>
+    </details>
   );
 }
 
@@ -201,6 +260,19 @@ function SettingsCard() {
         />{' '}
         {t('ui.settings.untimed')}
       </label>
+      {gameContent.campaign ? (
+        <label>
+          <input
+            type="checkbox"
+            checked={s.coach}
+            data-testid="setting-coach"
+            onChange={(e) => set({ coach: (e.target as HTMLInputElement).checked })}
+          />{' '}
+          {t('ui.settings.coach')}
+        </label>
+      ) : null}
+      <AssistSettings campaign={gameContent.campaign !== undefined} />
+      <SavesSettings />
       {telemetryAvailable() ? (
         <label>
           <input
@@ -251,6 +323,7 @@ export function Title() {
         </div>
         <p class="muted">{t('ui.practice.hint')}</p>
       </section>
+      <EndlessCard />
       {manifest.edition === 'demo' && links.steam ? (
         <a class="btn btn--big wishlist" href={links.steam} target="_blank" rel="noopener noreferrer">
           {t('demo.wishlist')}
@@ -273,10 +346,141 @@ export function Title() {
   );
 }
 
+/** What an Endless run is called: the day's by number, or a free run. */
+const runName = (dated: DatedRun | null): string =>
+  !dated
+    ? t('ui.endless.free')
+    : dated.preview
+      ? t('ui.endless.datedPreview', { date: dated.date })
+      : t('ui.endless.dated', { n: dated.n });
+
+/** A share button with its status line and the text itself (for copying by hand). */
+function ShareBox({ text, url, share }: { text: string; url: string | undefined; share: () => Promise<ShareResult> }) {
+  const [shared, setShared] = useState<string | null>(null);
+  return (
+    <>
+      <button
+        type="button"
+        class="btn btn--primary"
+        data-testid="share"
+        onClick={async () => {
+          const r = await share();
+          setShared(
+            r === 'copied'
+              ? t('ui.summary.copied')
+              : r === 'shared'
+                ? t('ui.summary.shared')
+                : t('ui.summary.shareFailed'),
+          );
+        }}
+      >
+        {t('ui.summary.share')}
+      </button>
+      {shared ? (
+        <p role="status" data-testid="share-status">
+          {shared}
+        </p>
+      ) : null}
+      <textarea class="share" readOnly rows={4} data-testid="share-text" value={url ? `${text}\n${url}` : text} />
+    </>
+  );
+}
+
+/**
+ * Endless on the title screen: today's run (the same souls for everyone, once), a free run, and the
+ * saved run to pick up. While today's run is under way it can only be resumed.
+ */
+function EndlessCard() {
+  const { n, date, preview } = today();
+  const saved = endlessProgress.value;
+  const played = settings.value.endlessToday;
+  const playedToday = played?.n === n ? played : null;
+  const todayOpen = saved?.mode.dated?.n === n;
+  const best = settings.value.endlessBest;
+  return (
+    <section class="card" data-testid="endless-card">
+      <h2>{t('ui.endless')}</h2>
+      <p class="muted">{t('ui.endless.hint', { n: ENDLESS_SOULS, strikes: ENDLESS_STRIKES })}</p>
+      {playedToday ? <EndlessToday result={playedToday} /> : null}
+      {saved ? (
+        <p data-testid="endless-saved">
+          {runName(saved.mode.dated)} ·{' '}
+          {t('ui.endless.status', { n: saved.judged, strikes: saved.strikes, max: ENDLESS_STRIKES })}
+        </p>
+      ) : null}
+      <div class="row">
+        {saved ? (
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-testid="endless-resume"
+            disabled={!storageReady.value}
+            onClick={resumeEndless}
+          >
+            {t('ui.endless.resume', { round: saved.mode.round + 1 })}
+          </button>
+        ) : null}
+        {!playedToday && !todayOpen ? (
+          <button
+            type="button"
+            class={saved ? 'btn' : 'btn btn--primary'}
+            data-testid="endless-today"
+            disabled={!storageReady.value}
+            onClick={startEndlessToday}
+          >
+            {runName({ n, date, preview })}
+          </button>
+        ) : null}
+        {!todayOpen ? (
+          <button
+            type="button"
+            class="btn"
+            data-testid="endless-start"
+            disabled={!storageReady.value}
+            onClick={startEndless}
+          >
+            {t('ui.endless.free')}
+          </button>
+        ) : null}
+        {best > 0 ? (
+          <span class="muted" data-testid="endless-best">
+            {t('ui.endless.best', { n: best })}
+          </span>
+        ) : null}
+      </div>
+      {saved && !todayOpen ? <p class="muted">{t('ui.endless.replaces')}</p> : null}
+      {!playedToday && !saved ? <p class="muted">{t('ui.endless.todayNote')}</p> : null}
+    </section>
+  );
+}
+
+/** Today's Endless result, to share after the run has gone. */
+function EndlessToday({ result }: { result: EndlessResult }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div class="endless__today">
+      <p class="card__result" data-testid="endless-today-result">
+        {t('ui.endless.todayResult', { n: result.judged, round: result.round + 1 })}{' '}
+        <button
+          type="button"
+          class="btn btn--quiet btn--small"
+          data-testid="endless-today-share"
+          onClick={() => setOpen(!open)}
+        >
+          {t('ui.summary.share')}
+        </button>
+      </p>
+      {open ? <ShareBox {...endlessResultBody(result)} share={() => shareEndless(result)} /> : null}
+    </div>
+  );
+}
+
 function modeTitle(s: Session): string {
   if (s.mode.kind === 'practice') return t('ui.briefing.practice', { n: s.mode.day });
+  if (s.mode.kind === 'endless') return t('ui.endless.round', { n: s.mode.round + 1, day: s.mode.day });
   if (s.mode.kind === 'primer') return t('primer.title');
   if (s.mode.kind === 'campaign') return t('ui.campaign.day', { n: s.mode.day });
+  if (s.mode.archive) return t('ui.briefing.archive', { n: s.mode.n, date: s.mode.date });
   return s.mode.preview ? t('ui.briefing.preview') : t('ui.briefing.daily', { n: s.mode.n });
 }
 
@@ -285,6 +489,9 @@ export function Briefing() {
   const s = session.value;
   if (!s) return null;
   const st = s.state;
+  // The shift takes up the assists as it begins; until then, show the sun they'll give it.
+  const assists = currentAssists(false, st.config.untimed);
+  const assisted = assistText(assists);
   return (
     <main class="screen screen--briefing">
       <h1 data-testid="briefing-title">{modeTitle(s)}</h1>
@@ -296,12 +503,27 @@ export function Briefing() {
           </button>
         </div>
       ) : null}
+      {s.mode.kind === 'endless' ? (
+        <p class="briefing__queue" data-testid="endless-status">
+          {t('ui.endless.status', { n: s.mode.judged, strikes: s.mode.strikes, max: ENDLESS_STRIKES })}
+        </p>
+      ) : null}
+      {s.mode.kind === 'endless' && endlessTwist(s.content, s.mode.seed, s.mode.round) ? (
+        <p class="briefing__twist" data-testid="endless-twist">
+          {t('ui.endless.twist', { day: s.mode.day })}
+        </p>
+      ) : null}
       <Decree ctx={s.ctx} />
       <p class="briefing__queue">
         {st.config.untimed
           ? t('ui.briefing.untimed', { n: st.cases.length })
-          : t('ui.briefing.queue', { n: st.cases.length, time: clockText(st.sunMs) })}
+          : t('ui.briefing.queue', { n: st.cases.length, time: clockText(atSunSpeed(st.sunMs, assists.sunPct)) })}
       </p>
+      {assisted ? (
+        <p class="muted" data-testid="briefing-assists">
+          {t('ui.assist.on', { list: assisted })}
+        </p>
+      ) : null}
       <div class="row">
         <button type="button" class="btn btn--primary btn--big" data-testid="begin" ref={focus} onClick={begin}>
           {t('ui.begin')}
@@ -314,6 +536,40 @@ export function Briefing() {
         <RulesPanel ctx={s.ctx} decree={false} />
       </section>
       <ReportDialog />
+    </main>
+  );
+}
+
+/** Endless is over: three strikes. */
+export function EndlessOver() {
+  const focus = useAutoFocus<HTMLButtonElement>();
+  const s = session.value;
+  if (s?.mode.kind !== 'endless') return null;
+  const m = s.mode;
+  const { text, url } = shareBody(s);
+  return (
+    <main class="screen screen--summary">
+      <h1 data-testid="endless-over">{t('ui.endless.over')}</h1>
+      <p class="muted" data-testid="endless-run">
+        {runName(m.dated)}
+      </p>
+      <p class="summary__score" data-testid="endless-score">
+        {t('ui.endless.score', { n: m.judged, day: m.day })}
+      </p>
+      <p data-testid="endless-record">
+        {m.judged > m.bestBefore ? t('ui.endless.newBest') : t('ui.endless.best', { n: settings.value.endlessBest })}
+      </p>
+      <section class="card">
+        <ShareBox text={text} url={url} share={() => shareResult(s)} />
+      </section>
+      <div class="row">
+        <button type="button" class="btn btn--primary" data-testid="endless-again" ref={focus} onClick={startEndless}>
+          {t('ui.endless.free')}
+        </button>
+        <button type="button" class="btn" data-testid="home" onClick={toTitle}>
+          {t('ui.summary.home')}
+        </button>
+      </div>
     </main>
   );
 }
@@ -358,7 +614,7 @@ function PrimerDone() {
       <h2>{t('primer.done.title')}</h2>
       <p>{t('primer.done.body')}</p>
       <div class="row">
-        <button type="button" class="btn btn--primary" data-testid="primer-to-daily" onClick={startDaily}>
+        <button type="button" class="btn btn--primary" data-testid="primer-to-daily" onClick={() => startDaily()}>
           {t('primer.toDaily')}
         </button>
       </div>
@@ -368,7 +624,6 @@ function PrimerDone() {
 
 export function Summary() {
   const s = session.value;
-  const [shared, setShared] = useState<string | null>(null);
   if (!s) return null;
   const st = s.state;
   const score = shiftScore(st);
@@ -420,29 +675,7 @@ export function Summary() {
       </ol>
       {daily ? (
         <section class="card">
-          <button
-            type="button"
-            class="btn btn--primary"
-            data-testid="share"
-            onClick={async () => {
-              const r = await shareResult(s);
-              setShared(
-                r === 'copied'
-                  ? t('ui.summary.copied')
-                  : r === 'shared'
-                    ? t('ui.summary.shared')
-                    : t('ui.summary.shareFailed'),
-              );
-            }}
-          >
-            {t('ui.summary.share')}
-          </button>
-          {shared ? (
-            <p role="status" data-testid="share-status">
-              {shared}
-            </p>
-          ) : null}
-          <textarea class="share" readOnly rows={4} data-testid="share-text" value={url ? `${text}\n${url}` : text} />
+          <ShareBox text={text} url={url} share={() => shareResult(s)} />
         </section>
       ) : null}
       {daily ? <TelemetryAsk /> : null}

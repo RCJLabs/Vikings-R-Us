@@ -1,14 +1,59 @@
 - { id: tm.oath.kept.1, slot: oath, asserts: { fact: outlaw, value: false }, msg: tm.oath.kept.1, weight: 2 }
 - { id: tm.oath.kept.2, slot: oath, asserts: { fact: outlaw, value: false }, personas: [braggart], msg: tm.oath.kept.2, weight: 2 }
 - { id: tm.oath.kept.3, slot: oath, asserts: { fact: outlaw, value: false }, personas: [veteran, honest], msg: tm.oath.kept.3 }
-- { id: tm.owner.self.1, slot: owner, asserts: { fact: weaponOwner, value: self }, msg: tm.owner.self.1, weight: 2 }
-- { id: tm.owner.self.2, slot: owner, asserts: { fact: weaponOwner, value: self }, personas: [braggart], msg: tm.owner.self.2 }
-- { id: tm.blade.ulfberht.1, slot: blade, asserts: { fact: blade, value: ulfberht }, msg: tm.blade.ulfberht.1 }
-- { id: tm.blade.ulfberht.2, slot: blade, asserts: { fact: blade, value: ulfberht }, personas: [braggart], msg: tm.blade.ulfberht.2, weight: 2 }
+- { id: tm.oath.kept.4, slot: oath, asserts: { fact: outlaw, value: false }, msg: tm.oath.kept.4 }
+- { id: tm.oath.kept.5, slot: oath, asserts: { fact: outlaw, value: false }, personas: [coward], msg: tm.oath.kept.5 }
+- { id: tm.oath.kept.6, slot: oath, asserts: { fact: outlaw, value: false }, msg: tm.oath.kept.6 }
+- { id: tm.owner.self.1, slot: owner, asserts: { fact: weaponOwner, value: self }, msg: tm.owner.self.1, params: { weapon: pool.weapons }, weight: 2 }
+- { id: tm.owner.self.2, slot: owner, asserts: { fact: weaponOwner, value: self }, personas: [braggart], msg: tm.owner.self.2, params: { weapon: pool.weapons } }
+- { id: tm.owner.self.3, slot: owner, asserts: { fact: weaponOwner, value: self }, msg: tm.owner.self.3, params: { weapon: pool.weapons } }
+- { id: tm.owner.self.4, slot: owner, asserts: { fact: weaponOwner, value: self }, msg: tm.owner.self.4, params: { weapon: pool.weapons } }
+- { id: tm.owner.self.5, slot: owner, asserts: { fact: weaponOwner, value: self }, personas: [veteran], msg: tm.owner.self.5, params: { weapon: pool.weapons } }
+- { id: tm.blade.ulfberht.1, slot: blade, asserts: { fact: blade, value: ulfberht }, msg: tm.blade.ulfberht.1, params: { weapon: pool.weapons } }
+- { id: tm.blade.ulfberht.2, slot: blade, asserts: { fact: blade, value: ulfberht }, msg: tm.blade.ulfberht.2, params: { weapon: pool.weapons } }
+- { id: tm.blade.ulfberht.3, slot: blade, asserts: { fact: blade, value: ulfberht }, msg: tm.blade.ulfberht.3, params: { weapon: pool.weapons } }
 - { id: tm.creed.heathen.1, slot: creed, asserts: { fact: faith, value: heathen }, msg: tm.creed.heathen.1, weight: 2 }
 - { id: tm.creed.heathen.2, slot: creed, asserts: { fact: faith, value: heathen }, personas: [braggart, veteran], msg: tm.creed.heathen.2 }
+- { id: tm.creed.heathen.3, slot: creed, asserts: { fact: faith, value: heathen }, msg: tm.creed.heathen.3 }
+- { id: tm.creed.heathen.4, slot: creed, asserts: { fact: faith, value: heathen }, personas: [confused], msg: tm.creed.heathen.4 }
+- { id: tm.creed.heathen.5, slot: creed, asserts: { fact: faith, value: heathen }, msg: tm.creed.heathen.5 }
 - { id: tm.creed.baptized.1, slot: creed, asserts: { fact: faith, value: baptized }, msg: tm.creed.baptized.1 }
-- { id: tm.creed.baptized.2, slot: creed, asserts: { fact: faith, value: baptized }, personas: [coward, confused], msg: tm.creed.baptized.2, weight: 2 }
+- { id: tm.creed.baptized.2, slot: creed, asserts: { fact: faith, value: baptized }, msg: tm.creed.baptized.2 }
+- { id: tm.creed.baptized.3, slot: creed, asserts: { fact: faith, value: baptized }, msg: tm.creed.baptized.3 }
 - { id: tm.creed.primeSigned.1, slot: creed, asserts: { fact: faith, value: primeSigned }, msg: tm.creed.primeSigned.1 }
+# Loki always says one of these (his one lie); some honest souls do too (speech.yaml), with the same lines.
 - { id: tm.guise.1, slot: guise, asserts: { fact: trickster, value: false }, msg: tm.guise.1 }
 - { id: tm.guise.2, slot: guise, asserts: { fact: trickster, value: false }, personas: [braggart], msg: tm.guise.2 }
+- { id: tm.guise.3, slot: guise, asserts: { fact: trickster, value: false }, msg: tm.guise.3 }
+- { id: tm.guise.4, slot: guise, asserts: { fact: trickster, value: false }, msg: tm.guise.4 }
+- { id: tm.guise.5, slot: guise, asserts: { fact: trickster, value: false }, personas: [confused], msg: tm.guise.5 }
+- { id: tm.guise.6, slot: guise, asserts: { fact: trickster, value: false }, personas: [veteran], msg: tm.guise.6 }
+
+# More ways to say the common lines, so a long day repeats itself less. They live in the campaign
+# pack, so the demo and the Daily keep their words (and the Daily its checksums).
+- { id: tm.identity.4, slot: identity, msg: tm.identity.4 }
+- { id: tm.identity.5, slot: identity, msg: tm.identity.5 }
+- { id: tm.identity.6, slot: identity, msg: tm.identity.6 }
+- { id: tm.identity.7, slot: identity, personas: [veteran], msg: tm.identity.7 }
+- { id: tm.identity.8, slot: identity, personas: [coward], msg: tm.identity.8 }
+- { id: tm.identity.9, slot: identity, personas: [confused], msg: tm.identity.9 }
+- { id: tm.identity.10, slot: identity, personas: [honest], msg: tm.identity.10 }
+- { id: tm.death.battle.5, slot: death, asserts: { fact: cause, value: battle }, msg: tm.death.battle.5, params: { place: pool.places, foe: pool.foes } }
+- { id: tm.death.battle.6, slot: death, asserts: { fact: cause, value: battle }, msg: tm.death.battle.6, params: { place: pool.places } }
+- { id: tm.death.battle.7, slot: death, asserts: { fact: cause, value: battle }, msg: tm.death.battle.7, params: { place: pool.places, foe: pool.foes } }
+- { id: tm.death.battle.8, slot: death, asserts: { fact: cause, value: battle }, personas: [braggart], msg: tm.death.battle.8, params: { place: pool.places, foe: pool.foes } }
+- { id: tm.death.battle.9, slot: death, asserts: { fact: cause, value: battle }, personas: [veteran], msg: tm.death.battle.9, params: { place: pool.places, foe: pool.foes } }
+- { id: tm.weapon.yes.3, slot: weapon, asserts: { fact: grip, value: weapon }, msg: tm.weapon.yes.3, params: { weapon: pool.weapons } }
+- { id: tm.weapon.yes.4, slot: weapon, asserts: { fact: grip, value: weapon }, msg: tm.weapon.yes.4, params: { weapon: pool.weapons } }
+- { id: tm.weapon.yes.5, slot: weapon, asserts: { fact: grip, value: weapon }, personas: [veteran], msg: tm.weapon.yes.5, params: { weapon: pool.weapons } }
+- { id: tm.weapon.yes.6, slot: weapon, asserts: { fact: grip, value: weapon }, msg: tm.weapon.yes.6, params: { weapon: pool.weapons } }
+- { id: tm.back.no.3, slot: back, asserts: { fact: fled, value: false }, msg: tm.back.no.3 }
+- { id: tm.back.no.4, slot: back, asserts: { fact: fled, value: false }, msg: tm.back.no.4 }
+- { id: tm.back.no.5, slot: back, asserts: { fact: fled, value: false }, personas: [coward], msg: tm.back.no.5 }
+- { id: tm.back.no.6, slot: back, asserts: { fact: fled, value: false }, personas: [veteran], msg: tm.back.no.6 }
+- { id: tm.flavor.braggart.2, slot: flavor, personas: [braggart], msg: tm.flavor.braggart.2 }
+- { id: tm.flavor.braggart.3, slot: flavor, personas: [braggart], msg: tm.flavor.braggart.3 }
+- { id: tm.flavor.confused.2, slot: flavor, personas: [confused], msg: tm.flavor.confused.2 }
+- { id: tm.flavor.confused.3, slot: flavor, personas: [confused], msg: tm.flavor.confused.3 }
+- { id: tm.flavor.coward.2, slot: flavor, personas: [coward], msg: tm.flavor.coward.2 }
+- { id: tm.flavor.coward.3, slot: flavor, personas: [coward], msg: tm.flavor.coward.3 }

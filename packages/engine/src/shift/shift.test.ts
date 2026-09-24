@@ -3,12 +3,18 @@ import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
 import { dailySeed } from '../calendar';
 import { DESTINATIONS, type Destination } from '../content/types';
+import { revealsOf } from '../gen/validate';
 import type { DayCtx } from '../logic/context';
+import { sameJudgment } from '../logic/judge';
 import { solve } from '../logic/solver';
+import { Rng } from '../rng/rng';
 import {
+  assistNotes,
   DUSK_GRACE_MS,
   inspectable,
+  nextHint,
   PENALTY,
+  ruledOut,
   type ShiftAction,
   type ShiftEvent,
   type ShiftState,
@@ -372,6 +378,115 @@ describe('share text', () => {
     const sec = String(Math.floor((spare % 60_000) / 1000)).padStart(2, '0');
     expect(text.split('\n')[1]).toBe(`🟩🟩🟩🟩🟩🟩🟩🟩 8/8 · ${m}:${sec} to spare`);
   });
+});
+
+describe('assists', () => {
+  it('a slower sun gives more time and a faster one less, set as the shift begins', () => {
+    const { state, ctx } = startDaily();
+    const base = state.sunMs;
+    const begun = (sunPct: number) => stepShift(state, { t: 'begin', at: 0, assists: { sunPct } }, ctx).state;
+    expect(begun(50).sunMs).toBe(base * 2);
+    expect(begun(200).sunMs).toBe(base / 2);
+    expect(begun(50).config.assists).toEqual({ sunPct: 50 });
+    // Only the speeds on offer: anything else is the sun as designed, and no assist is kept.
+    expect(begun(60).sunMs).toBe(base);
+    expect(begun(60).config.assists).toBeUndefined();
+    expect(begun(100).config.assists).toBeUndefined();
+    // Dusk comes when the slower sun runs out, not the designed one.
+    expect(run(begun(50), ctx, [{ t: 'tick', at: base + 1000 }]).events).not.toContainEqual({ e: 'dusk' });
+    expect(run(begun(50), ctx, [{ t: 'tick', at: 2 * base }]).events).toContainEqual({ e: 'dusk' });
+  });
+
+  it('says in the share text which assists were on', () => {
+    const { state, ctx } = startDaily();
+    const assisted = stepShift(state, { t: 'begin', at: 0, assists: { sunPct: 50, tracker: true } }, ctx).state;
+    expect(shareText(assisted, daily, { title: 'T' })).toMatch(/ · sun ×0\.5, rule tracker$/);
+    const plain = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+    expect(shareText(plain, daily, { title: 'T' })).not.toMatch(/sun ×|tracker/);
+    expect(assistNotes({ sunPct: 200 })).toEqual(['sun ×2']);
+    expect(assistNotes({ sunPct: 75 })).toEqual(['sun ×0.75']);
+    // Fines aren't part of a Daily, so waiving them says nothing there.
+    expect(assistNotes({ noFines: true })).toEqual([]);
+  });
+
+  it('the rule tracker rules out a rule once what was seen settles it, and not on a presumption', () => {
+    // Day 1: a weapon in hand goes to Valhalla, anyone else to Hel.
+    const { state, ctx } = startShift(demo, { mode: 'practice', seed: 'tracker', day: 1 });
+    const begun = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+    const i = begun.cases.findIndex((c) => c.expect.dest === 'HEL');
+    const c = begun.cases[i];
+    if (!c) throw new Error('no soul for Hel on Day 1');
+    const weaponRule = ctx.rules[0]?.id ?? '';
+    const at = (seen: readonly string[]) => ruledOut({ ...begun, cursor: i, soul: { ...begun.soul, seen } }, ctx);
+    expect(at([])).toEqual([]);
+    expect(at(c.evidence.fields.map((f) => f.id))).toEqual([weaponRule]);
+  });
+
+  test.prop([fc.integer({ min: 1, max: 20 }), fc.nat(1000)], { numRuns: 40 })(
+    'the rule tracker never rules out the rule that applies, whatever has been seen or asked',
+    (day, n) => {
+      const { state, ctx } = startShift(full, { mode: 'practice', seed: `track${n}`, day });
+      const begun = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+      const rng = new Rng(`track${n}|${day}`);
+      begun.cases.forEach((c, i) => {
+        const seen = c.evidence.fields.filter(() => rng.chance(2, 3)).map((f) => f.id);
+        const questioned = c.lies.filter(() => rng.chance(1, 2)).map((l) => l.field);
+        const soul = { ...begun.soul, seen, questioned };
+        expect(ruledOut({ ...begun, cursor: i, soul }, ctx)).not.toContain(c.expect.rule);
+      });
+    },
+  );
+});
+
+describe('Skögul’s hint', () => {
+  /** Looks at a field the way a player would: turning the body over or using the tool it needs first. */
+  const lookAt = (state: ShiftState, ctx: DayCtx, id: string): ShiftState => {
+    const f = state.cases[state.cursor]?.evidence.fields.find((x) => x.id === id);
+    let st = state;
+    if (f?.view === 'back' && !st.soul.flipped) st = stepShift(st, { t: 'flip', at: 0 }, ctx).state;
+    if (f?.tool && f.tool !== 'flip') st = stepShift(st, { t: 'tool', tool: f.tool, at: 0 }, ctx).state;
+    return stepShift(st, { t: 'inspect', fields: [id], at: 0 }, ctx).state;
+  };
+
+  it('points at deciding evidence not yet seen, one piece at a time, for 15 s of sun each', () => {
+    const { state, ctx } = startDaily(3);
+    const begun = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+    const c = begun.cases[0];
+    if (!c) throw new Error('no soul');
+    const first = run(begun, ctx, [{ t: 'hint', at: 0 }]);
+    const pointed = first.events.find((e) => e.e === 'hint');
+    expect(pointed).toEqual({ e: 'hint', field: c.meta.proof[0], penaltyMs: PENALTY.hint });
+    expect(first.state.clock.penaltyMs).toBe(PENALTY.hint);
+    // Asked again, she points at the next piece, not the same one.
+    if (c.meta.proof.length > 1) expect(nextHint(first.state)).toBe(c.meta.proof[1]);
+    // Once everything that decides the soul has been seen, there is nothing to point at, and asking costs nothing.
+    let st = begun;
+    for (const id of c.meta.proof) st = lookAt(st, ctx, id);
+    expect(nextHint(st)).toBeNull();
+    const none = stepShift(st, { t: 'hint', at: 0 }, ctx);
+    expect(none.events).toEqual([{ e: 'rejected', reason: 'nothing left to point at' }]);
+    expect(none.state).toBe(st);
+  });
+
+  test.prop([fc.integer({ min: 1, max: 20 }), fc.nat(1000)], { numRuns: 30 })(
+    'following her hints to the end shows enough to decide the soul (questioning where a liar must confess)',
+    (day, n) => {
+      const { state, ctx } = startShift(full, { mode: 'practice', seed: `hint${n}`, day });
+      let st = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+      const c = st.cases[0];
+      if (!c) return;
+      for (let guard = 0; guard < 30; guard++) {
+        const id = nextHint(st);
+        if (!id) break;
+        st = lookAt(stepShift(st, { t: 'hint', at: 0 }, ctx).state, ctx, id);
+      }
+      expect(nextHint(st)).toBeNull();
+      const seen = c.evidence.fields.filter((f) => st.soul.seen.includes(f.id));
+      const judged = solve(seen, ctx, { reveals: revealsOf(c.lies) }).judgment;
+      expect(judged.kind).toBe('determined');
+      if (judged.kind === 'determined') expect(sameJudgment(judged, c.expect)).toBe(true);
+    },
+  );
 });
 
 describe('robustness', () => {

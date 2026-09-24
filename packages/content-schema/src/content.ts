@@ -5,6 +5,7 @@ import type {
   Economy,
   Effect,
   EndingDef,
+  EndlessTwist,
   FactDef,
   FactLaw,
   FamilyDef,
@@ -89,7 +90,15 @@ export const FactSchema: z.ZodType<FactDef, unknown> = z
     prior: z.record(z.string(), Weight).optional(),
     presumption: ValueSchema.optional(),
     derived: PredSchema.optional(),
+    fromLies: z.literal(true).optional(),
+    words: z.record(z.string(), z.record(z.string(), z.string())).optional(),
   })
+  .refine(
+    (f) =>
+      !f.fromLies ||
+      (f.domain.kind === 'bool' && f.presumption === false && f.prior === undefined && f.derived === undefined),
+    { message: 'a fromLies fact is a bool, presumed false, with no prior and no derivation' },
+  )
   .transform(({ inert, ...f }) => {
     const d = f.domain;
     const first = d.kind === 'enum' ? (d.values[0] as string) : d.kind === 'int' ? d.min : false;
@@ -220,6 +229,7 @@ export const SpeechSlotSchema: z.ZodType<SpeechSlotDef> = z.strictObject({
   slot: SpeechSlotNameSchema,
   fact: z.string().optional(),
   chance: Percent,
+  chances: z.record(z.string(), Percent).optional(),
   since: Day,
 });
 
@@ -280,6 +290,53 @@ export const EconomySchema: z.ZodType<Economy> = z.strictObject({
   costs: z.strictObject({ hearth: Int.min(0), food: Int.min(0), medicine: Int.min(0) }),
 });
 
+const LessonUntilSchema = z.union([
+  z.strictObject({ seen: z.string().min(1) }),
+  z.strictObject({ tool: ToolIdSchema }),
+  z.strictObject({ flipped: z.literal(true) }),
+  z.strictObject({ flagged: z.literal(true) }),
+]);
+
+const LessonSchema = z.strictObject({
+  primer: z.literal(true).optional(),
+  steps: z
+    .array(
+      z.strictObject({
+        id: Id,
+        text: Key,
+        focus: z.string().min(1),
+        next: z.literal(true).optional(),
+        until: LessonUntilSchema.optional(),
+      }),
+    )
+    .min(1),
+});
+
+const KnobsSchema = z.strictObject({
+  lieRate: Int.min(0).max(200),
+  maxLies: Int.min(0).max(3),
+  decoyRate: Percent,
+  ravenRate: Percent,
+  forgetRate: Percent,
+  proofCostS: Pair,
+  maxTools: Int.min(0),
+  maxDocs: Int.min(1),
+  salienceFloor: SalienceSchema,
+  tallyRate: Percent.optional(),
+  muninnRecall: Percent.optional(),
+  huginnAside: Percent.optional(),
+  spreadLines: z.boolean().optional(),
+});
+
+/** Endless's twists (endless.yaml): a decree and how the souls come, never new rules. */
+export const EndlessTwistSchema: z.ZodType<EndlessTwist> = z.strictObject({
+  id: Id,
+  since: Day,
+  decree: Key,
+  knobs: KnobsSchema.partial().optional(),
+  mix: z.partialRecord(DestinationSchema, z.tuple([Percent, Percent])).optional(),
+});
+
 export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
   day: Day,
   sunS: Int.positive(),
@@ -302,19 +359,9 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       .optional(),
     archetypes: z.array(z.strictObject({ id: Id, w: Int.positive() })).min(1),
     mix: z.partialRecord(DestinationSchema, z.tuple([Percent, Percent])),
-    knobs: z.strictObject({
-      lieRate: Int.min(0).max(200),
-      maxLies: Int.min(0).max(3),
-      decoyRate: Percent,
-      ravenRate: Percent,
-      forgetRate: Percent,
-      proofCostS: Pair,
-      maxTools: Int.min(0),
-      maxDocs: Int.min(1),
-      salienceFloor: SalienceSchema,
-      tallyRate: Percent.optional(),
-    }),
+    knobs: KnobsSchema,
   }),
+  lesson: LessonSchema.optional(),
 });
 
 // ---- Campaign (campaign.yaml) ----
@@ -427,5 +474,9 @@ export const CampaignPartSchema = z.strictObject({
   standing: z.array(StandingRuleSchema).optional(),
   shop: z.array(UpgradeSchema).optional(),
   endings: z.array(EndingSchema).optional(),
+  aliases: z.array(z.strictObject({ faction: FactionSchema, name: Key, untilDay: Day })).optional(),
+  threads: z
+    .array(z.strictObject({ id: Id, when: StatePredSchema, text: Key, count: z.string().optional() }))
+    .optional(),
 });
 export type CampaignPart = z.infer<typeof CampaignPartSchema>;

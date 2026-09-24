@@ -15,15 +15,25 @@ export function Decree({ ctx }: { ctx: DayCtx }) {
   );
 }
 
-export function RulesPanel({ ctx, decree = true }: { ctx: DayCtx; decree?: boolean }) {
+/**
+ * The rulebook in force. With the rule tracker on (an assist), `out` holds the rules that what the
+ * player has seen of the soul already rules out: they're greyed and say so.
+ */
+export function RulesPanel({ ctx, decree = true, out }: { ctx: DayCtx; decree?: boolean; out?: ReadonlySet<string> }) {
   return (
     <div class="rules">
       {decree ? <Decree ctx={ctx} /> : null}
       <h3>{t('ui.rules.title')}</h3>
+      {out ? (
+        <p class="rules__tracker muted" data-testid="rule-tracker">
+          {t('ui.rules.tracker')}
+        </p>
+      ) : null}
       <ol class="rules__order">
         {ctx.rules.map((r) => (
-          <li key={r.id} data-rule={r.id}>
+          <li key={r.id} data-rule={r.id} class={out?.has(r.id) ? 'is-out' : undefined} data-out={out?.has(r.id)}>
             {t(r.text)}
+            {out?.has(r.id) ? <span class="rules__out"> ({t('ui.rules.out')})</span> : null}
           </li>
         ))}
       </ol>
@@ -62,7 +72,13 @@ export function RulesPanel({ ctx, decree = true }: { ctx: DayCtx; decree?: boole
         {[...ctx.tools].map(([id, s]) => (
           <li key={id}>{t('ui.rules.toolCost', { tool: t(`tool.${id}`), s })}</li>
         ))}
-        <li>{t('ui.rules.costs', { bad: PENALTY.badCompare / 1000, q: PENALTY.question / 1000 })}</li>
+        <li>
+          {t('ui.rules.costs', {
+            bad: PENALTY.badCompare / 1000,
+            q: PENALTY.question / 1000,
+            h: PENALTY.hint / 1000,
+          })}
+        </li>
       </ul>
     </div>
   );

@@ -30,3 +30,12 @@ queue:
     maxTools: 2
     maxDocs: 3
     salienceFloor: 2
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  primer: true
+  steps:
+    - { id: d3.face, text: coach.d3.face, focus: face, until: { seen: cue.breathFog } }
+    - { id: d3.feather, text: coach.d3.feather, focus: feather, until: { tool: feather } }
+    - { id: d3.stamp, text: coach.d3.stamp, focus: judge }

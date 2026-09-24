@@ -110,9 +110,10 @@
   lies:
     - { fact: faith, claim: baptized, p: 100, motive: avoidHel, onQuestion: { confess: 1, excuse: 1 } }
 # Day 12: Loki in a hero's face. Everything says Valhalla except the lips; asked, he deflects.
+# He can play any part, so how a soul talks never rules him out.
 - id: arch.loki
   since: 12
-  personas: [veteran, braggart]
+  personas: [veteran, braggart, honest, coward, confused]
   truth:
     trickster: { is: true }
     cause: { is: battle }
@@ -122,3 +123,70 @@
     alive: { is: false }
   lies:
     - { fact: trickster, claim: false, p: 100, motive: mischief, onQuestion: { deflect: 1 } }
+# Day 14's teaching soul: an honest straw death, now the clerk's while Hel's hall is full.
+- id: arch.bedridden
+  since: 14
+  personas: [honest, confused, veteran]
+  truth:
+    cause: { in: [sickness, oldAge] }
+    woundsFront: { is: 0 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+    outlaw: { is: false }
+    faith: { in: [heathen, primeSigned] }
+  lies: []
+# Day 15's teaching soul: worthy, and both gods want it. Odin's claim comes first.
+- id: arch.contested
+  since: 15
+  personas: [veteran, honest, braggart]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+  require:
+    - { param: freyjaWhim }
+    - { param: odinClaim }
+  lies: []
+# Day 16's teaching soul: worthy, and boasting of an Ulfberht it doesn't carry. Caught, it goes to Hel.
+- id: arch.proud_liar
+  since: 16
+  personas: [braggart]
+  truth:
+    cause: { is: battle }
+    grip: { is: weapon }
+    blade: { in: [plain, fakeUlfberht] }
+    woundsFront: { gte: 1 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+    outlaw: { is: false }
+  lies:
+    - { fact: blade, claim: ulfberht, p: 100, motive: wantsValhalla, onQuestion: { confess: 1, excuse: 2 } }
+# Day 17's teaching soul: died in bed, but marked with a spear point first. Odin's.
+- id: arch.spear_marked
+  since: 17
+  personas: [honest, veteran, confused]
+  truth:
+    cause: { in: [sickness, oldAge] }
+    spearMark: { is: true }
+    woundsFront: { is: 0 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+    outlaw: { is: false }
+    faith: { in: [heathen, primeSigned] }
+  lies: []
+# Spear-marked, and still claiming a warrior's death. The lie costs the loophole.
+- id: arch.marked_boaster
+  since: 17
+  personas: [braggart, veteran]
+  truth:
+    cause: { in: [sickness, oldAge] }
+    spearMark: { is: true }
+    woundsFront: { is: 0 }
+    woundsBack: { is: 0 }
+    alive: { is: false }
+    outlaw: { is: false }
+    faith: { in: [heathen, primeSigned] }
+  lies:
+    - { fact: cause, claim: battle, p: 100, motive: wantsValhalla, onQuestion: { confess: 1, excuse: 1 } }

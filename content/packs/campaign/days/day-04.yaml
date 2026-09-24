@@ -35,3 +35,11 @@ queue:
     maxTools: 2
     maxDocs: 3
     salienceFloor: 2
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d4.whim, text: coach.d4.whim, focus: rules, next: true }
+    - { id: d4.look, text: coach.d4.look, focus: 'whim:freyjaWhim', until: { seen: 'whim:freyjaWhim' } }
+    - { id: d4.stamp, text: coach.d4.stamp, focus: judge }

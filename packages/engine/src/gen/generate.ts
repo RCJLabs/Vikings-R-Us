@@ -4,10 +4,10 @@ import type { DayCtx } from '../logic/context';
 import { type Judgment, judge } from '../logic/judge';
 import type { Truth } from '../logic/pred';
 import { Rng } from '../rng/rng';
-import { pickLies } from './lies';
+import { type PlannedLie, pickLies, withLiars } from './lies';
 import { makeLook } from './look';
 import { ceilDiv, weightedPick } from './pick';
-import { planRavens, planSpeech, planTally, render } from './render';
+import { planRavens, planSpeech, planTally, render, type Voice } from './render';
 import { sampleTruth } from './sample';
 import type { CaseMeta, CaseSpec, Evidence, Field, GenAttempt, GenLog, Look, RejectCode } from './types';
 import { decisiveFacts, validateCase } from './validate';
@@ -20,6 +20,9 @@ const TIERS: readonly { readonly id: TierId; readonly n: number }[] = [
   { id: 'retarget', n: 8 },
 ];
 
+/** Whether today has a fact that tracks lying (Day 16's liars). */
+const hasLiars = (ctx: DayCtx): boolean => [...ctx.facts.values()].some((af) => af.def.fromLies && !af.pinned);
+
 /** Which destinations each archetype can reach today, from a fixed sample (cached per context). */
 const reachCache = new WeakMap<DayCtx, Map<string, Set<Destination>>>();
 export function reachOf(ctx: DayCtx): Map<string, Set<Destination>> {
@@ -31,7 +34,10 @@ export function reachOf(ctx: DayCtx): Map<string, Set<Destination>> {
     const rng = new Rng(`${ctx.content.genVersion}|reach|${ctx.day}|${def.id}`);
     for (let i = 0; i < 48; i++) {
       const s = sampleTruth(def, ctx, rng);
-      if (s.ok) dests.add(judge(s.truth, ctx).dest);
+      if (!s.ok) continue;
+      // Where lying decides the hall (Day 16 on), a liar's hall counts too.
+      const lies = hasLiars(ctx) ? pickLies(def, s.truth, ctx, ctx.spec.queue.knobs, rng.fork(`lies${i}`)) : [];
+      dests.add(judge(withLiars(s.truth, lies, ctx), ctx).dest);
     }
     out.set(def.id, dests);
   }
@@ -89,6 +95,7 @@ function attemptCase(
   tier: TierId,
   attempt: number,
   opts: GenerateOptions,
+  daySeed: string = runSeed,
 ): { case: CaseSpec } | { code: RejectCode; detail: string; archetype: string | null } {
   const gen = ctx.content.genVersion;
   const seed = `${gen}|${runSeed}|${ctx.day}|${procIndex}|${tier}|${attempt}`;
@@ -99,14 +106,17 @@ function attemptCase(
   if (!arch) return { code: 'NO_ARCHETYPE', detail: `nothing reaches ${target}`, archetype: null };
   const sampled = sampleTruth(arch, ctx, rng.fork('truth'));
   if (!sampled.ok) return { code: 'TRUTH_UNSAT', detail: sampled.why, archetype: arch.id };
-  const truth = sampled.truth;
+  // Lies are planned before judging: from Day 16 whether the soul lies is part of its truth.
+  const planned = pickLies(arch, sampled.truth, ctx, knobs, rng.fork('lies'));
+  const truth = withLiars(sampled.truth, planned, ctx);
   const expected = judge(truth, ctx);
   if (tier !== 'retarget' && expected.dest !== target) {
     return { code: 'DEST_MISMATCH', detail: `${expected.dest} instead of ${target}`, archetype: arch.id };
   }
 
   const look = makeLook(truth, ctx, runSeed, procIndex, opts.lookSeed);
-  const dressed = dressCase(arch, truth, expected, look, [], ctx, knobs, rng);
+  const voice: Voice = { deck: `${gen}|${daySeed}|${ctx.day}|lines`, index: procIndex };
+  const dressed = dressCase(arch, truth, expected, planned, look, [], ctx, knobs, rng, voice);
   if ('code' in dressed) return { ...dressed, archetype: arch.id };
   return {
     case: {
@@ -124,24 +134,26 @@ function attemptCase(
 }
 
 /**
- * Everything after the truth is sampled: lies, speech, ravens and cues, the
+ * Everything after the truth and its lies: speech, ravens and cues, the
  * rendered evidence (plus any scripted `lines`), and the F1-F8 validator.
  * Shared by generated and scripted souls so both meet the same contract.
+ * `voice` is the soul's place in its day, used when the day spreads its lines.
  */
 export function dressCase(
   arch: ArchetypeDef,
   truth: Truth,
   expected: Judgment,
+  planned: readonly PlannedLie[],
   look: Look,
   lines: readonly string[],
   ctx: DayCtx,
   knobs: Knobs,
   rng: Rng,
+  voice?: Voice,
 ):
   | (Pick<CaseSpec, 'lies' | 'evidence'> & { meta: Omit<CaseMeta, 'seed' | 'tier'> })
   | { code: RejectCode; detail: string } {
   const decisive = decisiveFacts(truth, expected, ctx);
-  const planned = pickLies(arch, truth, ctx, knobs, rng.fork('lies'));
   const planRng = rng.fork('plan');
   const persona = planRng.pick(arch.personas);
   const speech = planSpeech(truth, planned, ctx, planRng);
@@ -156,7 +168,17 @@ export function dressCase(
     return planRng.chance(knobs.decoyRate, 100) ? [{ key: c.key, decoy: true }] : [];
   });
   const rendered = render(
-    { truth, lies: planned, speech, ravens, cues, look, persona, tally },
+    {
+      truth,
+      lies: planned,
+      speech,
+      ravens,
+      cues,
+      look,
+      persona,
+      tally,
+      ...(knobs.spreadLines && voice ? { voice } : {}),
+    },
     ctx,
     rng.fork('dialog'),
   );
@@ -238,7 +260,16 @@ function fallbackCase(
   const base = opts.knobs ?? ctx.spec.queue.knobs;
   const plain: Knobs = { ...base, lieRate: 0, decoyRate: 0, ravenRate: 0, forgetRate: 0 };
   for (let a = 0; a < 256; a++) {
-    const r = attemptCase(`${runSeed}|fallback`, ctx, procIndex, target, 'widenBand', a, { ...opts, knobs: plain });
+    const r = attemptCase(
+      `${runSeed}|fallback`,
+      ctx,
+      procIndex,
+      target,
+      'widenBand',
+      a,
+      { ...opts, knobs: plain },
+      runSeed,
+    );
     if ('case' in r)
       return { ...r.case, id: `${runSeed}:${ctx.day}:${procIndex}`, meta: { ...r.case.meta, fallback: true } };
   }

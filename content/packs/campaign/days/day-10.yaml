@@ -1,13 +1,14 @@
-# Mechanics day (M5): the clerk and TRANSFER. Playable in Practice; its story comes with M7.
+# Day 10 (M5 mechanics): the clerk and TRANSFER. Story (M7 draft): comedy between afterlife departments.
 day: 10
 sunS: 720
 decree: decree.d10
+scenes: { morning: scene.d10.morning, night: scene.d10.night }
 economy:
   wage: 8
   docBonus: 1
   warnings: 2
   fines: [5, 10, 15]
-  costs: { hearth: 8, food: 4, medicine: 12 }
+  costs: { hearth: 16, food: 8, medicine: 16 }
 params:
   freyjaWhim:
     pool:
@@ -43,3 +44,10 @@ queue:
     maxTools: 3
     maxDocs: 5
     salienceFloor: 2
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d10.neck, text: coach.d10.neck, focus: neck, until: { seen: body.front.amulet } }
+    - { id: d10.stamp, text: coach.d10.stamp, focus: judge }

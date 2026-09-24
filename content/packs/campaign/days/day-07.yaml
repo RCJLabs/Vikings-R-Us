@@ -1,13 +1,14 @@
-# Mechanics day (M4): playable in Practice; its story comes with Days 7-20 (M7).
+# Day 7: borrowed blades and copied Ulfberhts, the rune-lens. Story (M7 draft): a scandal among the smiths.
 day: 7
 sunS: 630
 decree: decree.d7
+scenes: { morning: scene.d7.morning, night: scene.d7.night }
 economy:
   wage: 8
   docBonus: 1
   warnings: 2
   fines: [5, 10, 15]
-  costs: { hearth: 7, food: 3, medicine: 10 }
+  costs: { hearth: 11, food: 6, medicine: 12 }
 params:
   freyjaWhim:
     pool:
@@ -39,3 +40,11 @@ queue:
     maxTools: 2
     maxDocs: 4
     salienceFloor: 2
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d7.lens, text: coach.d7.lens, focus: runeLens, until: { tool: runeLens } }
+    - { id: d7.owner, text: coach.d7.owner, focus: hands, next: true }
+    - { id: d7.stamp, text: coach.d7.stamp, focus: judge }

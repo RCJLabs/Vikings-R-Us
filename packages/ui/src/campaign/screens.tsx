@@ -1,32 +1,54 @@
 import { gameContent, loadScenes, manifest } from 'virtual:content';
 import {
   type Bills,
+  billForecast,
   billTotal,
   type Content,
   campaignOf,
+  type DayLedger,
+  DESTINATIONS,
+  debtLimit,
   defaultBills,
+  type Effect,
   economyOf,
-  FACTIONS,
   type Faction,
+  factionKey,
+  factionsMet,
+  hostMarks,
+  hostParts,
+  type JournalEntry,
+  type NightOutlook,
+  nightOutlook,
   type RunEvent,
   type RunState,
+  reachableEndings,
   replayableDays,
   shiftMods,
   shiftScore,
   shopFor,
+  stampEffects,
+  standingLead,
+  threadsInPlay,
+  withEffects,
 } from '@cots/engine';
-import { playScene, sceneEnv } from '@cots/story';
+import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
+import { signal } from '@preact/signals';
 import { useState } from 'preact/hooks';
-import { clockText, listText, t } from '../i18n';
+import { AssistSettings, assistText, atSunSpeed } from '../assists';
+import { clockText, hasText, listText, t } from '../i18n';
 import { openReport } from '../report';
+import { unreadableText } from '../saves';
+import { CopyBox } from '../saves-ui';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from '../shift/Shift';
-import { type Screen, session, toTitle } from '../store';
+import { currentAssists, type Screen, session, settings, storageKept, toTitle } from '../store';
 import {
   active,
+  branchFrom,
   deleteSlot,
   dispatch,
+  emptySlot,
   endAudit,
   lastNight,
   leaveCampaign,
@@ -39,6 +61,7 @@ import {
   sleep,
   slots,
   toGate,
+  unreadable,
 } from './run-store';
 
 /*
@@ -56,7 +79,162 @@ export async function enterCampaign(): Promise<void> {
 
 const familyName = (content: Content, id: string) => t(campaignOf(content).family.find((m) => m.id === id)?.name ?? id);
 
+/** The name to use inside a sentence ("Ragna" rather than "Ragna, your mother"): `<name key>.short`, if there is one. */
+const familyShort = (content: Content, id: string) => {
+  const key = campaignOf(content).family.find((m) => m.id === id)?.name ?? id;
+  return hasText(`${key}.short`) ? t(`${key}.short`) : t(key);
+};
+
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+/** The name a power goes by on `day` (the stranger is Loki, but nobody says so until Day 12). */
+const factionName = (f: Faction, day: number) => t(factionKey(gameContent, f, day));
+
+/** "Hel will remember that (+3)." for each power the effects move, in the order they first move it. */
+function standingNotes(effects: readonly Effect[] | undefined, day: number): string[] {
+  const by = new Map<Faction, number>();
+  for (const e of effects ?? []) if ('standing' in e) by.set(e.standing, (by.get(e.standing) ?? 0) + e.by);
+  return [...by]
+    .filter(([, n]) => n !== 0)
+    .map(([f, n]) => t('ui.remember', { name: factionName(f, day), change: signed(n) }));
+}
+
+/** Where the player stands with each power they've had dealings with, on one line. */
+function StandingStrip({ run }: { run: RunState }) {
+  const met = factionsMet(run);
+  if (met.length === 0) return null;
+  return (
+    <p class="standing-strip" data-testid="standing-strip">
+      <span class="muted">{t('ui.audit.standing')}:</span>{' '}
+      {met.map((f, i) => (
+        <span key={f} class="standing-strip__item">
+          {i > 0 ? ' · ' : ''}
+          {factionName(f, run.day)}{' '}
+          <b class={run.standing[f] > 0 ? 'is-up' : run.standing[f] < 0 ? 'is-down' : undefined}>
+            {signed(run.standing[f])}
+          </b>
+        </span>
+      ))}
+    </p>
+  );
+}
+
+// ---------- endings ----------
+
+/** Every ending this build's campaign can come to: the ones found on this device by name, the rest unnamed. */
+function EndingsGallery() {
+  const all = reachableEndings(gameContent);
+  const seen = settings.value.endingsSeen;
+  const found = all.filter((e) => seen.includes(e.id)).length;
+  return (
+    <section class="card gallery" data-testid="endings">
+      <h2>{t('ui.gallery.title')}</h2>
+      <p class="muted" data-testid="endings-count">
+        {t('ui.gallery.count', { n: found, total: all.length })}
+      </p>
+      <ol class="gallery__list">
+        {all.map((e) =>
+          seen.includes(e.id) ? (
+            <li key={e.id} data-testid="ending-found">
+              <details>
+                <summary>{t(e.title)}</summary>
+                <p>{t(e.text)}</p>
+              </details>
+            </li>
+          ) : (
+            <li key={e.id} class="muted" data-testid="ending-unfound">
+              {t('ui.gallery.unfound')}
+            </li>
+          ),
+        )}
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * How the run stood when it ended: the host at Ragnarök part by part, with what the endings ask of it
+ * (naming only endings found on this device), the powers' standing, and where the souls went.
+ */
+function RagnarokReport({ run }: { run: RunState }) {
+  const marks = hostMarks(gameContent);
+  const host = hostParts(run);
+  const seen = settings.value.endingsSeen;
+  const title = (id: string) => {
+    const e = campaignOf(gameContent).endings.find((x) => x.id === id);
+    return e && seen.includes(id) ? t(e.title) : t('ui.ending.unfound');
+  };
+  const met = factionsMet(run);
+  const sent = DESTINATIONS.filter((d) => (run.sent?.[d] ?? 0) > 0);
+  const rows: readonly [string, number, number][] = [
+    ['ui.ending.worthy', host.worthy, 2 * host.worthy],
+    ['ui.ending.unworthy', host.unworthy, -host.unworthy],
+    ['ui.ending.folkvangr', host.folkvangr, 2 * host.folkvangr],
+    ['ui.ending.helLegion', host.hel, 2 * host.hel],
+    ['ui.ending.naglfar', host.naglfar, -2 * host.naglfar],
+  ];
+  return (
+    <>
+      {marks.length > 0 ? (
+        <section class="card" data-testid="host">
+          <h2>{t('ui.ending.host')}</h2>
+          <table class="ledger">
+            <tbody>
+              {rows.map(([key, n, worth]) => (
+                <tr key={key}>
+                  <td>{t(key, { n })}</td>
+                  <td class="num">{signed(worth)}</td>
+                </tr>
+              ))}
+              <tr class="ledger__total">
+                <td>{t('ui.ending.hostTotal')}</td>
+                <td class="num" data-testid="host-total">
+                  {host.total}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="muted report__lead">{t('ui.ending.marks')}</p>
+          <ul class="report__marks" data-testid="host-marks">
+            {marks.map((m) => (
+              <li key={`${m.ending}:${m.atLeast ?? ''}:${m.atMost ?? ''}`}>
+                {m.atLeast !== undefined
+                  ? t('ui.ending.markAtLeast', { ending: title(m.ending), n: m.atLeast })
+                  : t('ui.ending.markAtMost', { ending: title(m.ending), n: m.atMost ?? 0 })}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {met.length > 0 ? (
+        <section class="card" data-testid="final-standing">
+          <h2>{t('ui.ending.standing')}</h2>
+          <table class="ledger">
+            <tbody>
+              {[...met]
+                .sort((x, y) => run.standing[y] - run.standing[x])
+                .map((f) => (
+                  <tr key={f}>
+                    <td>
+                      {factionName(f, run.day)}
+                      {standingLead(run, f) > 0 ? <span class="muted"> {t('ui.ending.led')}</span> : null}
+                    </td>
+                    <td class="num">{signed(run.standing[f])}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+      {sent.length > 0 ? (
+        <section class="card" data-testid="sent">
+          <h2>{t('ui.ending.sent')}</h2>
+          <p>{sent.map((d) => `${t(`dest.${d}`)} ${run.sent?.[d] ?? 0}`).join(' · ')}</p>
+        </section>
+      ) : null}
+    </>
+  );
+}
 
 // ---------- save slots ----------
 
@@ -166,9 +344,20 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
           <button type="button" class="btn" data-testid={`replay-${i}`} onClick={() => replayFrom(i, day)}>
             {t('ui.campaign.replayGo')}
           </button>
+          <button
+            type="button"
+            class="btn"
+            data-testid={`branch-${i}`}
+            disabled={emptySlot() === null}
+            onClick={() => branchFrom(i, day)}
+          >
+            {t('ui.campaign.branchGo')}
+          </button>
         </div>
       ) : null}
-      <p class="muted">{t('ui.campaign.replayWarn')}</p>
+      {days.length > 0 ? (
+        <p class="muted">{t(emptySlot() === null ? 'ui.campaign.replayWarnFull' : 'ui.campaign.replayWarn')}</p>
+      ) : null}
       {confirm ? (
         <div class="row">
           <span>{t('ui.campaign.deleteConfirm')}</span>
@@ -201,17 +390,80 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
   );
 }
 
+/** A slot whose save this build can't read: kept as found, to copy for a bug report or clear. */
+function UnreadableSlot({ i }: { i: number }) {
+  const [copy, setCopy] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <section class="card slot slot--unreadable" data-testid={`slot-${i}`}>
+      <h2>{t('ui.campaign.slot', { n: i + 1 })}</h2>
+      <p data-testid={`unreadable-${i}`}>{t('ui.campaign.unreadable')}</p>
+      <div class="row">
+        <button
+          type="button"
+          class="btn btn--small"
+          data-testid={`unreadable-copy-${i}`}
+          aria-expanded={copy}
+          onClick={() => setCopy(!copy)}
+        >
+          {t('ui.campaign.unreadable.copy')}
+        </button>
+        {confirm ? null : (
+          <button
+            type="button"
+            class="btn btn--quiet btn--small"
+            data-testid={`unreadable-clear-${i}`}
+            onClick={() => setConfirm(true)}
+          >
+            {t('ui.campaign.unreadable.clear')}
+          </button>
+        )}
+      </div>
+      {copy ? (
+        <CopyBox text={unreadableText(i)} file={`chooser-of-the-slain-slot-${i + 1}.json`} id={`unreadable-${i}`} />
+      ) : null}
+      {confirm ? (
+        <div class="row">
+          <span>{t('ui.campaign.unreadable.confirm')}</span>
+          <button
+            type="button"
+            class="btn btn--danger btn--small"
+            data-testid={`unreadable-clear-yes-${i}`}
+            onClick={() => deleteSlot(i)}
+          >
+            {t('ui.campaign.deleteYes')}
+          </button>
+          <button type="button" class="btn btn--small" onClick={() => setConfirm(false)}>
+            {t('ui.campaign.cancel')}
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function SlotsScreen() {
   const focus = useAutoFocus<HTMLHeadingElement>();
+  const kept = storageKept.value;
   return (
     <main class="screen screen--campaign">
       <h1 ref={focus} tabIndex={-1} data-testid="campaign-title">
         {t('ui.campaign')}
       </h1>
       <p class="muted">{t(manifest.edition === 'demo' ? 'ui.campaign.hint.demo' : 'ui.campaign.hint.full')}</p>
-      {Array.from({ length: SLOT_COUNT }, (_, i) => (
-        <Slot key={`${i}:${slots.value[i]?.rev ?? 0}`} i={i} record={slots.value[i] ?? null} />
-      ))}
+      {kept === 'maybe' || kept === 'session' ? (
+        <p class="muted" data-testid="backup-hint">
+          {t('ui.campaign.backupHint')}
+        </p>
+      ) : null}
+      {Array.from({ length: SLOT_COUNT }, (_, i) =>
+        unreadable.value[i] ? (
+          <UnreadableSlot key={`${i}:unreadable`} i={i} />
+        ) : (
+          <Slot key={`${i}:${slots.value[i]?.rev ?? 0}`} i={i} record={slots.value[i] ?? null} />
+        ),
+      )}
+      <EndingsGallery />
       <div class="row">
         <button type="button" class="btn" data-testid="campaign-back" onClick={toTitle}>
           {t('ui.back')}
@@ -224,14 +476,62 @@ function SlotsScreen() {
 
 // ---------- scenes ----------
 
+/** A scene's lines as played so far, each followed by notes of whom it moved. */
+function SceneLines({ lines, day, prefix }: { lines: readonly SceneLine[]; day: number; prefix: string }) {
+  return (
+    <>
+      {lines.flatMap((line, i) => [
+        <p
+          key={`${prefix}:${i}`}
+          class={`scene__line${line.chosen ? ' scene__line--chosen' : line.speaker ? ' scene__line--said' : ''}`}
+        >
+          {line.speaker ? <b class="scene__speaker">{t(`speaker.${line.speaker}`)}: </b> : null}
+          {line.text}
+        </p>,
+        ...standingNotes(line.effects, day).map((note) => (
+          <p key={`${prefix}:${i}:${note}`} class="scene__note" data-testid="scene-note">
+            {note}
+          </p>
+        )),
+      ])}
+    </>
+  );
+}
+
+/** What an option that costs rings would leave after tonight's bills. */
+function Leaves({ n, floor }: { n: number | null; floor: number }) {
+  if (n === null) return null;
+  return (
+    <>
+      {' '}
+      <span class={`scene__cost${n < floor ? ' is-debt' : ''}`} data-testid="scene-leaves">
+        ({t('ui.scene.leaves', { n })})
+      </span>
+    </>
+  );
+}
+
 /** Plays one Ink scene; its effects reach the run once, when the player finishes it. */
 function SceneView({ id, run }: { id: string; run: RunState }) {
   const [env] = useState(() => sceneEnv(run, id));
   const [choices, setChoices] = useState<number[]>([]);
   const json = scenes[id];
   const focus = useAutoFocus<HTMLButtonElement>();
-  if (!json) return null;
+  const a = active.value;
+  if (!json || !a) return null;
   const frame = playScene(json, env, choices);
+  const first = frame.choices.findIndex((c) => !c.locked);
+  // Options that cost rings are weighed against tonight's bills, with the scene's effects so far (and at
+  // night each option's own: a healer who cures means no medicine to buy) (docs/tech-spec.md §23).
+  const outlookAfter = (effects: readonly Effect[]) => {
+    const r = withEffects(run, effects);
+    return { rings: r.rings, night: nightOutlook(r, { content: gameContent, ctx: a.ctx }, defaultBills(r)) };
+  };
+  const costly = !frame.done && frame.choices.some((c) => c.rings !== undefined);
+  const now = costly ? outlookAfter(frame.effects) : null;
+  const leaves = (i: number) =>
+    now && run.phase === 'night' ? outlookAfter(playScene(json, env, [...choices, i]).effects).night.rings : null;
+  const floor = campaignOf(gameContent).debtFloor;
   return (
     <section class="card scene" data-testid="scene" data-scene={id}>
       {frame.draft ? (
@@ -239,15 +539,17 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
           {t('ui.campaign.draft')}
         </p>
       ) : null}
-      {frame.lines.map((line, i) => (
-        <p
-          key={`${choices.length}:${i}`}
-          class={`scene__line${line.chosen ? ' scene__line--chosen' : line.speaker ? ' scene__line--said' : ''}`}
-        >
-          {line.speaker ? <b class="scene__speaker">{t(`speaker.${line.speaker}`)}: </b> : null}
-          {line.text}
+      <SceneLines lines={frame.lines} day={run.day} prefix={String(choices.length)} />
+      {now ? (
+        <p class="scene__purse" data-testid="scene-purse">
+          {t('ui.scene.purse', {
+            rings: now.rings,
+            bills: now.night.cost.hearth + now.night.cost.food + now.night.cost.medicine,
+            draupnir: now.night.draupnir,
+            phase: run.phase,
+          })}
         </p>
-      ))}
+      ) : null}
       <div class="scene__choices">
         {frame.done ? (
           <button
@@ -260,21 +562,159 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
             {t('ui.campaign.next')}
           </button>
         ) : (
-          frame.choices.map((text, i) => (
-            <button
-              key={`${choices.length}:${text}`}
-              type="button"
-              class="btn scene__choice"
-              data-testid="scene-choice"
-              ref={i === 0 ? focus : undefined}
-              onClick={() => setChoices([...choices, i])}
-            >
-              {text}
-            </button>
-          ))
+          frame.choices.map((c, i) =>
+            c.locked ? (
+              // An option the purse can't cover stays in sight, with what it needs.
+              <button
+                key={`${choices.length}:${c.text}`}
+                type="button"
+                class="btn scene__choice is-locked"
+                data-testid="scene-choice-locked"
+                disabled
+              >
+                {c.text}{' '}
+                <span class="scene__cost">({t('ui.scene.needsRings', { n: c.rings ?? 0, have: env.rings })})</span>
+              </button>
+            ) : (
+              <button
+                key={`${choices.length}:${c.text}`}
+                type="button"
+                class="btn scene__choice"
+                data-testid="scene-choice"
+                ref={i === first ? focus : undefined}
+                onClick={() => setChoices([...choices, i])}
+              >
+                {c.text}
+                <Leaves n={c.rings !== undefined ? leaves(i) : null} floor={floor} />
+              </button>
+            ),
+          )
         )}
       </div>
     </section>
+  );
+}
+
+// ---------- journal ----------
+
+/** Whether the journal is open over the morning, night or ending screen (which stays as it was underneath). */
+const journalOpen = signal(false);
+
+function JournalButton() {
+  return (
+    <button type="button" class="btn btn--quiet" data-testid="journal-open" onClick={() => (journalOpen.value = true)}>
+      {t('ui.journal')}
+    </button>
+  );
+}
+
+/** A scene from the journal, played again with the choices made and the view it had then. */
+function JournalScene({ entry, seed }: { entry: JournalEntry; seed: string }) {
+  const json = scenes[entry.scene];
+  const when = gameContent.days.find((d) => d.day === entry.day)?.scenes;
+  const label =
+    when?.morning === entry.scene ? 'ui.journal.morning' : when?.night === entry.scene ? 'ui.journal.night' : null;
+  let lines: readonly SceneLine[] | null = null;
+  try {
+    lines = json ? playScene(json, journalEnv(seed, entry), entry.choices).lines : null;
+  } catch {
+    // A rewrite since then changed its choices; the journal says so rather than guessing.
+    lines = null;
+  }
+  return (
+    <section class="journal__scene" data-testid="journal-scene">
+      {label ? <h4>{t(label)}</h4> : null}
+      {lines ? (
+        <SceneLines lines={lines} day={entry.day} prefix={entry.scene} />
+      ) : (
+        <p class="muted">{t('ui.journal.changed')}</p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * What's still in play (the threads the endings hang on), then every scene played, newest day first:
+ * letters, choices and all. Only the days opened are played again.
+ */
+function JournalView() {
+  const a = active.value;
+  const focus = useAutoFocus<HTMLButtonElement>();
+  const entries = a?.record.save.journal ?? [];
+  const days = [...new Set(entries.map((e) => e.day))].sort((x, y) => y - x);
+  const [open, setOpen] = useState<readonly number[]>(days.slice(0, 1));
+  if (!a) return null;
+  const threads = threadsInPlay(a.run, gameContent);
+  const close = () => {
+    journalOpen.value = false;
+  };
+  return (
+    <div
+      class="journal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="journal-title"
+      data-testid="journal"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') close();
+      }}
+    >
+      <div class="journal__page">
+        <div class="journal__head">
+          <h2 id="journal-title">{t('ui.journal')}</h2>
+          <button type="button" class="btn" ref={focus} data-testid="journal-close" onClick={close}>
+            {t('ui.journal.close')}
+          </button>
+        </div>
+        {threads.length > 0 ? (
+          <section class="card journal__threads" data-testid="journal-threads">
+            <h3>{t('ui.journal.threads')}</h3>
+            <ul>
+              {threads.map((th) => (
+                <li key={th.id}>{t(th.text, th.n !== undefined ? { n: th.n } : {})}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {days.length === 0 ? <p class="muted">{t('ui.journal.empty')}</p> : null}
+        {days.map((day) => (
+          <details
+            key={day}
+            class="journal__day"
+            open={open.includes(day)}
+            data-testid="journal-day"
+            onToggle={(e) => {
+              const now = (e.currentTarget as HTMLDetailsElement).open;
+              if (now !== open.includes(day)) setOpen(now ? [...open, day] : open.filter((d) => d !== day));
+            }}
+          >
+            <summary>{t('ui.campaign.day', { n: day })}</summary>
+            {open.includes(day)
+              ? entries
+                  .filter((e) => e.day === day)
+                  .map((e) => <JournalScene key={e.scene} entry={e} seed={a.run.seed} />)
+              : null}
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** After a night below the debt floor, how many more end the run, on the morning and night screens. */
+function DebtBanner({ run }: { run: RunState }) {
+  const limit = debtLimit(gameContent);
+  if (run.debtNights < 1 || limit === null) return null;
+  return (
+    <div class="banner banner--bad" role="status" data-testid="debt-banner">
+      <p>
+        {t('ui.debt.banner', {
+          n: run.debtNights,
+          floor: campaignOf(gameContent).debtFloor,
+          left: limit - run.debtNights,
+        })}
+      </p>
+    </div>
   );
 }
 
@@ -288,7 +728,7 @@ function pendingScene(run: RunState, which: 'morning' | 'night'): string | null 
 
 function NightNews({ events }: { events: readonly RunEvent[] }) {
   const news = events.flatMap((e) => {
-    if (e.e === 'family') return [t(`ui.news.${e.change}`, { name: familyName(gameContent, e.id) })];
+    if (e.e === 'family') return [t(`ui.news.${e.change}`, { name: familyShort(gameContent, e.id) })];
     if (e.e === 'draupnir') return [t('ui.news.draupnir', { n: e.rings })];
     return [];
   });
@@ -342,6 +782,11 @@ function Morning() {
   const { run, ctx } = a;
   const scene = pendingScene(run, 'morning');
   const sunS = ctx.spec.sunS + (shiftMods(run, gameContent).sunS ?? 0);
+  // Story Mode has no sun (and no fines): only the rule tracker means anything there.
+  const assists = currentAssists(!run.story, run.story);
+  const assisted = assistText(assists);
+  const bills = billTotal(run, economyOf({ content: gameContent, ctx }), defaultBills(run));
+  const tonight = bills.hearth + bills.food + bills.medicine;
   return (
     <main class="screen screen--morning">
       <h1 data-testid="morning-title">{t('ui.campaign.day', { n: run.day })}</h1>
@@ -349,6 +794,8 @@ function Morning() {
         {t('ui.campaign.purse', { n: run.rings })}
         {run.story ? ` · ${t('ui.campaign.story')}` : ''}
       </p>
+      <StandingStrip run={run} />
+      <DebtBanner run={run} />
       {a.rewound ? (
         <div class="banner" role="status">
           <p>{t('ui.campaign.rewound')}</p>
@@ -363,9 +810,21 @@ function Morning() {
             <Decree ctx={ctx} />
             <RulebookChanges day={run.day} />
             <p class="briefing__queue">
-              {run.story ? t('ui.campaign.untimed') : t('ui.campaign.sun', { time: clockText(sunS * 1000) })}
+              {run.story
+                ? t('ui.campaign.untimed')
+                : t('ui.campaign.sun', { time: clockText(atSunSpeed(sunS * 1000, assists.sunPct)) })}
+            </p>
+            <p class="muted" data-testid="tonight-bills">
+              {t('ui.campaign.tonightBills', { n: tonight })}
             </p>
           </section>
+          <details class="card morning__assists" data-testid="morning-assists">
+            <summary>
+              {t('ui.settings.assists')}
+              {assisted ? <span class="muted">: {assisted}</span> : null}
+            </summary>
+            <AssistSettings campaign={!run.story} sun={!run.story} titled={false} />
+          </details>
           <div class="row">
             <button type="button" class="btn btn--primary btn--big" data-testid="to-gate" onClick={toGate}>
               {t('ui.campaign.toGate')}
@@ -374,10 +833,12 @@ function Morning() {
         </>
       )}
       <div class="row">
+        <JournalButton />
         <button type="button" class="btn btn--quiet" data-testid="campaign-quit" onClick={leaveCampaign}>
           {t('ui.campaign.quit')}
         </button>
       </div>
+      {journalOpen.value ? <JournalView /> : null}
       <ToastView />
     </main>
   );
@@ -393,7 +854,9 @@ function Audit() {
   const shift = a.run.shift;
   if (!ledger || !shift) return null;
   const economy = economyOf({ content: gameContent, ctx: a.ctx });
-  const forgiven = Math.min(ledger.wrong, a.run.story ? ledger.wrong : economy.warnings);
+  const waived = a.run.story || ledger.assists?.noFines === true;
+  const forgiven = Math.min(ledger.wrong, waived ? ledger.wrong : economy.warnings);
+  const assisted = assistText(ledger.assists);
   const score = shiftScore(shift);
   return (
     <main class="screen screen--audit">
@@ -401,6 +864,11 @@ function Audit() {
       <p class="summary__score" data-testid="audit-score">
         {t('ui.summary.score', { correct: ledger.correct, total: ledger.correct + ledger.wrong + ledger.unjudged })}
       </p>
+      {assisted ? (
+        <p class="muted" data-testid="audit-assists">
+          {t('ui.assist.on', { list: assisted })}
+        </p>
+      ) : null}
       <table class="ledger" data-testid="ledger">
         <tbody>
           <tr>
@@ -433,7 +901,7 @@ function Audit() {
           </tr>
         </tbody>
       </table>
-      <StandingTable run={a.run} today={ledger.standing} />
+      <StandingTable run={a.run} ledger={ledger} />
       <ol class="verdicts">
         {shift.verdicts.map((v) => {
           const c = shift.cases[v.index];
@@ -451,7 +919,15 @@ function Audit() {
                 </span>
               ) : (
                 <span class="muted"> ({t('ui.summary.you', { dest: t(`dest.${v.stamped}`) })})</span>
-              )}{' '}
+              )}
+              {c && v.stamped !== null
+                ? standingNotes(stampEffects(gameContent, c, v.stamped), a.run.day).map((note) => (
+                    <span key={note} class="verdict__note" data-testid="verdict-note">
+                      {' '}
+                      {note}
+                    </span>
+                  ))
+                : null}{' '}
               {s ? (
                 <button
                   type="button"
@@ -478,35 +954,46 @@ function Audit() {
   );
 }
 
-/** Where the player stands with each power, once any of them has an opinion. */
-function StandingTable({ run, today }: { run: RunState; today: Readonly<Partial<Record<Faction, number>>> }) {
-  const rows = FACTIONS.filter((f) => (today[f] ?? 0) !== 0 || run.standing[f] !== 0);
+/**
+ * Where the player stands with each power they've had dealings with, and what moved it since the
+ * last audit: today's mistakes at the gate, and the story (last night's scene, this morning's, the
+ * story souls). The last audit's standing plus both columns is the standing now.
+ */
+function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
+  const rows = factionsMet(run);
   if (rows.length === 0) return null;
   return (
-    <table class="ledger" data-testid="standing">
-      <thead>
-        <tr>
-          <th>{t('ui.audit.standing')}</th>
-          <th class="num">{t('ui.audit.today')}</th>
-          <th class="num">{t('ui.audit.total')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((f) => (
-          <tr key={f}>
-            <td>{t(`faction.${f}`)}</td>
-            <td class="num">{signed(today[f] ?? 0)}</td>
-            <td class="num">{signed(run.standing[f])}</td>
+    <>
+      <table class="ledger" data-testid="standing">
+        <thead>
+          <tr>
+            <th>{t('ui.audit.standing')}</th>
+            <th class="num">{t('ui.audit.mistakes')}</th>
+            <th class="num">{t('ui.audit.story')}</th>
+            <th class="num">{t('ui.audit.now')}</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((f) => (
+            <tr key={f}>
+              <td>{factionName(f, run.day)}</td>
+              <td class="num">{signed(ledger.standing[f] ?? 0)}</td>
+              <td class="num">{signed(ledger.story?.[f] ?? 0)}</td>
+              <td class="num">{signed(run.standing[f])}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="muted ledger__note">{t('ui.audit.standingNote')}</p>
+    </>
   );
 }
 
 // ---------- night ----------
 
-function FamilyList({ run }: { run: RunState }) {
+/** The family: who is well, sick (and, when planning the night, how soon they need medicine) or gone. */
+function FamilyList({ run, plan = false }: { run: RunState; plan?: boolean }) {
+  const care = campaignOf(gameContent).care;
   return (
     <ul class="family" data-testid="family">
       {run.family.map((m) => {
@@ -515,7 +1002,9 @@ function FamilyList({ run }: { run: RunState }) {
           m.status === 'gone'
             ? t(m.gone === 'died' ? 'ui.family.died' : 'ui.family.left')
             : m.status === 'sick'
-              ? t('ui.family.sick', { n: m.sickNights })
+              ? plan
+                ? t('ui.family.sickLeft', { left: care.sickNights - m.sickNights })
+                : t('ui.family.sick')
               : t('ui.family.well');
         const needs = [
           m.status !== 'gone' && m.cold > 0 ? t('ui.family.cold', { n: m.cold }) : null,
@@ -532,17 +1021,89 @@ function FamilyList({ run }: { run: RunState }) {
   );
 }
 
-function BillsCard({ run }: { run: RunState }) {
+/** What the bills as set do tonight: who is lost, who surely falls sick, who gets worse, and the odds for the rest. */
+function Outlook({ run, outlook, bills }: { run: RunState; outlook: NightOutlook; bills: Bills }) {
+  const campaign = campaignOf(gameContent);
+  const adult = new Map(campaign.family.map((f) => [f.id, f.adult]));
+  const lines: { key: string; id: string; text: string; bold?: boolean }[] = outlook.members.flatMap((n, i) => {
+    const was = run.family[i];
+    const name = familyShort(gameContent, n.member.id);
+    const how = adult.get(n.member.id) ? 'died' : 'left';
+    if (n.change === 'died' || n.change === 'left') {
+      return [{ key: n.member.id, id: 'outlook-lost', text: t('ui.night.lost', { name, how: n.change }), bold: true }];
+    }
+    if (n.change === 'sick') {
+      return [
+        { key: n.member.id, id: 'outlook-sickens', text: t('ui.night.sickens', { name, cause: n.cause ?? 'cold' }) },
+      ];
+    }
+    if (was?.status === 'sick' && n.member.status === 'sick') {
+      const left = campaign.care.sickNights - n.member.sickNights;
+      return [{ key: n.member.id, id: 'outlook-worse', text: t('ui.night.worse', { name, how, left }) }];
+    }
+    return [];
+  });
+  const risk = Math.max(0, ...outlook.members.map((n) => n.risk));
+  const need = !bills.hearth && !bills.food ? 'both' : !bills.hearth ? 'hearth' : 'food';
+  return (
+    <>
+      {lines.map((l) => (
+        <p key={l.key} class="warn" data-testid={l.id}>
+          {l.bold ? <b>{l.text}</b> : l.text}
+        </p>
+      ))}
+      {risk > 0 ? (
+        <p class="warn" data-testid="outlook-risk">
+          {t('ui.night.risk', { need, p: risk })}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/** The bills of the next few nights, so what's spent tonight can be weighed against them. */
+function NightsAhead({ run }: { run: RunState }) {
+  const ahead = billForecast(run, gameContent);
+  if (ahead.length === 0) return null;
+  const home = run.family.filter((m) => m.status !== 'gone').length;
+  return (
+    <div class="ahead" data-testid="nights-ahead">
+      <h3>{t('ui.night.ahead')}</h3>
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th>{t('ui.night.aheadNight')}</th>
+            <th class="num">{t('ui.night.aheadBills', { n: home })}</th>
+            <th class="num">{t('ui.night.aheadMedicine')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ahead.map((b) => (
+            <tr key={b.day} data-testid="night-ahead">
+              <td class="ahead__night">
+                {t('ui.night.title', { n: b.day })}
+                {b.draupnir > 0 ? <span class="muted"> {t('ui.night.aheadDraupnir', { n: b.draupnir })}</span> : null}
+              </td>
+              <td class="num">{b.hearth + b.food}</td>
+              <td class="num">{b.medicine}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BillsCard({ run, outlook }: { run: RunState; outlook: NightOutlook }) {
   const a = active.value;
   if (!a) return null;
   const economy = economyOf({ content: gameContent, ctx: a.ctx });
   const bills = run.bills ?? defaultBills(run);
-  const cost = billTotal(run, economy, bills);
   const set = (next: Bills) => dispatch({ t: 'bills', bills: next });
   const home = run.family.filter((m) => m.status !== 'gone');
   const sick = home.filter((m) => m.status === 'sick');
-  const after = run.rings - cost.hearth - cost.food - cost.medicine;
   const floor = campaignOf(gameContent).debtFloor;
+  const limit = debtLimit(gameContent);
   return (
     <section class="card bills" data-testid="bills">
       <h2>{t('ui.night.bills')}</h2>
@@ -579,17 +1140,59 @@ function BillsCard({ run }: { run: RunState }) {
           {t('ui.night.medicine', { name: familyName(gameContent, m.id), cost: economy.costs.medicine })}
         </label>
       ))}
-      {sick
-        .filter((m) => !bills.medicine.includes(m.id))
-        .map((m) => (
-          <p key={m.id} class="warn">
-            {t('ui.night.warnSick', { name: familyName(gameContent, m.id) })}
-          </p>
-        ))}
-      {!bills.hearth || !bills.food ? <p class="warn">{t('ui.night.warnNeeds')}</p> : null}
-      <p data-testid="after-bills">{t('ui.night.after', { n: after })}</p>
-      {after < floor ? <p class="warn">{t('ui.night.debt', { floor })}</p> : null}
+      <Outlook run={run} outlook={outlook} bills={bills} />
+      {outlook.draupnir > 0 ? (
+        <p data-testid="draupnir-tonight">{t('ui.night.draupnir', { n: outlook.draupnir })}</p>
+      ) : null}
+      <p data-testid="after-bills">{t('ui.night.after', { n: outlook.rings })}</p>
+      {outlook.ends?.why === 'debt' ? (
+        <p class="warn" data-testid="debt-warning">
+          <b>{t('ui.night.demoted', { floor })}</b>
+        </p>
+      ) : outlook.rings < floor && limit !== null ? (
+        <p class="warn" data-testid="debt-warning">
+          {t('ui.night.debt', { floor, limit })}
+        </p>
+      ) : run.debtNights > 0 ? (
+        <p data-testid="debt-cleared">{t('ui.night.debtCleared', { floor })}</p>
+      ) : null}
+      {outlook.ends?.why === 'home' ? (
+        <p class="warn" data-testid="home-warning">
+          <b>{t('ui.night.empty')}</b>
+        </p>
+      ) : null}
+      <NightsAhead run={run} />
     </section>
+  );
+}
+
+/** Sleep, and the night's bills are paid; when that would end the run, only after saying so. */
+function SleepRow({ ends }: { ends: NightOutlook['ends'] }) {
+  const [confirm, setConfirm] = useState(false);
+  if (confirm && ends) {
+    return (
+      <div class="row confirm" data-testid="sleep-confirm">
+        <p class="warn">{t(ends.why === 'debt' ? 'ui.night.confirmDebt' : 'ui.night.confirmHome')}</p>
+        <button type="button" class="btn btn--danger" data-testid="sleep-anyway" onClick={sleep}>
+          {t('ui.night.sleepAnyway')}
+        </button>
+        <button type="button" class="btn" data-testid="sleep-cancel" onClick={() => setConfirm(false)}>
+          {t('ui.night.notYet')}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div class="row">
+      <button
+        type="button"
+        class="btn btn--primary btn--big"
+        data-testid="sleep"
+        onClick={() => (ends ? setConfirm(true) : sleep())}
+      >
+        {t('ui.night.sleep')}
+      </button>
+    </div>
   );
 }
 
@@ -630,34 +1233,35 @@ function Night() {
   if (!a) return null;
   const { run } = a;
   const scene = pendingScene(run, 'night');
+  const outlook = scene ? null : nightOutlook(run, { content: gameContent, ctx: a.ctx });
   return (
     <main class="screen screen--night">
       <h1 data-testid="night-title">{t('ui.night.title', { n: run.day })}</h1>
       <p class="muted" data-testid="night-rings">
         {t('ui.campaign.purse', { n: run.rings })}
       </p>
+      <StandingStrip run={run} />
+      <DebtBanner run={run} />
       {scene ? (
         <SceneView key={scene} id={scene} run={run} />
-      ) : (
+      ) : outlook ? (
         <>
           <section class="card">
             <h2>{t('ui.night.family')}</h2>
-            <FamilyList run={run} />
+            <FamilyList run={run} plan />
           </section>
-          <BillsCard run={run} />
+          <BillsCard run={run} outlook={outlook} />
           <ShopCard run={run} />
-          <div class="row">
-            <button type="button" class="btn btn--primary btn--big" data-testid="sleep" onClick={sleep}>
-              {t('ui.night.sleep')}
-            </button>
-          </div>
+          <SleepRow key={outlook.ends?.why ?? 'none'} ends={outlook.ends} />
         </>
-      )}
+      ) : null}
       <div class="row">
+        <JournalButton />
         <button type="button" class="btn btn--quiet" data-testid="campaign-quit" onClick={leaveCampaign}>
           {t('ui.campaign.quit')}
         </button>
       </div>
+      {journalOpen.value ? <JournalView /> : null}
       <ToastView />
     </main>
   );
@@ -677,16 +1281,25 @@ function Ending() {
         {ending ? t(ending.title) : run.ending}
       </h1>
       {ending ? <p class="ending__text">{t(ending.text)}</p> : null}
+      <p class="muted" data-testid="ending-found-count">
+        {t('ui.gallery.count', {
+          n: reachableEndings(gameContent).filter((e) => settings.value.endingsSeen.includes(e.id)).length,
+          total: reachableEndings(gameContent).length,
+        })}
+      </p>
       <NightNews events={lastNight.value} />
       <section class="card">
         <p>{t('ui.ending.stats', { days: run.day, worthy: run.einherjar.worthy, unworthy: run.einherjar.unworthy })}</p>
         <FamilyList run={run} />
       </section>
+      <RagnarokReport run={run} />
       <div class="row">
         <button type="button" class="btn btn--primary" data-testid="ending-slots" onClick={leaveCampaign}>
           {t('ui.ending.slots')}
         </button>
+        <JournalButton />
       </div>
+      {journalOpen.value ? <JournalView /> : null}
     </main>
   );
 }

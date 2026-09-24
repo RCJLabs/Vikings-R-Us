@@ -1,7 +1,7 @@
-import { FACTIONS } from '@cots/engine';
+import { FACTIONS, type JournalEntry } from '@cots/engine';
 import { Compiler } from 'inkjs/full';
 import { describe, expect, it } from 'vitest';
-import { parseFx, playScene, type SceneEnv, walkScene } from './index';
+import { journalEnv, parseFx, parseNeeds, playScene, type SceneEnv, sceneEnv, scenePaths, walkScene } from './index';
 
 const compile = (src: string) => {
   const story = new Compiler(src).Compile();
@@ -37,7 +37,10 @@ describe('playScene', () => {
   it('stops at the first choice with the lines so far', () => {
     const f = playScene(compile(SCENE), env(), []);
     expect(f.done).toBe(false);
-    expect(f.choices).toEqual(['Pay the healer', 'Keep the rings']);
+    expect(f.choices).toEqual([
+      { text: 'Pay the healer', locked: false },
+      { text: 'Keep the rings', locked: false },
+    ]);
     expect(f.lines.map((l) => l.text)).toEqual(['Skögul waits by the gate.', 'A letter: your sister is worse.']);
     expect(f.lines[0]?.speaker).toBe('skogul');
     expect(f.effects).toEqual([]);
@@ -61,8 +64,45 @@ describe('playScene', () => {
     expect(keep.lines.slice(-3)).toEqual([
       { text: 'Keep the rings', tags: [], chosen: true },
       { text: 'You keep them.', tags: ['fx: flag kept_rings'] },
-      { text: 'The day begins.', tags: ['fx: standing odin +1'] },
+      {
+        text: 'The day begins.',
+        tags: ['fx: standing odin +1'],
+        effects: [
+          { flag: 'kept_rings', set: 1 },
+          { standing: 'odin', by: 1 },
+        ],
+      },
     ]);
+  });
+
+  it('files what a choice did on the last line before the next choice, or the end', () => {
+    const json = compile(
+      [
+        'Morning. # fx: rings 1',
+        '* [Help] You help.',
+        '  # fx: standing hel +2',
+        '* [Refuse] You refuse. # fx: standing hel -1',
+        '- Noon.',
+        '* [Go on]',
+        '  # fx: flag went_on',
+        '- ',
+      ].join('\n'),
+    );
+    const first = playScene(json, env(), []);
+    expect(first.lines).toEqual([{ text: 'Morning.', tags: ['fx: rings 1'], effects: [{ rings: 1 }] }]);
+    const help = playScene(json, env(), [0]);
+    // Ink gives the tag under "You help." to "Noon."; either way it's what the choice did.
+    expect(help.lines.map((l) => [l.text, l.effects ?? []])).toEqual([
+      ['Morning.', [{ rings: 1 }]],
+      ['Help', []],
+      ['You help.', []],
+      ['Noon.', [{ standing: 'hel', by: 2 }]],
+    ]);
+    // A choice with no text after it keeps its effects on its own line.
+    const end = playScene(json, env(), [1, 0]);
+    expect(end.done).toBe(true);
+    expect(end.lines.at(-1)).toEqual({ text: 'Go on', tags: [], chosen: true, effects: [{ flag: 'went_on', set: 1 }] });
+    expect(end.effects).toEqual([{ rings: 1 }, { standing: 'hel', by: -1 }, { flag: 'went_on', set: 1 }]);
   });
 
   it('is the same every time for the same seed and choices', () => {
@@ -74,6 +114,65 @@ describe('playScene', () => {
 
   it('rejects a choice that is not offered', () => {
     expect(() => playScene(compile(SCENE), env(), [2])).toThrow(RangeError);
+  });
+});
+
+describe('what an option costs', () => {
+  const COSTLY = compile(
+    [
+      'EXTERNAL rings()',
+      'The healer names her price.',
+      '* [Send twenty rings. #needs: rings 20]',
+      '  # fx: rings -20',
+      '  You send them.',
+      '* [Wait.] You wait.',
+      '- Night.',
+    ].join('\n'),
+  );
+
+  it('shows an option the run can’t afford, locked, with what it needs', () => {
+    const poor = playScene(COSTLY, env({ rings: 12 }), []);
+    expect(poor.choices).toEqual([
+      { text: 'Send twenty rings.', rings: 20, locked: true },
+      { text: 'Wait.', locked: false },
+    ]);
+    expect(() => playScene(COSTLY, env({ rings: 12 }), [0])).toThrow(RangeError);
+    const rich = playScene(COSTLY, env({ rings: 20 }), []);
+    expect(rich.choices[0]).toEqual({ text: 'Send twenty rings.', rings: 20, locked: false });
+    expect(playScene(COSTLY, env({ rings: 20 }), [0]).effects).toEqual([{ rings: -20 }]);
+  });
+
+  it('never walks a locked option, and a point where every option is locked is an error', () => {
+    expect(scenePaths(COSTLY, env({ rings: 12 })).map((p) => p.choices)).toEqual([[1]]);
+    expect(scenePaths(COSTLY, env({ rings: 20 })).map((p) => p.choices)).toEqual([[0], [1]]);
+    const stuck = compile('* [Pay. #needs: rings 5] Paid.\n* [Pay more. #needs: rings 9] Paid more.');
+    expect(() => scenePaths(stuck, env({ rings: 1 }))).toThrow(/every option needs more rings/);
+  });
+
+  it('reads needs tags, and rejects malformed ones', () => {
+    expect(parseNeeds('needs: rings 20')).toEqual({ rings: 20 });
+    expect(parseNeeds('speaker: skogul')).toBeNull();
+    expect(() => parseNeeds('needs: 20 rings')).toThrow(/malformed needs tag/);
+  });
+});
+
+describe('journalEnv', () => {
+  it('gives a scene the view it had when it was played', () => {
+    const e = env({ flags: { met_loki: 1 }, rings: 30 });
+    const entry: JournalEntry = {
+      day: e.day,
+      scene: 'scene.d3.night',
+      choices: [1],
+      rings: e.rings,
+      flags: e.flags,
+      standing: e.standing,
+      family: e.family as JournalEntry['family'],
+    };
+    const run = { seed: 'journal-seed', day: e.day, rings: e.rings, flags: e.flags, standing: e.standing, family: [] };
+    expect(journalEnv('journal-seed', entry)).toEqual({
+      ...sceneEnv(run as never, 'scene.d3.night'),
+      family: e.family,
+    });
   });
 });
 
@@ -114,6 +213,34 @@ describe('walkScene', () => {
     const json = compile('* [a] Fine.\n* [b] Broken. # fx: rings lots\n- End.');
     expect(() => playScene(json, env(), [0])).not.toThrow();
     expect(() => walkScene(json, env())).toThrow(/bad number/);
+  });
+
+  it('gives the choices of each path, and the same effects as playing it', () => {
+    const src = [
+      'EXTERNAL rings()',
+      '* [a]',
+      '  ** [a1]',
+      '     # fx: flag a1',
+      '     A1.',
+      '  ** { rings() > 100 } [a2]',
+      '     # fx: flag a2',
+      '     A2.',
+      '* [b]',
+      '  B. # fx: rings -3',
+      '- End. # fx: flag done',
+    ].join('\n');
+    const json = compile(src);
+    const paths = scenePaths(json, env());
+    expect(paths.map((p) => p.choices)).toEqual([[0, 0], [1]]);
+    expect(paths.map((p) => p.effects)).toEqual([
+      [
+        { flag: 'a1', set: 1 },
+        { flag: 'done', set: 1 },
+      ],
+      [{ rings: -3 }, { flag: 'done', set: 1 }],
+    ]);
+    for (const p of paths) expect(p.effects).toEqual(playScene(json, env(), p.choices).effects);
+    expect(scenePaths(json, env({ rings: 500 })).map((p) => p.choices)).toEqual([[0, 0], [0, 1], [1]]);
   });
 
   it('gives up on scenes with too many paths', () => {

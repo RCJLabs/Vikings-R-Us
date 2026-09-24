@@ -14,11 +14,11 @@ const seedArb = fc.string({ minLength: 1, maxLength: 12 });
 // Every day with a spec, from the demo's first to the full game's latest mechanics.
 const dayArb = fc.constantFrom(...content.days.map((d) => d.day));
 const RUNS = Number(process.env.FAIRNESS_RUNS ?? 150);
-// A run generates a whole day and, for the oracle checks, enumerates every world the evidence allows. That is
-// exponential in the free facts: Days 10-12 (faith, Thor's hammer, the trickster) made the partial-evidence
-// check about 100 ms a run on a laptop. Budget 250 ms a run so a busy CI runner doesn't time out; the nightly's
-// thousands of runs need minutes, not vitest's 5 s.
-const TIMEOUT_MS = Math.max(10_000, RUNS * 250);
+// A run generates a whole day and, for the oracle checks, solves every soul by brute force. The oracle only
+// enumerates the facts the rules can reach (testkit/src/oracle.ts), so a run is about 6 ms on a laptop. Budget
+// 60 ms a run so a busy CI runner and later days have room; the nightly's thousands of runs need minutes, not
+// vitest's 5 s.
+const TIMEOUT_MS = Math.max(10_000, RUNS * 60);
 
 const revalidate = (
   c: CaseSpec,
@@ -62,19 +62,28 @@ describe('fairness contract (F1–F8)', () => {
     TIMEOUT_MS,
   );
 
+  const neverMoreCertain = (seed: string, day: number, pick: number) => {
+    const ctx = createDayContext(content, day, seed);
+    const rng = new Rng(`subset|${pick}`);
+    for (const c of generateDay(seed, ctx).cases) {
+      const subset = c.evidence.fields.filter(() => rng.chance(1, 2));
+      const s = solve(subset, ctx).judgment;
+      if (s.kind === 'determined') expect(oracleSolve(subset, ctx)).toEqual({ kind: 'determined', dest: s.dest });
+    }
+  };
   test.prop([seedArb, dayArb, fc.integer()], { numRuns: RUNS })(
     'on partial evidence the solver is never more certain than the oracle',
-    (seed, day, pick) => {
-      const ctx = createDayContext(content, day, seed);
-      const rng = new Rng(`subset|${pick}`);
-      for (const c of generateDay(seed, ctx).cases) {
-        const subset = c.evidence.fields.filter(() => rng.chance(1, 2));
-        const s = solve(subset, ctx).judgment;
-        if (s.kind === 'determined') expect(oracleSolve(subset, ctx)).toEqual({ kind: 'determined', dest: s.dest });
-      }
-    },
+    neverMoreCertain,
     TIMEOUT_MS,
   );
+  // What random runs found (M7.7): a raven's "never fled" refutes a tally's "died in battle" when there's no
+  // wound in front; "died in battle" and "never fled" can't both be true without one, so the soul lied; and
+  // a presumption (heathen, until the amulet is seen) never proves a lie.
+  it.each([
+    ['VuxO+4%94*,:', 16, -20],
+    ["'PYvB", 17, -1958572512],
+    [']tTI3MG.&r', 16, -416200289],
+  ] as const)('on partial evidence the solver agrees with the oracle: seed %s, day %i', neverMoreCertain);
 });
 
 describe('determinism', () => {
@@ -220,7 +229,9 @@ describe('adversarial: the validator rejects broken souls', () => {
       const fields = c.evidence.fields.filter((f) => f.id !== lie.field);
       const moved = { ...c, lies: c.lies.map((l) => (l === lie ? { ...l, field: identity.id } : l)) };
       const v = revalidate(moved, ctx, fields);
-      expect(v.ok ? 'ok' : v.code).toBe('HIDDEN_LIE');
+      // Where lying itself decides the hall (Day 16 on), a hidden lie makes the soul look honest, so the
+      // solver's hall is wrong before the lie check runs. Either way the soul is rejected.
+      expect(v.ok ? 'ok' : v.code).toBe(c.meta.decisive.includes('liar') ? 'WRONG_DEST' : 'HIDDEN_LIE');
       checked++;
     }
     expect(checked).toBeGreaterThan(3);

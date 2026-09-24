@@ -160,6 +160,9 @@ importers:
       '@cots/engine':
         specifier: workspace:*
         version: link:../engine
+      '@cots/story':
+        specifier: workspace:*
+        version: link:../story
       fast-check:
         specifier: 4.10.2
         version: 4.10.2

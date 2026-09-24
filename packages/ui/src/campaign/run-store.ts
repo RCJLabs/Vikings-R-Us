@@ -2,7 +2,6 @@ import { gameContent } from 'virtual:content';
 import {
   type DayCtx,
   ENGINE_MAJOR,
-  isRunSave,
   type RunAction,
   type RunEnv,
   type RunEvent,
@@ -19,11 +18,13 @@ import {
   stepRun,
 } from '@cots/engine';
 import { batch, signal } from '@preact/signals';
+import { t } from '../i18n';
+import type { SlotRecord } from '../save-data';
+import { clearSlot, isFree, markUnreadable, SLOT_COUNT, slots, writeSlot } from '../saves';
 import {
   clock,
-  kvStore,
-  mirror,
-  readMirror,
+  currentAssists,
+  noteEnding,
   resetSoulUi,
   resumeClockAt,
   type Screen,
@@ -39,18 +40,8 @@ import {
  * RunSave keeps each morning, so any day can be replayed from its start.
  */
 
-export const SLOT_COUNT = 3;
-
-/** One slot as stored: the engine's save plus a revision, so the newer of two copies wins. */
-export interface SlotRecord {
-  readonly v: 1;
-  readonly rev: number;
-  /** Wall-clock time of the last write, for the slot list. */
-  readonly savedAt: number;
-  /** Clock time last seen with the sun running, so a reload refunds at most a few seconds. */
-  readonly seenAt?: number;
-  readonly save: RunSave;
-}
+export type { SlotRecord } from '../save-data';
+export { loadSlots, SLOT_COUNT, slots, unreadable } from '../saves';
 
 export interface Active {
   readonly slot: number;
@@ -61,29 +52,9 @@ export interface Active {
   readonly rewound: boolean;
 }
 
-export const slots = signal<readonly (SlotRecord | null)[]>(Array.from({ length: SLOT_COUNT }, () => null));
 export const active = signal<Active | null>(null);
 /** What the last night brought (family news, Draupnir), for the next morning. */
 export const lastNight = signal<readonly RunEvent[]>([]);
-
-const slotKey = (i: number) => `campaign.${i}`;
-/** Synchronous copies, like the Daily's: an IndexedDB write in flight is lost if the page unloads. */
-const mirrorKey = (i: number) => `cots.campaign.${i}`;
-
-const valid = (r: SlotRecord | null | undefined): SlotRecord | null =>
-  r?.v === 1 && typeof r.rev === 'number' && isRunSave(r.save) ? r : null;
-const newer = (a: SlotRecord | null, b: SlotRecord | null) => (!a ? b : !b ? a : b.rev > a.rev ? b : a);
-
-export async function loadSlots(): Promise<void> {
-  const store = kvStore();
-  const loaded = await Promise.all(
-    Array.from({ length: SLOT_COUNT }, async (_, i) => {
-      const stored = store ? await store.get<SlotRecord>(slotKey(i)).catch(() => undefined) : undefined;
-      return newer(valid(stored), valid(readMirror<SlotRecord>(mirrorKey(i))));
-    }),
-  );
-  slots.value = loaded;
-}
 
 function write(slot: number, save: RunSave, seenAt?: number): SlotRecord {
   const prev = slots.peek()[slot];
@@ -94,17 +65,13 @@ function write(slot: number, save: RunSave, seenAt?: number): SlotRecord {
     ...(seenAt !== undefined ? { seenAt } : {}),
     save,
   };
-  slots.value = slots.peek().map((r, i) => (i === slot ? record : r));
-  mirror(mirrorKey(slot), record);
-  void kvStore()?.set(slotKey(slot), record);
+  void writeSlot(slot, record);
   return record;
 }
 
 export function deleteSlot(slot: number): void {
   if (active.peek()?.slot === slot) active.value = null;
-  slots.value = slots.peek().map((r, i) => (i === slot ? null : r));
-  mirror(mirrorKey(slot), null);
-  void kvStore()?.remove(slotKey(slot));
+  clearSlot(slot);
 }
 
 export function screenFor(run: RunState): Screen {
@@ -126,7 +93,10 @@ export function dispatch(action: RunAction): { run: RunState; events: readonly R
   const save = a.record.save;
   const env: RunEnv = { content: gameContent, ctx: a.ctx, ...(save.queue ? { queue: save.queue } : {}) };
   const r = stepRun(a.run, action, env);
-  for (const e of r.events) if (e.e === 'rejected') say(e.reason);
+  for (const e of r.events) {
+    if (e.e === 'rejected') say(e.reason);
+    else if (e.e === 'ended') noteEnding(e.ending);
+  }
   if (r.state === a.run) return { run: a.run, events: r.events };
   const record = write(a.slot, recordAction(save, a.run, action, r.state));
   const ctx = r.state.day === a.run.day ? a.ctx : runContext(gameContent, r.state);
@@ -186,14 +156,27 @@ function openShift(a: Active): void {
 export function openSlot(slot: number): void {
   const found = slots.peek()[slot];
   if (!found) return;
-  const { run, rewound } = resumeSave(found.save, gameContent, ENGINE_MAJOR);
+  let resumed: { run: RunState; rewound: boolean; ctx: DayCtx };
+  try {
+    const r = resumeSave(found.save, gameContent, ENGINE_MAJOR);
+    resumed = { ...r, ctx: runContext(gameContent, r.run) };
+  } catch {
+    // It reads, but the engine can't rebuild it (a day this build doesn't have, say): keep it as it
+    // is, shown as unreadable.
+    markUnreadable(slot, found);
+    say(t('ui.campaign.unreadable.toast'));
+    return;
+  }
+  const { run, rewound, ctx } = resumed;
+  // Runs that ended before the gallery kept count still count.
+  if (run.ending) noteEnding(run.ending);
   // An older engine can't replay today's actions: start the day again from its morning.
   const record =
     rewound || found.save.engine !== ENGINE_MAJOR
       ? write(slot, { ...replayDay(found.save, run.day), engine: ENGINE_MAJOR })
       : found;
   batch(() => {
-    active.value = { slot, record, run, ctx: runContext(gameContent, run), rewound };
+    active.value = { slot, record, run, ctx, rewound };
     lastNight.value = [];
     session.value = null;
   });
@@ -218,6 +201,8 @@ export function openSlot(slot: number): void {
 }
 
 export function newCampaign(slot: number, story: boolean, slice?: 'play' | 'fromJump'): void {
+  // Never over a save, nor over something unreadable the player hasn't cleared.
+  if (!isFree(slot)) return;
   // Run seeds are random; everything after is deterministic from the seed.
   const seed = `run:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e9).toString(36)}`;
   write(slot, startSave(gameContent, seed, ENGINE_MAJOR, { story, ...(slice ? { slice } : {}) }));
@@ -232,8 +217,26 @@ export function replayFrom(slot: number, day: number): void {
   openSlot(slot);
 }
 
+/** The first empty slot, where a replay can branch without losing anything; null when all are taken. */
+export function emptySlot(): number | null {
+  const i = Array.from({ length: SLOT_COUNT }, (_, k) => k).find(isFree);
+  return i === undefined ? null : i;
+}
+
+/** Starts the morning of `day` again in an empty slot, from a copy of this run: the original keeps every day. */
+export function branchFrom(slot: number, day: number): void {
+  const found = slots.peek()[slot];
+  const to = emptySlot();
+  if (!found || to === null) return;
+  write(to, replayDay(found.save, day));
+  openSlot(to);
+}
+
 export function toGate(): void {
-  const r = dispatch({ t: 'beginShift', at: clock() });
+  // The day's shift takes up the assists as it begins, and the save keeps them with it.
+  const story = active.peek()?.run.story === true;
+  const assists = currentAssists(!story, story);
+  const r = dispatch({ t: 'beginShift', at: clock(), ...(Object.keys(assists).length > 0 ? { assists } : {}) });
   const a = active.peek();
   if (!r || !a || a.run.phase !== 'shift') return;
   openShift(a);

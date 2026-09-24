@@ -1,5 +1,17 @@
 import type { Hotspot } from '@cots/art';
-import { type CaseSpec, currentCase, type Field, PENALTY, stampsFor, sunLeft, type Verdict } from '@cots/engine';
+import {
+  type CaseSpec,
+  currentCase,
+  ENDLESS_STRIKES,
+  type Field,
+  type Lesson,
+  nextHint,
+  PENALTY,
+  ruledOut,
+  stampsFor,
+  sunLeft,
+  type Verdict,
+} from '@cots/engine';
 import { copyText } from '@cots/platform';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { art, usePixelFrame } from '../art';
@@ -11,10 +23,12 @@ import {
   citation,
   clock,
   coachAcks,
+  coachState,
   compareFirst,
   comparing,
   drawerTab,
   effectiveLayout,
+  noteCoached,
   now,
   quitToSlots,
   type Session,
@@ -25,8 +39,9 @@ import {
   toTitle,
   updateSettings,
 } from '../store';
-import { coachStep } from './coach';
+import { activeLesson, coachStep } from './coach';
 import { fieldText, regionFields, regionSeen, registryEntry, sceneFor, skippedText } from './evidence';
+import { hintsAllowed, pendingHintFocus } from './hint';
 import { RulesPanel } from './Rules';
 
 /** Focuses an element once, when it mounts (dialogs, the briefing's Begin button). */
@@ -82,6 +97,11 @@ function SunBar({ s }: { s: Session }) {
       <span class="sunbar__count" data-testid="soul-count">
         {t('ui.soul.count', { n: Math.min(st.cursor + 1, st.cases.length), total: st.cases.length })}
       </span>
+      {s.mode.kind === 'endless' ? (
+        <span class="sunbar__count" data-testid="strikes">
+          {t('ui.endless.strikes', { n: s.mode.strikes, max: ENDLESS_STRIKES })}
+        </span>
+      ) : null}
       <button type="button" class="btn btn--quiet" onClick={() => act({ t: 'pause' })} data-testid="pause">
         {t('ui.pause')}
       </button>
@@ -397,12 +417,32 @@ function StampRack({ s }: { s: Session }) {
   );
 }
 
-function ActionBar() {
+/** Ask Skögul where to look: she points at a piece of what decides the soul, for some sun. */
+function HintButton({ s }: { s: Session }) {
+  if (!hintsAllowed(s)) return null;
+  const none = nextHint(s.state) === null;
+  return (
+    <button
+      type="button"
+      class="btn"
+      data-testid="hint"
+      disabled={none}
+      title={none ? t('ui.hint.none') : t('ui.hint.label', { s: PENALTY.hint / 1000 })}
+      aria-label={t('ui.hint.label', { s: PENALTY.hint / 1000 })}
+      onClick={() => act({ t: 'hint' })}
+    >
+      {t('ui.hint')} <kbd>H</kbd>
+    </button>
+  );
+}
+
+function ActionBar({ s }: { s: Session }) {
   return (
     <nav class="actionbar">
       <button type="button" class="btn" aria-pressed={comparing.value} data-testid="compare" onClick={toggleCompare}>
         {t('ui.compare')} <kbd>C</kbd>
       </button>
+      <HintButton s={s} />
       <button type="button" class="btn btn--primary" data-testid="judge" onClick={() => (stampSheet.value = true)}>
         {t('ui.judge')}
       </button>
@@ -425,6 +465,11 @@ function StampSheet({ s }: { s: Session }) {
   );
 }
 
+/** With the rule tracker on (as the shift began), the rules what's been seen of this soul rules out. */
+function trackerOut(s: Session): ReadonlySet<string> | undefined {
+  return s.state.config.assists?.tracker ? new Set(ruledOut(s.state, s.ctx)) : undefined;
+}
+
 function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 'drawer' }) {
   // Keyboard players land on the first thing to look at when a new soul arrives.
   useEffect(() => {
@@ -437,7 +482,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
     return (
       <div class="desk">
         <section class="paper paper--rules" aria-label={t('ui.tab.rules')}>
-          <RulesPanel ctx={s.ctx} />
+          <RulesPanel ctx={s.ctx} out={trackerOut(s)} />
         </section>
         <section class="desk__center">
           <BodyStage s={s} c={c} />
@@ -475,6 +520,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           >
             {t('ui.compare')} <kbd>C</kbd>
           </button>
+          <HintButton s={s} />
           <StampRack s={s} />
         </section>
         <CompareBar />
@@ -519,11 +565,11 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
         ) : tab === 'tally' ? (
           <Tally s={s} c={c} />
         ) : (
-          <RulesPanel ctx={s.ctx} />
+          <RulesPanel ctx={s.ctx} out={trackerOut(s)} />
         )}
       </div>
       <CompareBar />
-      <ActionBar />
+      <ActionBar s={s} />
       <StampSheet s={s} />
     </div>
   );
@@ -686,10 +732,15 @@ function ReportBox({ r }: { r: SoulReport }) {
   );
 }
 
-/** The primer's coach: one instruction at a time, with Next for reading steps. */
-function CoachBar({ s }: { s: Session }) {
-  const step = coachStep(s, coachAcks.value);
-  if (s.mode.kind !== 'primer') return null;
+/**
+ * The coach: the primer's steps, or the lesson of a day's first soul. One instruction at a time, with Next
+ * for reading steps. Skipping the primer leaves it; skipping a lesson only puts it away.
+ */
+function CoachBar({ s, lesson }: { s: Session; lesson: Lesson | null }) {
+  const now = coachStep(s, coachAcks.value, lesson);
+  const primer = s.mode.kind === 'primer';
+  if (!primer && !lesson) return null;
+  const step = now?.step;
   return (
     <div class="coach" data-testid="coach" data-step={step?.id ?? 'none'}>
       <p class="coach__text" role="status" aria-live="polite">
@@ -703,7 +754,7 @@ function CoachBar({ s }: { s: Session }) {
             data-testid="coach-next"
             onClick={() => (coachAcks.value = [...coachAcks.value, step.id])}
           >
-            {t('primer.next')}
+            {t(primer ? 'primer.next' : 'ui.coach.next')}
           </button>
         ) : null}
         <button
@@ -711,11 +762,13 @@ function CoachBar({ s }: { s: Session }) {
           class="btn btn--quiet btn--small"
           data-testid="coach-skip"
           onClick={() => {
-            updateSettings({ primerDone: true });
-            toTitle();
+            if (primer) {
+              updateSettings({ primerDone: true });
+              toTitle();
+            } else noteCoached(s.ctx.day);
           }}
         >
-          {t('primer.skip')}
+          {t(primer ? 'primer.skip' : 'ui.coach.skip')}
         </button>
       </div>
     </div>
@@ -742,16 +795,17 @@ export function ShiftScreen() {
   const paused = s.state.clock.pausedAt !== null;
   const blocked = paused || answer.value !== null || citation.value !== null || reportFor.value !== null;
   const c = currentCase(s.state);
-  const step = coachStep(s, coachAcks.value);
+  const lesson = activeLesson(s, coachState());
+  const coach = coachStep(s, coachAcks.value, lesson);
   return (
     <div
       class={`shift shift--${layout}${paused ? ' is-paused' : ''}${comparing.value ? ' is-comparing' : ''}`}
       data-layout={layout}
-      data-coach={step?.focus}
+      data-coach={coach?.focus ?? pendingHintFocus(s.state)}
     >
       <div class="shift__desk" inert={blocked}>
         <SunBar s={s} />
-        <CoachBar s={s} />
+        <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>
       {paused ? <PauseOverlay /> : null}

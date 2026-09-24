@@ -13,6 +13,10 @@ draupnir: { nights: [9, 18], rings: 8 }
 debtFloor: -30
 care: { needNights: 2, sickChance: 30, sickNights: 2 }
 worthy: pred.worthy
+# The stranger at night is Loki, but nobody says so until Skögul does on Day 12's morning: until then
+# the accounts, and the notes after a choice, call him the stranger.
+aliases:
+  - { faction: loki, name: faction.stranger, untilDay: 12 }
 # The first matching row applies; specific rows are tried before wildcards.
 standing:
   - { expected: FOLKVANGR, stamped: VALHALLA, fx: { freyja: -2, odin: 1 } }

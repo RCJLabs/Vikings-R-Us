@@ -9,3 +9,5 @@
 - { kind: sign, id: law.hammer, since: 10, text: law.hammer, if: { obs: amulet, is: hammer }, then: { fact: faith, in: [heathen] } }
 - { kind: sign, id: law.stitchedLips, since: 12, text: law.stitchedLips, if: { obs: lipScars, is: stitched }, then: { fact: trickster, in: [true] } }
 - { kind: sign, id: law.plainLips, since: 12, text: law.plainLips, if: { obs: lipScars, is: none }, then: { fact: trickster, in: [false] } }
+# Day 15: Odin may claim true Ulfberhts, so a blade with no maker's mark has to count as plain.
+- { kind: sign, id: law.noMark, since: 15, text: law.noMark, if: { obs: makersMark, is: none }, then: { fact: blade, in: [plain] } }

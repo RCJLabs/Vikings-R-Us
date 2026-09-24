@@ -1,5 +1,5 @@
-import type { Faction, StatePred } from '../content/types';
-import type { ShiftState } from '../shift/shift';
+import { type Destination, FACTIONS, type Faction, type StatePred } from '../content/types';
+import type { Assists, ShiftState } from '../shift/shift';
 
 /**
  * A campaign run (docs/tech-spec.md §4). Plain JSON, never reads a clock:
@@ -36,7 +36,15 @@ export interface DayLedger {
   readonly pay: number;
   readonly bonus: number;
   readonly fines: number;
+  /** Standing moved by today's mistakes at the gate (right stamps never move it). */
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
+  /**
+   * Standing moved by the story since the previous audit: last night's scene, this morning's,
+   * today's story souls (and in a vertical slice, its jump). Absent in saves from before it was kept.
+   */
+  readonly story?: Readonly<Partial<Record<Faction, number>>>;
+  /** The assists the day's shift was played with (absent when none). */
+  readonly assists?: Assists;
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;
@@ -66,6 +74,10 @@ export interface RunState {
   readonly standing: Readonly<Record<Faction, number>>;
   /** Souls stamped VALHALLA who were worthy, and those who weren't (they flee at Ragnarök). */
   readonly einherjar: { readonly worthy: number; readonly unworthy: number };
+  /** Souls sent to each hall, rightly or not (absent in saves from before M7). */
+  readonly sent?: Readonly<Partial<Record<Destination, number>>>;
+  /** Souls sent on with nails that should have been cut: Naglfar's progress (absent before M7). */
+  readonly naglfar?: number;
   readonly family: readonly FamilyMember[];
   readonly upgrades: readonly string[];
   /** Story memory across days. Integers only (Ink reads them). */
@@ -75,6 +87,8 @@ export interface RunState {
   readonly scenes: readonly string[];
   /** Rings gained or lost to story effects today, for the night's accounts. */
   readonly storyRings: number;
+  /** Standing moved by the story since the last audit; the next audit files it in its ledger. */
+  readonly storyStanding?: Readonly<Partial<Record<Faction, number>>>;
   /** Tonight's bills as the player has set them (night only). */
   readonly bills: Bills | null;
   /** Rings spent in the shop tonight. */
@@ -86,15 +100,82 @@ export interface RunState {
   readonly slice?: boolean;
 }
 
+/** The host at Ragnarök, part by part: the counts behind ragnarokStrength. */
+export interface HostParts {
+  /** Worthy einherjar, twice each. */
+  readonly worthy: number;
+  /** Unworthy einherjar, who flee: against, once each. */
+  readonly unworthy: number;
+  /** Souls sent to Fólkvangr (Freyja's host), twice each. */
+  readonly folkvangr: number;
+  /** Souls sent to Hel (her legion), twice each. */
+  readonly hel: number;
+  /** Souls sent on with their nails uncut (Naglfar): against, twice each. */
+  readonly naglfar: number;
+  readonly total: number;
+}
+
+/**
+ * The host at Ragnarök (docs/m7-design.md): worthy einherjar count double, the
+ * unworthy (who flee) count against, Freyja's host and Hel's legion count
+ * double, and every soul sent on with its nails uncut builds Naglfar. The
+ * plan's formula times two, so it stays in whole numbers.
+ */
+export function hostParts(run: RunState): HostParts {
+  const sent = run.sent ?? {};
+  const worthy = run.einherjar.worthy;
+  const unworthy = run.einherjar.unworthy;
+  const folkvangr = sent.FOLKVANGR ?? 0;
+  const hel = sent.HEL ?? 0;
+  const naglfar = run.naglfar ?? 0;
+  const total = 2 * worthy - unworthy + 2 * folkvangr + 2 * hel - 2 * naglfar;
+  return { worthy, unworthy, folkvangr, hel, naglfar, total };
+}
+
+export function ragnarokStrength(run: RunState): number {
+  return hostParts(run).total;
+}
+
+/** A god's standing minus the highest standing of the others: above 0, they lead. */
+export function standingLead(run: RunState, faction: Faction): number {
+  let best = Number.NEGATIVE_INFINITY;
+  for (const [f, n] of Object.entries(run.standing)) if (f !== faction) best = Math.max(best, n);
+  return (run.standing[faction] ?? 0) - (best === Number.NEGATIVE_INFINITY ? 0 : best);
+}
+
+/**
+ * The powers the player has dealings with so far: those whose standing has moved, by a mistake or by
+ * the story, on any day, even if it has come back to 0 (or that is off zero, for saves from before
+ * story standing was kept). The rest stay out of sight, so a power turns up when the story brings it in.
+ */
+export function factionsMet(run: RunState): Faction[] {
+  const moved = (s: Readonly<Partial<Record<Faction, number>>> | undefined, f: Faction) => s !== undefined && f in s;
+  return FACTIONS.filter(
+    (f) =>
+      run.standing[f] !== 0 ||
+      moved(run.storyStanding, f) ||
+      run.ledger.some((l) => moved(l.standing, f) || moved(l.story, f)),
+  );
+}
+
 /**
  * The numbers a StatePred can read:
- * `day`, `rings`, `debtNights`, `standing.<faction>`, `einherjar.worthy`,
- * `einherjar.unworthy`, `flags.<name>`, `family.well`, `family.sick`,
- * `family.home` (not gone) and `family.gone`.
+ * `day`, `rings`, `debtNights`, `standing.<faction>`, `lead.<faction>`,
+ * `einherjar.worthy`, `einherjar.unworthy`, `sent.<DESTINATION>`, `naglfar`,
+ * `ragnarok`, `flags.<name>`, `family.well`, `family.sick`, `family.home`
+ * (not gone) and `family.gone`.
  */
 export function stateValue(run: RunState, path: string): number {
   const [head, key] = path.split('.', 2) as [string, string | undefined];
   switch (head) {
+    case 'lead':
+      return standingLead(run, key as Faction);
+    case 'sent':
+      return run.sent?.[key as Destination] ?? 0;
+    case 'naglfar':
+      return run.naglfar ?? 0;
+    case 'ragnarok':
+      return ragnarokStrength(run);
     case 'day':
       return run.day;
     case 'rings':
@@ -128,4 +209,4 @@ export function evalState(p: StatePred, run: RunState): boolean {
 
 /** Paths a StatePred may use (the content linter checks endings against it). */
 export const STATE_PATHS =
-  /^(day|rings|debtNights|standing\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;
+  /^(day|rings|debtNights|naglfar|ragnarok|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;

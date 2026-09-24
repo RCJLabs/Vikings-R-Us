@@ -1270,7 +1270,7 @@ The range in each cell spans the three night strategies (pay everything, skip th
 **Decisions**
 - **The art contract grew.** Each provider draws its own registry portraits. Pixel art declares its grid, and the stage sizes it so each art pixel covers whole device pixels (a ResizeObserver; the frame is letterboxed). Every provider shares one layout, so taps land in the same places and a region's signs are one decision.
 - **Choosing art.** `?art=woodcut|pixel|placeholder` picks the art and the device remembers it. Feedback links name it. Art never changes a case.
-- **The woodcut was chosen** (September 2026) and is the default. After the choice, its hands were redrawn: open hands with fingers and a thumb, and a fist closed round the grip with the thumb over the index finger. The held weapon now shows from behind too, though `grip` stays a front-view sign (the back view has no hand hotspots).
+- **The woodcut was chosen** (September 2026) and is the default. After the choice, its hands were redrawn: open hands with fingers and a thumb, and a fist closed round the grip with the thumb over the index finger. The held weapon now shows from behind too, though `grip` stays a front-view sign (the back view has no hand hotspots). From behind, the fist shows its back (knuckles down the outer side; the fingers and thumb curl out of sight) and the weapon passes behind the forearm: a playtest found the first version, with the weapon over the arm and a fist that looked like its front, read as an arm turned backwards. The weapon leans out 14° from the fist, away from the body, in both views, so it shows past the arm from behind and turning the body doesn't change its angle; the rune-lens reading follows the blade, upright, on the side toward the body so it stays in the frame.
 - **The weapon a soul names is the weapon drawn.** Testimony already shares one weapon word per soul; the shift passes it to the art (axe, sword, spear, seax). No generation change, so Dailies and goldens stay put.
 - **Day 10:** faith is heathen by presumption. The amulet is the sign: a cross means baptized, a hammer heathen, and both on one cord prime-signed (who stay ours). TRANSFER comes after outlaws. A false convert's claim is caught by his hammer.
 - **Day 12:** `trickster` (not `loki`, which is a faction id in shared code and would trip the leak check). Its only sign is stitch scars on the lips (salience 1), so the day's floor drops to 1. DETAIN comes first. Loki's one lie is "just a plain man", and questioning it gets a `deflect`, which reveals nothing.
@@ -1291,6 +1291,252 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - Days 7–11 still have no story; the plain campaign still ends after Day 6.
 - The brute-force oracle enumerates every world the evidence allows, which is exponential in the free facts. Days 10–12 made the partial-evidence property the slowest check (about 100 ms a run); its budget is now 250 ms a run. M7's days will need the oracle to enumerate only the facts the day's rules, laws and constraints can reach.
 - Everything written in M5 is draft (`docs/story-drafts.md`). The sound is a placeholder.
+
+## 18. M7 implementation notes (the full campaign as built)
+
+**Where things live**
+- The design and its open questions: `docs/m7-design.md`. Story drafts, flags and which choices reach which ending: `docs/story-drafts.md`.
+- Days 9 and 13–20: the campaign pack (`days/`, `rules.yaml`, `laws.yaml`, `facts.yaml` with `liar` and `spearMark`, `world.yaml`, archetypes, Muninn's lines in `templates/ravens.yaml`). Scenes for Days 7–11 and 13–20: `scenes/d{7…20}.*.ink`; Thorvald's Day 16 visit: `cases/thorvald-16.yaml`.
+- The fast oracle: `packages/testkit/src/oracle.ts` (the slow reference, for Days ≤ 12: `oracle-reference.ts`).
+- Endings state (`sent`, `naglfar`, `ragnarok`, `lead.<faction>`): `packages/engine/src/campaign/state.ts`. Endless: `packages/engine/src/shift/endless.ts` and the UI's `EndlessMode` (`packages/ui/src/store.ts`).
+- The story-playing sim: `packages/testkit/src/campaign-sim.ts` (policies), `scenePaths` in `packages/story`, `pnpm sim campaign --story all`.
+
+**Decisions**
+- **The oracle stays exact without enumerating everything.** Unary constraints narrow facts first; linked facts form groups (fact laws, derived facts, tally lines, the liar's claims); only the group the rules read is enumerated, and the others need only be satisfiable.
+- **Liars (Day 16) are a fact of the truth.** `liar` is never sampled: the generator plans lies before judging and sets it from them. The solver proves it from a caught lie, a seen forgery, or claims that can't all be true together, and otherwise presumes the soul honest. Both oracles prove it only from evidence, never from another presumption (M7.7: a presumed-heathen soul who said he was prime-signed had counted as a liar).
+- **Statements about derived facts constrain what they're made of.** A raven's "never fled" now means no wound in the back, as a tally's always did, so the laws reason from it. Fixed with the above after the partial-evidence property found both (three counterexamples, pinned as tests).
+- **Observation keys never reuse a campaign fact's id.** The art draws signs by observation key and ships in every build, so `spearMark` the sign leaked a campaign token into the demo; the sign is `spearCut` (like `nails`/`nailsGrown`, `lipScars`/`trickster`).
+- **Standing moves only on wrong stamps** (a fix: catch-all rows had matched right ones since M4).
+- **Story branches read flags and the family's state,** and letters hold when a family member is gone. Day 17 decides where the family is (ship, ferry, wood or home) and drops the other plans, so the ending matches the player's last choice; taking Loki's deal on Day 18 replaces it.
+- **Bots choose by effects, not words.** A policy scores every path through a scene by the flags, standing and rings it changes, so rewriting a scene keeps the bots working.
+- **Endless reuses the day specs:** each round is the first five souls of its day's queue, so the day's teaching soul comes first.
+
+**Measured**
+- The oracle: Day 12 from 76 ms a soul (1.3 s worst) to 0.16 ms (1.6 ms worst). Fairness properties take about 5 s each at 800 runs.
+- Sweep, Days 1–20 × 300 seeds (74,554 souls): mean 1.03 attempts, p99 2, no fallbacks, generation p99 1.8 ms, ideal bot 100%, trusting bot 56.4% (Day 4 alone is 69.8%, above 65%, unchanged since M4).
+- Every ending reached by a bot built for it (test in `campaign-sim.test.ts`, with a negative control). Endings by 12 seeds: see `docs/m7-design.md`.
+- Economy with the story played: competent players end on about 368 rings, experts about 691; careless players are always demoted.
+- Writing: 40 scenes, all draft, about 11,700 words of scenes in the full builds.
+
+**Known limits**
+- The economy misses its target: a competent player can still afford the ferry without giving anything up. Squeezing harder demotes most novices (fines sink them, not bills). This needs playtests, not bots.
+- Faction endings mostly go to careful players: mistakes cost the god who lost the soul, so a competent player's Odin ends near −16 whatever they choose.
+- Host-strength thresholds (260 for Rebirth, 240 for the wolf) are absolute numbers for these queue sizes. The reach test catches drift if the queues change.
+- The partial-evidence property runs 150 random seeds per CI run; it took 12,000 more runs to show the fixes held. The nightly's larger runs are the real guard.
+- All M7 writing is first draft; the clerk's storyline needs its sensitivity read.
+
+## 19. After M7: what the dead say (audit item 1)
+
+**Where things live**
+- Picking lines: `packages/engine/src/gen/render.ts` (`choose`, `deal`, `pinnedWords`); the soul's place in its day reaches it through `dressCase`'s `voice`.
+- Content: `spreadLines` in the story days' knobs (demo Days 1–3, campaign Days 4–20), `words` on the campaign's `blade` fact, `chances` in the campaign's `speech.yaml`. New variants are in the campaign pack's templates and strings.
+- Tests: `packages/engine/src/gen/voice.test.ts` (tells, weapons, repeats, and that spreading changes only words), `packages/ui/src/dialogue.test.ts` (the fixed strings), compiler lints for `words` and `chances`.
+
+**Decisions**
+- **Spreading lines keeps every soul a pure function of (seed, day, index).** A day deals each kind of line (a slot and claim, a raven report, a tally line) into a deck: its variants in a per-day order, each as often as its weight, spaced out (smooth weighted round-robin), cut at a per-day point. Soul *i* says the variant at position *i*. A soul whose persona can't say it takes the variant whose places in the deck are furthest from its own. It only chooses among the same templates, so judgments, proofs, lies and field ids are unchanged (a metamorphic test checks this). Avoiding "the last 20 lines heard", as §3.5 planned, would make each soul depend on the souls before it.
+- **The Daily keeps its words.** Its spec has no `spreadLines`, the new variants are in the campaign pack, and the core strings changed only in wording, so its pinned checksums hold. Without the knob, lines are drawn exactly as before (same draws, same order).
+- **Facts can fix words.** A fact's `words` (value → pool → word) fixes the word for a soul that has the value or claims it; its lines use it, and the evidence records it (`evidence.words`, only when set) so the art draws it when no line names it.
+- **Honest souls vouch for themselves too.** The guise slot is spoken at 15% by honest souls from Day 12, and Loki can wear any persona, so neither the line nor how he talks gives him away.
+- **Per-value speaking chances.** Liars always speak their claim; honest souls speak by chance. For claims that liars favour (baptism from Day 10, a true Ulfberht from Day 7) the honest chance is 60%, so the claim alone stops being nearly always a lie. A chance draw is one draw whatever its odds, so nothing else in the plan moves.
+
+**Measured** (16–30 seeds of Days 1–20 in the full build, before → after)
+- Lines that repeat one heard earlier that day: 59% → 31% (Day 20: 68% → 43%). The same line as one of the last three souls: 42% → 10%; as the soul just before: 21% → 3%. Variants alone got near repeats to 18%; spreading halved that.
+- Day 20's most-used line: 10 times a day on average (14 at worst) → 5 (7 at worst). Muninn forgets about 8 souls a day; his most-used forgetting line went from all 8 (12 at worst) to 2.4 (3 at worst).
+- Loki's lines: a lie 100% of the time → 35% (13–46% by line). Highest lie share of any line: 100% → 65% (a baptism claim).
+- Contradictions: "my father's axe" with another weapon (27% of those lines), an Ulfberht drawn or named as a non-sword (91% of marked or claimed blades), "seventy winters" at any age, a braggart who died old confessing to a cough, a forger telling both tally stories: all 0. Also reworded: Huginn's "never gave ground" and "dropped the weapon early", which he also said of souls who died in bed or drowned (about a quarter of those reports), and the soul's own "went into the mud".
+- Day goldens (12 seeds × 20 days) and the Daily checksums are unchanged.
+
+**Known limits**
+- Some claims stay soft tells: a coward's "I did not run" is a lie 63% of the time, because cowards who claim it mostly fled. It's never proof, and the body decides.
+- An axe can't be an Ulfberht, so a player who knows that can skip the lens on axe-bearers. That's true to the world; it makes the Ulfberht check a little easier than the validator's proof cost assumes.
+- Spreading helps most with lines many souls say. A claim few souls make can still repeat a few souls apart (a deck is only as long as its variants' weights), so the real fix for repetition is still more variants: about 770 new words here, all first draft.
+- Honest and veteran souls still have no flavour lines. Adding them would add a line where there was none, which moves field ids in the day goldens, so it's left for a content pass.
+
+## 20. After M7: showing what choices do (audit item 2)
+
+**What changed**
+- **The audit's standing adds up.** It had shown today's mistakes under "Today" while story effects moved "In all" unseen. The run now keeps the story's standing since the last audit (`storyStanding`: scenes, story souls' stamps, the slice's jump), and each audit files it in its ledger (`DayLedger.story`) beside the day's mistakes. The table shows Mistakes, Story and Now: the last audit's Now plus both columns is today's.
+- **A standing strip** on the morning and night screens, for the powers the player has had dealings with (`factionsMet`: any whose standing has moved on the record, even back to 0). The rest stay out of sight until the story brings them in.
+- **Notes after choices.** A scene's frame files what each choice did on the last line before the next choice (or the end); the scene then shows "Hel will remember that (+3)." for each power moved. Ink gives a tag written under a line to the next line, so a line's own tags can't say which choice an effect belongs to; filing by stretch puts the note in one predictable place. The audit adds the same note to a story soul's verdict (`stampEffects`).
+- **Aliases.** `aliases` in a campaign's config gives a power another name until a day: Loki is "The stranger" until Day 12, when Skögul names him, in the strip, the table and the notes. Before this, the full game's Day 4 audit already listed "Loki" after the Day 3 stranger scene.
+
+**Tests**
+- Engine: the ledger files story standing from last night's scene to this audit, the columns add up over several days, a power that moved back to 0 stays met, story souls' stamps and the slice's jump count as story, and the alias holds until Day 12.
+- Story: where effects are filed, including a choice with no text after it.
+- e2e (phone and desktop): the Day 1 note and strip, a Day 1 audit row whose columns add up (a mistake −1, a choice +1, now 0), and Day 3's stranger named only as the stranger.
+
+**Known limits**
+- A note can come a few lines after the reply it belongs to (on Day 1 it comes after three closing lines), because it waits for the end of the choice's stretch.
+- Saves from before this change have no story column for days already audited; their rows show 0 there, so those days don't add up.
+- The notes are plain text under the choice. Whether players want them, or would rather discover standing on their own, is a playtest question.
+
+## 21. After M7: the journal (audit item 3)
+
+**What changed**
+- **The save keeps a journal.** A save held only today's actions, so a day's scenes, letters and choices were gone the next morning. `RunSave.journal` records each scene played: its day, the choices made, and what the scene could read of the run as it began (rings, flags, standing, the family), since nothing else in the save can rebuild that for an older day. A replayed day drops its entries and the later days'; a scene played again (a day restarted after an engine update) replaces its entry. Under 1 KB a scene (the flags grow as the story goes), so a whole campaign adds about 20 KB to a save.
+- **The Journal button** on the morning, night and ending screens opens a page over the screen (a scene half-read underneath keeps its place). It lists the threads still in play, then every day's scenes, newest first, played again read-only with the choices made and the standing notes. Only the days opened are played again.
+- **Threads** are content (`threads` in `campaign.yaml`): a text key shown while a run-state condition holds, with an optional count. The campaign has ten: Skögul's loan, Ulf's fine and his shipyard, the stranger's deal, the ferry, knowing of the wood, the family's plan (the wood or home), the clerk's contract, and how much you've heard of the after.
+- **Options you can't afford stay in sight.** A `needs: rings N` tag inside an option's brackets shows the option greyed out with what it needs, instead of an Ink condition hiding it. The seven rings-gated options (the roof, Ulf's fine, Skögul's loan, the healer, the ferry twice, the clerk's fee) now use it; story gates stay hidden. The runner won't take a locked option; bots and the compiler's walks skip them, and a point where every option is locked fails the build.
+
+**Tests**
+- Engine: every scene played is kept with its choices and the run as it began; a replay drops the discarded days and a replayed scene replaces its entry; threads follow their conditions and counts.
+- Story: locked options are shown with their cost, can't be taken, aren't walked, and a point with only locked options fails; the env a journal entry gives equals the one the scene had.
+- Compiler: a `needs` tag outside an option's brackets, or malformed, is rejected.
+- e2e: the journal after a day and after a reload (phone and desktop), a locked option on Day 2's night with an emptied purse, and the thread list in the full build.
+
+**Known limits**
+- Saves from before the journal have no entries for the days already played.
+- Ink's word count reads a `needs` tag as words, so each adds about three to the scene word totals.
+- The threads name what's in play, not whether it will work: the ferry thread doesn't say whether you'll have the hundred rings. That's item 5's planning, not the journal's.
+
+## 22. After M7: the Ragnarök report, the endings gallery, branching replays (audit item 4)
+
+**What changed**
+- **The ending screen reports how the run stood.** The host at Ragnarök part by part (worthy einherjar twice over, the unworthy against, Freyja's host and Hel's legion twice over, Naglfar's nails against), adding up to the host; what the endings ask of it (read from their conditions by `hostMarks`, so the 260 and 240 come from `campaign.yaml`, not the UI); each power's standing at the end, with whoever was ahead of the rest; and where the souls went. The host section only appears in builds whose endings read the host (not the demo).
+- **Endings are kept per device.** Reaching an ending adds it to the device's settings (`endingsSeen`, any slot, any run; a slot that ended before this counts when it's opened). The slots screen lists the endings this build can reach (`reachableEndings`: those with a condition, and the finale), naming the ones found (their text behind a click) and not the rest. The report names an ending only once it's been found here: "An ending you haven't found: a host of 260 or more."
+- **A replay can branch.** Each slot offers "Replay here" (as before: the day starts again and the later days are forgotten) and "Replay in a new slot", which copies the save up to that morning into the first empty slot and leaves the original as it was. With every slot full the button is off, and the note says to empty one.
+
+**Tests**
+- Engine: the host's parts add up to its strength; the reachable endings of the demo (3) and the full game (11); the marks (the green earth at 260 or more, the wolf at 240 or less; none in the demo). The campaign sim's reach test now uses the same list.
+- e2e: the demo's ending reports standing and souls, counts 1 of 3, and the gallery names it alone; a replay in a new slot keeps the original at Day 2; in the full game, a quick Demoted ending shows the host and names neither unfound ending.
+
+**Known limits**
+- The marks give the host's part of an ending's condition only. The green earth asks for more (the wood, what you've learned, someone at home), which the report doesn't list, so as not to spell out endings not yet found.
+- Endings found are kept per device and browser, with the settings; a new browser starts the gallery again.
+- Replaying in a new slot needs an empty slot; there are three.
+
+## 23. After M7: planning the night (audit item 5)
+
+**What changed**
+- **The night screen says what the bills as set will do.** The engine works out tonight (`nightOutlook`) with the same code the night itself runs, so the screen and the night can't disagree; only who falls sick by chance is left open, and the screen gives the odds instead.
+  - The family list says how soon each sick person needs medicine ("needs medicine tonight", "within 2 nights").
+  - Under the bills, one line for each consequence: who dies or is sent to relatives without medicine tonight, who stays sick and how many more nights they can go without it, who falls sick for certain after another cold or hungry night, and the chance for anyone else well ("30% each").
+  - "After tonight" now counts Draupnir's rings on his nights (it used to leave them out, so on nights 9 and 18 it was 8 rings short), and the screen says when he drips.
+- **Tonight's bills are in sight before the choices that cost rings.** An option with a `needs: rings` tag has the purse and tonight's bills (all paid) above it, and at night what it would leave after them, counting its own effects (the healer who cures Asa means no medicine to buy for her). The morning briefing gives tonight's bills too.
+- **The nights ahead.** The bills card lists the next three nights' firewood and food (for those at home now) and medicine a head, marking Draupnir's nights (`billForecast`, which follows the vertical slice's jump and stops at the run's last day).
+- **The debt that ends a run looks like it.** After a night below the floor, the morning and night screens carry a banner saying how many more end the run (the number read from the demoted ending's condition, `debtLimit`). When the bills as set would end the run, by the debt or with no one left at home, the bills card says so and Sleep asks first.
+- Family members can have a short name for use in sentences, an optional `<name key>.short` string ("Ragna" beside "Ragna, your mother"); the night's news uses it too.
+
+**Tests**
+- Engine: a property test that the outlook matches the night itself on 150 random nights (purse, debt, every certain change, and chance only ever making someone well sick); who is lost, who surely falls sick and the odds; Draupnir and the debt that ends the run; no one left at home; the forecast in the full game, the demo and the slice.
+- UI strings: every branch of the new messages.
+- e2e: the night's consequences and the nights ahead, and the news the next morning; the purse and what an option leaves at Day 2's night; the debt banner, warning and the sleep that asks first, on the way to Demoted.
+
+**Known limits**
+- The preview of an option counts its effects up to the next choice in the scene, not what later choices would add.
+- The forecast assumes the family stays as it is tonight: food for everyone at home now, medicine a head for whoever falls sick.
+- Chance is shown as a percentage, not hidden. The design reason to keep it (skipping a bill is a gamble) still holds; the player just knows the odds.
+
+## 24. After M7: assists (audit item 6)
+
+**What changed**
+- **Sun speed**: ×0.5, ×0.75, ×1, ×1.5 or ×2, as the plan had it. A slower sun is the same shift with more of it: the sun's length is divided by the speed, and tool costs and penalties stay as they are, so in effect everything runs at the chosen speed. Shifts with no sun (Story Mode, practice without sun, Endless, the primer) ignore it.
+- **The rule tracker**: the rulebook greys out, and marks "ruled out", the rules that what the player has seen of the soul already rules out. It asks the solver for only what can't be wrong (`certainOnly`): no presumptions, and no saga tally believed, since it may be forged with the sign not yet seen; body signs, the ravens, tool readings, confessions and caught lies count. So it never greys out the rule that applies, which a property test checks on Days 1–20 with random parts of each soul seen and asked. With everything seen it rules out about 6.3 rules a soul (120 queues, Days 1–20), where on average 4.6 rules come before the one that applies.
+- **No fines** in the campaign: citations still come but cost nothing, and the audit counts every mistake forgiven. Story Mode keeps its own no-sun, no-fines rule, and shows only the tracker.
+- **Where they're set and kept**: device settings, in the title screen's settings and on each campaign morning. A shift takes them up with its `begin` action (the campaign's `beginShift`) and keeps them in its config, so a resumed Daily, a resumed campaign day and a bug report's replay all use the assists the shift began with, whatever the settings say now. The day's ledger keeps them too, and the audit says which were on.
+- **Results say so**: a Daily played with another sun speed or the tracker adds them to its share text ("· sun ×0.5, rule tracker") and shows "Played with …" under its result on the title screen.
+- **Telemetry**: shifts played with an assist aren't sent. The worker's schema is strict and has no field for assists, so it would refuse them; sending them means adding the field to the worker and deploying it first.
+
+**Measured** (campaign sim, 40 runs per policy, plain story; `pnpm sim campaign` and `pnpm sim campaign --no-fines`)
+
+| Bot | Night strategy | Demoted | Demoted with no fines |
+|---|---|---|---|
+| novice (65% right) | pays everything | 97.5% | 0% |
+| novice | frugal | 42.5% | 0% |
+| novice | upgrades first | 100% | 37.5% |
+| careless (40%) | pays everything | 100% | 100% |
+| competent (85%) | any | 0% | 0% |
+
+Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill by a quarter instead (fines kept) still left 19 of 30 novices demoted, and at 80% accuracy none were. Novices who get through without fines mostly come to the wolf's ending: their mistakes leave the host at 240 or less. The sim can't measure the sun speed or the tracker, because its bots have an accuracy, not a clock; whether those lift real players' accuracy is for playtests.
+
+**Tests**
+- Engine: the sun speed from the `begin` action (only the speeds on offer) and dusk at the slower sun's end; the share text's notes; the tracker on a Day 1 soul (nothing ruled out before looking, the weapon rule once the empty hand is seen); the tracker's property test; fines waived and the day's ledger keeping the assists; a campaign day resumed mid-shift keeping its assists.
+- e2e: the Daily with the sun at ×0.5 and the tracker (12:00 of sun, the rules the body rules out greyed and the one that applies not, the share text, the note under the result); a campaign day at ×2 with no fines (3:00 of sun, every mistake forgiven, the audit's note).
+
+**Known limits**
+- Assists apply from the next shift; changing one mid-shift does nothing to that shift.
+- The tracker only greys rules out. It never says which rule applies, and it reads nothing from testimony or a tally, so it rules out less than a player who reads an honest tally rightly.
+- Endless keeps one best score, with or without the tracker.
+
+## 25. After M7: a lesson for each new mechanic (audit item 7)
+
+**What changed**
+- **The coach teaches every day that brings something new**, not just the primer. Each such day already puts a teaching soul first (`queue.teachFirst`); its spec now has a `lesson`, a few coach steps for that soul: Days 1–8 and 10–17 (Day 9 brings nothing new). The lessons are content, in each pack's day files with their text in the pack's strings, so the campaign's never reach a demo build.
+- **A step** names what to highlight (`focus`) and what ends it (`until`): a field looked at (by id, or `whim:<param>` for the sign the day's whim reads, worked out on the day), a tool used, the body turned over, or a lie caught; or it's a reading step ended by Next. The last step lasts until the soul is judged. Steps a soul can't give are left out: on Day 2, "catch the lie" only shows when the fled soul lies (35 of 40 teaching souls).
+- **Who is taught**: campaign and practice shifts, on the day's first soul, when it is the teaching soul. A lesson is taught once per device: judging its soul, or skipping it, records the day (`coached` in the settings). Days 1–3 are skipped for anyone who has played the primer, which teaches the same. A setting turns the lessons off.
+- **The primer's steps now use the same form**, so one coach runs both.
+- **New highlights**: hair, neck, the registry, the rune-lens, the clippers, the ravens, the tally and Compare.
+- **The compiler checks** each lesson: a teaching soul to ride on, known highlights, strings that exist, tools taught by that day, a whim param the day has, and a last step that waits for the stamp.
+
+**Tests**
+- Unit: every lesson can be followed to its stamp on 25 generated teaching souls a day, by a player who does only what each step asks; lessons show once, not after the primer for Days 1–3, and not when turned off; the primer's steps are as they were.
+- e2e: Day 6's lesson in practice (the registry highlighted, then the stamp), gone for the next soul and the next practice; skipping Day 8's; the setting off for Day 7; Day 1's lesson in a new campaign.
+
+**Known limits**
+- The sun keeps running during a lesson. Most steps ask for what the soul needs anyway; the reading steps cost a few seconds.
+- The lesson texts are first drafts for the writing pass.
+- A lesson rides on the day's first soul only. A player who fumbles it gets no second lesson that day, though replaying the day doesn't bring it back either (it's recorded once the soul is judged).
+
+## 26. After M7: Skögul's hint (audit item 8)
+
+**What changed**
+- **A Hint button (and H)** asks Skögul where to look, for 15 seconds of sun (`PENALTY.hint`; a question costs 20). The engine's `hint` action points at the first piece of the soul's deciding evidence (its minimal proof, `meta.proof`) that the player hasn't looked at and she hasn't already pointed at, and keeps what she pointed at in the soul's state, so replays and resumes are exact.
+- **She says where, not what**: "Skögul points at the hands", "taps the registry", "hands you the rune-lens", "looks up at the ravens". What she pointed at stays highlighted (the coach's highlights) until the player has looked, with the flip highlighted too when it's on the other side of the body.
+- **Nothing left to show**: once everything that decides the soul has been seen, the button is off and says so, and asking costs nothing. Following her hints to the end always shows enough to decide the soul, given the answers of a liar who confesses when questioned (a property test on Days 1–20).
+- Not offered in Endless (a score with no sun) or the primer (the coach leads it). Shifts without a sun (Story Mode, practice without sun) get hints for free.
+- The rulebook's costs line and the keys line mention it.
+
+**Tests**
+- Engine: the first hint points at the first unseen proof field, for 15 s; the next at the next; nothing to point at (and no cost) once the proof has been seen; the property test above.
+- UI: every proof field on Days 1–20 has a line and a highlight the coach knows.
+- e2e: in the Daily, a hint costs 15 s of sun, names a place and highlights it, and a careful player's look at everything leaves the button off with its reason.
+
+**Known limits**
+- A hint isn't counted anywhere: the Daily's share text, the audit and the endings don't know it was used. It costs sun instead, like a question.
+- She points in the proof's order, not at what's quickest to check next.
+- When a soul can only be decided by a liar's confession, she never says to question them: she only points at evidence.
+
+## 27. After M7: more reasons to replay Endless and the Daily (audit item 9)
+
+**What changed**
+- **Today's Endless.** The Endless card offers today's run, numbered like the Daily (`Endless #91` on 2027-03-01, a dated preview before `DAILY_EPOCH`) and the same for everyone (`endlessSeed(n)`), and a free run with a seed of its own (the old Endless). Today's counts once: its result is kept on the device (`endlessToday` in the settings) and stays on the card with its share text, and today's run can't be begun again.
+- **Share text** says how many souls, how far and on which day's rules, and whether the rule tracker was on; never where anyone went. `Chooser of the Slain · Endless #91 (g1)` / `23 souls judged rightly · round 9, Day 9's rules`. A free run shares as `Endless · free run`.
+- **A run survives a reload.** It is saved after every action, as the Daily's progress is (IndexedDB plus a synchronous localStorage mirror): the run as its round began, the round's actions, and the score as it stands. Resuming rebuilds the round, replays the actions and leaves it paused on the soul it was left on. After an update that changes the generator, the round starts again from its first soul; the rounds before it keep their score. Starting another run ends a saved one where it stands (and records it, if it was a day's run); while today's is under way, the card offers only Resume.
+- **Twists.** A round that brings nothing new takes a twist: a day with no teaching soul (Days 9 and 18–20) and every round after the last day; in the demo, every round after Day 3. A twist is its own decree plus different knobs or a different destination mix for the day's souls, never different rules; with nothing new to teach, the day's teaching soul no longer comes first. Twists are content (`endless.yaml` in the demo and campaign packs, each `since` the first day whose mechanics it needs), drawn per round from the run's seed (`endlessTwist`); `endlessContext` gives the round's day context with the twist in it, so the briefing and the rulebook show the twist's decree. Demo: liars, the straw-dead, a battle's worth of the fallen, mist (more decoy cues). Campaign: Freyja's day, a sea battle, the forgers, Loki's friends, Muninn forgetting. The full game draws from both lists.
+- **Past Dailies.** The Daily card has a fold listing every earlier Daily, newest first, with this device's result if it was played here. One plays from this build's generator for its own sake: never recorded, streak untouched, and marked "from the archive" in the briefing and `(archive)` in the share text. `dailyDate(n)` dates them (the inverse of the Daily's numbering).
+
+**Tests**
+- Engine: which rounds twist (full: 9 and 18–20 and every round after 20; demo: from round 4); a twisted round keeps its day's rules and reads its twist's decree, and doesn't open on the teaching soul; every twist makes a full round on every day it can come to; the liars twist makes more lies than the day it twists; the share text, with and without the tracker; `dailyDate` against the Daily numbering (and a property test that it undoes `daysFromCivil`).
+- Compiler: twist lints (a duplicate id, a missing decree string, `since` after the build's last day, a mix asking for souls no rule sends anywhere by then, an empty range).
+- e2e: today's Endless resumed after a reload with its strike, recorded once, its share text kept on the title card after another reload, then a free run saved; the demo's round 4 twist (its decree, the score carried over); a Daily from the archive played to the end leaves today's Daily and the streak alone.
+
+**Known limits**
+- Nothing stops a player from clearing site data and playing today's Endless again. As with the Daily there's no server; it's an honor system.
+- An archive Daily is regenerated by the current generator, so after a generator change it can differ from what players got that day (the share text's `(gN)` says which).
+- A twist changes knobs and the mix, not rules, so late twists change the flavor more than the difficulty. Measured on the days Endless twists (full game: Days 9 and 18–20, 40 seeds each; demo: Day 3), first five souls: no fallbacks, about 1.03 attempts a soul; the mix twists move the souls as meant (the straw-dead: HEL 33% to 52%; the battle: Valhalla 17% to 45%; Freyja: Fólkvangr 8% to 24%; the sea: Rán 12% to 29%; Loki: DETAIN 8% to 21%). The liars twist doubles each soul's chance to lie, but most late souls already lie when they can (one lie at most), so it adds 11% more lies in the full game and 40% in the demo. The other knob twists (mist, forgers, Muninn) change the evidence, not where anyone goes. The twist texts are first drafts.
+- Only the latest day's Endless result is kept (plus the best score): no history or streak.
+- Endless still sends no telemetry. Archive plays are sent like a replayed Daily (both are marked only by the Daily number), so alpha numbers per Daily can include players who already knew the souls.
+- A soul report from a twisted round carries the round's seed (`<run seed>|endless|<round>`), but rebuilding that soul needs `endlessContext`: the Case Lab's seed-and-day input gives the untwisted day.
+
+## 28. After M7: save safety (audit item 10)
+
+**What changed**
+- **Backups.** Settings has a Saves section. Back up gives a file to download, and the same text to copy where downloads are blocked (some itch.io frames). It holds everything worth keeping: the campaign slots, Daily results, the Endless best and the latest day's result, endings found, lessons taken, and any unfinished Daily or Endless run. Restore reads a file or pasted text. `packages/ui/src/save-data.ts` has the format and the merge rules (pure, tested); `saves.ts` the storage.
+- **Restoring merges; it never writes over anything newer.** Daily results this device lacks are added; one it has stays. A campaign goes into its own slot if that's free, else the first free one; if the same run (same seed) is already here, whichever copy was saved later wins; with no free slot it's reported and skipped. Records merge: the higher Endless best, every ending and lesson from both, the later day's Endless result. This device keeps its own settings (layout, text size, sound, assists and, above all, its telemetry answer). An unfinished run comes along only where there's none here, and a Daily only if it's today's, on the same generator, and not yet played here. Text that isn't a backup, or a backup from a newer version, is refused with a reason.
+- **Unreadable saves are kept, not taken for empty.** A slot whose copies (IndexedDB and localStorage) can't be read, because they're damaged or written by a newer version, used to show as empty, so a New campaign would have written over it. Now it's shown as unreadable, with Save a copy (the data as found, for a bug report) and Clear this slot (confirmed). Nothing writes over it until then, and branching skips it. A save that reads but won't open (the engine rejects it: a day this build doesn't have, say) is marked the same way when opened. The slot check now also covers what the slot list reads of each morning, so a save broken inside can't break the list. Settings and a Daily record this build can't read are set aside under `<key>.unread` before anything writes over them, and backups carry them.
+- **Asking the browser to keep the saves.** A browser may clear a site's data (Safari after 7 days unused unless the game is on the Home Screen; others under storage pressure) unless it grants persistent storage. The game now asks (`navigator.storage.persist()`) once a session when a campaign is saved, as it did after a ranked Daily and now also after a day's Endless run. The Saves section says whether the browser has agreed, may clear the saves, or keeps them only for the tab (a private window); the campaign's slot list suggests a backup when saves may not be kept.
+
+**Tests**
+- Unit (`save-data.test.ts`): reading (not JSON, not a backup, a newer version); Daily results added and never replaced, bad ones skipped; this device's settings kept, only the records in them merged; where a campaign goes (its own slot, the first free one, none free); the later copy of the same run wins, with a revision past this device's so it's the copy loaded next time; unreadable slots never written over; unplayable and damaged campaigns in a backup skipped; unfinished runs taken on only where allowed; a whole device restored onto an empty one.
+- e2e (`saves.spec.ts`): a backup (the text, and the downloaded file) restored into a fresh browser brings the Daily results, the streak, the Endless best and the campaign, but not the text size, and restoring it again changes nothing; text that isn't a backup, or is a newer one, is refused; a damaged slot and one that won't open show as unreadable, survive a reload, can be copied, and are cleared only when asked; the persistence request once a campaign is saved, and the status line before and after.
+
+**Known limits**
+- Nothing is automatic: the player has to make a backup. Each browser grants persistent storage by its own rules (Chrome by engagement or installation, Firefox asks the player, Safari decides for itself), so asking guarantees nothing.
+- The Steam and Play shells get their own file stores later (M6, M9). There, a blob download may do nothing (Android's WebView doesn't handle them), so copying the text is the way until those shells add a native save dialog.
+- A backup is plain JSON and easy to edit; a restored Daily result is taken at its word, like everything else on the device (there's no server).
+- The demo refuses a full game's campaign save that has days it doesn't have; the other way round works.
+- Three late campaigns make a backup of a few hundred KB (a Day 20 save is about 135 KB): fine as a file, heavy to paste on a phone.
+- Only campaign slots, settings and the Daily record are protected from being written over when unreadable. Unreadable unfinished Daily or Endless progress is ignored, as before.
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

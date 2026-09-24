@@ -12,6 +12,7 @@
     "@cots/content-compiler": "workspace:*",
     "@cots/content-schema": "workspace:*",
     "@cots/engine": "workspace:*",
+    "@cots/story": "workspace:*",
     "fast-check": "4.10.2"
   }
 }

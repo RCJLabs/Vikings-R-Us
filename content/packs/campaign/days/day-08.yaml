@@ -1,13 +1,14 @@
-# Mechanics day (M4): playable in Practice; its story comes with Days 7-20 (M7).
+# Day 8: clip long nails against Naglfar. Story (M7 draft): the stranger's offer, "don't clip".
 day: 8
 sunS: 660
 decree: decree.d8
+scenes: { morning: scene.d8.morning, night: scene.d8.night }
 economy:
   wage: 8
   docBonus: 1
   warnings: 2
   fines: [5, 10, 15]
-  costs: { hearth: 7, food: 3, medicine: 10 }
+  costs: { hearth: 12, food: 6, medicine: 13 }
 params:
   freyjaWhim:
     pool:
@@ -40,3 +41,11 @@ queue:
     maxTools: 3
     maxDocs: 4
     salienceFloor: 2
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d8.nails, text: coach.d8.nails, focus: hands, until: { seen: body.front.nails } }
+    - { id: d8.clip, text: coach.d8.clip, focus: clippers, until: { tool: clippers } }
+    - { id: d8.stamp, text: coach.d8.stamp, focus: judge }

@@ -27,6 +27,11 @@ export function t(key: string, params?: Params): string {
 }
 
 /** m:ss for sun time. */
+/** Whether this build has a string for `key` (for optional keys, such as a short name). */
+export function hasText(key: string): boolean {
+  return strings[key] !== undefined;
+}
+
 export function clockText(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;

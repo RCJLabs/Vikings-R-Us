@@ -57,6 +57,17 @@ export interface FactDef {
   readonly presumption?: Value;
   /** Computed from other facts and never sampled. */
   readonly derived?: Pred;
+  /**
+   * True exactly when the soul tells a lie, aloud or on a forged tally (Day 16's liars). Never
+   * sampled: the generator sets it once the soul's lies are planned. The player learns it by
+   * catching a lie; until then it is presumed false.
+   */
+  readonly fromLies?: true;
+  /**
+   * Words a soul's lines must use when it has this value, or claims it: `{ ulfberht: { pool.weapons: sword } }`
+   * (an Ulfberht is a sword, so its owner never calls it an axe). Keyed by String(value), then pool id.
+   */
+  readonly words?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 export type ObsSource =
@@ -206,6 +217,11 @@ export interface SpeechSlotDef {
   readonly fact?: string;
   /** Percent chance the slot is spoken when the soul isn't lying about its fact. */
   readonly chance: number;
+  /**
+   * The chance for particular true values, by String(value): the truly baptized mention it more than
+   * the heathen do, so the claim alone isn't nearly always a lie. Lies are spoken either way.
+   */
+  readonly chances?: Readonly<Record<string, number>>;
   readonly since: number;
 }
 
@@ -263,6 +279,30 @@ export interface Knobs {
   readonly salienceFloor: Salience;
   /** Percent chance an honest soul carries a saga tally (Day 11 on). */
   readonly tallyRate?: number;
+  /** Percent chance Muninn, when he remembers the soul, also reports a decisive fact of its life (Day 13 on). */
+  readonly muninnRecall?: number;
+  /** Percent chance Huginn adds a true fact that doesn't decide the judgment, so the ravens can seem to disagree (Day 13 on). */
+  readonly huginnAside?: number;
+  /**
+   * Story days: the day's souls take turns through each kind of line's variants, instead of each
+   * drawing one at random, so a day repeats itself less (gen/render.ts). Never on the Daily.
+   */
+  readonly spreadLines?: boolean;
+}
+
+/**
+ * An Endless twist (docs/tech-spec.md §27): the decree for a round that brings nothing new (a day with no
+ * teaching soul, or any round past the last day). It changes how the day's souls come, never its rules.
+ */
+export interface EndlessTwist {
+  readonly id: string;
+  /** The first day whose mechanics it needs. */
+  readonly since: number;
+  /** What is read out for the round, in place of the day's decree. */
+  readonly decree: string;
+  readonly knobs?: Partial<Knobs>;
+  /** Replaces the day's share of these destinations. */
+  readonly mix?: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
 }
 
 export interface DayParam {
@@ -286,6 +326,59 @@ export interface Economy {
   readonly costs: { readonly hearth: number; readonly food: number; readonly medicine: number };
 }
 
+/**
+ * What ends a lesson step (docs/tech-spec.md §25): a field looked at (its id, or `whim:<param>` for the
+ * sign the day's whim reads), a tool used, the body turned over, or a lie caught.
+ */
+export type LessonUntil =
+  | { readonly seen: string }
+  | { readonly tool: ToolId }
+  | { readonly flipped: true }
+  | { readonly flagged: true };
+
+/** One instruction of a lesson, shown until the player does what it asks (or presses Next). */
+export interface LessonStep {
+  readonly id: string;
+  readonly text: string;
+  /**
+   * What to highlight, as the coach names it: hands, hair, face, neck, chest, back, flip, feather, registry,
+   * runeLens, clippers, rules, words, ravens, tally, compare, judge, or `whim:<param>`. Several may be joined
+   * with spaces.
+   */
+  readonly focus: string;
+  /** A reading step, ended by Next. */
+  readonly next?: true;
+  readonly until?: LessonUntil;
+}
+
+/** The coach's lesson for a day's first soul, which teaches the day's new rule or tool. */
+export interface Lesson {
+  /** The primer teaches this too: a player who has played it isn't taught again. */
+  readonly primer?: true;
+  readonly steps: readonly LessonStep[];
+}
+
+/** The names a lesson may highlight (besides `whim:<param>`). */
+export const COACH_FOCUS: readonly string[] = [
+  'hands',
+  'hair',
+  'face',
+  'neck',
+  'chest',
+  'back',
+  'flip',
+  'feather',
+  'registry',
+  'runeLens',
+  'clippers',
+  'rules',
+  'words',
+  'ravens',
+  'tally',
+  'compare',
+  'judge',
+];
+
 export interface DaySpec {
   readonly day: number;
   readonly sunS: number;
@@ -308,6 +401,8 @@ export interface DaySpec {
     readonly mix: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
     readonly knobs: Knobs;
   };
+  /** The coach's lesson for the day's first soul (the teaching one), when the day brings something new. */
+  readonly lesson?: Lesson;
 }
 
 /** A condition on the campaign run (endings); two-valued. Paths are listed in engine/campaign/state.ts. */
@@ -447,6 +542,27 @@ export interface CampaignDef {
   readonly endings: readonly EndingDef[];
   /** The named predicate that makes a Valhalla stamp a worthy einherjar. */
   readonly worthy: string;
+  /** Who a power seems to be before the story names it (the stranger is Loki until Day 12). */
+  readonly aliases?: readonly FactionAlias[];
+  /** What the journal lists as still in play (Loki's deal, the ferry, the wood), in order. */
+  readonly threads?: readonly ThreadDef[];
+}
+
+/** A story thread the journal lists while `when` holds. */
+export interface ThreadDef {
+  readonly id: string;
+  readonly when: StatePred;
+  /** A string key; its `{n}` is the value of `count`, when given. */
+  readonly text: string;
+  /** A run-state path (as endings read) whose value the text shows as `{n}`. */
+  readonly count?: string;
+}
+
+/** A power's name (a string key) until the day the story gives its real one. */
+export interface FactionAlias {
+  readonly faction: Faction;
+  readonly name: string;
+  readonly untilDay: number;
 }
 
 export interface Content {
@@ -479,4 +595,6 @@ export interface Content {
   readonly procedures?: readonly ProcedureDef[];
   /** Saga tally lines (Day 11 on). */
   readonly tallies?: readonly TallyTemplate[];
+  /** Endless's twists for rounds that bring nothing new. */
+  readonly twists?: readonly EndlessTwist[];
 }

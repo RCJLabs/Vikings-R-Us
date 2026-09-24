@@ -157,6 +157,33 @@ describe('gameplay content lints', () => {
     ).toThrow(/Invalid ICU message:\n"core.bad"/);
   });
 
+  it('rejects words a fact fixes that its values or pools do not have', () => {
+    const withWords = (words: string) =>
+      core({
+        'archetypes.yaml': archetype(''),
+        'facts.yaml': `- { id: cause, domain: { enum: [battle, sickness] }, words: ${words} }\n`,
+        'pools.yaml': 'pool.weapons: [axe, sword]\n',
+      });
+    const build = (words: string) => () => compile({ core: withWords(words), demo: day('arch.liar') });
+    expect(build('{ battle: { pool.weapons: sword } }')).not.toThrow();
+    expect(build('{ drowned: { pool.weapons: sword } }')).toThrow(/words for "drowned", which it can't be/);
+    expect(build('{ battle: { pool.boats: sword } }')).toThrow(/unknown pool "pool.boats"/);
+    expect(build('{ battle: { pool.weapons: spear } }')).toThrow(/fixes "spear", which pool.weapons doesn't have/);
+  });
+
+  it('rejects speaking chances for values a slot’s fact cannot have', () => {
+    const speech = (slot: string) =>
+      core({ 'archetypes.yaml': archetype(''), 'speech.yaml': `- ${slot}\n` }, { 'tm.d': 'Died.' });
+    const build = (slot: string) => () => compile({ core: speech(slot), demo: day('arch.liar') });
+    expect(build('{ slot: death, fact: cause, chance: 20, chances: { sickness: 60 }, since: 1 }')).not.toThrow();
+    expect(build('{ slot: death, fact: cause, chance: 20, chances: { drowned: 60 }, since: 1 }')).toThrow(
+      /chance for "drowned", which cause can't be/,
+    );
+    expect(build('{ slot: flavor, chance: 20, chances: { sickness: 60 }, since: 1 }')).toThrow(
+      /chances by value but no fact/,
+    );
+  });
+
   const dailyPack = (archetype: string): PackFixture => {
     const spec = day(archetype).files['days/day-01.yaml'].replace('decree: decree.d1', 'decree: daily.decree');
     return {
@@ -208,6 +235,57 @@ describe('gameplay content lints', () => {
     );
     expect(() => compile({ core: base, daily: primer('arch.liar', 'RAN'), demo: day('arch.liar') })).toThrow(
       /scripts a RAN soul, but no rule in force sends anyone there/,
+    );
+  });
+
+  it('lints a day’s lesson', () => {
+    const lesson = (lines: string, teach = true): PackFixture => {
+      const d = day('arch.liar');
+      let spec = d.files['days/day-01.yaml'];
+      if (teach) spec = spec.replace('  count: [6, 6]', '  count: [6, 6]\n  teachFirst: arch.liar');
+      return {
+        ...d,
+        strings: { ...d.strings, 'coach.d1.look': 'Look', 'coach.d1.stamp': 'Stamp' },
+        files: { 'days/day-01.yaml': `${spec}\nlesson:\n  steps:\n${lines}` },
+      };
+    };
+    const base = core({ 'archetypes.yaml': archetype('') });
+    const look = '    - { id: d1.look, text: coach.d1.look, focus: face, until: { seen: body.front.skin } }\n';
+    const stamp = '    - { id: d1.stamp, text: coach.d1.stamp, focus: judge }\n';
+    expect(() => compile({ core: base, demo: lesson(look + stamp) })).not.toThrow();
+    expect(() => compile({ core: base, demo: lesson(look + stamp, false) })).toThrow(
+      /day 1's lesson has no teaching soul/,
+    );
+    expect(() => compile({ core: base, demo: lesson(look.replace('focus: face', 'focus: toes') + stamp) })).toThrow(
+      /highlights "toes", which the coach doesn't know/,
+    );
+    const lens = '    - { id: d1.lens, text: coach.d1.look, focus: runeLens, until: { tool: runeLens } }\n';
+    expect(() => compile({ core: base, demo: lesson(lens + stamp) })).toThrow(
+      /waits on the runeLens, which isn't taught by day 1/,
+    );
+    expect(() => compile({ core: base, demo: lesson(stamp + look) })).toThrow(/the last step lasts until the soul/);
+    const whim = '    - { id: d1.whim, text: coach.d1.look, focus: face, until: { seen: "whim:freyjaWhim" } }\n';
+    expect(() => compile({ core: base, demo: lesson(whim + stamp) })).toThrow(/the day has no param "freyjaWhim"/);
+  });
+
+  it('lints Endless twists', () => {
+    const twists = (yaml: string, strings: Record<string, string> = { 'twist.a': 'A twist' }): PackFixture => {
+      const d = day('arch.liar');
+      return { ...d, strings: { ...d.strings, ...strings }, files: { ...d.files, 'endless.yaml': yaml } };
+    };
+    const base = core({ 'archetypes.yaml': archetype('') });
+    const ok = '- { id: twist.a, since: 1, decree: twist.a, knobs: { lieRate: 200 }, mix: { HEL: [60, 80] } }\n';
+    expect(() => compile({ core: base, demo: twists(ok) })).not.toThrow();
+    expect(() => compile({ core: base, demo: twists(ok + ok) })).toThrow(/twist\.a/);
+    expect(() => compile({ core: base, demo: twists(ok, {}) })).toThrow(/uses missing string "twist\.a"/);
+    expect(() => compile({ core: base, demo: twists(ok.replace('since: 1', 'since: 2')) })).toThrow(
+      /starts on day 2, after the build's last day/,
+    );
+    expect(() => compile({ core: base, demo: twists(ok.replace('HEL', 'RAN')) })).toThrow(
+      /asks for RAN souls, which no rule sends anywhere by day 1/,
+    );
+    expect(() => compile({ core: base, demo: twists(ok.replace('[60, 80]', '[80, 60]')) })).toThrow(
+      /empty share for HEL/,
     );
   });
 

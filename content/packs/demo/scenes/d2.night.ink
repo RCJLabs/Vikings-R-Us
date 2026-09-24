@@ -12,7 +12,7 @@ Ulf's reply comes before you have your boots off. The raven that brings it stays
 { rings() >= 5:
   You count what you have out on the blanket. It comes to five, and a little more.
 }
-* { rings() >= 5 } [Send five rings.]
+* [Send five rings. #needs: rings 5]
   You wrap five rings in a scrap of linen and tie it to the raven's leg. It weighs them with one black eye, as if checking your sums.
   # fx: rings -5
   # fx: flag roof_mended

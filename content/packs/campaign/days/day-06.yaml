@@ -39,3 +39,10 @@ queue:
     maxTools: 2
     maxDocs: 4
     salienceFloor: 2
+    spreadLines: true
+
+# The coach's lesson for the day's first soul, which teaches what's new (docs/tech-spec.md §25).
+lesson:
+  steps:
+    - { id: d6.registry, text: coach.d6.registry, focus: registry, until: { tool: registry } }
+    - { id: d6.stamp, text: coach.d6.stamp, focus: judge }

@@ -4,8 +4,10 @@ import type {
   Destination,
   Economy,
   Effect,
+  EndingDef,
   Faction,
   SliceDef,
+  StatePred,
   UpgradeDef,
 } from '../content/types';
 import { FACTIONS } from '../content/types';
@@ -16,6 +18,7 @@ import type { DayCtx } from '../logic/context';
 import { eval2 } from '../logic/pred';
 import { Rng } from '../rng/rng';
 import {
+  type Assists,
   type ShiftAction,
   type ShiftEvent,
   type ShiftMods,
@@ -24,7 +27,7 @@ import {
   stepShift,
   type Verdict,
 } from '../shift/shift';
-import { type Bills, type DayLedger, evalState, type FamilyMember, type RunState } from './state';
+import { type Bills, type DayLedger, evalState, type FamilyMember, type RunState, stateValue } from './state';
 
 /*
  * The campaign's day loop (docs/tech-spec.md §4):
@@ -34,7 +37,12 @@ import { type Bills, type DayLedger, evalState, type FamilyMember, type RunState
  */
 
 export type RunAction =
-  | { readonly t: 'beginShift'; readonly at: number }
+  | {
+      readonly t: 'beginShift';
+      readonly at: number;
+      /** The assists the player has on as the shift begins (they're kept with the day's shift). */
+      readonly assists?: Assists;
+    }
   | { readonly t: 'shift'; readonly action: ShiftAction }
   | { readonly t: 'endAudit' }
   | { readonly t: 'bills'; readonly bills: Bills }
@@ -128,16 +136,28 @@ function nextMorning(run: RunState, campaign: CampaignDef): RunState {
 /** The slice's late day, with what the skipped days would have brought (the run's own flags win). */
 function jump(run: RunState, slice: SliceDef): RunState {
   const standing = { ...run.standing };
+  const story = { ...run.storyStanding };
   for (const [f, by] of Object.entries(slice.preset.standing ?? {})) {
     standing[f as Faction] = (standing[f as Faction] ?? 0) + (by ?? 0);
+    story[f as Faction] = (story[f as Faction] ?? 0) + (by ?? 0);
   }
   return {
     ...run,
     day: slice.day,
     rings: run.rings + (slice.preset.rings ?? 0),
     standing,
+    storyStanding: story,
     flags: { ...slice.preset.flags, ...run.flags },
   };
+}
+
+/**
+ * The string key a power goes by on `day`: its own name, or the alias it wears before the story
+ * names it (the stranger is Loki, but nobody says so until Day 12).
+ */
+export function factionKey(content: Content, faction: Faction, day: number): string {
+  const alias = content.campaign?.aliases?.find((a) => a.faction === faction && day < a.untilDay);
+  return alias?.name ?? `faction.${faction}`;
 }
 
 /** The upgrades' combined effect on today's shift. */
@@ -210,16 +230,26 @@ export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
   return cases;
 }
 
+/** The story threads still in play for the journal: each text key, with `{n}` when it counts something. */
+export function threadsInPlay(run: RunState, content: Content): { id: string; text: string; n?: number }[] {
+  return (content.campaign?.threads ?? [])
+    .filter((th) => evalState(th.when, run))
+    .map((th) => ({ id: th.id, text: th.text, ...(th.count ? { n: stateValue(run, th.count) } : {}) }));
+}
+
+/** What stamping a story soul `stamped` does to the story (nothing for a generated soul). */
+export function stampEffects(content: Content, c: CaseSpec, stamped: Destination): Effect[] {
+  if (!c.script) return [];
+  const def = content.scripted?.find((d) => d.id === c.script);
+  return (def?.onStamp ?? []).filter((rule) => matches(rule.stamped, stamped)).flatMap((rule) => rule.effects);
+}
+
 /** The story consequences of how today's story souls were stamped. */
 function storyEffects(shift: ShiftState, content: Content): Effect[] {
   const out: Effect[] = [];
   for (const v of shift.verdicts) {
     const c = shift.cases[v.index];
-    if (!c?.script || v.stamped === null) continue;
-    const def = content.scripted?.find((d) => d.id === c.script);
-    for (const rule of def?.onStamp ?? []) {
-      if (matches(rule.stamped, v.stamped)) out.push(...rule.effects);
-    }
+    if (c && v.stamped !== null) out.push(...stampEffects(content, c, v.stamped));
   }
   return out;
 }
@@ -240,7 +270,11 @@ function audit(
   let fines = 0;
   const standing: Partial<Record<Faction, number>> = {};
   const einherjar = { ...run.einherjar };
+  const sent: Partial<Record<Destination, number>> = { ...run.sent };
+  let naglfar = run.naglfar ?? 0;
   const flags: Record<string, number> = { ...run.flags };
+  const assists = shift.config.assists;
+  const fined = !run.story && !assists?.noFines;
   shift.verdicts.forEach((v: Verdict) => {
     const c = shift.cases[v.index];
     if (v.stamped === null) {
@@ -253,22 +287,36 @@ function audit(
       if (v.caught > 0) bonus += economy.docBonus;
     } else {
       wrong++;
-      if (!run.story && wrong > economy.warnings) {
+      if (fined && wrong > economy.warnings) {
         const i = Math.min(wrong - economy.warnings - 1, economy.fines.length - 1);
         fines += economy.fines[i] ?? 0;
       }
     }
-    const rule = campaign.standing.find(
-      (r) => matches(r.expected, v.expected) && matches(r.stamped, v.stamped as Destination),
-    );
+    // Only mistakes move standing: a god isn't angered (or flattered) by a soul sent where it belongs.
+    const rule = v.correct
+      ? undefined
+      : campaign.standing.find((r) => matches(r.expected, v.expected) && matches(r.stamped, v.stamped as Destination));
     for (const [f, n] of Object.entries(rule?.fx ?? {}))
       standing[f as Faction] = (standing[f as Faction] ?? 0) + (n ?? 0);
     if (v.stamped === 'VALHALLA' && c) {
       if (eval2({ ref: campaign.worthy }, c.truth, env.ctx)) einherjar.worthy++;
       else einherjar.unworthy++;
     }
+    sent[v.stamped] = (sent[v.stamped] ?? 0) + 1;
+    // Every soul sent on with a procedure skipped (so far only nails left uncut) builds Naglfar.
+    naglfar += v.skipped?.length ?? 0;
   });
-  const ledger: DayLedger = { day: run.day, correct, wrong, unjudged, pay, bonus, fines, standing };
+  const ledger: DayLedger = {
+    day: run.day,
+    correct,
+    wrong,
+    unjudged,
+    pay,
+    bonus,
+    fines,
+    standing,
+    ...(assists ? { assists } : {}),
+  };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
   return {
@@ -277,6 +325,8 @@ function audit(
       rings: run.rings + pay + bonus - fines,
       standing: nextStanding,
       einherjar,
+      sent,
+      naglfar,
       ledger: [...run.ledger, ledger],
     },
     ledger,
@@ -288,8 +338,13 @@ function applyEffects(run: RunState, effects: readonly Effect[], events: RunEven
   let r = run;
   for (const e of effects) {
     if ('rings' in e) r = { ...r, rings: r.rings + e.rings, storyRings: r.storyRings + e.rings };
-    else if ('standing' in e) r = { ...r, standing: { ...r.standing, [e.standing]: r.standing[e.standing] + e.by } };
-    else if ('flag' in e) {
+    else if ('standing' in e) {
+      r = {
+        ...r,
+        standing: { ...r.standing, [e.standing]: r.standing[e.standing] + e.by },
+        storyStanding: { ...r.storyStanding, [e.standing]: (r.storyStanding?.[e.standing] ?? 0) + e.by },
+      };
+    } else if ('flag' in e) {
       const now = r.flags[e.flag] ?? 0;
       r = { ...r, flags: { ...r.flags, [e.flag]: e.set ?? now + (e.inc ?? 1) } };
     } else if ('family' in e) {
@@ -305,57 +360,207 @@ function applyEffects(run: RunState, effects: readonly Effect[], events: RunEven
   return r;
 }
 
+/**
+ * How tonight goes for one member under `bills`, leaving out only the chance of falling sick: their
+ * state by morning if chance spares them, the change that is certain, and that chance in percent.
+ */
+export interface MemberNight {
+  readonly member: FamilyMember;
+  readonly change?: 'well' | 'sick' | 'died' | 'left';
+  /** What makes falling sick certain: the cold, or hunger (the cold when both would). */
+  readonly cause?: 'cold' | 'hungry';
+  /** Percent chance of falling sick tonight (0 when it's certain, or can't happen). */
+  readonly risk: number;
+}
+
+function memberNight(m: FamilyMember, bills: Bills, care: CampaignDef['care'], adult: boolean): MemberNight {
+  if (m.status === 'gone') return { member: m, risk: 0 };
+  const cold = bills.hearth ? 0 : m.cold + 1;
+  const hungry = bills.food ? 0 : m.hungry + 1;
+  if (m.status === 'sick') {
+    if (bills.medicine.includes(m.id)) {
+      return { member: { ...m, status: 'well', cold, hungry, sickNights: 0 }, change: 'well', risk: 0 };
+    }
+    const sickNights = m.sickNights + 1;
+    if (sickNights >= care.sickNights) {
+      const gone = adult ? 'died' : 'left';
+      return { member: { ...m, status: 'gone', gone, cold, hungry, sickNights }, change: gone, risk: 0 };
+    }
+    return { member: { ...m, cold, hungry, sickNights }, risk: 0 };
+  }
+  if (cold >= care.needNights || hungry >= care.needNights) {
+    const cause = cold >= care.needNights ? 'cold' : 'hungry';
+    return { member: { ...m, status: 'sick', cold, hungry, sickNights: 0 }, change: 'sick', cause, risk: 0 };
+  }
+  const unmet = (bills.hearth ? 0 : 1) + (bills.food ? 0 : 1);
+  return { member: { ...m, cold, hungry }, risk: Math.min(100, unmet * care.sickChance) };
+}
+
+/** Tonight's upkeep under `bills`, all but chance: the bills, Draupnir, the purse and debt by morning, each member's night. */
+function upkeep(run: RunState, env: RunEnv, bills: Bills) {
+  const campaign = campaignOf(env.content);
+  const cost = billTotal(run, economyOf(env), bills);
+  const draupnir = campaign.draupnir.nights.includes(run.day) ? campaign.draupnir.rings : 0;
+  const rings = run.rings - cost.hearth - cost.food - cost.medicine + draupnir;
+  const adults = new Map(campaign.family.map((f) => [f.id, f.adult]));
+  return {
+    cost,
+    draupnir,
+    rings,
+    debtNights: rings < campaign.debtFloor ? run.debtNights + 1 : 0,
+    members: run.family.map((m) => memberNight(m, bills, campaign.care, adults.get(m.id) === true)),
+  };
+}
+
+/** What sleeping now would bring, all but chance, for the night screen to plan with (docs/tech-spec.md §23). */
+export interface NightOutlook {
+  readonly cost: { readonly hearth: number; readonly food: number; readonly medicine: number };
+  /** Draupnir's rings tonight (0 on other nights). */
+  readonly draupnir: number;
+  /** The purse by morning. */
+  readonly rings: number;
+  /** Nights in a row below the debt floor by morning (0 when tonight ends above it). */
+  readonly debtNights: number;
+  readonly members: readonly MemberNight[];
+  /** The ending tonight's upkeep would bring about (the debt, or no one left at home), if it would. */
+  readonly ends: { readonly ending: string; readonly why: 'debt' | 'home' } | null;
+}
+
+/**
+ * Tonight under `bills` (as set, by default): the same reckoning as the night itself, which
+ * leaves only who falls sick by chance unknown. No ending the upkeep brings about depends on that.
+ */
+export function nightOutlook(run: RunState, env: RunEnv, bills: Bills = run.bills ?? defaultBills(run)): NightOutlook {
+  const u = upkeep(run, env, bills);
+  const projected: RunState = {
+    ...run,
+    family: u.members.map((n) => n.member),
+    rings: u.rings,
+    debtNights: u.debtNights,
+  };
+  const ending = endingFor(projected, env.content);
+  const debt = new Set(
+    stateMarks(env.content, 'debtNights').flatMap((m) => (m.atLeast !== undefined ? [m.ending] : [])),
+  );
+  const home = new Set(
+    stateMarks(env.content, 'family.home').flatMap((m) => (m.atMost !== undefined ? [m.ending] : [])),
+  );
+  const why = ending && debt.has(ending) ? 'debt' : ending && home.has(ending) ? 'home' : null;
+  return { ...u, ends: ending && why ? { ending, why } : null };
+}
+
+/** The run as `effects` would leave it (a scene's option, say), for previews: rings, standing, flags and family. */
+export function withEffects(run: RunState, effects: readonly Effect[]): RunState {
+  return applyEffects(run, effects, []);
+}
+
 /** Tonight's upkeep: bills paid or skipped, and what that does to the family. */
 function night(run: RunState, env: RunEnv, events: RunEvent[]): RunState {
-  const campaign = campaignOf(env.content);
-  const economy = economyOf(env);
-  const bills = run.bills ?? defaultBills(run);
-  const cost = billTotal(run, economy, bills);
-  const adults = new Map(campaign.family.map((f) => [f.id, f.adult]));
-  const family: FamilyMember[] = run.family.map((m) => {
-    if (m.status === 'gone') return m;
-    const cold = bills.hearth ? 0 : m.cold + 1;
-    const hungry = bills.food ? 0 : m.hungry + 1;
-    if (m.status === 'sick') {
-      if (bills.medicine.includes(m.id)) {
-        events.push({ e: 'family', id: m.id, change: 'well' });
-        return { ...m, status: 'well', cold, hungry, sickNights: 0 };
-      }
-      const sickNights = m.sickNights + 1;
-      if (sickNights >= campaign.care.sickNights) {
-        const gone = adults.get(m.id) ? 'died' : 'left';
-        events.push({ e: 'family', id: m.id, change: gone });
-        return { ...m, status: 'gone', gone, cold, hungry, sickNights };
-      }
-      return { ...m, cold, hungry, sickNights };
+  const u = upkeep(run, env, run.bills ?? defaultBills(run));
+  const family: FamilyMember[] = u.members.map((n) => {
+    const m = n.member;
+    if (n.change) {
+      events.push({ e: 'family', id: m.id, change: n.change });
+      return m;
     }
     // Seeded per run, night and person, so replays fall sick the same way.
-    const unmet = (bills.hearth ? 0 : 1) + (bills.food ? 0 : 1);
-    const chance = new Rng(`${run.seed}|night|${run.day}|${m.id}`).chance(unmet * campaign.care.sickChance, 100);
-    if (cold >= campaign.care.needNights || hungry >= campaign.care.needNights || (unmet > 0 && chance)) {
+    if (n.risk > 0 && new Rng(`${run.seed}|night|${run.day}|${m.id}`).chance(n.risk, 100)) {
       events.push({ e: 'family', id: m.id, change: 'sick' });
-      return { ...m, status: 'sick', cold, hungry, sickNights: 0 };
+      return { ...m, status: 'sick', sickNights: 0 };
     }
-    return { ...m, cold, hungry };
+    return m;
   });
-  const draupnir = campaign.draupnir.nights.includes(run.day) ? campaign.draupnir.rings : 0;
-  if (draupnir > 0) events.push({ e: 'draupnir', rings: draupnir });
-  const rings = run.rings - cost.hearth - cost.food - cost.medicine + draupnir;
+  if (u.draupnir > 0) events.push({ e: 'draupnir', rings: u.draupnir });
   const last = run.ledger[run.ledger.length - 1];
   const ledger =
     last?.day === run.day
       ? [
           ...run.ledger.slice(0, -1),
-          { ...last, night: { ...cost, upgrades: run.spent, draupnir, story: run.storyRings, rings } },
+          {
+            ...last,
+            night: { ...u.cost, upgrades: run.spent, draupnir: u.draupnir, story: run.storyRings, rings: u.rings },
+          },
         ]
       : run.ledger;
-  return {
-    ...run,
-    family,
-    rings,
-    debtNights: rings < campaign.debtFloor ? run.debtNights + 1 : 0,
-    ledger,
+  return { ...run, family, rings: u.rings, debtNights: u.debtNights, ledger };
+}
+
+/** The day that follows `day` in this run (the slice jumps), or null after its last playable day. */
+function dayAfter(run: RunState, campaign: CampaignDef, day: number): number | null {
+  const slice = run.slice ? campaign.slice : undefined;
+  if (slice) return day >= slice.day ? null : day === slice.after ? slice.day : day + 1;
+  return day >= campaign.lastDay ? null : day + 1;
+}
+
+/** One coming night's bills, all paid, for the family at home now. */
+export interface NightBills {
+  readonly day: number;
+  readonly hearth: number;
+  /** Food for everyone at home now. */
+  readonly food: number;
+  /** Medicine for each person sick that night. */
+  readonly medicine: number;
+  readonly draupnir: number;
+}
+
+/** The bills of the run's next few nights after tonight (none after its last day), so the night screen can plan. */
+export function billForecast(run: RunState, content: Content, nights = 3): NightBills[] {
+  const campaign = campaignOf(content);
+  const home = run.family.filter((m) => m.status !== 'gone').length;
+  const out: NightBills[] = [];
+  for (let d = dayAfter(run, campaign, run.day); d !== null && out.length < nights; d = dayAfter(run, campaign, d)) {
+    const costs = content.days.find((x) => x.day === d)?.economy?.costs;
+    if (!costs) break;
+    const draupnir = campaign.draupnir.nights.includes(d) ? campaign.draupnir.rings : 0;
+    out.push({ day: d, hearth: costs.hearth, food: costs.food * home, medicine: costs.medicine, draupnir });
+  }
+  return out;
+}
+
+/** The fewest nights in a row below the debt floor that end a run (null if none do in this build). */
+export function debtLimit(content: Content): number | null {
+  const n = stateMarks(content, 'debtNights').flatMap((m) => (m.atLeast !== undefined ? [m.atLeast] : []));
+  return n.length > 0 ? Math.min(...n) : null;
+}
+
+/** The endings a run of this build can come to, in the order they're checked (the gallery's list). */
+export function reachableEndings(content: Content): readonly EndingDef[] {
+  const campaign = campaignOf(content);
+  return [...campaign.endings]
+    .filter((e) => e.when !== undefined || e.id === campaign.finale)
+    .sort((a, b) => a.order - b.order);
+}
+
+/** What an ending asks of one of the run's numbers, read from its condition: at least or at most so much. */
+export interface StateMark {
+  readonly ending: string;
+  readonly atLeast?: number;
+  readonly atMost?: number;
+}
+
+/**
+ * The marks the reachable endings set on one number (`ragnarok`, `debtNights` …), in their order.
+ * Only conditions every part of which must hold count (`all`), not alternatives (`any`) or negations.
+ */
+export function stateMarks(content: Content, path: string): StateMark[] {
+  const marks: StateMark[] = [];
+  const walk = (p: StatePred, ending: string): void => {
+    if ('all' in p) for (const q of p.all) walk(q, ending);
+    else if ('state' in p && p.state === path) {
+      marks.push({
+        ending,
+        ...(p.gte !== undefined ? { atLeast: p.gte } : {}),
+        ...(p.lte !== undefined ? { atMost: p.lte } : {}),
+      });
+    }
   };
+  for (const e of reachableEndings(content)) if (e.when) walk(e.when, e.id);
+  return marks;
+}
+
+/** The marks the reachable endings set on the host at Ragnarök (none in builds that don't count it). */
+export function hostMarks(content: Content): StateMark[] {
+  return stateMarks(content, 'ragnarok');
 }
 
 /** The first ending whose condition holds, or the finale after the last playable day. */
@@ -392,7 +597,11 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         mods: shiftMods(run, env.content),
       };
       const { state } = startShift(env.content, config, env.queue ?? campaignQueue(run, env));
-      const begun = stepShift(state, { t: 'begin', at: action.at }, env.ctx);
+      const begun = stepShift(
+        state,
+        { t: 'begin', at: action.at, ...(action.assists ? { assists: action.assists } : {}) },
+        env.ctx,
+      );
       return {
         state: { ...run, phase: 'shift', shift: begun.state },
         events: begun.events.map((event) => ({ e: 'shift', event })),
@@ -406,13 +615,19 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       if (r.state === run.shift) return { state: run, events };
       if (r.state.phase !== 'done') return { state: { ...run, shift: r.state }, events };
       const a = audit({ ...run, shift: r.state }, r.state, env);
-      events.push({ e: 'audited', ledger: a.ledger });
-      const audited = applyEffects(
+      const news: RunEvent[] = [];
+      const withStory = applyEffects(
         { ...a.run, flags: a.flags, phase: 'audit' },
         storyEffects(r.state, env.content),
-        events,
+        news,
       );
-      return { state: audited, events };
+      // The audit files the story's standing since the last audit beside today's mistakes, so they add up.
+      const ledger: DayLedger = { ...a.ledger, story: withStory.storyStanding ?? {} };
+      events.push({ e: 'audited', ledger }, ...news);
+      return {
+        state: { ...withStory, storyStanding: {}, ledger: [...withStory.ledger.slice(0, -1), ledger] },
+        events,
+      };
     }
     case 'endAudit': {
       if (run.phase !== 'audit') return reject(run, 'nothing to audit');
