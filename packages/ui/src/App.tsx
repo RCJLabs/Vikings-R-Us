@@ -9,10 +9,13 @@ import { onShiftKey } from './shift/keys';
 import { ShiftScreen } from './shift/Shift';
 import { initStorage, screen, settings, startClock } from './store';
 
+// A reload reopens the game at the top, not where the page was scrolled (docs/tech-spec.md §30). Set as this
+// module loads, before the page's load event and first paint: set later (in an effect, after the first paint),
+// a reload that came quickly enough found the browser still restoring the old position, and the page stayed there.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
 export function App() {
   useEffect(() => {
-    // A reload reopens the game at the top too, not where the page was scrolled (docs/tech-spec.md §30).
-    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     void initStorage();
     initArt();
     const stopVolume = effect(() => setVolume(settings.value.sound));

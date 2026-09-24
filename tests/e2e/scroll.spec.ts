@@ -106,6 +106,9 @@ test('the way into a shift and back opens each screen at the top', async ({ page
 
 test('a reload opens at the top, not where the page was scrolled', async ({ page }) => {
   await page.goto('./');
+  // The browser is told not to restore the scroll before the page has even loaded: set any later, a quick
+  // reload found it restoring the old position (a slow CI runner did), and the page stayed there.
+  expect(await page.evaluate<string>('history.scrollRestoration')).toBe('manual');
   await toBottom(page);
   expect(await scrollY(page)).toBeGreaterThan(0);
   await page.reload();
