@@ -32,6 +32,7 @@ import { t } from './i18n';
 import { type LayoutMode, layoutMode } from './layout';
 import { links } from './links';
 import { activeLesson, type CoachState } from './shift/coach';
+import { hintTarget } from './shift/hint';
 import { sendGuard, sendShift } from './telemetry';
 import { type BuildInfo, shiftRecord } from './telemetry-payload';
 
@@ -429,6 +430,11 @@ function onEvent(e: ShiftEvent, s: Session): void {
       comparing.value = false;
       compareFirst.value = null;
       break;
+    case 'hint': {
+      const f = cases[s.state.cursor]?.evidence.fields.find((x) => x.id === e.field);
+      if (f) say(t(hintTarget(f, s.state).text));
+      break;
+    }
     case 'answer': {
       const c = cases[s.state.cursor];
       answer.value = {

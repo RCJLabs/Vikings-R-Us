@@ -3,13 +3,16 @@ import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
 import { dailySeed } from '../calendar';
 import { DESTINATIONS, type Destination } from '../content/types';
+import { revealsOf } from '../gen/validate';
 import type { DayCtx } from '../logic/context';
+import { sameJudgment } from '../logic/judge';
 import { solve } from '../logic/solver';
 import { Rng } from '../rng/rng';
 import {
   assistNotes,
   DUSK_GRACE_MS,
   inspectable,
+  nextHint,
   PENALTY,
   ruledOut,
   type ShiftAction,
@@ -431,6 +434,57 @@ describe('assists', () => {
         const soul = { ...begun.soul, seen, questioned };
         expect(ruledOut({ ...begun, cursor: i, soul }, ctx)).not.toContain(c.expect.rule);
       });
+    },
+  );
+});
+
+describe('Skögul’s hint', () => {
+  /** Looks at a field the way a player would: turning the body over or using the tool it needs first. */
+  const lookAt = (state: ShiftState, ctx: DayCtx, id: string): ShiftState => {
+    const f = state.cases[state.cursor]?.evidence.fields.find((x) => x.id === id);
+    let st = state;
+    if (f?.view === 'back' && !st.soul.flipped) st = stepShift(st, { t: 'flip', at: 0 }, ctx).state;
+    if (f?.tool && f.tool !== 'flip') st = stepShift(st, { t: 'tool', tool: f.tool, at: 0 }, ctx).state;
+    return stepShift(st, { t: 'inspect', fields: [id], at: 0 }, ctx).state;
+  };
+
+  it('points at deciding evidence not yet seen, one piece at a time, for 15 s of sun each', () => {
+    const { state, ctx } = startDaily(3);
+    const begun = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+    const c = begun.cases[0];
+    if (!c) throw new Error('no soul');
+    const first = run(begun, ctx, [{ t: 'hint', at: 0 }]);
+    const pointed = first.events.find((e) => e.e === 'hint');
+    expect(pointed).toEqual({ e: 'hint', field: c.meta.proof[0], penaltyMs: PENALTY.hint });
+    expect(first.state.clock.penaltyMs).toBe(PENALTY.hint);
+    // Asked again, she points at the next piece, not the same one.
+    if (c.meta.proof.length > 1) expect(nextHint(first.state)).toBe(c.meta.proof[1]);
+    // Once everything that decides the soul has been seen, there is nothing to point at, and asking costs nothing.
+    let st = begun;
+    for (const id of c.meta.proof) st = lookAt(st, ctx, id);
+    expect(nextHint(st)).toBeNull();
+    const none = stepShift(st, { t: 'hint', at: 0 }, ctx);
+    expect(none.events).toEqual([{ e: 'rejected', reason: 'nothing left to point at' }]);
+    expect(none.state).toBe(st);
+  });
+
+  test.prop([fc.integer({ min: 1, max: 20 }), fc.nat(1000)], { numRuns: 30 })(
+    'following her hints to the end shows enough to decide the soul (questioning where a liar must confess)',
+    (day, n) => {
+      const { state, ctx } = startShift(full, { mode: 'practice', seed: `hint${n}`, day });
+      let st = stepShift(state, { t: 'begin', at: 0 }, ctx).state;
+      const c = st.cases[0];
+      if (!c) return;
+      for (let guard = 0; guard < 30; guard++) {
+        const id = nextHint(st);
+        if (!id) break;
+        st = lookAt(stepShift(st, { t: 'hint', at: 0 }, ctx).state, ctx, id);
+      }
+      expect(nextHint(st)).toBeNull();
+      const seen = c.evidence.fields.filter((f) => st.soul.seen.includes(f.id));
+      const judged = solve(seen, ctx, { reveals: revealsOf(c.lies) }).judgment;
+      expect(judged.kind).toBe('determined');
+      if (judged.kind === 'determined') expect(sameJudgment(judged, c.expect)).toBe(true);
     },
   );
 });

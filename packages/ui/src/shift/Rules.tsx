@@ -72,7 +72,13 @@ export function RulesPanel({ ctx, decree = true, out }: { ctx: DayCtx; decree?: 
         {[...ctx.tools].map(([id, s]) => (
           <li key={id}>{t('ui.rules.toolCost', { tool: t(`tool.${id}`), s })}</li>
         ))}
-        <li>{t('ui.rules.costs', { bad: PENALTY.badCompare / 1000, q: PENALTY.question / 1000 })}</li>
+        <li>
+          {t('ui.rules.costs', {
+            bad: PENALTY.badCompare / 1000,
+            q: PENALTY.question / 1000,
+            h: PENALTY.hint / 1000,
+          })}
+        </li>
       </ul>
     </div>
   );

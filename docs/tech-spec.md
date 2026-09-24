@@ -1477,6 +1477,25 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - The lesson texts are first drafts for the writing pass.
 - A lesson rides on the day's first soul only. A player who fumbles it gets no second lesson that day, though replaying the day doesn't bring it back either (it's recorded once the soul is judged).
 
+## 26. After M7: Skögul's hint (audit item 8)
+
+**What changed**
+- **A Hint button (and H)** asks Skögul where to look, for 15 seconds of sun (`PENALTY.hint`; a question costs 20). The engine's `hint` action points at the first piece of the soul's deciding evidence (its minimal proof, `meta.proof`) that the player hasn't looked at and she hasn't already pointed at, and keeps what she pointed at in the soul's state, so replays and resumes are exact.
+- **She says where, not what**: "Skögul points at the hands", "taps the registry", "hands you the rune-lens", "looks up at the ravens". What she pointed at stays highlighted (the coach's highlights) until the player has looked, with the flip highlighted too when it's on the other side of the body.
+- **Nothing left to show**: once everything that decides the soul has been seen, the button is off and says so, and asking costs nothing. Following her hints to the end always shows enough to decide the soul, given the answers of a liar who confesses when questioned (a property test on Days 1–20).
+- Not offered in Endless (a score with no sun) or the primer (the coach leads it). Shifts without a sun (Story Mode, practice without sun) get hints for free.
+- The rulebook's costs line and the keys line mention it.
+
+**Tests**
+- Engine: the first hint points at the first unseen proof field, for 15 s; the next at the next; nothing to point at (and no cost) once the proof has been seen; the property test above.
+- UI: every proof field on Days 1–20 has a line and a highlight the coach knows.
+- e2e: in the Daily, a hint costs 15 s of sun, names a place and highlights it, and a careful player's look at everything leaves the button off with its reason.
+
+**Known limits**
+- A hint isn't counted anywhere: the Daily's share text, the audit and the endings don't know it was used. It costs sun instead, like a question.
+- She points in the proof's order, not at what's quickest to check next.
+- When a soul can only be decided by a liar's confession, she never says to question them: she only points at evidence.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

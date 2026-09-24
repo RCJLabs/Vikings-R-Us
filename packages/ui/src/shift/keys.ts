@@ -1,5 +1,6 @@
-import { stampsFor } from '@cots/engine';
+import { nextHint, stampsFor } from '@cots/engine';
 import { act, answer, citation, comparing, drawerTab, screen, session, stampSheet } from '../store';
+import { hintsAllowed } from './hint';
 import { questionable, toggleCompare } from './Shift';
 
 const INTERACTIVE = 'button, a, input, textarea, select, [role="tab"]';
@@ -10,7 +11,7 @@ function focusSend(): void {
 
 /**
  * The shift's keyboard map (docs/tech-spec.md §6.4): F turn over, T feather, G registry,
- * C compare, Q question, 1-9 stamps (focus moves to Send), Enter send,
+ * C compare, Q question, H hint, 1-9 stamps (focus moves to Send), Enter send,
  * R rules, Esc cancels or pauses.
  */
 export function onShiftKey(e: KeyboardEvent): void {
@@ -59,6 +60,9 @@ export function onShiftKey(e: KeyboardEvent): void {
       if (lie) act({ t: 'question', lie });
       break;
     }
+    case 'h':
+      if (hintsAllowed(s) && nextHint(s.state)) act({ t: 'hint' });
+      break;
     case 'r':
       drawerTab.value = 'rules';
       break;

@@ -82,6 +82,8 @@ export interface SoulState {
   /** Contradictions the player called out: the lying field and the field it was compared with. */
   readonly flagged: readonly { readonly lie: string; readonly fact: string; readonly with: string }[];
   readonly questioned: readonly string[];
+  /** Evidence Skögul has pointed at, in order (absent in states from before hints). */
+  readonly hinted?: readonly string[];
   readonly stamp: Destination | null;
 }
 
@@ -131,6 +133,7 @@ export type ShiftAction =
   | { readonly t: 'tool'; readonly tool: ToolId; readonly at: number }
   | { readonly t: 'compare'; readonly a: string; readonly b: string; readonly at: number }
   | { readonly t: 'question'; readonly lie: string; readonly at: number }
+  | { readonly t: 'hint'; readonly at: number }
   | { readonly t: 'stamp'; readonly dest: Destination; readonly at: number }
   | { readonly t: 'send'; readonly at: number }
   | { readonly t: 'pause'; readonly at: number }
@@ -145,6 +148,7 @@ export type ShiftEvent =
   | { readonly e: 'contradiction'; readonly lie: string; readonly fact: string; readonly with: string }
   | { readonly e: 'noConflict'; readonly a: string; readonly b: string; readonly penaltyMs: number }
   | { readonly e: 'answer'; readonly lie: string; readonly response: QuestionResponse; readonly penaltyMs: number }
+  | { readonly e: 'hint'; readonly field: string; readonly penaltyMs: number }
   | { readonly e: 'stamped'; readonly dest: Destination }
   | { readonly e: 'judged'; readonly verdict: Verdict }
   | { readonly e: 'citation'; readonly verdict: Verdict }
@@ -154,8 +158,8 @@ export type ShiftEvent =
   | { readonly e: 'resumed' }
   | { readonly e: 'rejected'; readonly reason: string };
 
-/** Sun penalties in ms (docs/tech-spec.md §4). Tool costs come from content. */
-export const PENALTY = { badCompare: 10_000, question: 20_000 } as const;
+/** Sun penalties in ms (docs/tech-spec.md §4, §26). Tool costs come from content. */
+export const PENALTY = { badCompare: 10_000, question: 20_000, hint: 15_000 } as const;
 /** How long the current soul may still be judged after dusk. */
 export const DUSK_GRACE_MS = 60_000;
 
@@ -252,6 +256,18 @@ export function ruledOut(state: ShiftState, ctx: DayCtx): string[] {
   return solve(seen, ctx, { reveals, certainOnly: true })
     .rules.filter((r) => r.result === 'F')
     .map((r) => r.rule);
+}
+
+/**
+ * What Skögul would point at next (docs/tech-spec.md §26): the first of the soul's deciding evidence
+ * (its minimal proof) that the player hasn't looked at and she hasn't already pointed at. Null when
+ * there's nothing left to show: what decides the soul has all been seen.
+ */
+export function nextHint(state: ShiftState): string | null {
+  const c = currentCase(state);
+  if (!c) return null;
+  const { seen, hinted = [] } = state.soul;
+  return c.meta.proof.find((id) => !seen.includes(id) && !hinted.includes(id)) ?? null;
 }
 
 /** Stamps available today, in a stable order. */
@@ -433,6 +449,15 @@ export function stepShift(
       return withSun({
         state: penalize({ ...s, recentQ, soul: { ...s.soul, questioned: [...s.soul.questioned, action.lie] } }, cost),
         events: [{ e: 'answer', lie: action.lie, response, penaltyMs: cost }],
+      });
+    }
+    case 'hint': {
+      const field = nextHint(s);
+      if (!field) return withSun(reject(s, 'nothing left to point at'));
+      const soul = { ...s.soul, hinted: [...(s.soul.hinted ?? []), field] };
+      return withSun({
+        state: penalize({ ...s, soul }, PENALTY.hint),
+        events: [{ e: 'hint', field, penaltyMs: PENALTY.hint }],
       });
     }
     case 'stamp': {

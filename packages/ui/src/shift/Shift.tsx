@@ -5,6 +5,7 @@ import {
   ENDLESS_STRIKES,
   type Field,
   type Lesson,
+  nextHint,
   PENALTY,
   ruledOut,
   stampsFor,
@@ -40,6 +41,7 @@ import {
 } from '../store';
 import { activeLesson, coachStep } from './coach';
 import { fieldText, regionFields, regionSeen, registryEntry, sceneFor, skippedText } from './evidence';
+import { hintsAllowed, pendingHintFocus } from './hint';
 import { RulesPanel } from './Rules';
 
 /** Focuses an element once, when it mounts (dialogs, the briefing's Begin button). */
@@ -415,12 +417,32 @@ function StampRack({ s }: { s: Session }) {
   );
 }
 
-function ActionBar() {
+/** Ask Skögul where to look: she points at a piece of what decides the soul, for some sun. */
+function HintButton({ s }: { s: Session }) {
+  if (!hintsAllowed(s)) return null;
+  const none = nextHint(s.state) === null;
+  return (
+    <button
+      type="button"
+      class="btn"
+      data-testid="hint"
+      disabled={none}
+      title={none ? t('ui.hint.none') : t('ui.hint.label', { s: PENALTY.hint / 1000 })}
+      aria-label={t('ui.hint.label', { s: PENALTY.hint / 1000 })}
+      onClick={() => act({ t: 'hint' })}
+    >
+      {t('ui.hint')} <kbd>H</kbd>
+    </button>
+  );
+}
+
+function ActionBar({ s }: { s: Session }) {
   return (
     <nav class="actionbar">
       <button type="button" class="btn" aria-pressed={comparing.value} data-testid="compare" onClick={toggleCompare}>
         {t('ui.compare')} <kbd>C</kbd>
       </button>
+      <HintButton s={s} />
       <button type="button" class="btn btn--primary" data-testid="judge" onClick={() => (stampSheet.value = true)}>
         {t('ui.judge')}
       </button>
@@ -498,6 +520,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           >
             {t('ui.compare')} <kbd>C</kbd>
           </button>
+          <HintButton s={s} />
           <StampRack s={s} />
         </section>
         <CompareBar />
@@ -546,7 +569,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
         )}
       </div>
       <CompareBar />
-      <ActionBar />
+      <ActionBar s={s} />
       <StampSheet s={s} />
     </div>
   );
@@ -778,7 +801,7 @@ export function ShiftScreen() {
     <div
       class={`shift shift--${layout}${paused ? ' is-paused' : ''}${comparing.value ? ' is-comparing' : ''}`}
       data-layout={layout}
-      data-coach={coach?.focus}
+      data-coach={coach?.focus ?? pendingHintFocus(s.state)}
     >
       <div class="shift__desk" inert={blocked}>
         <SunBar s={s} />
