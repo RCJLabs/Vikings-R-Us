@@ -44,7 +44,7 @@ Vikings-R-Us/                         (public; see §8.4 for license)
 │  ├─ content-schema/    zod schemas; z.infer types are the single source of truth
 │  ├─ content-compiler/  YAML + Ink + strings -> generated/<target>/**, lints, leak tokens, TS codegen (FactId/ObsKey unions)
 │  ├─ ui/                Preact components, layouts, input/commands, i18n runtime, art interfaces
-│  ├─ art/               BodyArtProvider contract, shared layout, placeholder + candidate art (woodcut, pixel)
+│  ├─ art/               BodyArtProvider contract, shared layout, woodcut (default), pixel, placeholder
 │  ├─ art-final/         (M5+) sprite provider, same contract
 │  ├─ platform/          Platform interface; adapters web | itch | electron | android (aliased per target)
 │  └─ testkit/           fast-check arbitraries, brute-force oracle solver, bots, sweep harness, golden utils
@@ -1262,7 +1262,7 @@ The range in each cell spans the three night strategies (pay everything, skip th
 ## 17. M5 implementation notes (the vertical slice as built)
 
 **Where things live**
-- Art: `packages/art` (was `art-placeholder`): the contract (`contract.ts`), the shared figure layout and hotspot regions (`layout.ts`), the placeholder, the two candidates (`woodcut.ts`, `pixel.ts`, loaded on demand), and the comparison sheet (`sheet.ts`). The UI's art switch is `packages/ui/src/art.ts`; `pnpm art:sheet` writes the trial page; dev-full's title screen has a Body Lab.
+- Art: `packages/art` (was `art-placeholder`): the contract (`contract.ts`), the shared figure layout and hotspot regions (`layout.ts`), the placeholder, the two candidates (`woodcut.ts`, now the default and in the main bundle; `pixel.ts`, loaded on demand), and the comparison sheet (`sheet.ts`). The UI's art switch is `packages/ui/src/art.ts`; `pnpm art:sheet` writes the trial page; dev-full's title screen has a Body Lab.
 - Days 10 and 12: the campaign pack (`faith`, `thorsHammer`, `trickster`, the `amulet` and `lipScars` signs, `rule.transfer`, `rule.detain`, five archetypes, templates, `days/day-10.yaml`, `day-12.yaml`).
 - The slice: `campaign.yaml` `slice`; Day 12's scenes and story soul (`scenes/d12.*.ink`, `cases/loki-12.yaml`).
 - Sound: `packages/ui/src/audio.ts`. Writing: `docs/voice.md`. Art and store briefs: `docs/art-brief.md`. Next Fest: `docs/next-fest.md`.
@@ -1270,6 +1270,7 @@ The range in each cell spans the three night strategies (pay everything, skip th
 **Decisions**
 - **The art contract grew.** Each provider draws its own registry portraits. Pixel art declares its grid, and the stage sizes it so each art pixel covers whole device pixels (a ResizeObserver; the frame is letterboxed). Every provider shares one layout, so taps land in the same places and a region's signs are one decision.
 - **Choosing art.** `?art=woodcut|pixel|placeholder` picks the art and the device remembers it. Feedback links name it. Art never changes a case.
+- **The woodcut was chosen** (September 2026) and is the default. After the choice, its hands were redrawn: open hands with fingers and a thumb, and a fist closed round the grip with the thumb over the index finger. The held weapon now shows from behind too, though `grip` stays a front-view sign (the back view has no hand hotspots).
 - **The weapon a soul names is the weapon drawn.** Testimony already shares one weapon word per soul; the shift passes it to the art (axe, sword, spear, seax). No generation change, so Dailies and goldens stay put.
 - **Day 10:** faith is heathen by presumption. The amulet is the sign: a cross means baptized, a hammer heathen, and both on one cord prime-signed (who stay ours). TRANSFER comes after outlaws. A false convert's claim is caught by his hammer.
 - **Day 12:** `trickster` (not `loki`, which is a faction id in shared code and would trip the leak check). Its only sign is stitch scars on the lips (salience 1), so the day's floor drops to 1. DETAIN comes first. Loki's one lie is "just a plain man", and questioning it gets a `deflect`, which reveals nothing.
@@ -1281,7 +1282,7 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - The body on screen: 166×232 CSS px on a 360×740 phone; 216×302 on a 740×360 landscape phone (it was 74×103 before the landscape layout: the body now runs down the left with the tools beside it).
 - Every sign reads at phone size in all three styles except the feather, whose "stirs" was weak everywhere; all three now draw air lines beside the head.
 - Days 10–12, 500 seeds: every generation gate met, the trusting bot at 57%, DETAIN about one soul a day on Day 12. Fairness properties pass at 800 runs with the new days included.
-- Web demo first load 66.3 KB gzip; each art candidate is a 4.6 KB chunk loaded only when chosen.
+- Web demo first load 66.3 KB gzip; each art candidate is a 4.6 KB chunk loaded only when chosen. With the woodcut as the default (in the main bundle), the first load is 72.2 KB gzip.
 
 **Known limits**
 - The candidates are drawn in code: they show readability and cost, not how commissioned art would look.

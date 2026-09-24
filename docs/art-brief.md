@@ -1,6 +1,6 @@
 # Art brief
 
-For choosing the art direction and commissioning the art (build plan M5). Two candidate directions exist as prototypes drawn in code: **woodcut** and **pixel**. Compare them on the art trial page (`pnpm art:sheet` writes `dist/art-sheet/index.html`) and in the game with `?art=woodcut` or `?art=pixel`. They show readability and cost. They are not a test of how final art will look on a stream or a store page; an artist's samples are.
+For commissioning the art (build plan M5). **The woodcut is the chosen direction** (September 2026) and the game's default art. Two directions were prototyped in code, woodcut and pixel; the pixel prototype and the placeholder remain for comparison on the art trial page (`pnpm art:sheet` writes `dist/art-sheet/index.html`) and in the game with `?art=pixel` or `?art=placeholder`. The prototypes show readability and cost. They are not a test of how final art will look on a stream or a store page; an artist's samples are.
 
 ## What the art has to do
 
@@ -52,7 +52,7 @@ The art draws dead souls standing at a gate. The game reads **signs** off the bo
 
 **Acceptance.** A provider passes the contract tests (`pnpm test`: every value drawn differently, hotspots inside the frame, the declared visibility at least the gameplay salience), and on a real 360-pixel phone every salience 2 or 3 sign can be told apart at full size and every salience 1 sign through the 3× loupe.
 
-## Style guide (to fill in after the choice)
+## Style guide (to fill in with the artist)
 
 - Palette, as named tokens, with the UI's own (dark brown ground, parchment, gold).
 - Line weights or pixel rules, shading, texture codes for each sign.

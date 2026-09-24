@@ -84,7 +84,7 @@ test('feedback links carry the build, and a finished Daily records a passing gua
   const feedback = new URL((await page.getByTestId('summary-feedback').getAttribute('href')) ?? '');
   expect(feedback.searchParams.get('template')).toBe('playtest.yml');
   expect(feedback.searchParams.get('build')).toMatch(
-    /^web-demo [0-9a-f]{8} · (desk|drawer) · art placeholder · \d+x\d+ · Mozilla/,
+    /^web-demo [0-9a-f]{8} · (desk|drawer) · art woodcut · \d+x\d+ · Mozilla/,
   );
 
   const record = await page.evaluate(() => JSON.parse(localStorage.getItem('cots.daily') ?? '{}'));
