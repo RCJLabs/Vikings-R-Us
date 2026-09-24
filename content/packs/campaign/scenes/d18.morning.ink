@@ -8,7 +8,7 @@ Down the table the clerk clears his throat, and clears it again, and comes over 
 "A contract. Quite standard. When the horn blows, our department will be unaffected. We aren't in the song. We'd like to offer you a transfer." # speaker: clerk
 "A table of your own. A warm room. A pension. There's a small fee for the paperwork, ten rings. It's the vellum, you see. Calves don't grow on trees." # speaker: clerk
 Skögul goes on sharpening the spear.
-* { rings() >= 10 } [Sign it and pay the ten rings.]
+* [Sign it and pay the ten rings. #needs: rings 10]
   # fx: rings -10
   # fx: flag clerk_contract
   # fx: standing clerk +2

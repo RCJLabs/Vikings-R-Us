@@ -308,5 +308,13 @@
   "ui.campaign.start.play": "Vertical slice: Days 1–3, then Day {day}",
   "ui.campaign.start.fromJump": "Vertical slice from Day {day}",
   "ui.campaign.slice": "Slice",
-  "ui.settings.sound": "Sound"
+  "ui.settings.sound": "Sound",
+  "ui.journal": "Journal",
+  "ui.journal.close": "Close",
+  "ui.journal.threads": "Still in play",
+  "ui.journal.empty": "Nothing yet. The scenes you play are kept here, day by day.",
+  "ui.journal.morning": "Morning",
+  "ui.journal.night": "Night",
+  "ui.journal.changed": "This scene has been rewritten since you played it.",
+  "ui.scene.needsRings": "{n} rings; you have {have}"
 }

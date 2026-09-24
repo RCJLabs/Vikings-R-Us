@@ -82,3 +82,20 @@ endings:
     text: ending.wolf.text
   - { id: ending.lastStand, order: 1000, title: ending.lastStand.title, text: ending.lastStand.text }
   - { id: ending.sliceEnd, order: 1001, title: ending.sliceEnd.title, text: ending.sliceEnd.text }
+# The journal's list of what's still in play (docs/story-drafts.md, "The journal"), in this order,
+# each while its `when` holds. They name nobody the story hasn't named yet. The texts are DRAFT.
+threads:
+  - { id: thread.owesSkogul, when: { state: flags.owes_skogul, gte: 1 }, text: thread.owesSkogul }
+  - id: thread.ulfDebt
+    when: { all: [{ state: flags.ulf_debt, gte: 1 }, { state: flags.ulf_shipyard, lte: 0 }] }
+    text: thread.ulfDebt
+  - { id: thread.ulfShipyard, when: { state: flags.ulf_shipyard, gte: 1 }, text: thread.ulfShipyard }
+  - { id: thread.lokiDeal, when: { state: flags.loki_deal, gte: 1 }, text: thread.lokiDeal }
+  - { id: thread.ferry, when: { state: flags.ferryman, gte: 1 }, text: thread.ferry }
+  - id: thread.woodKnown
+    when: { all: [{ state: flags.wood_known, gte: 1 }, { state: flags.wood, lte: 0 }] }
+    text: thread.woodKnown
+  - { id: thread.wood, when: { state: flags.wood, gte: 1 }, text: thread.wood }
+  - { id: thread.stayHome, when: { state: flags.stay_home, gte: 1 }, text: thread.stayHome }
+  - { id: thread.clerkContract, when: { state: flags.clerk_contract, gte: 1 }, text: thread.clerkContract }
+  - { id: thread.truth, when: { state: flags.truth, gte: 1 }, text: thread.truth, count: flags.truth }

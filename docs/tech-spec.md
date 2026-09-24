@@ -1370,6 +1370,25 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - Saves from before this change have no story column for days already audited; their rows show 0 there, so those days don't add up.
 - The notes are plain text under the choice. Whether players want them, or would rather discover standing on their own, is a playtest question.
 
+## 21. After M7: the journal (audit item 3)
+
+**What changed**
+- **The save keeps a journal.** A save held only today's actions, so a day's scenes, letters and choices were gone the next morning. `RunSave.journal` records each scene played: its day, the choices made, and what the scene could read of the run as it began (rings, flags, standing, the family), since nothing else in the save can rebuild that for an older day. A replayed day drops its entries and the later days'; a scene played again (a day restarted after an engine update) replaces its entry. Under 1 KB a scene (the flags grow as the story goes), so a whole campaign adds about 20 KB to a save.
+- **The Journal button** on the morning, night and ending screens opens a page over the screen (a scene half-read underneath keeps its place). It lists the threads still in play, then every day's scenes, newest first, played again read-only with the choices made and the standing notes. Only the days opened are played again.
+- **Threads** are content (`threads` in `campaign.yaml`): a text key shown while a run-state condition holds, with an optional count. The campaign has ten: Skögul's loan, Ulf's fine and his shipyard, the stranger's deal, the ferry, knowing of the wood, the family's plan (the wood or home), the clerk's contract, and how much you've heard of the after.
+- **Options you can't afford stay in sight.** A `needs: rings N` tag inside an option's brackets shows the option greyed out with what it needs, instead of an Ink condition hiding it. The seven rings-gated options (the roof, Ulf's fine, Skögul's loan, the healer, the ferry twice, the clerk's fee) now use it; story gates stay hidden. The runner won't take a locked option; bots and the compiler's walks skip them, and a point where every option is locked fails the build.
+
+**Tests**
+- Engine: every scene played is kept with its choices and the run as it began; a replay drops the discarded days and a replayed scene replaces its entry; threads follow their conditions and counts.
+- Story: locked options are shown with their cost, can't be taken, aren't walked, and a point with only locked options fails; the env a journal entry gives equals the one the scene had.
+- Compiler: a `needs` tag outside an option's brackets, or malformed, is rejected.
+- e2e: the journal after a day and after a reload (phone and desktop), a locked option on Day 2's night with an emptied purse, and the thread list in the full build.
+
+**Known limits**
+- Saves from before the journal have no entries for the days already played.
+- Ink's word count reads a `needs` tag as words, so each adds about three to the scene word totals.
+- The threads name what's in play, not whether it will work: the ferry thread doesn't say whether you'll have the hundred rings. That's item 5's planning, not the journal's.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

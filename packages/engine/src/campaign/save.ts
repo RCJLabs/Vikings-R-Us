@@ -1,8 +1,23 @@
-import type { Content } from '../content/types';
+import type { Content, Faction } from '../content/types';
 import type { CaseSpec } from '../gen/types';
 import { createDayContext, type DayCtx } from '../logic/context';
 import { type NewRunOptions, newRun, type RunAction, type RunEnv, stepRun } from './run';
-import type { RunState } from './state';
+import type { FamilyMember, RunState } from './state';
+
+/**
+ * A scene as the player played it, so the journal can show it again: the
+ * choices made and what the scene could read of the run as it began (the
+ * save keeps no older days' actions to rebuild that from).
+ */
+export interface JournalEntry {
+  readonly day: number;
+  readonly scene: string;
+  readonly choices: readonly number[];
+  readonly rings: number;
+  readonly flags: Readonly<Record<string, number>>;
+  readonly standing: Readonly<Record<Faction, number>>;
+  readonly family: Readonly<Record<string, FamilyMember['status']>>;
+}
 
 /**
  * A campaign save (docs/tech-spec.md §7): the run as it stood each morning
@@ -21,6 +36,8 @@ export interface RunSave {
   readonly log: readonly RunAction[];
   /** Today's queue, once the shift has begun. */
   readonly queue: readonly CaseSpec[] | null;
+  /** Every scene played, oldest first (absent in saves from before the journal). */
+  readonly journal?: readonly JournalEntry[];
 }
 
 export function runContext(content: Content, run: RunState): DayCtx {
@@ -31,13 +48,30 @@ export function startSave(content: Content, seed: string, engine: number, opts: 
   return { format: 'cots.run', v: 1, engine, mornings: [newRun(content, seed, opts)], log: [], queue: null };
 }
 
-/** Records an action taken on `before` (the result is `after`), starting a new morning when the day turns. */
+/**
+ * Records an action taken on `before` (the result is `after`), starting a new morning when the day turns.
+ * A scene that played goes in the journal; one played again (a day restarted) replaces its old entry.
+ */
 export function recordAction(save: RunSave, before: RunState, action: RunAction, after: RunState): RunSave {
+  const next = action.t === 'scene' && after !== before ? { ...save, journal: noted(save, before, action) } : save;
   if (after.day !== before.day && after.phase === 'morning') {
-    return { ...save, mornings: [...save.mornings, after], log: [], queue: null };
+    return { ...next, mornings: [...next.mornings, after], log: [], queue: null };
   }
-  const queue = save.queue ?? (after.shift ? after.shift.cases : null);
-  return { ...save, log: [...save.log, action], queue };
+  const queue = next.queue ?? (after.shift ? after.shift.cases : null);
+  return { ...next, log: [...next.log, action], queue };
+}
+
+function noted(save: RunSave, before: RunState, action: Extract<RunAction, { t: 'scene' }>): JournalEntry[] {
+  const entry: JournalEntry = {
+    day: before.day,
+    scene: action.id,
+    choices: action.choices ?? [],
+    rings: before.rings,
+    flags: before.flags,
+    standing: before.standing,
+    family: Object.fromEntries(before.family.map((m) => [m.id, m.status])),
+  };
+  return [...(save.journal ?? []).filter((e) => e.day !== entry.day || e.scene !== entry.scene), entry];
 }
 
 /**
@@ -63,11 +97,12 @@ export function replayableDays(save: RunSave): number[] {
   return save.mornings.map((m) => m.day);
 }
 
-/** Goes back to the morning of `day`, discarding every later day. */
+/** Goes back to the morning of `day`, discarding every later day (and what the journal kept of them). */
 export function replayDay(save: RunSave, day: number): RunSave {
   const i = save.mornings.findIndex((m) => m.day === day);
   if (i < 0) throw new RangeError(`No morning saved for day ${day}`);
-  return { ...save, mornings: save.mornings.slice(0, i + 1), log: [], queue: null };
+  const journal = save.journal ? { journal: save.journal.filter((e) => e.day < day) } : {};
+  return { ...save, mornings: save.mornings.slice(0, i + 1), log: [], queue: null, ...journal };
 }
 
 /** A structural check for saves read back from storage (anything else is treated as missing). */
@@ -81,6 +116,7 @@ export function isRunSave(x: unknown): x is RunSave {
     Array.isArray(s.mornings) &&
     s.mornings.length > 0 &&
     Array.isArray(s.log) &&
-    (s.queue === null || Array.isArray(s.queue))
+    (s.queue === null || Array.isArray(s.queue)) &&
+    (s.journal === undefined || Array.isArray(s.journal))
   );
 }

@@ -19,6 +19,7 @@ Everything listed here is **draft writing**. Days 1–3 are on their second draf
 | Days 9 and 13–20 (M7): decrees, rules, Odin's claims, Muninn's lines, the spear mark | campaign strings `decree.d9`, `decree.d13`–`d20`, `rule.helFull`/`odinClaim`/`liars`/`spearMark`, `whim.odin.*`, `law.noMark`, `obs.spearCut.*`, `rv.muninn.*`, `q.blade.plain.*` | ~500 |
 | The campaign's endings (M7) | campaign strings `ending.*` | ~320 |
 | More ways to say the common lines, Loki's disguise lines, fixed lines (after M7: audit item 1) | campaign strings `tm.identity.4`–`10`, `tm.death.battle.5`–`9`, `tm.weapon.yes.3`–`6`, `tm.back.no.3`–`6`, `tm.flavor.*.2`/`.3`, `tm.oath.kept.4`–`6`, `tm.owner.self.*`, `tm.blade.ulfberht.*`, `tm.creed.*`, `tm.guise.*`, `rv.muninn.forgot.2`–`7`, `rv.muninn.identity.2`–`4`, `rv.*.2`/`.3`, `tl.*.2`/`.3`, `tl.owner.self`, `q.creed.hid.confess.1`; core `tm.death.oldAge.1`, `q.cause.braggart.confess.1` | ~770 |
+| The journal's threads: what's still in play (after M7: audit item 3) | `threads` in `content/packs/campaign/campaign.yaml`, campaign strings `thread.*` | ~150 |
 | Speaker names | strings `speaker.*` (demo, campaign) | — |
 | Family, shop and ending text (M4.1, M7) | strings `family.*`, `shop.*`, demo `ending.*` | ~250 |
 
@@ -100,6 +101,15 @@ You send what you can. # fx: rings -5
 
 A tag on its own line attaches to the next line of text, which is fine inside a choice's branch. **Don't put fx tags on a choice line.** Ink can attach them to the choice instead of the text, and then they never fire. The compiler rejects them there.
 
+**What an option costs.** An option that needs rings stays in sight when the purse can't cover it, greyed out with what it needs ("20 rings; you have 12"). Write the cost as a tag inside the option's brackets, not as an Ink condition:
+
+```ink
+* [Send twenty rings for a place on the ferry. #needs: rings 20]
+  # fx: rings -20
+```
+
+Keep story gates as conditions: an option that depends on what the player knows or has done (`{ flag("wood_known") }`) should stay out of sight until it's open, because showing it would give it away. Every choice point needs at least one option the player can take; the compiler's walks fail a scene where every option is locked.
+
 **The player sees standing change.** After the text that follows a choice, just before the next choice or the end of the scene, the game adds a note for each power whose standing that stretch moved: "Hel will remember that (+3)." Effects before the first choice get their note just before it. So put a standing effect in the branch of the choice that earns it, and don't count on a standing change staying secret. Before Day 12 Loki's notes say "The stranger" (`aliases` in the demo's `campaign.yaml`); don't name him in text before then either. Rings, flags and the family get no notes: the purse, the story and the night's news show those.
 
 **Choices.** Write each choice's whole text in brackets and what happens on the following lines:
@@ -125,6 +135,18 @@ The game echoes the picked option as its own line (so a reply never appears with
 - Family members named in effects exist.
 
 It also walks **every choice path** of each scene in three sample runs: a fresh one, one gone badly (everyone sick, every flag set, in debt) and one gone well (someone already gone). Each path must end within 500 paths. These walks are a smoke test, not a proof over all runs: a condition that only goes wrong at, say, exactly 7 rings isn't covered.
+
+## The journal
+
+The journal (the Journal button, morning and night) keeps every scene the player has played, with their choices, and lists what's still in play: the threads in `campaign.yaml`. Each thread is a string shown while its condition holds (the same conditions as endings, on the run's state):
+
+```yaml
+threads:
+  - { id: thread.ferry, when: { state: flags.ferryman, gte: 1 }, text: thread.ferry }
+  - { id: thread.truth, when: { state: flags.truth, gte: 1 }, text: thread.truth, count: flags.truth }
+```
+
+`count` puts a number in the text as `{n}`. A thread says what the player would remember, not what it leads to, and names nobody the story hasn't named yet (the deal is "the man with the scarred lips", before and after Day 12). When a flag is cleared (a plan dropped on Day 17), its thread goes. Past scenes are played again from what the scene could see when it was played, so rewriting a scene updates the journal too; if a rewrite changes a scene's choices, the journal says the scene has been rewritten instead of guessing.
 
 ## Writing a story soul
 

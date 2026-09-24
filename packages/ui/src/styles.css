@@ -1406,3 +1406,79 @@ a.btn {
   color: var(--muted);
   font-style: italic;
 }
+
+/* The journal: a page over the day's screen, which stays as it was underneath. */
+.journal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 0 1rem max(1rem, env(safe-area-inset-bottom));
+}
+
+.journal__page {
+  max-width: 40rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.journal__head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) 0 0.5rem;
+  background: var(--bg);
+}
+
+.journal__head h2,
+.journal__threads h3 {
+  margin: 0;
+}
+
+.journal__threads ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.journal__day {
+  border-top: 1px solid var(--line);
+}
+
+.journal__day summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.journal__scene {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.journal__scene h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scene__choice.is-locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.scene__cost {
+  color: var(--muted);
+  font-size: 0.9em;
+}

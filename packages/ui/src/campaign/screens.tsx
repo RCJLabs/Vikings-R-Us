@@ -11,6 +11,7 @@ import {
   type Faction,
   factionKey,
   factionsMet,
+  type JournalEntry,
   type RunEvent,
   type RunState,
   replayableDays,
@@ -18,8 +19,10 @@ import {
   shiftScore,
   shopFor,
   stampEffects,
+  threadsInPlay,
 } from '@cots/engine';
-import { playScene, sceneEnv } from '@cots/story';
+import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
+import { signal } from '@preact/signals';
 import { useState } from 'preact/hooks';
 import { clockText, listText, t } from '../i18n';
 import { openReport } from '../report';
@@ -260,6 +263,28 @@ function SlotsScreen() {
 
 // ---------- scenes ----------
 
+/** A scene's lines as played so far, each followed by notes of whom it moved. */
+function SceneLines({ lines, day, prefix }: { lines: readonly SceneLine[]; day: number; prefix: string }) {
+  return (
+    <>
+      {lines.flatMap((line, i) => [
+        <p
+          key={`${prefix}:${i}`}
+          class={`scene__line${line.chosen ? ' scene__line--chosen' : line.speaker ? ' scene__line--said' : ''}`}
+        >
+          {line.speaker ? <b class="scene__speaker">{t(`speaker.${line.speaker}`)}: </b> : null}
+          {line.text}
+        </p>,
+        ...standingNotes(line.effects, day).map((note) => (
+          <p key={`${prefix}:${i}:${note}`} class="scene__note" data-testid="scene-note">
+            {note}
+          </p>
+        )),
+      ])}
+    </>
+  );
+}
+
 /** Plays one Ink scene; its effects reach the run once, when the player finishes it. */
 function SceneView({ id, run }: { id: string; run: RunState }) {
   const [env] = useState(() => sceneEnv(run, id));
@@ -268,6 +293,7 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
   const focus = useAutoFocus<HTMLButtonElement>();
   if (!json) return null;
   const frame = playScene(json, env, choices);
+  const first = frame.choices.findIndex((c) => !c.locked);
   return (
     <section class="card scene" data-testid="scene" data-scene={id}>
       {frame.draft ? (
@@ -275,20 +301,7 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
           {t('ui.campaign.draft')}
         </p>
       ) : null}
-      {frame.lines.flatMap((line, i) => [
-        <p
-          key={`${choices.length}:${i}`}
-          class={`scene__line${line.chosen ? ' scene__line--chosen' : line.speaker ? ' scene__line--said' : ''}`}
-        >
-          {line.speaker ? <b class="scene__speaker">{t(`speaker.${line.speaker}`)}: </b> : null}
-          {line.text}
-        </p>,
-        ...standingNotes(line.effects, run.day).map((note) => (
-          <p key={`${choices.length}:${i}:${note}`} class="scene__note" data-testid="scene-note">
-            {note}
-          </p>
-        )),
-      ])}
+      <SceneLines lines={frame.lines} day={run.day} prefix={String(choices.length)} />
       <div class="scene__choices">
         {frame.done ? (
           <button
@@ -301,21 +314,141 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
             {t('ui.campaign.next')}
           </button>
         ) : (
-          frame.choices.map((text, i) => (
-            <button
-              key={`${choices.length}:${text}`}
-              type="button"
-              class="btn scene__choice"
-              data-testid="scene-choice"
-              ref={i === 0 ? focus : undefined}
-              onClick={() => setChoices([...choices, i])}
-            >
-              {text}
-            </button>
-          ))
+          frame.choices.map((c, i) =>
+            c.locked ? (
+              // An option the purse can't cover stays in sight, with what it needs.
+              <button
+                key={`${choices.length}:${c.text}`}
+                type="button"
+                class="btn scene__choice is-locked"
+                data-testid="scene-choice-locked"
+                disabled
+              >
+                {c.text}{' '}
+                <span class="scene__cost">({t('ui.scene.needsRings', { n: c.rings ?? 0, have: env.rings })})</span>
+              </button>
+            ) : (
+              <button
+                key={`${choices.length}:${c.text}`}
+                type="button"
+                class="btn scene__choice"
+                data-testid="scene-choice"
+                ref={i === first ? focus : undefined}
+                onClick={() => setChoices([...choices, i])}
+              >
+                {c.text}
+              </button>
+            ),
+          )
         )}
       </div>
     </section>
+  );
+}
+
+// ---------- journal ----------
+
+/** Whether the journal is open over the morning, night or ending screen (which stays as it was underneath). */
+const journalOpen = signal(false);
+
+function JournalButton() {
+  return (
+    <button type="button" class="btn btn--quiet" data-testid="journal-open" onClick={() => (journalOpen.value = true)}>
+      {t('ui.journal')}
+    </button>
+  );
+}
+
+/** A scene from the journal, played again with the choices made and the view it had then. */
+function JournalScene({ entry, seed }: { entry: JournalEntry; seed: string }) {
+  const json = scenes[entry.scene];
+  const when = gameContent.days.find((d) => d.day === entry.day)?.scenes;
+  const label =
+    when?.morning === entry.scene ? 'ui.journal.morning' : when?.night === entry.scene ? 'ui.journal.night' : null;
+  let lines: readonly SceneLine[] | null = null;
+  try {
+    lines = json ? playScene(json, journalEnv(seed, entry), entry.choices).lines : null;
+  } catch {
+    // A rewrite since then changed its choices; the journal says so rather than guessing.
+    lines = null;
+  }
+  return (
+    <section class="journal__scene" data-testid="journal-scene">
+      {label ? <h4>{t(label)}</h4> : null}
+      {lines ? (
+        <SceneLines lines={lines} day={entry.day} prefix={entry.scene} />
+      ) : (
+        <p class="muted">{t('ui.journal.changed')}</p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * What's still in play (the threads the endings hang on), then every scene played, newest day first:
+ * letters, choices and all. Only the days opened are played again.
+ */
+function JournalView() {
+  const a = active.value;
+  const focus = useAutoFocus<HTMLButtonElement>();
+  const entries = a?.record.save.journal ?? [];
+  const days = [...new Set(entries.map((e) => e.day))].sort((x, y) => y - x);
+  const [open, setOpen] = useState<readonly number[]>(days.slice(0, 1));
+  if (!a) return null;
+  const threads = threadsInPlay(a.run, gameContent);
+  const close = () => {
+    journalOpen.value = false;
+  };
+  return (
+    <div
+      class="journal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="journal-title"
+      data-testid="journal"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') close();
+      }}
+    >
+      <div class="journal__page">
+        <div class="journal__head">
+          <h2 id="journal-title">{t('ui.journal')}</h2>
+          <button type="button" class="btn" ref={focus} data-testid="journal-close" onClick={close}>
+            {t('ui.journal.close')}
+          </button>
+        </div>
+        {threads.length > 0 ? (
+          <section class="card journal__threads" data-testid="journal-threads">
+            <h3>{t('ui.journal.threads')}</h3>
+            <ul>
+              {threads.map((th) => (
+                <li key={th.id}>{t(th.text, th.n !== undefined ? { n: th.n } : {})}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {days.length === 0 ? <p class="muted">{t('ui.journal.empty')}</p> : null}
+        {days.map((day) => (
+          <details
+            key={day}
+            class="journal__day"
+            open={open.includes(day)}
+            data-testid="journal-day"
+            onToggle={(e) => {
+              const now = (e.currentTarget as HTMLDetailsElement).open;
+              if (now !== open.includes(day)) setOpen(now ? [...open, day] : open.filter((d) => d !== day));
+            }}
+          >
+            <summary>{t('ui.campaign.day', { n: day })}</summary>
+            {open.includes(day)
+              ? entries
+                  .filter((e) => e.day === day)
+                  .map((e) => <JournalScene key={e.scene} entry={e} seed={a.run.seed} />)
+              : null}
+          </details>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -416,10 +549,12 @@ function Morning() {
         </>
       )}
       <div class="row">
+        <JournalButton />
         <button type="button" class="btn btn--quiet" data-testid="campaign-quit" onClick={leaveCampaign}>
           {t('ui.campaign.quit')}
         </button>
       </div>
+      {journalOpen.value ? <JournalView /> : null}
       <ToastView />
     </main>
   );
@@ -714,10 +849,12 @@ function Night() {
         </>
       )}
       <div class="row">
+        <JournalButton />
         <button type="button" class="btn btn--quiet" data-testid="campaign-quit" onClick={leaveCampaign}>
           {t('ui.campaign.quit')}
         </button>
       </div>
+      {journalOpen.value ? <JournalView /> : null}
       <ToastView />
     </main>
   );
@@ -746,7 +883,9 @@ function Ending() {
         <button type="button" class="btn btn--primary" data-testid="ending-slots" onClick={leaveCampaign}>
           {t('ui.ending.slots')}
         </button>
+        <JournalButton />
       </div>
+      {journalOpen.value ? <JournalView /> : null}
     </main>
   );
 }

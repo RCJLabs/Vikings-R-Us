@@ -16,6 +16,7 @@ import {
   shiftMods,
   stampEffects,
   stepRun,
+  threadsInPlay,
 } from './run';
 import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
 import { factionsMet, type RunState } from './state';
@@ -463,22 +464,25 @@ describe('story souls', () => {
 });
 
 describe('saves', () => {
+  /** Plays whole days (a morning and a night scene each, with made-up effects) and records every action. */
   function playRecorded(content: Content, save0: RunSave, days: number, stopMidDay = false) {
     let save = save0;
     let run = resumeSave(save, content, 0).run;
     let ctx = runContext(content, run);
     const apply = (a: RunAction) => {
       const r = stepRun(run, a, { content, ctx, ...(save.queue ? { queue: save.queue } : {}) });
-      save = recordAction(save, run, a, r.state);
+      if (r.state !== run) save = recordAction(save, run, a, r.state);
       if (r.state.day !== run.day) ctx = runContext(content, r.state);
       run = r.state;
     };
     for (let d = 0; d < days; d++) {
+      apply({ t: 'scene', id: `scene.d${run.day}.morning`, choices: [d], effects: [{ flag: `morning${run.day}` }] });
       const actions = shiftActions(run, content);
       const cut = stopMidDay && d === days - 1 ? Math.floor(actions.length / 2) : actions.length;
       for (const a of actions.slice(0, cut)) apply(a);
       if (cut < actions.length) break;
       apply({ t: 'endAudit' });
+      apply({ t: 'scene', id: `scene.d${run.day}.night`, choices: [1, 0], effects: [{ rings: 1 }] });
       apply({ t: 'endNight' });
     }
     return { save, run };
@@ -508,6 +512,59 @@ describe('saves', () => {
   it('rewinds to the morning when the engine changed since the save', () => {
     const { save } = playRecorded(full, startSave(full, 'eng', 0), 2, true);
     expect(resumeSave(save, full, 1)).toEqual({ run: save.mornings[1], rewound: true });
+  });
+
+  it('keeps every scene played in the journal, with the choices and what it read as it began', () => {
+    const { save } = playRecorded(full, startSave(full, 'journal', 0), 3);
+    expect(save.journal?.map((e) => [e.day, e.scene, e.choices])).toEqual([
+      [1, 'scene.d1.morning', [0]],
+      [1, 'scene.d1.night', [1, 0]],
+      [2, 'scene.d2.morning', [1]],
+      [2, 'scene.d2.night', [1, 0]],
+      [3, 'scene.d3.morning', [2]],
+      [3, 'scene.d3.night', [1, 0]],
+    ]);
+    // Day 2's morning scene read the run as that morning began: Day 1's flags, rings after the night.
+    const day2 = save.journal?.[2];
+    expect(day2?.flags).toEqual(save.mornings[1]?.flags);
+    expect(day2?.rings).toBe(save.mornings[1]?.rings);
+    expect(day2?.family).toEqual({ mother: 'well', brother: 'well', sister: 'well' });
+  });
+
+  it('forgets the journal of the days a replay discards, and a replayed scene replaces its entry', () => {
+    const { save } = playRecorded(full, startSave(full, 'journal-replay', 0), 3);
+    const back = replayDay(save, 2);
+    expect(back.journal?.map((e) => e.day)).toEqual([1, 1]);
+    const again = playRecorded(full, back, 1).save;
+    expect(again.journal?.map((e) => `${e.day}:${e.scene}`)).toEqual([
+      '1:scene.d1.morning',
+      '1:scene.d1.night',
+      '2:scene.d2.morning',
+      '2:scene.d2.night',
+    ]);
+    // A restarted day (a new engine) plays its morning scene again: the entry is replaced, not doubled.
+    const restarted = recordAction(
+      again,
+      save.mornings[1] as RunState,
+      { t: 'scene', id: 'scene.d2.morning', choices: [3], effects: [] },
+      {
+        ...(save.mornings[1] as RunState),
+        scenes: ['scene.d2.morning'],
+      },
+    );
+    expect(restarted.journal?.filter((e) => e.scene === 'scene.d2.morning').map((e) => e.choices)).toEqual([[3]]);
+  });
+});
+
+describe('story threads', () => {
+  it('lists the threads whose conditions hold, with their counts', () => {
+    const run = newRun(full, 'threads');
+    expect(threadsInPlay(run, full)).toEqual([]);
+    const later = { ...run, day: 17, flags: { loki_deal: 1, truth: 2, owes_skogul: 0 } };
+    const ids = threadsInPlay(later, full).map((th) => th.id);
+    expect(ids).toContain('thread.lokiDeal');
+    expect(ids).not.toContain('thread.owesSkogul');
+    expect(threadsInPlay(later, full).find((th) => th.id === 'thread.truth')).toMatchObject({ n: 2 });
   });
 });
 

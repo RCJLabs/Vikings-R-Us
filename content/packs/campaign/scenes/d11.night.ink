@@ -46,7 +46,7 @@ You would know. You spent the afternoon dropping tallies like that into a basket
 - else:
   At the bottom there's a line about Asa's cough, which is no better, and a healer in the next valley who knows winter fevers. She wants fifteen rings to come, and says that afterwards Asa will be well for the rest of the winter.
 }
-* { rings() >= 15 } [Send the fifteen rings for the healer.]
+* [Send the fifteen rings for the healer. #needs: rings 15]
   # fx: rings -15
   # fx: family sister well
   You send them tonight. The raven looks at the weight of the packet, and then at you, and goes.

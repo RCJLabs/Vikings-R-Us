@@ -244,5 +244,15 @@
   "tl.cause.battle.3": "Fell with the host at {place}.",
   "tl.grip.weapon.2": "Held {weapon} to the last.",
   "tl.fled.false.2": "Never showed the foe their back.",
-  "tl.outlaw.false.2": "Broke no oath, sworn or spoken."
+  "tl.outlaw.false.2": "Broke no oath, sworn or spoken.",
+  "thread.owesSkogul": "You owe Skögul the ten rings she advanced you.",
+  "thread.ulfDebt": "Ulf still owes the jarl his share of the smith's fine.",
+  "thread.ulfShipyard": "Ulf is shaping planks at a shipyard in the north, for a man with very clean hands.",
+  "thread.lokiDeal": "The man with the scarred lips has your family's names, and room for them on his ship.",
+  "thread.ferry": "The ferryman at the mouth of the fjord is holding places for your family. He wants a hundred rings more on the day the horn blows.",
+  "thread.woodKnown": "Thorvald told you of Hoddmímir's wood, where nothing can find you.",
+  "thread.wood": "Your family will wait out the end in Hoddmímir's wood.",
+  "thread.stayHome": "Your family will stay home when the horn blows, together.",
+  "thread.clerkContract": "You've signed the clerk's contract: a table in his department when the horn blows.",
+  "thread.truth": "You've heard {n, plural, one {one thing} other {# things}} about what comes after the fire."
 }

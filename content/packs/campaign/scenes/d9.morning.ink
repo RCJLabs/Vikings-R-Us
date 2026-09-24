@@ -18,7 +18,7 @@ No decree this morning. The quartermaster has sent a blank strip of birch bark i
 === debt ===
 She takes out a small book and opens it at a page with your name on it, and a 10, and nothing else.
 "I'm not a jarl. But I write things down." # speaker: skogul
-* { rings() >= 10 } [Pay her back now.]
+* [Pay her back now. #needs: rings 10]
   # fx: rings -10
   # fx: flag owes_skogul = 0
   You count ten rings onto the table. She sweeps them into her pouch without counting them again and draws a line through the page.

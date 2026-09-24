@@ -17,7 +17,7 @@ EXTERNAL rings()
   Your aunt writes for Asa. A ferryman at the mouth of the fjord says there's a shore the wolf will never reach. Twenty rings now to hold a place, a hundred more on the day the horn blows.
 }
 You don't know. Nobody at the gate has ever mentioned a shore. But nobody at the gate ever mentions anything.
-* { rings() >= 20 } [Send twenty rings for a place on the ferry.]
+* [Send twenty rings for a place on the ferry. #needs: rings 20]
   # fx: rings -20
   # fx: flag ferryman
   You wrap the rings in your answer. A hundred more by the day the horn blows. You start counting before the raven's out of sight.

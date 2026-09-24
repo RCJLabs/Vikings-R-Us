@@ -31,7 +31,7 @@ You sit with it until the lamp burns low.
 * { flag("ferryman") } [The ferry.]
   # fx: flag loki_deal = 0
   You write that they should be at the mouth of the fjord when the horn blows, with warm clothes and the hundred rings you'll send. A hundred rings. You count what you have, and then count it again, as if it might have changed.
-* { not flag("ferryman") && rings() >= 20 } [The ferry. Send twenty rings for a place.]
+* { not flag("ferryman") } [The ferry. Send twenty rings for a place. #needs: rings 20]
   # fx: rings -20
   # fx: flag ferryman
   # fx: flag loki_deal = 0

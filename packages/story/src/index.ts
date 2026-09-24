@@ -1,4 +1,4 @@
-import { type Effect, type Faction, fnv1a32, type RunState } from '@cots/engine';
+import { type Effect, type Faction, fnv1a32, type JournalEntry, type RunState } from '@cots/engine';
 import { Story } from 'inkjs';
 
 /*
@@ -52,12 +52,50 @@ export function sceneEnv(run: RunState, sceneId: string): SceneEnv {
   };
 }
 
+/** The view a scene had when it was played, as the journal kept it, so it plays out the same again. */
+export function journalEnv(runSeed: string, entry: JournalEntry): SceneEnv {
+  return {
+    seed: fnv1a32(`${runSeed}|${entry.day}|${entry.scene}`),
+    day: entry.day,
+    rings: entry.rings,
+    flags: entry.flags,
+    standing: entry.standing,
+    family: entry.family,
+  };
+}
+
+/** An option on offer. One the run can't afford (`#needs: rings N`) is shown, but can't be taken. */
+export interface SceneChoice {
+  readonly text: string;
+  /** Rings the option needs, from its `needs:` tag. */
+  readonly rings?: number;
+  readonly locked: boolean;
+}
+
+/**
+ * Parses a `needs:` tag, written inside a choice's brackets: `* [Send twenty rings. #needs: rings 20]`.
+ * Returns null for tags that aren't needs, and throws on a malformed one.
+ */
+export function parseNeeds(tag: string): { rings: number } | null {
+  const m = /^\s*needs:\s*(.*)$/.exec(tag);
+  if (!m) return null;
+  const n = /^rings\s+(\d+)$/.exec((m[1] ?? '').trim());
+  if (!n) throw new Error(`malformed needs tag "${tag}" (write "needs: rings 20")`);
+  return { rings: Number(n[1]) };
+}
+
+function choiceOf(c: { readonly text: string; readonly tags: string[] | null }, env: SceneEnv): SceneChoice {
+  let rings: number | undefined;
+  for (const t of c.tags ?? []) rings = parseNeeds(t)?.rings ?? rings;
+  return { text: c.text, ...(rings !== undefined ? { rings } : {}), locked: rings !== undefined && env.rings < rings };
+}
+
 export interface SceneFrame {
   /** The scene is marked `# draft` at its top: placeholder writing. */
   readonly draft: boolean;
   readonly lines: readonly SceneLine[];
-  /** The choices waiting now; empty when the scene has ended. */
-  readonly choices: readonly string[];
+  /** The options on offer now, locked ones included; empty when the scene has ended. */
+  readonly choices: readonly SceneChoice[];
   /** Everything the scene does, in order, from all `# fx:` tags seen so far. */
   readonly effects: readonly Effect[];
   readonly done: boolean;
@@ -149,10 +187,12 @@ export function playScene(json: string | object, env: SceneEnv, choices: readonl
     pending = [];
     const open = story.currentChoices;
     if (open.length === 0) return { draft, lines, choices: [], effects, done: true };
-    if (i >= choices.length) return { draft, lines, choices: open.map((c) => c.text), effects, done: false };
+    const offered = open.map((c) => choiceOf(c, env));
+    if (i >= choices.length) return { draft, lines, choices: offered, effects, done: false };
     const pick = choices[i++] as number;
     const picked = open[pick];
     if (!picked) throw new RangeError(`choice ${pick} of ${open.length}`);
+    if (offered[pick]?.locked) throw new RangeError(`choice ${pick} needs more rings than the run has`);
     lines.push({ text: picked.text.trim(), tags: [], chosen: true });
     story.ChooseChoiceIndex(pick);
   }
@@ -172,7 +212,8 @@ export interface ScenePath {
 export function scenePaths(json: string | object, env: SceneEnv, limit = 500): ScenePath[] {
   const story = typeof json === 'string' ? new Story(json) : new Story(json as Record<string, unknown>);
   bind(story, env);
-  const play = (choices: readonly number[]): { open: number; effects: Effect[] } => {
+  /** Plays `choices`, then says which options are open next (none at the end) and what happened. */
+  const play = (choices: readonly number[]): { open: number[]; effects: Effect[] } => {
     story.ResetState();
     story.state.storySeed = env.seed;
     const effects: Effect[] = [];
@@ -185,8 +226,14 @@ export function scenePaths(json: string | object, env: SceneEnv, limit = 500): S
           if (fx) effects.push(fx);
         }
       }
-      const open = story.currentChoices.length;
-      if (open === 0 || i >= choices.length) return { open, effects };
+      const offered = story.currentChoices.map((c) => choiceOf(c, env));
+      if (offered.length === 0 || i >= choices.length) {
+        const open = offered.flatMap((c, k) => (c.locked ? [] : [k]));
+        if (offered.length > 0 && open.length === 0) {
+          throw new Error(`after choices [${choices.join(', ')}] every option needs more rings than the run has`);
+        }
+        return { open, effects };
+      }
       story.ChooseChoiceIndex(choices[i++] as number);
     }
   };
@@ -194,11 +241,11 @@ export function scenePaths(json: string | object, env: SceneEnv, limit = 500): S
   const visit = (choices: number[]): void => {
     if (paths.length >= limit) throw new Error(`more than ${limit} paths`);
     const { open, effects } = play(choices);
-    if (open === 0) {
+    if (open.length === 0) {
       paths.push({ choices, effects });
       return;
     }
-    for (let i = 0; i < open; i++) visit([...choices, i]);
+    for (const k of open) visit([...choices, k]);
   };
   visit([]);
   return paths;

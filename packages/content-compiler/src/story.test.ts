@@ -68,6 +68,8 @@ describe('compiling a scene', () => {
       '* Pay [up] now\n  Paid.\n',
       /line 1: write a choice as \[its whole text\]/,
     ],
+    ['a cost outside an option', 'Hello. #needs: rings 5\n', /line 1: put a needs tag inside the option's brackets/],
+    ['a malformed cost', '* [Pay. #needs: 5 rings]\n  Paid.\n', /line 1: malformed needs tag/],
   ])('rejects %s', (_, source, error) => {
     expect(() => compileScene('x/d9.test.ink', source)).toThrow(error);
   });

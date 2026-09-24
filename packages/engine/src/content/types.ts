@@ -474,6 +474,18 @@ export interface CampaignDef {
   readonly worthy: string;
   /** Who a power seems to be before the story names it (the stranger is Loki until Day 12). */
   readonly aliases?: readonly FactionAlias[];
+  /** What the journal lists as still in play (Loki's deal, the ferry, the wood), in order. */
+  readonly threads?: readonly ThreadDef[];
+}
+
+/** A story thread the journal lists while `when` holds. */
+export interface ThreadDef {
+  readonly id: string;
+  readonly when: StatePred;
+  /** A string key; its `{n}` is the value of `count`, when given. */
+  readonly text: string;
+  /** A run-state path (as endings read) whose value the text shows as `{n}`. */
+  readonly count?: string;
 }
 
 /** A power's name (a string key) until the day the story gives its real one. */

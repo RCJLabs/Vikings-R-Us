@@ -87,6 +87,14 @@ test('a first day: morning scene, a shift judged rightly, the audit, the night, 
 
   await expect(page.getByTestId('night-title')).toHaveText('Night 1');
   await playScene(page);
+  // The journal keeps the day's scenes, the choices made in them, and letters once read.
+  await page.getByTestId('journal-open').click();
+  await expect(page.getByTestId('journal-day')).toHaveCount(1);
+  await expect(page.getByTestId('journal-scene')).toHaveCount(2);
+  await expect(page.getByTestId('journal-scene').first()).toContainText('Skögul');
+  await expect(page.getByTestId('journal').locator('.scene__line--chosen')).toHaveCount(2);
+  await page.getByTestId('journal-close').click();
+  await expect(page.getByTestId('journal')).toHaveCount(0);
   // Hearth 6, food 3 for each of three: 40 - 15.
   await expect(page.getByTestId('after-bills')).toHaveText('After tonight: 25 rings');
   await page.getByTestId('buy-up.meadHorn').click();
@@ -101,6 +109,44 @@ test('a first day: morning scene, a shift judged rightly, the audit, the night, 
   await page.getByTestId('continue-0').click();
   await expect(page.getByTestId('morning-title')).toHaveText('Day 2');
   await expect(page.getByTestId('scene')).toBeVisible();
+  // After a reload the journal still has Day 1 (today has nothing in it yet, so Day 1 is open).
+  await page.getByTestId('journal-open').click();
+  await expect(page.getByTestId('journal-day').locator('summary')).toHaveText(['Day 1']);
+  await expect(page.getByTestId('journal-scene')).toHaveCount(2);
+  await page.getByTestId('journal-close').click();
+  await expect(page.getByTestId('scene')).toBeVisible();
+});
+
+test('an option the purse can’t cover stays in sight, locked, with what it needs', async ({ page }) => {
+  await openCampaign(page);
+  await page.getByTestId('new-1').click();
+  await playScene(page);
+  await page.getByTestId('to-gate').click();
+  await judgeAll(page, 1);
+  await page.getByTestId('go-home').click();
+  await playScene(page);
+  await page.getByTestId('sleep').click();
+  await expect(page.getByTestId('morning-title')).toHaveText('Day 2');
+  // Empty the purse in the saved Day 2 morning, so tonight's letter asks for five rings the run hasn't got.
+  await page.evaluate((key) => {
+    const record = JSON.parse(localStorage.getItem(key) ?? 'null');
+    record.rev += 1;
+    record.save.mornings[record.save.mornings.length - 1].rings = -100;
+    localStorage.setItem(key, JSON.stringify(record));
+  }, 'cots.campaign.1');
+  await page.reload();
+  await openCampaign(page);
+  await page.getByTestId('continue-1').click();
+  await playScene(page);
+  await page.getByTestId('to-gate').click();
+  await judgeAll(page, 1);
+  await page.getByTestId('go-home').click();
+  const locked = page.getByTestId('scene-choice-locked');
+  await expect(locked).toHaveCount(1);
+  await expect(locked).toBeDisabled();
+  await expect(locked).toContainText(/Send five rings\. \(5 rings; you have -\d+\)/);
+  await page.getByTestId('scene-choice').first().click();
+  await expect(page.getByTestId('scene-done')).toBeVisible();
 });
 
 test('a reload mid-shift resumes paused on the same soul; a day can be replayed from its morning', async ({ page }) => {

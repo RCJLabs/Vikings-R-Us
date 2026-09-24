@@ -440,5 +440,8 @@ export const CampaignPartSchema = z.strictObject({
   shop: z.array(UpgradeSchema).optional(),
   endings: z.array(EndingSchema).optional(),
   aliases: z.array(z.strictObject({ faction: FactionSchema, name: Key, untilDay: Day })).optional(),
+  threads: z
+    .array(z.strictObject({ id: Id, when: StatePredSchema, text: Key, count: z.string().optional() }))
+    .optional(),
 });
 export type CampaignPart = z.infer<typeof CampaignPartSchema>;

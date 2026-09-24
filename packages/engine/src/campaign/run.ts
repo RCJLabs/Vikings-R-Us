@@ -24,7 +24,7 @@ import {
   stepShift,
   type Verdict,
 } from '../shift/shift';
-import { type Bills, type DayLedger, evalState, type FamilyMember, type RunState } from './state';
+import { type Bills, type DayLedger, evalState, type FamilyMember, type RunState, stateValue } from './state';
 
 /*
  * The campaign's day loop (docs/tech-spec.md §4):
@@ -220,6 +220,13 @@ export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
     if (made.ok) cases.splice(Math.min(slot.at, cases.length), 0, made.case);
   }
   return cases;
+}
+
+/** The story threads still in play for the journal: each text key, with `{n}` when it counts something. */
+export function threadsInPlay(run: RunState, content: Content): { id: string; text: string; n?: number }[] {
+  return (content.campaign?.threads ?? [])
+    .filter((th) => evalState(th.when, run))
+    .map((th) => ({ id: th.id, text: th.text, ...(th.count ? { n: stateValue(run, th.count) } : {}) }));
 }
 
 /** What stamping a story soul `stamped` does to the story (nothing for a generated soul). */

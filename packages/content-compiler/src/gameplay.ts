@@ -143,7 +143,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     for (let i = parts.length - 1; i >= 0; i--) if (parts[i]?.[k] !== undefined) return parts[i]?.[k];
     return undefined;
   };
-  const all = <K extends 'standing' | 'shop' | 'endings' | 'aliases'>(k: K) =>
+  const all = <K extends 'standing' | 'shop' | 'endings' | 'aliases' | 'threads'>(k: K) =>
     parts.flatMap((p) => (p[k] ?? []) as NonNullable<CampaignPart[K]>[number][]);
   const required = ['lastDay', 'finale', 'startRings', 'family', 'draupnir', 'debtFloor', 'care', 'worthy'] as const;
   const missing = required.filter((k) => last(k) === undefined);
@@ -165,6 +165,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     shop: all('shop'),
     endings: all('endings'),
     ...(all('aliases').length > 0 ? { aliases: all('aliases') } : {}),
+    ...(all('threads').length > 0 ? { threads: all('threads') } : {}),
   };
 }
 
@@ -554,6 +555,16 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (e.when) walk(e.when, `ending ${e.id}`);
   }
   if (!endingIds.has(c.finale)) problems.push(`The campaign's finale "${c.finale}" isn't an ending.`);
+  const threadIds = new Set<string>();
+  for (const th of c.threads ?? []) {
+    if (threadIds.has(th.id)) problems.push(`Duplicate thread "${th.id}".`);
+    threadIds.add(th.id);
+    key(th.text, `thread ${th.id}`);
+    walk(th.when, `thread ${th.id}`);
+    if (th.count !== undefined && !STATE_PATHS.test(th.count)) {
+      problems.push(`thread ${th.id} counts unknown run state "${th.count}".`);
+    }
+  }
   if (!content.predicates.some((p) => p.id === c.worthy)) {
     problems.push(`The campaign's worthy predicate "${c.worthy}" doesn't exist.`);
   }

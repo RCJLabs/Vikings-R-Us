@@ -9,7 +9,7 @@ Ulf's letter is short, and the hand isn't as square as usual.
 "The jarl says whoever carved them pays a share of the fine: fifteen rings by the new moon, or he names me at the Thing. You know what happens to men who are named." # speaker: ulf
 You do. Their names go in a ledger taller than the clerk who carries it.
 "Don't tell Mother. She thinks I'm still sweeping." # speaker: ulf
-* { rings() >= 15 } [Send the fifteen rings.]
+* [Send the fifteen rings. #needs: rings 15]
   # fx: rings -15
   # fx: flag ulf_fine_paid
   You count them out twice and wrap them tight in your answer so they won't clink on the raven's leg. It's most of what you had put by. Ulf will know that.
