@@ -1,7 +1,8 @@
 # Privacy (Daily Shift alpha)
 
-Chooser of the Slain runs in your browser and keeps your settings, Daily results
-and an unfinished Daily in your browser's storage on your device. There are no
+Chooser of the Slain runs in your browser and keeps your settings, your Daily and
+Endless results, your campaign saves and any unfinished Daily or Endless run in
+your browser's storage on your device. There are no
 accounts, ads or third-party trackers. The page is served by GitHub Pages or
 itch.io, which, like any web host, see your IP address when you load it.
 
