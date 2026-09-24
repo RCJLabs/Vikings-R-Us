@@ -170,36 +170,50 @@ function wrongGrip(x: number, y: number): string {
   ].join('');
 }
 
+/**
+ * The rune-lens over the blade's inscription: the lens sits beside the blade on the side toward the
+ * body (so it stays in the frame whichever hand holds it), upright however the weapon leans, with the
+ * owner's name above and the maker's mark below.
+ */
 function runeReading(
   x: number,
   y: number,
+  lean: number,
   inscription: Value | undefined,
   mark: Value | undefined,
   kind: WeaponKind,
 ): string {
-  const top = y + BLADE_Y[kind] - 14;
+  // Where the inscription has gone as the weapon leans about the fist at (x, y).
+  const along = BLADE_Y[kind];
+  const sin = lean < 0 ? -LEAN_SIN : lean > 0 ? LEAN_SIN : 0;
+  const cos = lean === 0 ? 1 : LEAN_COS;
+  const inward = x < CX ? 1 : -1;
+  const lx = r2(x - along * sin + 18 * inward);
+  const ly = r2(y + along * cos);
   const staves = (seed: string, x0: number, y0: number) =>
     [...seed]
       .map((ch, i) => {
-        const cx = x0 + i * 5.5;
+        const cx = r2(x0 + i * 5.5);
         const k = ch.charCodeAt(0) % 3;
         const branch =
           k === 0
-            ? `M${cx} ${y0 + 2}L${cx + 3} ${y0 - 1}`
+            ? `M${cx} ${r2(y0 + 2)}L${r2(cx + 3)} ${r2(y0 - 1)}`
             : k === 1
-              ? `M${cx} ${y0 + 5}L${cx - 3} ${y0 + 2}`
-              : `M${cx - 2} ${y0 + 3}L${cx + 2} ${y0 + 3}`;
-        return `<path d="M${cx} ${y0 - 3}V${y0 + 8}${branch}" stroke="${INK}" stroke-width="1.5" fill="none"/>`;
+              ? `M${cx} ${r2(y0 + 5)}L${r2(cx - 3)} ${r2(y0 + 2)}`
+              : `M${r2(cx - 2)} ${r2(y0 + 3)}L${r2(cx + 2)} ${r2(y0 + 3)}`;
+        return `<path d="M${cx} ${r2(y0 - 3)}V${r2(y0 + 8)}${branch}" stroke="${INK}" stroke-width="1.5" fill="none"/>`;
       })
       .join('');
   const owner = inscription === 'other' ? 'xqzv' : inscription === 'own' ? 'amik' : '';
   const maker = mark === 'markTrue' ? '+vlfberh+t' : mark === 'markCopy' ? '+vlfberht+' : '';
+  // The handle points down and away from the blade.
+  const handle = `M${r2(lx + 18 * inward)} ${r2(ly + 20)}L${r2(lx + 32 * inward)} ${r2(ly + 34)}`;
   return [
-    `<path d="M${x + 36} ${top + 34}L${x + 50} ${top + 48}" stroke="${INK}" stroke-width="9" stroke-linecap="round"/>`,
-    `<path d="M${x + 36} ${top + 34}L${x + 50} ${top + 48}" stroke="${WOOD}" stroke-width="5" stroke-linecap="round"/>`,
-    `<circle cx="${x + 18}" cy="${top + 14}" r="24" fill="${PAPER}" fill-opacity="0.9" ${OUTLINE}/>`,
-    owner ? staves(owner, x + 6, top + 4) : '',
-    maker ? staves(maker.slice(-6), x + 2, top + 19) : '',
+    `<path d="${handle}" stroke="${INK}" stroke-width="9" stroke-linecap="round"/>`,
+    `<path d="${handle}" stroke="${WOOD}" stroke-width="5" stroke-linecap="round"/>`,
+    `<circle cx="${lx}" cy="${ly}" r="24" fill="${PAPER}" fill-opacity="0.9" ${OUTLINE}/>`,
+    owner ? staves(owner, lx - 12, ly - 10) : '',
+    maker ? staves(maker.slice(-6), lx - 16, ly + 5) : '',
   ].join('');
 }
 
@@ -329,8 +343,14 @@ function fist(t: string, long: boolean): string {
   return `<g ${t}>${parts.join('')}</g>`;
 }
 
-/** How far a weapon seen from behind leans out from the fist, in degrees, to show past the arm. */
-const BACK_LEAN = 14;
+/**
+ * How far a held weapon leans out from the fist, away from the body, in degrees: the same seen from the
+ * front and from behind, where it has to show past the arm. Its sine and cosine, for what follows the
+ * blade (the rune-lens).
+ */
+const LEAN = 14;
+const LEAN_SIN = 0.2419;
+const LEAN_COS = 0.9703;
 
 /** The fist's palm and heel, which the fingers and thumb close over. */
 const FIST = 'M-10 -4Q-10 -8 -6 -8H6Q11 -8 11 -2V10Q11 15 6 15H-5Q-10 15 -10 11Z';
@@ -398,13 +418,12 @@ function figure(scene: BodyScene, uid: string): string {
   const weaponHand = grip === 'weapon' ? (scene.obs.gripHand === 'left' ? 'L' : 'R') : null;
   const kind = weaponKind(scene.weapon);
   const wx = weaponHand === 'L' ? hp.L : hp.R;
+  // The weapon leans out from the fist, away from the body, seen from either side.
+  const lean = wx < CX ? -LEAN : LEAN;
+  const held = (svg: string) => `<g transform="rotate(${lean} ${wx} ${hp.y})">${svg}</g>`;
   // From behind, the arm is between the viewer and the weapon: the weapon goes down first, under the
-  // wrist and the sleeve, leaning out from the fist so it shows past the arm. (From the front it goes
-  // over them, upright, after the torso.)
-  if (weaponHand && !front) {
-    const lean = wx < CX ? -BACK_LEAN : BACK_LEAN;
-    parts.push(`<g transform="rotate(${lean} ${wx} ${hp.y})">${weapon(kind, wx, hp.y, wx < CX ? -1 : 1)}</g>`);
-  }
+  // wrist and the sleeve. (From the front it goes over them, after the torso.)
+  if (weaponHand && !front) parts.push(held(weapon(kind, wx, hp.y, wx < CX ? -1 : 1)));
   const long = front && scene.obs.nails === true && !scene.tools.includes('clippers');
   const arms = (['R', 'L'] as const).map((side) => {
     const x = side === 'L' ? hp.L : hp.R;
@@ -464,12 +483,13 @@ function figure(scene: BodyScene, uid: string): string {
   );
   if (front) parts.push(`<path d="M172 118Q178 108 180 96" fill="none" stroke="url(#wc-hatch)" stroke-width="10"/>`);
 
-  // The weapon under the fist, from the front; the wrap and the rune readings are front-view signs.
+  // The weapon under the fist, from the front, with any wrap on its grip; the wrap and the rune readings
+  // are front-view signs.
   if (weaponHand && front) {
-    parts.push(weapon(kind, wx, hp.y, wx < CX ? -1 : 1));
-    if (scene.cues.includes('wrongGrip')) parts.push(wrongGrip(wx, hp.y));
+    const wrap = scene.cues.includes('wrongGrip') ? wrongGrip(wx, hp.y) : '';
+    parts.push(held(weapon(kind, wx, hp.y, wx < CX ? -1 : 1) + wrap));
     if (scene.tools.includes('runeLens')) {
-      parts.push(runeReading(wx, hp.y, scene.obs.inscription, scene.obs.makersMark, kind));
+      parts.push(runeReading(wx, hp.y, lean, scene.obs.inscription, scene.obs.makersMark, kind));
     }
   }
   for (const a of arms) {

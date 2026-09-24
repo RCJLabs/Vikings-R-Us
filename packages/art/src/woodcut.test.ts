@@ -42,7 +42,36 @@ describe('woodcut body art', () => {
     expect(blade(back)).toBeGreaterThan(0);
     expect(blade(back)).toBeLessThan(sleeve);
     expect(blade(front)).toBeGreaterThan(front.indexOf('stroke-width="30"'));
-    expect(back).toMatch(/rotate\(14 /);
+  });
+
+  it('leans the weapon out from the fist, away from the body, the same from either side', () => {
+    // The right hand is on the viewer's left from the front and on the right from behind.
+    expect(woodcutBody.draw(scene('front', 'weapon'))).toMatch(/rotate\(-14 /);
+    expect(woodcutBody.draw(scene('back', 'weapon'))).toMatch(/rotate\(14 /);
+  });
+
+  it('keeps the rune-lens beside the leaning blade and inside the frame, for every build, hand and weapon', () => {
+    for (const build of ['lean', 'broad', 'heavy'] as const) {
+      for (const gripHand of ['right', 'left'] as const) {
+        for (const weapon of ['axe', 'sword', 'spear', 'seax']) {
+          const s = scene('front', 'weapon');
+          const svg = woodcutBody.draw({
+            ...s,
+            look: { ...s.look, build },
+            obs: { ...s.obs, gripHand, inscription: 'own', makersMark: 'markTrue' },
+            tools: ['runeLens'],
+            weapon,
+          });
+          const lens = /<circle cx="([\d.]+)" cy="([\d.]+)" r="24"/.exec(svg);
+          const where = `${build} ${gripHand} ${weapon}`;
+          expect(lens, where).not.toBeNull();
+          const [cx, cy] = [Number(lens?.[1]), Number(lens?.[2])];
+          expect(cx - 24, where).toBeGreaterThan(11);
+          expect(cx + 24, where).toBeLessThan(289);
+          expect(cy - 24, where).toBeGreaterThan(11);
+        }
+      }
+    }
   });
 
   it('keeps the weapon off the back view hotspots: a back-view tap reveals only the back', () => {

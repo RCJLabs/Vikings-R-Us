@@ -13,7 +13,8 @@ The art draws dead souls standing at a gate. The game reads **signs** off the bo
 - front wound sites (128, 216), (168, 238), (142, 262); back (130, 208), (170, 232), (150, 258);
 - neck items: ornament centred at x 150, amulet on its own cord at x ≈ 128, broken oath-ring at x ≈ 180;
 - hotspot regions: hair, face, neck, chest, each hand, and the back.
-- the back view is the same soul turned round: the weapon hand is on the other side of the frame, the fist shows its back (knuckles down the outer side, no fingers or thumb), and the weapon passes behind the forearm, leaning out enough to show. The weapon is not a sign from behind; it's there so the body doesn't change when it's turned.
+- a held weapon leans out from the fist, away from the body (14° in the woodcut), the same from the front and from behind, so it shows past the arm. The rune-lens reading sits beside the blade on the side toward the body, upright.
+- the back view is the same soul turned round: the weapon hand is on the other side of the frame, the fist shows its back (knuckles down the outer side, no fingers or thumb), and the weapon passes behind the forearm. The weapon is not a sign from behind; it's there so the body doesn't change when it's turned.
 
 **Sizes it is seen at** (CSS pixels, measured in the game):
 
