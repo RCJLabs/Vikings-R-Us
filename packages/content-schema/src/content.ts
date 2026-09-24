@@ -211,6 +211,7 @@ export const ArchetypeSchema: z.ZodType<ArchetypeDef> = z.strictObject({
   truth: z.record(z.string(), TruthConstraintSchema),
   require: z.array(PredSchema).optional(),
   lies: z.array(LieSpecSchema),
+  words: z.record(z.string(), z.string().min(1)).optional(),
 });
 
 const SpeechSlotNameSchema = z.enum([
@@ -405,6 +406,7 @@ export const ScriptedCaseSchema: z.ZodType<ScriptedCaseDef> = z.strictObject({
   lies: z.array(LieSpecSchema),
   look: LookSchema,
   lines: z.array(Key).min(1).optional(),
+  words: z.record(z.string(), z.string().min(1)).optional(),
   expect: DestinationSchema,
   when: StatePredSchema.optional(),
   onStamp: z

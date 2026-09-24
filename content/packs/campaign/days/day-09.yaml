@@ -17,6 +17,8 @@ params:
       - { id: whim.amber, text: whim.amber, is: { fact: ornament, is: amber } }
 queue:
   count: [12, 14]
+  scripted:
+    - { case: case.thorvald9, at: 3 }
   archetypes:
     - { id: arch.honest_warrior, w: 3 }
     - { id: arch.freyja_pick, w: 2 }

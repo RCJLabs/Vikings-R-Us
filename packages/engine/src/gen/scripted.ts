@@ -29,6 +29,7 @@ export function scriptedCase(def: ScriptedCaseDef, ctx: DayCtx, runSeed: string,
     truth: def.truth,
     ...(def.require ? { require: def.require } : {}),
     lies: def.lies,
+    ...(def.words ? { words: def.words } : {}),
   };
   const knobs = tierKnobs('widenBand', ctx.spec.queue.knobs);
   let why = 'no attempts';

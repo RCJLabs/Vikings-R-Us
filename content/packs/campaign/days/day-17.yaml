@@ -1,6 +1,6 @@
 # Day 17: the spear-mark loophole. A straw death marked for Odin before death goes to Valhalla.
 day: 17
-sunS: 880
+sunS: 910
 decree: decree.d17
 scenes: { morning: scene.d17.morning, night: scene.d17.night }
 economy:
@@ -22,6 +22,8 @@ params:
 queue:
   count: [13, 15]
   teachFirst: arch.spear_marked
+  scripted:
+    - { case: case.thrand, at: 5 }
   archetypes:
     - { id: arch.honest_warrior, w: 2 }
     - { id: arch.freyja_pick, w: 2 }

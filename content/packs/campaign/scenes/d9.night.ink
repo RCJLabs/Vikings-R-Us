@@ -4,10 +4,16 @@ EXTERNAL flag(name)
 EXTERNAL home(id)
 { not home("brother"): -> without_ulf }
 Ulf has written on both sides of the bark and down the edges.
+{ flag("ulf_fine_paid") || flag("ulf_debt"):
+  "Hallbjorn died in the fighting yesterday. The jarl's cousin was next to him, and came home with a bent sword and a great deal to say about it. The smithy's shut for good." # speaker: ulf
+}
 "Good news, for once. I've been offered work." # speaker: ulf
 "A shipyard in the north, past the last farms. They want men who can shape a plank and carve a straight line, and they pay in advance: a month's silver before I've lifted an adze." # speaker: ulf
 { flag("ulf_debt"):
   "It would pay the jarl his fine, with some over. I could stop dreading the Thing." # speaker: ulf
+}
+{ flag("ulf_fine_paid"):
+  "The fine's paid, thanks to you, so the silver would be ours. For the winter, and a bit over for Asa." # speaker: ulf
 }
 "The man who hired me was very courteous. He had the cleanest hands I've ever seen on a shipwright. He sends you his regards. He said you'd know him." # speaker: ulf
 { home("mother"):

@@ -1,9 +1,10 @@
 import { loadContent } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
-import type { Content, Destination, Effect } from '../content/types';
+import type { Content, Destination, Effect, ScriptedCaseDef } from '../content/types';
 import { generateDay } from '../gen/generate';
-import type { DayCtx } from '../logic/context';
+import { scriptedCase } from '../gen/scripted';
+import { createDayContext, type DayCtx } from '../logic/context';
 import {
   billForecast,
   campaignOf,
@@ -589,6 +590,37 @@ describe('story souls', () => {
     expect(ta?.evidence.fields.filter((f) => f.text?.msg.startsWith('case.thorvald1.'))).toHaveLength(3);
     expect(ta?.id).not.toBe(tb?.id);
     expect({ ...ta, id: '' }).toEqual({ ...tb, id: '' });
+  });
+
+  it('says the words a story soul fixes in every line, unless a fact fixes another', () => {
+    const weapons = (c: { evidence: { fields: readonly { text?: { params: Record<string, unknown> } }[] } }) =>
+      new Set(c.evidence.fields.flatMap((f) => (f.text?.params.weapon === undefined ? [] : [f.text.params.weapon])));
+    const made = (def: ScriptedCaseDef, day: number) => {
+      const m = scriptedCase(def, createDayContext(full, day, 'w'), 'w', 0);
+      if (!m.ok) throw new Error(m.why);
+      return m.case;
+    };
+    const days = new Map(full.days.flatMap((d) => (d.queue.scripted ?? []).map((s) => [s.case, d.day] as const)));
+    let named = 0;
+    for (const def of full.scripted ?? []) {
+      const word = def.words?.['pool.weapons'];
+      if (!word) continue;
+      const c = made(def, days.get(def.id) ?? 0);
+      expect(c.evidence.words, def.id).toEqual({ 'pool.weapons': word });
+      const said = weapons(c);
+      expect(
+        [...said].every((w) => w === word),
+        `${def.id} says ${[...said].join(', ')}`,
+      ).toBe(true);
+      named += said.size;
+    }
+    expect(named).toBeGreaterThan(0);
+    // Hallbjorn's copied Ulfberht is a sword, whatever the soul's words say.
+    const smith = full.scripted?.find((d) => d.id === 'case.hallbjorn_paid');
+    if (!smith) throw new Error('no smith');
+    expect(made({ ...smith, words: { 'pool.weapons': 'seax' } }, 8).evidence.words).toEqual({
+      'pool.weapons': 'sword',
+    });
   });
 
   it('leaves a story soul out when its condition fails', () => {

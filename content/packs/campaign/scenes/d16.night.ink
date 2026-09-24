@@ -13,6 +13,9 @@ EXTERNAL flag(name)
   "I'll come back tomorrow, shall I?" # speaker: thorvald
 }
 Skögul sits on the end of the table with her supper. Thorvald sits down next to her without being asked.
+{ flag("asked_twice"):
+  "You asked me once if anyone ever came back twice," Skögul says to you, as if he isn't there. "That's him. He comes back every time." # speaker: skogul
+}
 "I thought it was today. I was sure. I'd slept three nights in a wood up in the hills, and something came out of the trees and trod on me, and I thought, this is it, Thorvald." # speaker: thorvald
 "But nothing finds you in that wood. Not properly. Not even dying. Hoddmímir's wood, the old people call it." # speaker: thorvald
 Skögul stops chewing.

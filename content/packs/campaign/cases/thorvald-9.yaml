@@ -1,0 +1,18 @@
+# DRAFT writing. Thorvald the Unlucky's second visit, on Draupnir's day, if you
+# sent him home on Day 3 (thorvald_returned). Still not dead.
+id: case.thorvald9
+personas: [confused]
+truth:
+  alive: { is: true }
+  cause: { is: battle }
+  grip: { is: weapon }
+  weaponOwner: { is: self }
+  woundsFront: { is: 1 }
+  woundsBack: { is: 0 }
+  outlaw: { is: false }
+  nailsGrown: { is: false }
+lies: []
+look: { gender: m, name: Thorvald, patronym: Ketilsson, age: 31, build: broad, beard: braided }
+lines: [case.thorvald9.again, case.thorvald9.songs, case.thorvald9.seat]
+expect: RETURN
+when: { state: flags.thorvald_returned, gte: 1 }

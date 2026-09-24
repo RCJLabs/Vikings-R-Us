@@ -1,0 +1,18 @@
+# DRAFT writing. Day 5's story soul: a neighbour from home, drowned at the
+# herring. Someone from the valley at the gate, on Rán's first day. The
+# night's letter carries the news home (scene.d5.night).
+id: case.solveig
+personas: [honest]
+truth:
+  cause: { is: drowned }
+  grip: { is: none }
+  woundsFront: { is: 0 }
+  woundsBack: { is: 0 }
+  alive: { is: false }
+lies: []
+look: { gender: f, name: Solveig, patronym: Arnesdottir, age: 46, build: broad, beard: none }
+lines: [case.solveig.frown, case.solveig.herring, case.solveig.loom]
+words: { pool.weapons: seax }
+expect: RAN
+onStamp:
+  - { stamped: '*', effects: [{ flag: solveig_judged }] }

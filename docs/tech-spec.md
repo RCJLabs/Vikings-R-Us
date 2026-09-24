@@ -1613,6 +1613,39 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - The review lives with one published artifact. Publishing again from another conversation without its link makes a new, empty one.
 - The page loads its fonts from Google Fonts, and uses system fonts when offline.
 
+## 32. After M7: more campaign (phase 2)
+
+**What changed**
+- **Ten story souls** (`content/packs/campaign/cases/`), each validated by the compiler on its day under every param choice (Freyja's whims, Odin's claims):
+
+  | Day | Soul | Comes when | Stamp | What it tests or pays off |
+  |---|---|---|---|---|
+  | 4 | Old Hrolf, who helped Ulf patch the roof | `roof_mended` (Day 2) | HEL | An honest straw death; the night's letter reports it |
+  | 5 | Solveig, a neighbour drowned at the herring | always | RÁN | Rán's first day; Ulf's letter carries the news |
+  | 8 | Hallbjorn, the smith from Day 7 | `ulf_fine_paid` or `ulf_debt` (two versions) | VALHALLA | A braggart swearing his copied Ulfberht is real |
+  | 9 | Thorvald's second visit | `thorvald_returned` (Day 3) | RETURN | Still alive |
+  | 10 | Bard, a shipwright from Ulf's yard | `ulf_shipyard` (Day 9) | RÁN, clipped | Drowned with long nails: the Naglfar decree |
+  | 13 or 15 | Bjarni, the tally carver from Day 11 | `reported_carver` set (Day 13, drowned by the jarl) or not (Day 15, old age) | RÁN or TRANSFER | His own forged tally claims a battle |
+  | 17 | Thrand, an old skald | always | VALHALLA | The spear mark |
+  | 19 | Halla, the midwife who delivered you | always | TRANSFER | Hel's hall is full |
+
+- **Sun.** Days 5, 17 and 19 always get a soul more, so they get 30 s more sun (570, 910, 950). A conditional soul adds a soul without adding sun, as Geir's and Loki's days do.
+- **Names.** Every story soul's name is in its pack's `names.reserved.*` pool, and the compiler now fails a story soul whose name isn't. The new names (Hrolf, Solveig, Hallbjorn, Bard, Bjarni, Thrand, Halla) aren't in the generated pools, so generated souls, the goldens and the Daily are unchanged.
+- **Words.** Archetypes and story souls take `words`, by pool (`{ pool.weapons: seax }`), which fix the words their generated lines use; the facts' own words still win (an Ulfberht is a sword). A fisherwoman no longer mentions "my sword". The compiler checks each word is in its pool, as it does for facts.
+- **Scenes.** Days 4–6 are fuller (about 860 words to 1,340), with the same choices and effects, so the bots choose as before. Lines across Days 4–19 now read the 22 flags nothing read (§31), and two new stamp flags (`hrolf_judged`, `solveig_judged`) keep a night from mentioning a soul you never judged. Day 6's night had said "You didn't see him" to a player who had judged Geir with a third stamp; it now reads `geir_judged`.
+- **The story script** says a comparison of two of the run's numbers in words ("letters_honest is more than letters_kind"), and the flag index has no flag left that's set but read nowhere.
+
+**Tests**
+- Compiler: a story soul with an unreserved name fails, and so do words from an unknown pool or a word its pool doesn't have.
+- Engine (`campaign/run.test.ts`): every story soul with `words` has them in its evidence and says no other weapon; a fact's words win over the soul's (Hallbjorn's copy stays a sword). Without the change, the test fails.
+- The compiler's check of each placed soul, which fails if a soul goes elsewhere (checked by sending Halla to HEL on Day 19: the build fails).
+- The campaign sims: the good bot isn't demoted, the bad bot is, and every ending is still reachable.
+
+**Known limits**
+- All the new writing is first draft, for review in the story script.
+- A story soul also says generated lines (how it died, its weapon, its back), fixed per content version and day param. Each new soul's lines were read together with its generated ones, and the clashes rewritten, but a later change to the templates can bring a new one. The script shows only the written lines.
+- The sims' story policies choose by effects. None pays 5 rings for the roof, so Old Hrolf never appears in the economy sims; the compiler still proves his day works.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

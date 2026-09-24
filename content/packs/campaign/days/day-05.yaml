@@ -1,5 +1,5 @@
 day: 5
-sunS: 540
+sunS: 570
 decree: decree.d5
 economy:
   wage: 7
@@ -17,6 +17,8 @@ params:
 queue:
   count: [9, 11]
   teachFirst: arch.drowned_raider
+  scripted:
+    - { case: case.solveig, at: 4 }
   archetypes:
     - { id: arch.honest_warrior, w: 3 }
     - { id: arch.freyja_pick, w: 2 }
