@@ -9,17 +9,19 @@ import {
   defaultBills,
   endingFor,
   factionKey,
+  hostMarks,
   newRun,
   type RunAction,
   type RunEnv,
   type RunEvent,
+  reachableEndings,
   shiftMods,
   stampEffects,
   stepRun,
   threadsInPlay,
 } from './run';
 import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
-import { factionsMet, type RunState } from './state';
+import { factionsMet, hostParts, type RunState, ragnarokStrength } from './state';
 
 const demo = loadContent('web-demo');
 const full = loadContent('dev-full');
@@ -553,6 +555,31 @@ describe('saves', () => {
       },
     );
     expect(restarted.journal?.filter((e) => e.scene === 'scene.d2.morning').map((e) => e.choices)).toEqual([[3]]);
+  });
+});
+
+describe('the Ragnarök report', () => {
+  it('breaks the host into its parts, which add up to its strength', () => {
+    let run = newRun(full, 'host');
+    for (let d = 1; d <= 3; d++) run = playDay(full, run, { wrong: (i) => i % 3 === 0 }).run;
+    const withNails = { ...run, naglfar: 4, sent: { ...run.sent, FOLKVANGR: 5, HEL: 7 } };
+    const p = hostParts(withNails);
+    expect(p).toMatchObject({ folkvangr: 5, hel: 7, naglfar: 4 });
+    expect(p.total).toBe(2 * p.worthy - p.unworthy + 2 * p.folkvangr + 2 * p.hel - 2 * p.naglfar);
+    expect(ragnarokStrength(withNails)).toBe(p.total);
+  });
+
+  it('lists the endings a run can reach, and what they ask of the host', () => {
+    expect(reachableEndings(demo).map((e) => e.id)).toEqual(['ending.demoted', 'ending.alone', 'ending.demoEnd']);
+    const full11 = reachableEndings(full).map((e) => e.id);
+    expect(full11).toHaveLength(11);
+    expect(full11).not.toContain('ending.demoEnd');
+    expect(full11.at(-1)).toBe('ending.lastStand');
+    expect(hostMarks(full)).toEqual([
+      { ending: 'ending.rebirth', atLeast: 260 },
+      { ending: 'ending.wolf', atMost: 240 },
+    ]);
+    expect(hostMarks(demo)).toEqual([]);
   });
 });
 

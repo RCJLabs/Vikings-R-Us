@@ -1389,6 +1389,22 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - Ink's word count reads a `needs` tag as words, so each adds about three to the scene word totals.
 - The threads name what's in play, not whether it will work: the ferry thread doesn't say whether you'll have the hundred rings. That's item 5's planning, not the journal's.
 
+## 22. After M7: the Ragnarök report, the endings gallery, branching replays (audit item 4)
+
+**What changed**
+- **The ending screen reports how the run stood.** The host at Ragnarök part by part (worthy einherjar twice over, the unworthy against, Freyja's host and Hel's legion twice over, Naglfar's nails against), adding up to the host; what the endings ask of it (read from their conditions by `hostMarks`, so the 260 and 240 come from `campaign.yaml`, not the UI); each power's standing at the end, with whoever was ahead of the rest; and where the souls went. The host section only appears in builds whose endings read the host (not the demo).
+- **Endings are kept per device.** Reaching an ending adds it to the device's settings (`endingsSeen`, any slot, any run; a slot that ended before this counts when it's opened). The slots screen lists the endings this build can reach (`reachableEndings`: those with a condition, and the finale), naming the ones found (their text behind a click) and not the rest. The report names an ending only once it's been found here: "An ending you haven't found: a host of 260 or more."
+- **A replay can branch.** Each slot offers "Replay here" (as before: the day starts again and the later days are forgotten) and "Replay in a new slot", which copies the save up to that morning into the first empty slot and leaves the original as it was. With every slot full the button is off, and the note says to empty one.
+
+**Tests**
+- Engine: the host's parts add up to its strength; the reachable endings of the demo (3) and the full game (11); the marks (the green earth at 260 or more, the wolf at 240 or less; none in the demo). The campaign sim's reach test now uses the same list.
+- e2e: the demo's ending reports standing and souls, counts 1 of 3, and the gallery names it alone; a replay in a new slot keeps the original at Day 2; in the full game, a quick Demoted ending shows the host and names neither unfound ending.
+
+**Known limits**
+- The marks give the host's part of an ending's condition only. The green earth asks for more (the wood, what you've learned, someone at home), which the report doesn't list, so as not to spell out endings not yet found.
+- Endings found are kept per device and browser, with the settings; a new browser starts the gallery again.
+- Replaying in a new slot needs an empty slot; there are three.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

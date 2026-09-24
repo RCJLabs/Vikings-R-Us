@@ -1,3 +1,4 @@
+import { reachableEndings } from '@cots/engine';
 import { describe, expect, it } from 'vitest';
 import { JUDGING, type Judging, type NightStrategy, simulateCampaign, simulateRun, storyPolicy } from './campaign-sim';
 import { loadContent, loadScenes } from './content';
@@ -67,8 +68,7 @@ describe('the endings', () => {
 
   it('covers every ending the full campaign can end on', () => {
     // Endings with a condition, and the finale; the demo's and the slice's finales end other runs.
-    const campaign = loadContent('dev-full').campaign;
-    const ids = (campaign?.endings ?? []).filter((e) => e.when || e.id === campaign?.finale).map((e) => e.id);
+    const ids = reachableEndings(loadContent('dev-full')).map((e) => e.id);
     expect(new Set(REACH.map(([e]) => e))).toEqual(new Set(ids));
   });
 });

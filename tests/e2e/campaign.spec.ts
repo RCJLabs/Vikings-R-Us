@@ -117,6 +117,26 @@ test('a first day: morning scene, a shift judged rightly, the audit, the night, 
   await expect(page.getByTestId('scene')).toBeVisible();
 });
 
+test('a day can be replayed in a new slot, keeping the run it came from', async ({ page }) => {
+  await openCampaign(page);
+  await page.getByTestId('new-0').click();
+  await playScene(page);
+  await page.getByTestId('to-gate').click();
+  await judgeAll(page, 0);
+  await page.getByTestId('go-home').click();
+  await playScene(page);
+  await page.getByTestId('sleep').click();
+  await expect(page.getByTestId('morning-title')).toHaveText('Day 2');
+  await page.getByTestId('campaign-quit').click();
+
+  await page.getByTestId('replay-day-0').selectOption('1');
+  await page.getByTestId('branch-0').click();
+  await expect(page.getByTestId('morning-title')).toHaveText('Day 1');
+  await page.getByTestId('campaign-quit').click();
+  await expect(page.getByTestId('slot-0').getByTestId('slot-summary')).toContainText('Day 2');
+  await expect(page.getByTestId('slot-1').getByTestId('slot-summary')).toContainText('Day 1');
+});
+
 test('an option the purse can’t cover stays in sight, locked, with what it needs', async ({ page }) => {
   await openCampaign(page);
   await page.getByTestId('new-1').click();
@@ -224,4 +244,14 @@ test('Story Mode keeps no sun, and the demo ends after Day 3; standing shows wha
     await page.getByTestId('sleep').click();
   }
   await expect(page.getByTestId('ending-title')).toHaveText('The demo ends here');
+  // The report: where the powers stood and where the souls went (the demo's endings don't read the host).
+  await expect(page.getByTestId('ending-found-count')).toHaveText('1 of 3 endings found on this device.');
+  await expect(page.getByTestId('final-standing')).toContainText('Odin');
+  await expect(page.getByTestId('sent')).toContainText('Valhalla');
+  await expect(page.getByTestId('host')).toHaveCount(0);
+  // The gallery names the ending found, and not the others.
+  await page.getByTestId('ending-slots').click();
+  await expect(page.getByTestId('endings-count')).toHaveText('1 of 3 endings found on this device.');
+  await expect(page.getByTestId('ending-found').locator('summary')).toHaveText(['The demo ends here']);
+  await expect(page.getByTestId('ending-unfound')).toHaveCount(2);
 });

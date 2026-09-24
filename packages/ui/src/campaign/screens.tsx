@@ -5,20 +5,25 @@ import {
   type Content,
   campaignOf,
   type DayLedger,
+  DESTINATIONS,
   defaultBills,
   type Effect,
   economyOf,
   type Faction,
   factionKey,
   factionsMet,
+  hostMarks,
+  hostParts,
   type JournalEntry,
   type RunEvent,
   type RunState,
+  reachableEndings,
   replayableDays,
   shiftMods,
   shiftScore,
   shopFor,
   stampEffects,
+  standingLead,
   threadsInPlay,
 } from '@cots/engine';
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
@@ -29,11 +34,13 @@ import { openReport } from '../report';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from '../shift/Shift';
-import { type Screen, session, toTitle } from '../store';
+import { type Screen, session, settings, toTitle } from '../store';
 import {
   active,
+  branchFrom,
   deleteSlot,
   dispatch,
+  emptySlot,
   endAudit,
   lastNight,
   leaveCampaign,
@@ -94,6 +101,123 @@ function StandingStrip({ run }: { run: RunState }) {
         </span>
       ))}
     </p>
+  );
+}
+
+// ---------- endings ----------
+
+/** Every ending this build's campaign can come to: the ones found on this device by name, the rest unnamed. */
+function EndingsGallery() {
+  const all = reachableEndings(gameContent);
+  const seen = settings.value.endingsSeen;
+  const found = all.filter((e) => seen.includes(e.id)).length;
+  return (
+    <section class="card gallery" data-testid="endings">
+      <h2>{t('ui.gallery.title')}</h2>
+      <p class="muted" data-testid="endings-count">
+        {t('ui.gallery.count', { n: found, total: all.length })}
+      </p>
+      <ol class="gallery__list">
+        {all.map((e) =>
+          seen.includes(e.id) ? (
+            <li key={e.id} data-testid="ending-found">
+              <details>
+                <summary>{t(e.title)}</summary>
+                <p>{t(e.text)}</p>
+              </details>
+            </li>
+          ) : (
+            <li key={e.id} class="muted" data-testid="ending-unfound">
+              {t('ui.gallery.unfound')}
+            </li>
+          ),
+        )}
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * How the run stood when it ended: the host at Ragnarök part by part, with what the endings ask of it
+ * (naming only endings found on this device), the powers' standing, and where the souls went.
+ */
+function RagnarokReport({ run }: { run: RunState }) {
+  const marks = hostMarks(gameContent);
+  const host = hostParts(run);
+  const seen = settings.value.endingsSeen;
+  const title = (id: string) => {
+    const e = campaignOf(gameContent).endings.find((x) => x.id === id);
+    return e && seen.includes(id) ? t(e.title) : t('ui.ending.unfound');
+  };
+  const met = factionsMet(run);
+  const sent = DESTINATIONS.filter((d) => (run.sent?.[d] ?? 0) > 0);
+  const rows: readonly [string, number, number][] = [
+    ['ui.ending.worthy', host.worthy, 2 * host.worthy],
+    ['ui.ending.unworthy', host.unworthy, -host.unworthy],
+    ['ui.ending.folkvangr', host.folkvangr, 2 * host.folkvangr],
+    ['ui.ending.helLegion', host.hel, 2 * host.hel],
+    ['ui.ending.naglfar', host.naglfar, -2 * host.naglfar],
+  ];
+  return (
+    <>
+      {marks.length > 0 ? (
+        <section class="card" data-testid="host">
+          <h2>{t('ui.ending.host')}</h2>
+          <table class="ledger">
+            <tbody>
+              {rows.map(([key, n, worth]) => (
+                <tr key={key}>
+                  <td>{t(key, { n })}</td>
+                  <td class="num">{signed(worth)}</td>
+                </tr>
+              ))}
+              <tr class="ledger__total">
+                <td>{t('ui.ending.hostTotal')}</td>
+                <td class="num" data-testid="host-total">
+                  {host.total}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="muted report__lead">{t('ui.ending.marks')}</p>
+          <ul class="report__marks" data-testid="host-marks">
+            {marks.map((m) => (
+              <li key={`${m.ending}:${m.atLeast ?? ''}:${m.atMost ?? ''}`}>
+                {m.atLeast !== undefined
+                  ? t('ui.ending.markAtLeast', { ending: title(m.ending), n: m.atLeast })
+                  : t('ui.ending.markAtMost', { ending: title(m.ending), n: m.atMost ?? 0 })}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {met.length > 0 ? (
+        <section class="card" data-testid="final-standing">
+          <h2>{t('ui.ending.standing')}</h2>
+          <table class="ledger">
+            <tbody>
+              {[...met]
+                .sort((x, y) => run.standing[y] - run.standing[x])
+                .map((f) => (
+                  <tr key={f}>
+                    <td>
+                      {factionName(f, run.day)}
+                      {standingLead(run, f) > 0 ? <span class="muted"> {t('ui.ending.led')}</span> : null}
+                    </td>
+                    <td class="num">{signed(run.standing[f])}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+      {sent.length > 0 ? (
+        <section class="card" data-testid="sent">
+          <h2>{t('ui.ending.sent')}</h2>
+          <p>{sent.map((d) => `${t(`dest.${d}`)} ${run.sent?.[d] ?? 0}`).join(' · ')}</p>
+        </section>
+      ) : null}
+    </>
   );
 }
 
@@ -205,9 +329,20 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
           <button type="button" class="btn" data-testid={`replay-${i}`} onClick={() => replayFrom(i, day)}>
             {t('ui.campaign.replayGo')}
           </button>
+          <button
+            type="button"
+            class="btn"
+            data-testid={`branch-${i}`}
+            disabled={emptySlot() === null}
+            onClick={() => branchFrom(i, day)}
+          >
+            {t('ui.campaign.branchGo')}
+          </button>
         </div>
       ) : null}
-      <p class="muted">{t('ui.campaign.replayWarn')}</p>
+      {days.length > 0 ? (
+        <p class="muted">{t(emptySlot() === null ? 'ui.campaign.replayWarnFull' : 'ui.campaign.replayWarn')}</p>
+      ) : null}
       {confirm ? (
         <div class="row">
           <span>{t('ui.campaign.deleteConfirm')}</span>
@@ -251,6 +386,7 @@ function SlotsScreen() {
       {Array.from({ length: SLOT_COUNT }, (_, i) => (
         <Slot key={`${i}:${slots.value[i]?.rev ?? 0}`} i={i} record={slots.value[i] ?? null} />
       ))}
+      <EndingsGallery />
       <div class="row">
         <button type="button" class="btn" data-testid="campaign-back" onClick={toTitle}>
           {t('ui.back')}
@@ -874,11 +1010,18 @@ function Ending() {
         {ending ? t(ending.title) : run.ending}
       </h1>
       {ending ? <p class="ending__text">{t(ending.text)}</p> : null}
+      <p class="muted" data-testid="ending-found-count">
+        {t('ui.gallery.count', {
+          n: reachableEndings(gameContent).filter((e) => settings.value.endingsSeen.includes(e.id)).length,
+          total: reachableEndings(gameContent).length,
+        })}
+      </p>
       <NightNews events={lastNight.value} />
       <section class="card">
         <p>{t('ui.ending.stats', { days: run.day, worthy: run.einherjar.worthy, unworthy: run.einherjar.unworthy })}</p>
         <FamilyList run={run} />
       </section>
+      <RagnarokReport run={run} />
       <div class="row">
         <button type="button" class="btn btn--primary" data-testid="ending-slots" onClick={leaveCampaign}>
           {t('ui.ending.slots')}

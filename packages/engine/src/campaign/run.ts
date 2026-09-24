@@ -4,8 +4,10 @@ import type {
   Destination,
   Economy,
   Effect,
+  EndingDef,
   Faction,
   SliceDef,
+  StatePred,
   UpgradeDef,
 } from '../content/types';
 import { FACTIONS } from '../content/types';
@@ -391,6 +393,38 @@ function night(run: RunState, env: RunEnv, events: RunEvent[]): RunState {
     debtNights: rings < campaign.debtFloor ? run.debtNights + 1 : 0,
     ledger,
   };
+}
+
+/** The endings a run of this build can come to, in the order they're checked (the gallery's list). */
+export function reachableEndings(content: Content): readonly EndingDef[] {
+  const campaign = campaignOf(content);
+  return [...campaign.endings]
+    .filter((e) => e.when !== undefined || e.id === campaign.finale)
+    .sort((a, b) => a.order - b.order);
+}
+
+/** What an ending asks of the host at Ragnarök, read from its condition: at least or at most so strong. */
+export interface HostMark {
+  readonly ending: string;
+  readonly atLeast?: number;
+  readonly atMost?: number;
+}
+
+/** The marks the reachable endings set on the host, in their order (none in builds that don't count it). */
+export function hostMarks(content: Content): HostMark[] {
+  const marks: HostMark[] = [];
+  const walk = (p: StatePred, ending: string): void => {
+    if ('all' in p) for (const q of p.all) walk(q, ending);
+    else if ('state' in p && p.state === 'ragnarok') {
+      marks.push({
+        ending,
+        ...(p.gte !== undefined ? { atLeast: p.gte } : {}),
+        ...(p.lte !== undefined ? { atMost: p.lte } : {}),
+      });
+    }
+  };
+  for (const e of reachableEndings(content)) if (e.when) walk(e.when, e.id);
+  return marks;
 }
 
 /** The first ending whose condition holds, or the finale after the last playable day. */

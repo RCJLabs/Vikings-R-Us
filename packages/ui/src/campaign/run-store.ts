@@ -23,6 +23,7 @@ import {
   clock,
   kvStore,
   mirror,
+  noteEnding,
   readMirror,
   resetSoulUi,
   resumeClockAt,
@@ -126,7 +127,10 @@ export function dispatch(action: RunAction): { run: RunState; events: readonly R
   const save = a.record.save;
   const env: RunEnv = { content: gameContent, ctx: a.ctx, ...(save.queue ? { queue: save.queue } : {}) };
   const r = stepRun(a.run, action, env);
-  for (const e of r.events) if (e.e === 'rejected') say(e.reason);
+  for (const e of r.events) {
+    if (e.e === 'rejected') say(e.reason);
+    else if (e.e === 'ended') noteEnding(e.ending);
+  }
   if (r.state === a.run) return { run: a.run, events: r.events };
   const record = write(a.slot, recordAction(save, a.run, action, r.state));
   const ctx = r.state.day === a.run.day ? a.ctx : runContext(gameContent, r.state);
@@ -187,6 +191,8 @@ export function openSlot(slot: number): void {
   const found = slots.peek()[slot];
   if (!found) return;
   const { run, rewound } = resumeSave(found.save, gameContent, ENGINE_MAJOR);
+  // Runs that ended before the gallery kept count still count.
+  if (run.ending) noteEnding(run.ending);
   // An older engine can't replay today's actions: start the day again from its morning.
   const record =
     rewound || found.save.engine !== ENGINE_MAJOR
@@ -230,6 +236,21 @@ export function replayFrom(slot: number, day: number): void {
   if (!found) return;
   write(slot, replayDay(found.save, day));
   openSlot(slot);
+}
+
+/** The first empty slot, where a replay can branch without losing anything; null when all are taken. */
+export function emptySlot(): number | null {
+  const i = slots.peek().indexOf(null);
+  return i < 0 ? null : i;
+}
+
+/** Starts the morning of `day` again in an empty slot, from a copy of this run: the original keeps every day. */
+export function branchFrom(slot: number, day: number): void {
+  const found = slots.peek()[slot];
+  const to = emptySlot();
+  if (!found || to === null) return;
+  write(to, replayDay(found.save, day));
+  openSlot(to);
 }
 
 export function toGate(): void {

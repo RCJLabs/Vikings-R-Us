@@ -98,21 +98,40 @@ export interface RunState {
   readonly slice?: boolean;
 }
 
+/** The host at Ragnarök, part by part: the counts behind ragnarokStrength. */
+export interface HostParts {
+  /** Worthy einherjar, twice each. */
+  readonly worthy: number;
+  /** Unworthy einherjar, who flee: against, once each. */
+  readonly unworthy: number;
+  /** Souls sent to Fólkvangr (Freyja's host), twice each. */
+  readonly folkvangr: number;
+  /** Souls sent to Hel (her legion), twice each. */
+  readonly hel: number;
+  /** Souls sent on with their nails uncut (Naglfar): against, twice each. */
+  readonly naglfar: number;
+  readonly total: number;
+}
+
 /**
  * The host at Ragnarök (docs/m7-design.md): worthy einherjar count double, the
  * unworthy (who flee) count against, Freyja's host and Hel's legion count
  * double, and every soul sent on with its nails uncut builds Naglfar. The
  * plan's formula times two, so it stays in whole numbers.
  */
-export function ragnarokStrength(run: RunState): number {
+export function hostParts(run: RunState): HostParts {
   const sent = run.sent ?? {};
-  return (
-    2 * run.einherjar.worthy -
-    run.einherjar.unworthy +
-    2 * (sent.FOLKVANGR ?? 0) +
-    2 * (sent.HEL ?? 0) -
-    2 * (run.naglfar ?? 0)
-  );
+  const worthy = run.einherjar.worthy;
+  const unworthy = run.einherjar.unworthy;
+  const folkvangr = sent.FOLKVANGR ?? 0;
+  const hel = sent.HEL ?? 0;
+  const naglfar = run.naglfar ?? 0;
+  const total = 2 * worthy - unworthy + 2 * folkvangr + 2 * hel - 2 * naglfar;
+  return { worthy, unworthy, folkvangr, hel, naglfar, total };
+}
+
+export function ragnarokStrength(run: RunState): number {
+  return hostParts(run).total;
 }
 
 /** A god's standing minus the highest standing of the others: above 0, they lead. */

@@ -1482,3 +1482,29 @@ a.btn {
   color: var(--muted);
   font-size: 0.9em;
 }
+
+/* The endings gallery and the Ragnarök report. */
+.gallery__list {
+  margin: 0;
+  padding-left: 1.4rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.gallery__list summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.report__lead {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.report__marks {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.25rem;
+}

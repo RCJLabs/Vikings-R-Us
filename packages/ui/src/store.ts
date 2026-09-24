@@ -67,6 +67,8 @@ export interface Settings {
   readonly sound: number;
   /** Endless: the most souls judged rightly in one run on this device. */
   readonly endlessBest: number;
+  /** Campaign endings reached on this device, in any slot or run, first found first. */
+  readonly endingsSeen: readonly string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -80,6 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   primerDone: false,
   sound: 0.6,
   endlessBest: 0,
+  endingsSeen: [],
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -87,6 +90,11 @@ export const settings = signal<Settings>(DEFAULT_SETTINGS);
 export function effectiveLayout(): LayoutMode {
   const s = settings.value.layout;
   return s === 'auto' ? layoutMode.value : s;
+}
+
+/** Remembers that a campaign ending was reached here (for the endings gallery). */
+export function noteEnding(id: string): void {
+  if (!settings.peek().endingsSeen.includes(id)) updateSettings({ endingsSeen: [...settings.peek().endingsSeen, id] });
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
