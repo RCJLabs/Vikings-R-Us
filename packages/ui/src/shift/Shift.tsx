@@ -49,8 +49,9 @@ import { RulesPanel } from './Rules';
 /** Focuses an element once, when it mounts (dialogs, the briefing's Begin button). */
 export function useAutoFocus<T extends HTMLElement>() {
   const ref = useRef<T>(null);
-  // Layout effect: focus lands before the next key press can.
-  useLayoutEffect(() => ref.current?.focus(), []);
+  // Layout effect: focus lands before the next key press can. It never scrolls the page: a screen
+  // opens at its top even when the button focused for the keyboard is further down (docs/tech-spec.md §30).
+  useLayoutEffect(() => ref.current?.focus({ preventScroll: true }), []);
   return ref;
 }
 
@@ -557,7 +558,8 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           </button>
         ))}
       </div>
-      <div class="drawer__panel" role="tabpanel">
+      {/* Keyed by tab, so each tab opens at its top rather than where the last one was scrolled to. */}
+      <div key={tab} class="drawer__panel" role="tabpanel">
         {tab === 'words' ? (
           <Words s={s} c={c} />
         ) : tab === 'ravens' ? (

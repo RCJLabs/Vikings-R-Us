@@ -34,12 +34,13 @@ import {
 } from '@cots/engine';
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
 import { signal } from '@preact/signals';
-import { useState } from 'preact/hooks';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { AssistSettings, assistText, atSunSpeed } from '../assists';
 import { clockText, hasText, listText, t } from '../i18n';
 import { openReport } from '../report';
 import { unreadableText } from '../saves';
 import { CopyBox } from '../saves-ui';
+import { toTop, toTopOf } from '../scroll';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from '../shift/Shift';
@@ -485,6 +486,7 @@ function SceneLines({ lines, day, prefix }: { lines: readonly SceneLine[]; day: 
         <p
           key={`${prefix}:${i}`}
           class={`scene__line${line.chosen ? ' scene__line--chosen' : line.speaker ? ' scene__line--said' : ''}`}
+          data-line={i}
         >
           {line.speaker ? <b class="scene__speaker">{t(`speaker.${line.speaker}`)}: </b> : null}
           {line.text}
@@ -512,12 +514,24 @@ function Leaves({ n, floor }: { n: number | null; floor: number }) {
   );
 }
 
-/** Plays one Ink scene; its effects reach the run once, when the player finishes it. */
+/**
+ * Plays one Ink scene; its effects reach the run once, when the player finishes it. A scene opens at the
+ * top of the page, and each choice brings the lines it adds (the choice, then what follows) to the top of
+ * the view; the first option, or Continue, takes the keyboard's focus without scrolling (§30).
+ */
 function SceneView({ id, run }: { id: string; run: RunState }) {
   const [env] = useState(() => sceneEnv(run, id));
   const [choices, setChoices] = useState<number[]>([]);
   const json = scenes[id];
-  const focus = useAutoFocus<HTMLButtonElement>();
+  const focus = useRef<HTMLButtonElement>(null);
+  const section = useRef<HTMLElement>(null);
+  // How many lines were shown when the last choice was made: the index of the first line it added.
+  const shown = useRef(0);
+  useLayoutEffect(() => {
+    if (choices.length === 0) toTop();
+    else toTopOf(section.current?.querySelector(`[data-line="${shown.current}"]`));
+    focus.current?.focus({ preventScroll: true });
+  }, [choices.length]);
   const a = active.value;
   if (!json || !a) return null;
   const frame = playScene(json, env, choices);
@@ -534,7 +548,7 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
     now && run.phase === 'night' ? outlookAfter(playScene(json, env, [...choices, i]).effects).night.rings : null;
   const floor = campaignOf(gameContent).debtFloor;
   return (
-    <section class="card scene" data-testid="scene" data-scene={id}>
+    <section ref={section} class="card scene" data-testid="scene" data-scene={id}>
       {frame.draft ? (
         <p class="scene__draft" data-testid="scene-draft">
           {t('ui.campaign.draft')}
@@ -558,7 +572,11 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
             class="btn btn--primary"
             data-testid="scene-done"
             ref={focus}
-            onClick={() => dispatch({ t: 'scene', id, choices, effects: frame.effects })}
+            onClick={() => {
+              dispatch({ t: 'scene', id, choices, effects: frame.effects });
+              // What follows the scene (the day's orders, the night's bills, or the next scene) opens at the top.
+              toTop();
+            }}
           >
             {t('ui.campaign.next')}
           </button>
@@ -583,7 +601,10 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
                 class="btn scene__choice"
                 data-testid="scene-choice"
                 ref={i === first ? focus : undefined}
-                onClick={() => setChoices([...choices, i])}
+                onClick={() => {
+                  shown.current = frame.lines.length;
+                  setChoices([...choices, i]);
+                }}
               >
                 {c.text}
                 <Leaves n={c.rings !== undefined ? leaves(i) : null} floor={floor} />
