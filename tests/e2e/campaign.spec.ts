@@ -165,6 +165,10 @@ test('an option the purse can’t cover stays in sight, locked, with what it nee
   await expect(locked).toHaveCount(1);
   await expect(locked).toBeDisabled();
   await expect(locked).toContainText(/Send five rings\. \(5 rings; you have -\d+\)/);
+  // What the purse holds is weighed against tonight's bills: firewood 6 and food for three, 9.
+  await expect(page.getByTestId('scene-purse')).toHaveText(
+    /^You have -\d+ rings\. Tonight's bills come to 15 if you pay them all\.$/,
+  );
   await page.getByTestId('scene-choice').first().click();
   await expect(page.getByTestId('scene-done')).toBeVisible();
 });

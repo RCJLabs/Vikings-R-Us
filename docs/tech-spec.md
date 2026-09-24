@@ -1405,6 +1405,28 @@ The range in each cell spans the three night strategies (pay everything, skip th
 - Endings found are kept per device and browser, with the settings; a new browser starts the gallery again.
 - Replaying in a new slot needs an empty slot; there are three.
 
+## 23. After M7: planning the night (audit item 5)
+
+**What changed**
+- **The night screen says what the bills as set will do.** The engine works out tonight (`nightOutlook`) with the same code the night itself runs, so the screen and the night can't disagree; only who falls sick by chance is left open, and the screen gives the odds instead.
+  - The family list says how soon each sick person needs medicine ("needs medicine tonight", "within 2 nights").
+  - Under the bills, one line for each consequence: who dies or is sent to relatives without medicine tonight, who stays sick and how many more nights they can go without it, who falls sick for certain after another cold or hungry night, and the chance for anyone else well ("30% each").
+  - "After tonight" now counts Draupnir's rings on his nights (it used to leave them out, so on nights 9 and 18 it was 8 rings short), and the screen says when he drips.
+- **Tonight's bills are in sight before the choices that cost rings.** An option with a `needs: rings` tag has the purse and tonight's bills (all paid) above it, and at night what it would leave after them, counting its own effects (the healer who cures Asa means no medicine to buy for her). The morning briefing gives tonight's bills too.
+- **The nights ahead.** The bills card lists the next three nights' firewood and food (for those at home now) and medicine a head, marking Draupnir's nights (`billForecast`, which follows the vertical slice's jump and stops at the run's last day).
+- **The debt that ends a run looks like it.** After a night below the floor, the morning and night screens carry a banner saying how many more end the run (the number read from the demoted ending's condition, `debtLimit`). When the bills as set would end the run, by the debt or with no one left at home, the bills card says so and Sleep asks first.
+- Family members can have a short name for use in sentences, an optional `<name key>.short` string ("Ragna" beside "Ragna, your mother"); the night's news uses it too.
+
+**Tests**
+- Engine: a property test that the outlook matches the night itself on 150 random nights (purse, debt, every certain change, and chance only ever making someone well sick); who is lost, who surely falls sick and the odds; Draupnir and the debt that ends the run; no one left at home; the forecast in the full game, the demo and the slice.
+- UI strings: every branch of the new messages.
+- e2e: the night's consequences and the nights ahead, and the news the next morning; the purse and what an option leaves at Day 2's night; the debt banner, warning and the sleep that asks first, on the way to Demoted.
+
+**Known limits**
+- The preview of an option counts its effects up to the next choice in the scene, not what later choices would add.
+- The forecast assumes the family stays as it is tonight: food for everyone at home now, medicine a head for whoever falls sick.
+- Chance is shown as a percentage, not hidden. The design reason to keep it (skipping a bill is a gamble) still holds; the player just knows the odds.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

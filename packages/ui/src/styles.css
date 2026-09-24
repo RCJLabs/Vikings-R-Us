@@ -1318,6 +1318,7 @@ a.btn {
 }
 
 .bills input {
+  flex: none;
   width: 1.3rem;
   height: 1.3rem;
 }
@@ -1507,4 +1508,47 @@ a.btn {
   padding-left: 1.2rem;
   display: grid;
   gap: 0.25rem;
+}
+
+/* Planning the night: the purse beside a costly option, the nights ahead, a sleep that ends the run. */
+.scene__purse {
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.scene__cost.is-debt {
+  color: var(--bad);
+}
+
+.bills > * {
+  min-width: 0;
+}
+
+.ahead {
+  overflow-x: auto;
+}
+
+.ahead h3 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.ahead th {
+  vertical-align: bottom;
+}
+
+.ahead th.num {
+  white-space: normal;
+}
+
+.ahead__night {
+  white-space: nowrap;
+}
+
+.confirm .warn {
+  flex: 1 1 100%;
+  text-align: center;
 }

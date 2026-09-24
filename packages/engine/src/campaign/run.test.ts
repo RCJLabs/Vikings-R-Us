@@ -1,27 +1,32 @@
 import { loadContent } from '@cots/testkit';
+import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
 import type { Content, Destination, Effect } from '../content/types';
 import { generateDay } from '../gen/generate';
 import type { DayCtx } from '../logic/context';
 import {
+  billForecast,
   campaignOf,
   campaignQueue,
+  debtLimit,
   defaultBills,
   endingFor,
   factionKey,
   hostMarks,
   newRun,
+  nightOutlook,
   type RunAction,
   type RunEnv,
   type RunEvent,
   reachableEndings,
   shiftMods,
   stampEffects,
+  stateMarks,
   stepRun,
   threadsInPlay,
 } from './run';
 import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
-import { factionsMet, hostParts, type RunState, ragnarokStrength } from './state';
+import { type FamilyMember, factionsMet, hostParts, type RunState, ragnarokStrength } from './state';
 
 const demo = loadContent('web-demo');
 const full = loadContent('dev-full');
@@ -366,6 +371,145 @@ describe('endings', () => {
     const { run, events } = playDay(content, newRun(content, 'ring'));
     expect(events).toContainEqual({ e: 'draupnir', rings: 8 });
     expect(run.ledger[0]?.night?.draupnir).toBe(8);
+  });
+});
+
+describe('planning the night', () => {
+  /** A night on `day` of the full game, with the bills as set. */
+  const night = (run: RunState, patch: Partial<RunState>) => {
+    const r: RunState = { ...run, phase: 'night', ...patch };
+    return { run: r, env: { content: full, ctx: runContext(full, r) } as RunEnv };
+  };
+  const member = (id: string, patch: Partial<FamilyMember> = {}): FamilyMember => ({
+    id,
+    status: 'well',
+    cold: 0,
+    hungry: 0,
+    sickNights: 0,
+    ...patch,
+  });
+  const memberArb = (id: string) =>
+    fc
+      .record({
+        status: fc.constantFrom<FamilyMember['status']>('well', 'sick', 'gone'),
+        cold: fc.integer({ min: 0, max: 1 }),
+        hungry: fc.integer({ min: 0, max: 1 }),
+        sickNights: fc.integer({ min: 0, max: 1 }),
+      })
+      .map((m): FamilyMember => ({ id, ...m, ...(m.status === 'gone' ? { gone: 'died' as const } : {}) }));
+
+  test.prop(
+    [
+      fc.integer({ min: 1, max: 20 }),
+      fc.integer({ min: -80, max: 80 }),
+      fc.integer({ min: 0, max: 1 }),
+      fc.tuple(memberArb('mother'), memberArb('brother'), memberArb('sister')),
+      fc.record({ hearth: fc.boolean(), food: fc.boolean(), medicine: fc.subarray(['mother', 'brother', 'sister']) }),
+      fc.nat(1000),
+    ],
+    { numRuns: 150 },
+  )(
+    'reckons tonight as the night does, all but who falls sick by chance',
+    (day, rings, debtNights, family, bills, n) => {
+      const { run, env } = night(newRun(full, `plan${n}`), { day, rings, debtNights, family, bills });
+      const o = nightOutlook(run, env);
+      const after = stepRun(run, { t: 'endNight' }, env).state;
+      expect(after.rings).toBe(o.rings);
+      expect(after.debtNights).toBe(o.debtNights);
+      after.family.forEach((m, i) => {
+        const n = o.members[i];
+        if (!n) throw new Error(`no outlook for ${m.id}`);
+        if (n.risk === 0 || m.status === n.member.status) expect(m).toEqual(n.member);
+        else expect(m).toEqual({ ...n.member, status: 'sick', sickNights: 0 });
+      });
+      if (o.ends) expect(after.ending).toBe(o.ends.ending);
+      else expect(['ending.demoted', 'ending.alone']).not.toContain(after.ending);
+    },
+  );
+
+  it('says who is lost without medicine tonight, who surely falls sick, and the odds for the rest', () => {
+    const base = newRun(full, 'odds');
+    const family = [
+      member('mother', { status: 'sick', sickNights: 1 }),
+      member('brother', { cold: 1 }),
+      member('sister', { status: 'sick', sickNights: 1 }),
+    ];
+    const { run, env } = night(base, { day: 5, family, bills: { hearth: false, food: true, medicine: [] } });
+    const says = (o: ReturnType<typeof nightOutlook>) =>
+      o.members.map((n) => [n.member.id, n.change ?? null, n.cause ?? null, n.risk]);
+    // A second night sick without medicine: an adult dies, a child is sent to relatives. A second cold night: sick.
+    expect(says(nightOutlook(run, env))).toEqual([
+      ['mother', 'died', null, 0],
+      ['brother', 'sick', 'cold', 0],
+      ['sister', 'left', null, 0],
+    ]);
+    // Medicine makes the sick well; a first cold night is a 30% chance, and a hungry one too makes it 60%.
+    const firstNight = [member('mother', { status: 'sick' }), member('brother'), member('sister')];
+    const cold = night(base, {
+      day: 5,
+      family: firstNight,
+      bills: { hearth: false, food: true, medicine: ['mother'] },
+    });
+    expect(says(nightOutlook(cold.run, cold.env))).toEqual([
+      ['mother', 'well', null, 0],
+      ['brother', null, null, 30],
+      ['sister', null, null, 30],
+    ]);
+    const bare = { hearth: false, food: false, medicine: [] };
+    expect(nightOutlook(cold.run, cold.env, bare).members.map((n) => n.risk)).toEqual([0, 60, 60]);
+  });
+
+  it('counts Draupnir in the purse by morning, and says when the debt would end the run', () => {
+    // Night 9: firewood 14, food 7 for each of three, and Draupnir's 8.
+    const base = newRun(full, 'debt9');
+    const at = (rings: number, debtNights: number) => {
+      const { run, env } = night(base, { day: 9, rings, debtNights, bills: defaultBills(base) });
+      return nightOutlook(run, env);
+    };
+    expect(at(0, 1)).toMatchObject({ cost: { hearth: 14, food: 21, medicine: 0 }, draupnir: 8, rings: -27 });
+    // Draupnir keeps a second night above the floor of -30; without enough, the second night below it ends the run.
+    expect(at(0, 1)).toMatchObject({ debtNights: 0, ends: null });
+    expect(at(-10, 0)).toMatchObject({ rings: -37, debtNights: 1, ends: null });
+    expect(at(-10, 1)).toMatchObject({ debtNights: 2, ends: { ending: 'ending.demoted', why: 'debt' } });
+    expect(debtLimit(full)).toBe(2);
+    expect(debtLimit(demo)).toBe(2);
+  });
+
+  it('says when no one would be left at home', () => {
+    const family = [
+      member('mother', { status: 'gone', gone: 'died' }),
+      member('brother', { status: 'gone', gone: 'died' }),
+      member('sister', { status: 'sick', sickNights: 1 }),
+    ];
+    const { run, env } = night(newRun(full, 'alone'), {
+      day: 6,
+      family,
+      bills: { hearth: true, food: true, medicine: [] },
+    });
+    expect(nightOutlook(run, env).ends).toEqual({ ending: 'ending.alone', why: 'home' });
+    expect(nightOutlook(run, env, { hearth: true, food: true, medicine: ['sister'] }).ends).toBeNull();
+    expect(stateMarks(full, 'family.home').filter((m) => m.atMost !== undefined)).toEqual([
+      { ending: 'ending.alone', atMost: 0 },
+    ]);
+  });
+
+  it('forecasts the coming nights’ bills, as many as the run has left', () => {
+    const run: RunState = { ...newRun(full, 'fc'), day: 6 };
+    expect(billForecast(run, full)).toEqual([
+      { day: 7, hearth: 11, food: 18, medicine: 12, draupnir: 0 },
+      { day: 8, hearth: 12, food: 18, medicine: 13, draupnir: 0 },
+      { day: 9, hearth: 14, food: 21, medicine: 14, draupnir: 8 },
+    ]);
+    // Food is for those at home now.
+    const two = run.family.map((m, i) => (i === 0 ? { ...m, status: 'gone' as const, gone: 'died' as const } : m));
+    expect(billForecast({ ...run, family: two }, full)[0]?.food).toBe(12);
+    expect(billForecast({ ...run, day: 19 }, full).map((b) => b.day)).toEqual([20]);
+    expect(billForecast({ ...run, day: 20 }, full)).toEqual([]);
+    expect(billForecast(newRun(demo, 'fc'), demo).map((b) => b.day)).toEqual([2, 3]);
+    // The slice jumps from Day 3 to its late day, where it ends.
+    const slice: RunState = { ...newRun(full, 'fc', { slice: 'play' }), day: 2 };
+    expect(billForecast(slice, full).map((b) => b.day)).toEqual([3, 12]);
+    expect(billForecast({ ...slice, day: 12 }, full)).toEqual([]);
   });
 });
 

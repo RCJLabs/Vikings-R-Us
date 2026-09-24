@@ -1,11 +1,13 @@
 import { gameContent, loadScenes, manifest } from 'virtual:content';
 import {
   type Bills,
+  billForecast,
   billTotal,
   type Content,
   campaignOf,
   type DayLedger,
   DESTINATIONS,
+  debtLimit,
   defaultBills,
   type Effect,
   economyOf,
@@ -15,6 +17,8 @@ import {
   hostMarks,
   hostParts,
   type JournalEntry,
+  type NightOutlook,
+  nightOutlook,
   type RunEvent,
   type RunState,
   reachableEndings,
@@ -25,11 +29,12 @@ import {
   stampEffects,
   standingLead,
   threadsInPlay,
+  withEffects,
 } from '@cots/engine';
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
 import { signal } from '@preact/signals';
 import { useState } from 'preact/hooks';
-import { clockText, listText, t } from '../i18n';
+import { clockText, hasText, listText, t } from '../i18n';
 import { openReport } from '../report';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
@@ -69,6 +74,12 @@ export async function enterCampaign(): Promise<void> {
 }
 
 const familyName = (content: Content, id: string) => t(campaignOf(content).family.find((m) => m.id === id)?.name ?? id);
+
+/** The name to use inside a sentence ("Ragna" rather than "Ragna, your mother"): `<name key>.short`, if there is one. */
+const familyShort = (content: Content, id: string) => {
+  const key = campaignOf(content).family.find((m) => m.id === id)?.name ?? id;
+  return hasText(`${key}.short`) ? t(`${key}.short`) : t(key);
+};
 
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
@@ -421,15 +432,40 @@ function SceneLines({ lines, day, prefix }: { lines: readonly SceneLine[]; day: 
   );
 }
 
+/** What an option that costs rings would leave after tonight's bills. */
+function Leaves({ n, floor }: { n: number | null; floor: number }) {
+  if (n === null) return null;
+  return (
+    <>
+      {' '}
+      <span class={`scene__cost${n < floor ? ' is-debt' : ''}`} data-testid="scene-leaves">
+        ({t('ui.scene.leaves', { n })})
+      </span>
+    </>
+  );
+}
+
 /** Plays one Ink scene; its effects reach the run once, when the player finishes it. */
 function SceneView({ id, run }: { id: string; run: RunState }) {
   const [env] = useState(() => sceneEnv(run, id));
   const [choices, setChoices] = useState<number[]>([]);
   const json = scenes[id];
   const focus = useAutoFocus<HTMLButtonElement>();
-  if (!json) return null;
+  const a = active.value;
+  if (!json || !a) return null;
   const frame = playScene(json, env, choices);
   const first = frame.choices.findIndex((c) => !c.locked);
+  // Options that cost rings are weighed against tonight's bills, with the scene's effects so far (and at
+  // night each option's own: a healer who cures means no medicine to buy) (docs/tech-spec.md §23).
+  const outlookAfter = (effects: readonly Effect[]) => {
+    const r = withEffects(run, effects);
+    return { rings: r.rings, night: nightOutlook(r, { content: gameContent, ctx: a.ctx }, defaultBills(r)) };
+  };
+  const costly = !frame.done && frame.choices.some((c) => c.rings !== undefined);
+  const now = costly ? outlookAfter(frame.effects) : null;
+  const leaves = (i: number) =>
+    now && run.phase === 'night' ? outlookAfter(playScene(json, env, [...choices, i]).effects).night.rings : null;
+  const floor = campaignOf(gameContent).debtFloor;
   return (
     <section class="card scene" data-testid="scene" data-scene={id}>
       {frame.draft ? (
@@ -438,6 +474,16 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
         </p>
       ) : null}
       <SceneLines lines={frame.lines} day={run.day} prefix={String(choices.length)} />
+      {now ? (
+        <p class="scene__purse" data-testid="scene-purse">
+          {t('ui.scene.purse', {
+            rings: now.rings,
+            bills: now.night.cost.hearth + now.night.cost.food + now.night.cost.medicine,
+            draupnir: now.night.draupnir,
+            phase: run.phase,
+          })}
+        </p>
+      ) : null}
       <div class="scene__choices">
         {frame.done ? (
           <button
@@ -473,6 +519,7 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
                 onClick={() => setChoices([...choices, i])}
               >
                 {c.text}
+                <Leaves n={c.rings !== undefined ? leaves(i) : null} floor={floor} />
               </button>
             ),
           )
@@ -588,6 +635,23 @@ function JournalView() {
   );
 }
 
+/** After a night below the debt floor, how many more end the run, on the morning and night screens. */
+function DebtBanner({ run }: { run: RunState }) {
+  const limit = debtLimit(gameContent);
+  if (run.debtNights < 1 || limit === null) return null;
+  return (
+    <div class="banner banner--bad" role="status" data-testid="debt-banner">
+      <p>
+        {t('ui.debt.banner', {
+          n: run.debtNights,
+          floor: campaignOf(gameContent).debtFloor,
+          left: limit - run.debtNights,
+        })}
+      </p>
+    </div>
+  );
+}
+
 /** The scene still to be played now, if the day has one and this build ships it. */
 function pendingScene(run: RunState, which: 'morning' | 'night'): string | null {
   const id = gameContent.days.find((d) => d.day === run.day)?.scenes?.[which];
@@ -598,7 +662,7 @@ function pendingScene(run: RunState, which: 'morning' | 'night'): string | null 
 
 function NightNews({ events }: { events: readonly RunEvent[] }) {
   const news = events.flatMap((e) => {
-    if (e.e === 'family') return [t(`ui.news.${e.change}`, { name: familyName(gameContent, e.id) })];
+    if (e.e === 'family') return [t(`ui.news.${e.change}`, { name: familyShort(gameContent, e.id) })];
     if (e.e === 'draupnir') return [t('ui.news.draupnir', { n: e.rings })];
     return [];
   });
@@ -652,6 +716,8 @@ function Morning() {
   const { run, ctx } = a;
   const scene = pendingScene(run, 'morning');
   const sunS = ctx.spec.sunS + (shiftMods(run, gameContent).sunS ?? 0);
+  const bills = billTotal(run, economyOf({ content: gameContent, ctx }), defaultBills(run));
+  const tonight = bills.hearth + bills.food + bills.medicine;
   return (
     <main class="screen screen--morning">
       <h1 data-testid="morning-title">{t('ui.campaign.day', { n: run.day })}</h1>
@@ -660,6 +726,7 @@ function Morning() {
         {run.story ? ` · ${t('ui.campaign.story')}` : ''}
       </p>
       <StandingStrip run={run} />
+      <DebtBanner run={run} />
       {a.rewound ? (
         <div class="banner" role="status">
           <p>{t('ui.campaign.rewound')}</p>
@@ -675,6 +742,9 @@ function Morning() {
             <RulebookChanges day={run.day} />
             <p class="briefing__queue">
               {run.story ? t('ui.campaign.untimed') : t('ui.campaign.sun', { time: clockText(sunS * 1000) })}
+            </p>
+            <p class="muted" data-testid="tonight-bills">
+              {t('ui.campaign.tonightBills', { n: tonight })}
             </p>
           </section>
           <div class="row">
@@ -836,7 +906,9 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
 
 // ---------- night ----------
 
-function FamilyList({ run }: { run: RunState }) {
+/** The family: who is well, sick (and, when planning the night, how soon they need medicine) or gone. */
+function FamilyList({ run, plan = false }: { run: RunState; plan?: boolean }) {
+  const care = campaignOf(gameContent).care;
   return (
     <ul class="family" data-testid="family">
       {run.family.map((m) => {
@@ -845,7 +917,9 @@ function FamilyList({ run }: { run: RunState }) {
           m.status === 'gone'
             ? t(m.gone === 'died' ? 'ui.family.died' : 'ui.family.left')
             : m.status === 'sick'
-              ? t('ui.family.sick', { n: m.sickNights })
+              ? plan
+                ? t('ui.family.sickLeft', { left: care.sickNights - m.sickNights })
+                : t('ui.family.sick')
               : t('ui.family.well');
         const needs = [
           m.status !== 'gone' && m.cold > 0 ? t('ui.family.cold', { n: m.cold }) : null,
@@ -862,17 +936,89 @@ function FamilyList({ run }: { run: RunState }) {
   );
 }
 
-function BillsCard({ run }: { run: RunState }) {
+/** What the bills as set do tonight: who is lost, who surely falls sick, who gets worse, and the odds for the rest. */
+function Outlook({ run, outlook, bills }: { run: RunState; outlook: NightOutlook; bills: Bills }) {
+  const campaign = campaignOf(gameContent);
+  const adult = new Map(campaign.family.map((f) => [f.id, f.adult]));
+  const lines: { key: string; id: string; text: string; bold?: boolean }[] = outlook.members.flatMap((n, i) => {
+    const was = run.family[i];
+    const name = familyShort(gameContent, n.member.id);
+    const how = adult.get(n.member.id) ? 'died' : 'left';
+    if (n.change === 'died' || n.change === 'left') {
+      return [{ key: n.member.id, id: 'outlook-lost', text: t('ui.night.lost', { name, how: n.change }), bold: true }];
+    }
+    if (n.change === 'sick') {
+      return [
+        { key: n.member.id, id: 'outlook-sickens', text: t('ui.night.sickens', { name, cause: n.cause ?? 'cold' }) },
+      ];
+    }
+    if (was?.status === 'sick' && n.member.status === 'sick') {
+      const left = campaign.care.sickNights - n.member.sickNights;
+      return [{ key: n.member.id, id: 'outlook-worse', text: t('ui.night.worse', { name, how, left }) }];
+    }
+    return [];
+  });
+  const risk = Math.max(0, ...outlook.members.map((n) => n.risk));
+  const need = !bills.hearth && !bills.food ? 'both' : !bills.hearth ? 'hearth' : 'food';
+  return (
+    <>
+      {lines.map((l) => (
+        <p key={l.key} class="warn" data-testid={l.id}>
+          {l.bold ? <b>{l.text}</b> : l.text}
+        </p>
+      ))}
+      {risk > 0 ? (
+        <p class="warn" data-testid="outlook-risk">
+          {t('ui.night.risk', { need, p: risk })}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/** The bills of the next few nights, so what's spent tonight can be weighed against them. */
+function NightsAhead({ run }: { run: RunState }) {
+  const ahead = billForecast(run, gameContent);
+  if (ahead.length === 0) return null;
+  const home = run.family.filter((m) => m.status !== 'gone').length;
+  return (
+    <div class="ahead" data-testid="nights-ahead">
+      <h3>{t('ui.night.ahead')}</h3>
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th>{t('ui.night.aheadNight')}</th>
+            <th class="num">{t('ui.night.aheadBills', { n: home })}</th>
+            <th class="num">{t('ui.night.aheadMedicine')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ahead.map((b) => (
+            <tr key={b.day} data-testid="night-ahead">
+              <td class="ahead__night">
+                {t('ui.night.title', { n: b.day })}
+                {b.draupnir > 0 ? <span class="muted"> {t('ui.night.aheadDraupnir', { n: b.draupnir })}</span> : null}
+              </td>
+              <td class="num">{b.hearth + b.food}</td>
+              <td class="num">{b.medicine}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BillsCard({ run, outlook }: { run: RunState; outlook: NightOutlook }) {
   const a = active.value;
   if (!a) return null;
   const economy = economyOf({ content: gameContent, ctx: a.ctx });
   const bills = run.bills ?? defaultBills(run);
-  const cost = billTotal(run, economy, bills);
   const set = (next: Bills) => dispatch({ t: 'bills', bills: next });
   const home = run.family.filter((m) => m.status !== 'gone');
   const sick = home.filter((m) => m.status === 'sick');
-  const after = run.rings - cost.hearth - cost.food - cost.medicine;
   const floor = campaignOf(gameContent).debtFloor;
+  const limit = debtLimit(gameContent);
   return (
     <section class="card bills" data-testid="bills">
       <h2>{t('ui.night.bills')}</h2>
@@ -909,17 +1055,59 @@ function BillsCard({ run }: { run: RunState }) {
           {t('ui.night.medicine', { name: familyName(gameContent, m.id), cost: economy.costs.medicine })}
         </label>
       ))}
-      {sick
-        .filter((m) => !bills.medicine.includes(m.id))
-        .map((m) => (
-          <p key={m.id} class="warn">
-            {t('ui.night.warnSick', { name: familyName(gameContent, m.id) })}
-          </p>
-        ))}
-      {!bills.hearth || !bills.food ? <p class="warn">{t('ui.night.warnNeeds')}</p> : null}
-      <p data-testid="after-bills">{t('ui.night.after', { n: after })}</p>
-      {after < floor ? <p class="warn">{t('ui.night.debt', { floor })}</p> : null}
+      <Outlook run={run} outlook={outlook} bills={bills} />
+      {outlook.draupnir > 0 ? (
+        <p data-testid="draupnir-tonight">{t('ui.night.draupnir', { n: outlook.draupnir })}</p>
+      ) : null}
+      <p data-testid="after-bills">{t('ui.night.after', { n: outlook.rings })}</p>
+      {outlook.ends?.why === 'debt' ? (
+        <p class="warn" data-testid="debt-warning">
+          <b>{t('ui.night.demoted', { floor })}</b>
+        </p>
+      ) : outlook.rings < floor && limit !== null ? (
+        <p class="warn" data-testid="debt-warning">
+          {t('ui.night.debt', { floor, limit })}
+        </p>
+      ) : run.debtNights > 0 ? (
+        <p data-testid="debt-cleared">{t('ui.night.debtCleared', { floor })}</p>
+      ) : null}
+      {outlook.ends?.why === 'home' ? (
+        <p class="warn" data-testid="home-warning">
+          <b>{t('ui.night.empty')}</b>
+        </p>
+      ) : null}
+      <NightsAhead run={run} />
     </section>
+  );
+}
+
+/** Sleep, and the night's bills are paid; when that would end the run, only after saying so. */
+function SleepRow({ ends }: { ends: NightOutlook['ends'] }) {
+  const [confirm, setConfirm] = useState(false);
+  if (confirm && ends) {
+    return (
+      <div class="row confirm" data-testid="sleep-confirm">
+        <p class="warn">{t(ends.why === 'debt' ? 'ui.night.confirmDebt' : 'ui.night.confirmHome')}</p>
+        <button type="button" class="btn btn--danger" data-testid="sleep-anyway" onClick={sleep}>
+          {t('ui.night.sleepAnyway')}
+        </button>
+        <button type="button" class="btn" data-testid="sleep-cancel" onClick={() => setConfirm(false)}>
+          {t('ui.night.notYet')}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div class="row">
+      <button
+        type="button"
+        class="btn btn--primary btn--big"
+        data-testid="sleep"
+        onClick={() => (ends ? setConfirm(true) : sleep())}
+      >
+        {t('ui.night.sleep')}
+      </button>
+    </div>
   );
 }
 
@@ -960,6 +1148,7 @@ function Night() {
   if (!a) return null;
   const { run } = a;
   const scene = pendingScene(run, 'night');
+  const outlook = scene ? null : nightOutlook(run, { content: gameContent, ctx: a.ctx });
   return (
     <main class="screen screen--night">
       <h1 data-testid="night-title">{t('ui.night.title', { n: run.day })}</h1>
@@ -967,23 +1156,20 @@ function Night() {
         {t('ui.campaign.purse', { n: run.rings })}
       </p>
       <StandingStrip run={run} />
+      <DebtBanner run={run} />
       {scene ? (
         <SceneView key={scene} id={scene} run={run} />
-      ) : (
+      ) : outlook ? (
         <>
           <section class="card">
             <h2>{t('ui.night.family')}</h2>
-            <FamilyList run={run} />
+            <FamilyList run={run} plan />
           </section>
-          <BillsCard run={run} />
+          <BillsCard run={run} outlook={outlook} />
           <ShopCard run={run} />
-          <div class="row">
-            <button type="button" class="btn btn--primary btn--big" data-testid="sleep" onClick={sleep}>
-              {t('ui.night.sleep')}
-            </button>
-          </div>
+          <SleepRow key={outlook.ends?.why ?? 'none'} ends={outlook.ends} />
         </>
-      )}
+      ) : null}
       <div class="row">
         <JournalButton />
         <button type="button" class="btn btn--quiet" data-testid="campaign-quit" onClick={leaveCampaign}>
