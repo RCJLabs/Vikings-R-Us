@@ -73,6 +73,11 @@ export function sampleTruth(arch: ArchetypeDef, ctx: DayCtx, rng: Rng): SampleRe
   for (const id of ctx.sampled) {
     const af = ctx.facts.get(id);
     if (!af) continue;
+    // Whether the soul lies is set once its lies are planned (see withLiars).
+    if (af.def.fromLies) {
+      base[id] = false;
+      continue;
+    }
     const req = reqs.allowed.get(id);
     const candidates = af.values.filter((v) => allows(arch.truth[id], v) && (!req || req.includes(v)));
     if (candidates.length === 0) return { ok: false, why: `no allowed value for ${id}` };

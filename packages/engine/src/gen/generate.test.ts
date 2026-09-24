@@ -220,7 +220,9 @@ describe('adversarial: the validator rejects broken souls', () => {
       const fields = c.evidence.fields.filter((f) => f.id !== lie.field);
       const moved = { ...c, lies: c.lies.map((l) => (l === lie ? { ...l, field: identity.id } : l)) };
       const v = revalidate(moved, ctx, fields);
-      expect(v.ok ? 'ok' : v.code).toBe('HIDDEN_LIE');
+      // Where lying itself decides the hall (Day 16 on), a hidden lie makes the soul look honest, so the
+      // solver's hall is wrong before the lie check runs. Either way the soul is rejected.
+      expect(v.ok ? 'ok' : v.code).toBe(c.meta.decisive.includes('liar') ? 'WRONG_DEST' : 'HIDDEN_LIE');
       checked++;
     }
     expect(checked).toBeGreaterThan(3);

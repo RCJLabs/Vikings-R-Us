@@ -56,3 +56,5 @@
   salience: 1
   cost: 1
   from: { map: [{ when: { fact: trickster, is: true }, value: stitched }], otherwise: none }
+# Day 17: the spear mark, cut over the heart before death.
+- { key: spearMark, view: front, since: 17, salience: 2, cost: 1, from: { fact: spearMark } }

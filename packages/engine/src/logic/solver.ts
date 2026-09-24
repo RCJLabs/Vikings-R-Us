@@ -265,6 +265,18 @@ export function solve(fields: readonly Field[], ctx: DayCtx, opts: SolveOptions 
     if (revealed) propagate();
   }
 
+  // A caught lie, or a tally shown to be forged, proves the soul a liar (Day 16). Nothing proves one honest:
+  // that is presumed below, like any other presumption.
+  if (!opts.trustTestimony) {
+    const caught = union(
+      contradictions.flatMap((c) => [c.lie, ...c.against]),
+      forgerySeen ? perceived.filter((f) => f.tell !== undefined).map((f) => f.id) : [],
+    );
+    if (caught.length > 0) {
+      for (const [id, af] of ctx.facts) if (af.def.fromLies && !af.pinned) narrow(id, [true], 4, caught);
+    }
+  }
+
   // Presumptions fill in only what nothing else established.
   for (const [id, af] of ctx.facts) {
     const p = af.def.presumption;

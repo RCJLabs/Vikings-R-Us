@@ -23,3 +23,12 @@
   when: { all: [{ ref: pred.worthy }, { param: freyjaWhim }, { param: odinClaim }] }
   then: VALHALLA
   text: rule.odinClaim
+# Day 16: liars forfeit the halls of the worthy. A soul they would take, caught in a lie, goes to Hel.
+- id: rule.liars
+  order: 580
+  since: 16
+  when: { all: [{ fact: liar, is: true }, { ref: pred.honored }] }
+  then: HEL
+  text: rule.liars
+# Day 17: the spear-mark loophole. A straw death marked for Odin before death is his.
+- { id: rule.spearMark, order: 640, since: 17, when: { fact: spearMark, is: true }, then: VALHALLA, text: rule.spearMark }

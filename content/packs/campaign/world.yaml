@@ -1,0 +1,5 @@
+# Holds in every generated truth, from the day a fact exists.
+# Only a straw death is marked with a spear: a warrior has had the spear already.
+- id: world.spearStraw
+  if: { fact: spearMark, is: true }
+  then: { fact: cause, in: [sickness, oldAge] }

@@ -579,6 +579,19 @@ function freshTally(on: boolean, look: Look): string {
   ].join('');
 }
 
+/**
+ * Day 17's spear mark: a spear point cut over the heart before death (the soul's left, our right). A
+ * small blade shape with its socket, dark red with an ink edge and no drips: a mark, not a wound.
+ */
+function spearMark(on: boolean): string {
+  if (!on) return '';
+  return [
+    '<path d="M176 202L181.5 214L176 224L170.5 214Z" fill="#8f1d15" stroke="#1c1510" stroke-width="2" stroke-linejoin="round"/>',
+    '<path d="M176 206V220" stroke="#f1e6cc" stroke-width="1.2" stroke-linecap="round"/>',
+    '<path d="M176 224V231M172.5 227H179.5" stroke="#1c1510" stroke-width="2.2" stroke-linecap="round"/>',
+  ].join('');
+}
+
 /** A carved ground under the feet: a hatched band with a few tufts. */
 const GROUND = [
   `<path d="M11 404H${W - 11}V${H - 11}H11Z" fill="url(#wc-hatch)"/>`,
@@ -609,6 +622,7 @@ function draw(scene: BodyScene): string {
         amulet(scene.obs.amulet),
         brokenRing(scene.cues.includes('brokenRing')),
         freshTally(scene.cues.includes('freshCarving'), scene.look),
+        spearMark(scene.obs.spearMark === true),
         wounds(scene.obs.woundsFront, FRONT_WOUNDS),
       ]
     : [figure(scene, uid), hairFill(hair, hairShape(scene.look, false)), wounds(scene.obs.woundsBack, BACK_WOUNDS)];
@@ -652,6 +666,7 @@ export const woodcutBody: BodyArtProvider = {
     freshCarving: 2,
     amulet: 2,
     lipScars: 1,
+    spearMark: 2,
   },
   views: SIGN_VIEWS,
 };

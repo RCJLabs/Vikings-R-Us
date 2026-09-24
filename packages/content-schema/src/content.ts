@@ -89,7 +89,14 @@ export const FactSchema: z.ZodType<FactDef, unknown> = z
     prior: z.record(z.string(), Weight).optional(),
     presumption: ValueSchema.optional(),
     derived: PredSchema.optional(),
+    fromLies: z.literal(true).optional(),
   })
+  .refine(
+    (f) =>
+      !f.fromLies ||
+      (f.domain.kind === 'bool' && f.presumption === false && f.prior === undefined && f.derived === undefined),
+    { message: 'a fromLies fact is a bool, presumed false, with no prior and no derivation' },
+  )
   .transform(({ inert, ...f }) => {
     const d = f.domain;
     const first = d.kind === 'enum' ? (d.values[0] as string) : d.kind === 'int' ? d.min : false;

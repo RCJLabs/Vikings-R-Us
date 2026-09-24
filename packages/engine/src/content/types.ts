@@ -57,6 +57,12 @@ export interface FactDef {
   readonly presumption?: Value;
   /** Computed from other facts and never sampled. */
   readonly derived?: Pred;
+  /**
+   * True exactly when the soul tells a lie, aloud or on a forged tally (Day 16's liars). Never
+   * sampled: the generator sets it once the soul's lies are planned. The player learns it by
+   * catching a lie; until then it is presumed false.
+   */
+  readonly fromLies?: true;
 }
 
 export type ObsSource =

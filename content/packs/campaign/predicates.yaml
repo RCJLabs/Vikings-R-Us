@@ -3,3 +3,17 @@
   versions:
     - { since: 1, is: { all: [{ ref: pred.worthy }, { not: { fact: outlaw, is: true } }] } }
     - { since: 7, is: { all: [{ ref: pred.worthy }, { not: { fact: outlaw, is: true } }, { not: { fact: weaponOwner, is: other } }] } }
+    # Liars flee too (Day 16); the spear-marked are Odin's (Day 17).
+    - { since: 16, is: { all: [{ ref: pred.worthy }, { not: { fact: outlaw, is: true } }, { not: { fact: weaponOwner, is: other } }, { not: { fact: liar, is: true } }] } }
+    - since: 17
+      is:
+        all:
+          - { any: [{ ref: pred.worthy }, { fact: spearMark, is: true }] }
+          - { not: { fact: outlaw, is: true } }
+          - { not: { fact: weaponOwner, is: other } }
+          - { not: { fact: liar, is: true } }
+# Whom the halls of the worthy would take: a liar forfeits it (Day 16).
+- id: pred.honored
+  versions:
+    - { since: 16, is: { ref: pred.worthy } }
+    - { since: 17, is: { any: [{ ref: pred.worthy }, { fact: spearMark, is: true }] } }

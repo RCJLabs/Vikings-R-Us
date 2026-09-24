@@ -105,6 +105,16 @@ export function oracleSolve(fields: readonly Field[], ctx: DayCtx): OracleResult
     for (const f of factsIn(law.if, ctx)) roots(f, on);
     checks.push({ on, holds: (t) => !eval2(law.if, t, ctx) || law.then.in.includes(t[law.then.fact] as Value) });
   }
+  // A liar (Day 16) is a soul with a claim that's false in the world, or a tally known to be forged.
+  const claims = perceived
+    .filter((f) => (f.item === 'testimony' || f.item === 'tally') && f.says && f.says.value !== null)
+    .map(says);
+  for (const [id, af] of ctx.facts) {
+    if (!af.def.fromLies || af.pinned) continue;
+    const on = roots(id);
+    for (const c of claims) roots(c.fact, on);
+    checks.push({ on, holds: (t) => t[id] === (forgerySeen || claims.some((c) => t[c.fact] !== c.value)) });
+  }
   if (impossible || [...domain.values()].some((d) => d.length === 0)) return UNDETERMINED;
 
   // Group the open facts: union-find, joining the facts of each check, of the tally and of the rules.

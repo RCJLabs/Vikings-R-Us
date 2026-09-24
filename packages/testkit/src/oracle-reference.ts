@@ -41,6 +41,12 @@ export function oracleSolveReference(fields: readonly Field[], ctx: DayCtx): Ora
   const statements = perceived.filter(
     (f) => (f.item === 'huginn' || f.item === 'muninn') && f.says && f.says.value !== null,
   );
+  const forgerySeen = perceived.some((f) => f.tell !== undefined);
+  // A liar (Day 16) is a soul with a claim that's false in the world, or a tally known to be forged.
+  const claims = perceived.filter(
+    (f) => (f.item === 'testimony' || f.item === 'tally') && f.says && f.says.value !== null,
+  );
+  const liars = [...ctx.facts].filter(([, af]) => af.def.fromLies && !af.pinned).map(([id]) => id);
 
   const vars = ctx.sampled.filter((id) => !ctx.facts.get(id)?.pinned);
   const domains = vars.map((id) => {
@@ -64,6 +70,8 @@ export function oracleSolveReference(fields: readonly Field[], ctx: DayCtx): Ora
         if (eval2(law.if, t, ctx) && !law.then.in.includes(t[law.then.fact] as Value)) return;
       }
       for (const s of statements) if (t[s.says?.fact as string] !== s.says?.value) return;
+      const lied = forgerySeen || claims.some((c) => t[c.says?.fact as string] !== c.says?.value);
+      for (const id of liars) if (t[id] !== lied) return;
       consistent.push(t);
       return;
     }
@@ -77,7 +85,6 @@ export function oracleSolveReference(fields: readonly Field[], ctx: DayCtx): Ora
   // A saga tally narrows the worlds (it outranks presumptions) if all its lines can be true together;
   // otherwise, or once a forgery sign is seen, it counts for nothing.
   let worlds = consistent;
-  const forgerySeen = perceived.some((f) => f.tell !== undefined);
   const carved = forgerySeen ? [] : perceived.filter((f) => f.item === 'tally' && f.says && f.says.value !== null);
   if (carved.length > 0) {
     const agree = worlds.filter((t) => carved.every((line) => t[line.says?.fact as string] === line.says?.value));

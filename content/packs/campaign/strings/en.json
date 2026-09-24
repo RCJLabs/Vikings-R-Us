@@ -125,5 +125,12 @@
   "rule.odinClaim": "When Freyja's whim and Odin's claim both fit a worthy soul, Odin's claim wins. Stamp VALHALLA.",
   "whim.odin.scarred": "Odin claims the scarred today: two or more wounds in front.",
   "whim.odin.ulfberht": "Odin claims whoever carries a true Ulfberht today.",
-  "law.noMark": "A blade with no maker's mark is a plain blade, not an Ulfberht."
+  "law.noMark": "A blade with no maker's mark is a plain blade, not an Ulfberht.",
+  "decree.d16": "Odin decrees: liars forfeit the halls of the worthy. A soul that would go to Valhalla or Fólkvangr but is caught in a lie, aloud or on a forged tally, goes to Hel. Catch every lie. Until you do, a soul is honest.",
+  "decree.d17": "Odin decrees: those who died in their beds but were marked with a spear point before death are his, as he once marked himself. Look for the mark over the heart. Liars still forfeit it.",
+  "rule.liars": "A soul the halls of the worthy would take, caught in a lie (aloud or on a forged tally), goes to Hel. Stamp HEL.",
+  "rule.spearMark": "A soul marked with a spear point before death is Odin's, even if they died in bed. Stamp VALHALLA.",
+  "obs.spearMark.true": "A spear point's cut over the heart, made before death",
+  "obs.spearMark.false": "No spear mark",
+  "q.blade.plain.confess.1": "All right, it's a plain blade. A good plain blade. It killed people just the same."
 }
