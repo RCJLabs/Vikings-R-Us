@@ -2,7 +2,16 @@ import { loadContent } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
 import { generateDay } from '../gen/generate';
 import { createDayContext } from '../logic/context';
-import { ENDLESS_SOULS, endlessDay, endlessRound } from './endless';
+import {
+  ENDLESS_SOULS,
+  endlessContext,
+  endlessDay,
+  endlessRound,
+  endlessSeed,
+  endlessShareText,
+  endlessSpec,
+  endlessTwist,
+} from './endless';
 import { startShift } from './shift';
 
 const full = loadContent('dev-full');
@@ -18,14 +27,14 @@ describe('Endless', () => {
     expect([0, 1, 2, 3, 9].map((r) => endlessDay(demo, r))).toEqual([1, 2, 3, 3, 3]);
   });
 
-  it('plays the start of each day’s own queue, so the new rule comes first', () => {
+  it('plays the start of each round’s own queue, so a day’s new rule comes first', () => {
     for (const round of [0, 7, 11, 19, 25]) {
       const r = endlessRound(full, 'e', round);
       expect(r.cases).toHaveLength(ENDLESS_SOULS);
-      const ctx = createDayContext(full, r.day, r.seed);
+      const ctx = endlessContext(full, 'e', round);
       expect(r.cases).toEqual(generateDay(r.seed, ctx).cases.slice(0, ENDLESS_SOULS));
       const teach = ctx.spec.queue.teachFirst;
-      if (teach) expect(r.cases[0]?.archetype).toBe(teach);
+      if (teach && !r.twist) expect(r.cases[0]?.archetype).toBe(teach);
     }
   });
 
@@ -40,5 +49,86 @@ describe('Endless', () => {
     expect(ctx.day).toBe(r.day);
     expect(ctx.params).toEqual(createDayContext(full, r.day, r.seed).params);
     expect(state.cases).toEqual(r.cases);
+  });
+
+  it('numbers the day’s run like the Daily, and shares only how many, how far and any assists', () => {
+    expect(endlessSeed(41)).toBe('endless:41');
+    expect(endlessShareText({ title: 'T', label: 'Endless #41', genVersion: 2, judged: 23, round: 8, day: 9 })).toBe(
+      "T · Endless #41 (g2)\n23 souls judged rightly · round 9, Day 9's rules",
+    );
+    // An assisted run says so, as an assisted Daily does.
+    expect(
+      endlessShareText({
+        title: 'T',
+        label: 'L',
+        genVersion: 1,
+        judged: 1,
+        round: 0,
+        day: 1,
+        assists: { tracker: true },
+      }),
+    ).toBe("T · L (g1)\n1 soul judged rightly · round 1, Day 1's rules · rule tracker");
+  });
+});
+
+describe('Endless twists', () => {
+  const rounds = (n: number) => Array.from({ length: n }, (_, r) => r);
+
+  it('come to rounds that bring nothing new: days without a teaching soul, and every round past the last day', () => {
+    const twisted = rounds(26).filter((r) => endlessTwist(full, 'e', r) !== null);
+    // Days 9 and 18-20 are rounds 8 and 17-19; from round 20 on, every round is past Day 20.
+    expect(twisted).toEqual([8, 17, 18, 19, 20, 21, 22, 23, 24, 25]);
+    expect(rounds(8).filter((r) => endlessTwist(demo, 'e', r) !== null)).toEqual([3, 4, 5, 6, 7]);
+  });
+
+  it('read their own decree, keep the day’s rules, and use only what the day has', () => {
+    for (const r of [8, 17, 25, 40]) {
+      const twist = endlessTwist(full, 'e', r);
+      const spec = endlessSpec(full, 'e', r);
+      expect(twist).not.toBeNull();
+      expect(spec.decree).toBe(twist?.decree);
+      expect(twist?.since).toBeLessThanOrEqual(endlessDay(full, r));
+      expect(endlessContext(full, 'e', r).rules).toEqual(createDayContext(full, endlessDay(full, r), 'x').rules);
+    }
+    for (const r of [3, 4, 5, 6]) expect(endlessTwist(demo, 'e', r)?.since).toBeLessThanOrEqual(3);
+  });
+
+  it('each makes fair souls on every day it can come to', () => {
+    for (const twist of full.twists ?? []) {
+      for (const day of full.days.map((d) => d.day).filter((d) => d >= twist.since)) {
+        const base = full.days.find((d) => d.day === day);
+        if (!base) continue;
+        const spec = {
+          ...base,
+          decree: twist.decree,
+          queue: {
+            ...base.queue,
+            knobs: { ...base.queue.knobs, ...twist.knobs },
+            mix: { ...base.queue.mix, ...twist.mix },
+          },
+        };
+        const seed = `twist-${twist.id}-${day}`;
+        const cases = generateDay(seed, createDayContext(full, day, seed, spec)).cases;
+        expect(cases.length, `${twist.id} on day ${day}`).toBeGreaterThanOrEqual(ENDLESS_SOULS);
+      }
+    }
+  });
+
+  it('change how the souls come', () => {
+    const lies = (twisted: boolean) => {
+      let n = 0;
+      for (let s = 0; s < 20; s++) {
+        const seed = `lies-${s}`;
+        const base = full.days.find((d) => d.day === 19);
+        if (!base) throw new Error('no Day 19');
+        const liars = full.twists?.find((t) => t.id === 'twist.liars');
+        const spec = twisted
+          ? { ...base, queue: { ...base.queue, knobs: { ...base.queue.knobs, ...liars?.knobs } } }
+          : base;
+        for (const c of generateDay(seed, createDayContext(full, 19, seed, spec)).cases) n += c.lies.length;
+      }
+      return n;
+    };
+    expect(lies(true)).toBeGreaterThan(lies(false));
   });
 });

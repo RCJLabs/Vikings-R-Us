@@ -5,6 +5,7 @@ import type {
   Economy,
   Effect,
   EndingDef,
+  EndlessTwist,
   FactDef,
   FactLaw,
   FamilyDef,
@@ -311,6 +312,31 @@ const LessonSchema = z.strictObject({
     .min(1),
 });
 
+const KnobsSchema = z.strictObject({
+  lieRate: Int.min(0).max(200),
+  maxLies: Int.min(0).max(3),
+  decoyRate: Percent,
+  ravenRate: Percent,
+  forgetRate: Percent,
+  proofCostS: Pair,
+  maxTools: Int.min(0),
+  maxDocs: Int.min(1),
+  salienceFloor: SalienceSchema,
+  tallyRate: Percent.optional(),
+  muninnRecall: Percent.optional(),
+  huginnAside: Percent.optional(),
+  spreadLines: z.boolean().optional(),
+});
+
+/** Endless's twists (endless.yaml): a decree and how the souls come, never new rules. */
+export const EndlessTwistSchema: z.ZodType<EndlessTwist> = z.strictObject({
+  id: Id,
+  since: Day,
+  decree: Key,
+  knobs: KnobsSchema.partial().optional(),
+  mix: z.partialRecord(DestinationSchema, z.tuple([Percent, Percent])).optional(),
+});
+
 export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
   day: Day,
   sunS: Int.positive(),
@@ -333,21 +359,7 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       .optional(),
     archetypes: z.array(z.strictObject({ id: Id, w: Int.positive() })).min(1),
     mix: z.partialRecord(DestinationSchema, z.tuple([Percent, Percent])),
-    knobs: z.strictObject({
-      lieRate: Int.min(0).max(200),
-      maxLies: Int.min(0).max(3),
-      decoyRate: Percent,
-      ravenRate: Percent,
-      forgetRate: Percent,
-      proofCostS: Pair,
-      maxTools: Int.min(0),
-      maxDocs: Int.min(1),
-      salienceFloor: SalienceSchema,
-      tallyRate: Percent.optional(),
-      muninnRecall: Percent.optional(),
-      huginnAside: Percent.optional(),
-      spreadLines: z.boolean().optional(),
-    }),
+    knobs: KnobsSchema,
   }),
   lesson: LessonSchema.optional(),
 });

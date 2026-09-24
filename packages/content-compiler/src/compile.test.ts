@@ -268,6 +268,27 @@ describe('gameplay content lints', () => {
     expect(() => compile({ core: base, demo: lesson(whim + stamp) })).toThrow(/the day has no param "freyjaWhim"/);
   });
 
+  it('lints Endless twists', () => {
+    const twists = (yaml: string, strings: Record<string, string> = { 'twist.a': 'A twist' }): PackFixture => {
+      const d = day('arch.liar');
+      return { ...d, strings: { ...d.strings, ...strings }, files: { ...d.files, 'endless.yaml': yaml } };
+    };
+    const base = core({ 'archetypes.yaml': archetype('') });
+    const ok = '- { id: twist.a, since: 1, decree: twist.a, knobs: { lieRate: 200 }, mix: { HEL: [60, 80] } }\n';
+    expect(() => compile({ core: base, demo: twists(ok) })).not.toThrow();
+    expect(() => compile({ core: base, demo: twists(ok + ok) })).toThrow(/twist\.a/);
+    expect(() => compile({ core: base, demo: twists(ok, {}) })).toThrow(/uses missing string "twist\.a"/);
+    expect(() => compile({ core: base, demo: twists(ok.replace('since: 1', 'since: 2')) })).toThrow(
+      /starts on day 2, after the build's last day/,
+    );
+    expect(() => compile({ core: base, demo: twists(ok.replace('HEL', 'RAN')) })).toThrow(
+      /asks for RAN souls, which no rule sends anywhere by day 1/,
+    );
+    expect(() => compile({ core: base, demo: twists(ok.replace('[60, 80]', '[80, 60]')) })).toThrow(
+      /empty share for HEL/,
+    );
+  });
+
   it('requires the last rule in force to always apply', () => {
     const partial = core({
       'rules.yaml':

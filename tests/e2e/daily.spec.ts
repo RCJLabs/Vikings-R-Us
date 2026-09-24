@@ -173,6 +173,30 @@ test('a reload right after the last send keeps the result', async ({ page }) => 
   await expect(page.getByTestId('play-daily')).toHaveText("Play again (won't count)");
 });
 
+test('an earlier Daily from the archive plays for its own sake, and counts for nothing', async ({ page }) => {
+  const past = 20;
+  const old = startShift(content, { mode: 'daily', seed: dailySeed(past), day: spec.day, dailyNumber: past }).state;
+  await page.clock.setFixedTime(DATE);
+  await page.goto('./');
+  await page.getByTestId('daily-archive').locator('summary').click();
+  await expect(page.getByTestId('archive-pick')).toHaveValue(String(N - 1));
+  await page.getByTestId('archive-pick').selectOption(String(past));
+  await page.getByTestId('archive-play').click();
+  await expect(page.getByTestId('briefing-title')).toHaveText(`Daily Shift #${past} (2026-12-20, from the archive)`);
+  await page.getByTestId('begin').click();
+  for (const c of old.cases) await stampAndSend(page, c.expect.dest);
+  await expect(page.getByTestId('score')).toHaveText('8 of 8 judged rightly');
+  expect(await page.getByTestId('share-text').inputValue()).toMatch(
+    new RegExp(`^Chooser of the Slain · Daily #${past} \\(archive\\) \\(g1\\)\\n(🟩){8} 8/8`),
+  );
+
+  // Nothing recorded: today's Daily is still to play, and there's no streak.
+  await page.getByTestId('home').click();
+  await expect(page.getByTestId('play-daily')).toHaveText(`Daily Shift #${N}`);
+  await expect(page.getByTestId('daily-result')).toHaveCount(0);
+  await expect(page.getByTestId('streak')).toHaveCount(0);
+});
+
 test('keyboard only: look, turn over, stamp with number keys, send with Enter', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'keyboard play is for the desk layout');
   await page.clock.setFixedTime(DATE);

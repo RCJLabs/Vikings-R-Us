@@ -6,10 +6,14 @@ import {
   cleanAssists,
   DAILY_EPOCH,
   type DayCtx,
+  dailyDate,
   dailyNumber,
   dailySeed,
   ENDLESS_STRIKES,
+  endlessContext,
   endlessRound,
+  endlessSeed,
+  endlessShareText,
   expectedChecksum,
   type GuardResult,
   guardDaily,
@@ -71,6 +75,8 @@ export interface Settings {
   readonly sound: number;
   /** Endless: the most souls judged rightly in one run on this device. */
   readonly endlessBest: number;
+  /** The latest day's Endless run finished here (today's, once it's played). */
+  readonly endlessToday: EndlessResult | null;
   /** Campaign endings reached on this device, in any slot or run, first found first. */
   readonly endingsSeen: readonly string[];
   /** Assists (docs/tech-spec.md §24): the sun's speed in percent, the rule tracker, no campaign fines. */
@@ -93,6 +99,7 @@ export const DEFAULT_SETTINGS: Settings = {
   primerDone: false,
   sound: 0.6,
   endlessBest: 0,
+  endlessToday: null,
   endingsSeen: [],
   sunPct: 100,
   ruleTracker: false,
@@ -191,7 +198,12 @@ let store: KeyValueStore | null = null;
  * unloads, and losing a just-sent soul or a finished result would let the
  * Daily be played again.
  */
-const MIRROR = { progress: 'cots.daily-progress', record: 'cots.daily', settings: 'cots.settings' } as const;
+const MIRROR = {
+  progress: 'cots.daily-progress',
+  record: 'cots.daily',
+  settings: 'cots.settings',
+  endless: 'cots.endless-progress',
+} as const;
 
 export function mirror(key: string, value: unknown): void {
   try {
@@ -223,6 +235,14 @@ function newest(a: DailyProgress | undefined, b: DailyProgress | undefined): Dai
   return b.actions.length > a.actions.length || (b.seenAt ?? 0) > (a.seenAt ?? 0) ? b : a;
 }
 
+/** The further along of two saves of an Endless run; `b` is the mirror, never older when they differ. */
+function furthest(a: EndlessProgress | undefined, b: EndlessProgress | undefined): EndlessProgress | undefined {
+  if (a?.v !== 1) return b?.v === 1 ? b : undefined;
+  if (b?.v !== 1 || a.mode.seed !== b.mode.seed) return b?.v === 1 ? b : a;
+  if (a.mode.round !== b.mode.round) return a.mode.round > b.mode.round ? a : b;
+  return a.actions.length > b.actions.length ? a : b;
+}
+
 /** The key-value store, once initStorage has opened it. */
 export const kvStore = (): KeyValueStore | null => store;
 
@@ -232,10 +252,11 @@ export async function initStorage(): Promise<void> {
   } catch {
     store = memoryStore();
   }
-  const [s, record, progress] = await Promise.all([
+  const [s, record, progress, endless] = await Promise.all([
     store.get<Settings>('settings'),
     store.get<DailyRecord>('daily'),
     store.get<DailyProgress>('daily-progress'),
+    store.get<EndlessProgress>('endless-progress'),
   ]);
   batch(() => {
     // The synchronous copy is never older than IndexedDB's.
@@ -243,10 +264,45 @@ export async function initStorage(): Promise<void> {
     if (saved?.v === 1) settings.value = { ...DEFAULT_SETTINGS, ...saved };
     dailyRecord.value = mergeRecords(record, readMirror<DailyRecord>(MIRROR.record));
     dailyProgress.value = newest(progress, readMirror<DailyProgress>(MIRROR.progress)) ?? null;
+    const run = furthest(endless, readMirror<EndlessProgress>(MIRROR.endless));
+    // A day's run already recorded is over, whatever a slower store still holds.
+    const recorded = run?.mode.dated && run.mode.dated.n === settings.value.endlessToday?.n;
+    endlessProgress.value = run && !recorded ? run : null;
     storageReady.value = true;
   });
   applySettings();
 }
+
+/** A day's Endless run: the same souls for everyone on that date, numbered like the Daily. */
+export interface DatedRun {
+  readonly n: number;
+  readonly date: string;
+  readonly preview: boolean;
+}
+
+/** How a day's Endless run went here: the title card shows it and shares it. */
+export interface EndlessResult extends DatedRun {
+  readonly g: number;
+  readonly judged: number;
+  readonly round: number;
+  readonly day: number;
+  readonly tracker?: boolean;
+}
+
+/** The Endless run being played, saved after every action so a reload resumes it (docs/tech-spec.md §27). */
+export interface EndlessProgress {
+  readonly v: 1;
+  readonly g: number;
+  /** The run as its current round began. */
+  readonly mode: EndlessMode;
+  /** The round's actions so far. */
+  readonly actions: readonly ShiftAction[];
+  /** The score and strikes as they stand, for the title card. */
+  readonly judged: number;
+  readonly strikes: number;
+}
+
+export const endlessProgress = signal<EndlessProgress | null>(null);
 
 export function todayLocal(): CivilDate {
   const d = new Date();
@@ -287,6 +343,8 @@ export type Mode =
       readonly date: string;
       readonly preview: boolean;
       readonly ranked: boolean;
+      /** A past Daily from the archive: played for its own sake, never recorded. */
+      readonly archive: boolean;
       /** This device's checksum for the Daily, and whether it matched the build's table. */
       readonly checksum: string;
       readonly guard: GuardResult;
@@ -309,6 +367,10 @@ export interface EndlessMode {
   readonly judged: number;
   /** The best score when the run began, to tell a new best. */
   readonly bestBefore: number;
+  /** The day's run, the same souls for everyone that date; null for a free run (a seed of its own). */
+  readonly dated: DatedRun | null;
+  /** Whether any round began with the rule tracker on (its share text says so). */
+  readonly tracker: boolean;
 }
 
 export interface Session {
@@ -411,7 +473,8 @@ export function act(input: ActionInput): void {
     session.value = next;
     for (const e of r.events) onEvent(e, next);
   });
-  if (changed) saveProgress(next);
+  // The events may have moved the session on (an Endless score, or its next round).
+  if (changed) saveProgress(session.peek() ?? next);
 }
 
 function onEvent(e: ShiftEvent, s: Session): void {
@@ -468,6 +531,10 @@ function onEvent(e: ShiftEvent, s: Session): void {
 }
 
 function saveProgress(s: Session): void {
+  if (s.mode.kind === 'endless') {
+    saveEndless(s);
+    return;
+  }
   if (s.mode.kind !== 'daily' || !s.mode.ranked || s.state.phase === 'done') return;
   const progress: DailyProgress = {
     v: 1,
@@ -544,11 +611,17 @@ export function today(): { n: number; date: string; preview: boolean } {
   return { n, date: isoDate(date), preview: n < 1 };
 }
 
-export function startDaily(): void {
+/**
+ * Today's Daily, or with `past`, an earlier one from the archive: the same souls everyone got that day
+ * (from this build's generator), played for its own sake, never recorded.
+ */
+export function startDaily(past?: number): void {
   const content = dailyContent;
   if (!content?.daily) return;
-  const { n, date, preview } = today();
-  const ranked = !dailyRecord.value.results[String(n)];
+  const current = today();
+  const archive = past !== undefined && past >= 1 && past < current.n;
+  const { n, date, preview } = archive ? { n: past, date: isoDate(dailyDate(past)), preview: false } : current;
+  const ranked = !archive && !dailyRecord.value.results[String(n)];
   const { state, ctx } = startShift(content, {
     mode: 'daily',
     seed: dailySeed(n),
@@ -570,7 +643,7 @@ export function startDaily(): void {
     });
   }
   let s: Session = {
-    mode: { kind: 'daily', n, date, preview, ranked, checksum, guard },
+    mode: { kind: 'daily', n, date, preview, ranked, archive, checksum, guard },
     content,
     ctx,
     initial: state,
@@ -614,27 +687,161 @@ export function startPractice(day: number): void {
   screen.value = 'briefing';
 }
 
+/** A free Endless run: a seed of its own, so it's never the day's. Ends a saved run where it stands. */
 export function startEndless(): void {
+  closeEndless();
   // Random on purpose, like practice; only the engine has to be deterministic.
   const seed = `endless:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e9).toString(36)}`;
-  const best = settings.peek().endlessBest;
-  startEndlessRound({ kind: 'endless', seed, round: 0, day: 0, strikes: 0, judged: 0, bestBefore: best });
+  startEndlessRound(freshRun(seed, null));
 }
 
-function startEndlessRound(mode: EndlessMode): void {
+/** Today's Endless: the same souls for everyone today, numbered like the Daily; once a day counts. */
+export function startEndlessToday(): void {
+  const dated = today();
+  // Today's run, once begun, can only be carried on: starting it again would replay known souls.
+  if (endlessProgress.peek()?.mode.dated?.n === dated.n) {
+    resumeEndless();
+    return;
+  }
+  if (settings.peek().endlessToday?.n === dated.n) return;
+  closeEndless();
+  startEndlessRound(freshRun(endlessSeed(dated.n), dated));
+}
+
+function freshRun(seed: string, dated: DatedRun | null): EndlessMode {
+  const bestBefore = settings.peek().endlessBest;
+  return { kind: 'endless', seed, round: 0, day: 0, strikes: 0, judged: 0, bestBefore, dated, tracker: false };
+}
+
+/** The saved run as it stands: its round rebuilt, the round's actions replayed. */
+function savedEndless(p: EndlessProgress): EndlessSession {
+  // After an update that changed the generator the round's souls differ: it starts again from its first.
+  return endlessSession(p.mode, p.g === gameContent.genVersion ? p.actions : []);
+}
+
+/** Picks up the saved run where it was left. */
+export function resumeEndless(): void {
+  const p = endlessProgress.peek();
+  if (!p) return;
+  const s = savedEndless(p);
+  if (s.mode.strikes >= ENDLESS_STRIKES) {
+    showEndless(s);
+    endEndless(s.mode);
+    screen.value = 'endless';
+    return;
+  }
+  if (s.state.phase === 'done') {
+    startEndlessRound({ ...s.mode, round: s.mode.round + 1 });
+    return;
+  }
+  const lastAt = s.actions[s.actions.length - 1]?.at;
+  if (lastAt !== undefined) resumeClockAt(lastAt);
+  // Back to the soul it was left on, paused, as a resumed Daily is.
+  let resumed = s;
+  if (s.state.phase === 'shift' && s.state.clock.pausedAt === null) {
+    const pause: ShiftAction = { t: 'pause', at: clock() };
+    resumed = { ...s, state: stepShift(s.state, pause, s.ctx).state, actions: [...s.actions, pause] };
+  }
+  showEndless(resumed);
+  screen.value = resumed.state.phase === 'briefing' ? 'briefing' : 'shift';
+}
+
+/**
+ * A round's session: its souls and its day context (with the round's twist), with `replay` stepped
+ * through and scored, as a saved round is resumed.
+ */
+type EndlessSession = Session & { readonly mode: EndlessMode };
+
+function endlessSession(mode: EndlessMode, replay: readonly ShiftAction[] = []): EndlessSession {
   const r = endlessRound(gameContent, mode.seed, mode.round);
-  const { state, ctx } = startShift(
-    gameContent,
-    { mode: 'practice', seed: r.seed, day: r.day, untimed: true },
-    r.cases,
-  );
+  const ctx = endlessContext(gameContent, mode.seed, mode.round);
+  const { state } = startShift(gameContent, { mode: 'practice', seed: r.seed, day: r.day, untimed: true }, r.cases);
+  let st = state;
+  let judged = mode.judged;
+  let strikes = mode.strikes;
+  let tracker = mode.tracker;
+  for (const a of replay) {
+    if (a.t === 'begin' && a.assists?.tracker) tracker = true;
+    const step = stepShift(st, a, ctx);
+    st = step.state;
+    for (const e of step.events) {
+      if (e.e !== 'judged') continue;
+      if (e.verdict.correct) judged++;
+      else strikes++;
+    }
+  }
+  return {
+    mode: { ...mode, day: r.day, judged, strikes, tracker },
+    content: gameContent,
+    ctx,
+    initial: state,
+    state: st,
+    actions: [...replay],
+  };
+}
+
+function showEndless(s: Session): void {
   resetSoulUi();
   batch(() => {
     citation.value = null;
     answer.value = null;
-    session.value = { mode: { ...mode, day: r.day }, content: gameContent, ctx, initial: state, state, actions: [] };
-    screen.value = 'briefing';
+    session.value = s;
   });
+}
+
+function startEndlessRound(mode: EndlessMode): void {
+  const s = endlessSession(mode);
+  showEndless(s);
+  screen.value = 'briefing';
+  saveEndless(s);
+}
+
+/** Saves the run as its round began, with the round's actions (resumeEndless replays them). */
+function saveEndless(s: Session): void {
+  if (s.mode.kind !== 'endless' || s.mode.strikes >= ENDLESS_STRIKES) return;
+  const right = s.state.verdicts.filter((v) => v.correct).length;
+  const wrong = s.state.verdicts.length - right;
+  const mode: EndlessMode = { ...s.mode, judged: s.mode.judged - right, strikes: s.mode.strikes - wrong };
+  const progress: EndlessProgress = {
+    v: 1,
+    g: s.content.genVersion,
+    mode,
+    actions: s.actions,
+    judged: s.mode.judged,
+    strikes: s.mode.strikes,
+  };
+  endlessProgress.value = progress;
+  mirror(MIRROR.endless, progress);
+  void store?.set('endless-progress', progress);
+}
+
+/** The run is over: its best, the day's result when it was the day's run, then the saved run dropped. */
+function endEndless(m: EndlessMode): void {
+  const best = m.judged > settings.peek().endlessBest ? { endlessBest: m.judged } : {};
+  const dated = m.dated
+    ? {
+        endlessToday: {
+          ...m.dated,
+          g: gameContent.genVersion,
+          judged: m.judged,
+          round: m.round,
+          day: m.day,
+          ...(m.tracker ? { tracker: true } : {}),
+        },
+      }
+    : {};
+  // Result first, then drop the saved run: an unload between the two must not lose both.
+  if (Object.keys(best).length > 0 || m.dated) updateSettings({ ...best, ...dated });
+  endlessProgress.value = null;
+  mirror(MIRROR.endless, null);
+  void store?.remove('endless-progress');
+}
+
+/** Ends the saved run (if any) where it stands, before another begins: a day's run is recorded as it is. */
+function closeEndless(): void {
+  const p = endlessProgress.peek();
+  if (!p) return;
+  endEndless(savedEndless(p).mode);
 }
 
 /** Scores a stamp in Endless; the third wrong one ends the run where it stands. */
@@ -645,7 +852,7 @@ function countEndless(correct: boolean): void {
   const mode = correct ? { ...m, judged: m.judged + 1 } : { ...m, strikes: m.strikes + 1 };
   session.value = { ...s, mode };
   if (mode.strikes < ENDLESS_STRIKES) return;
-  if (mode.judged > settings.peek().endlessBest) updateSettings({ endlessBest: mode.judged });
+  endEndless(mode);
   screen.value = 'endless';
 }
 
@@ -673,6 +880,13 @@ export const coachAcks = signal<readonly string[]>([]);
 export function begin(): void {
   const assists = currentAssists(false, session.peek()?.state.config.untimed === true);
   act({ t: 'begin', ...(Object.keys(assists).length > 0 ? { assists } : {}) });
+  const s = session.peek();
+  // An Endless run played with the rule tracker in any round says so when shared.
+  if (s?.mode.kind === 'endless' && assists.tracker && !s.mode.tracker) {
+    const next = { ...s, mode: { ...s.mode, tracker: true } };
+    session.value = next;
+    saveEndless(next);
+  }
   if (session.value?.state.phase === 'shift') screen.value = 'shift';
 }
 
@@ -695,11 +909,40 @@ export function toTitle(): void {
   });
 }
 
+/** What an Endless run is called in its share text: the day's by number, a free run as one. */
+export function endlessLabel(dated: DatedRun | null): string {
+  if (!dated) return 'Endless · free run';
+  return dated.preview ? `Endless preview ${dated.date}` : `Endless #${dated.n}`;
+}
+
+/** Spoiler-free text for a finished Endless run, and the link it points to. */
+export function endlessShareBody(r: {
+  readonly dated: DatedRun | null;
+  readonly g: number;
+  readonly judged: number;
+  readonly round: number;
+  readonly day: number;
+  readonly tracker?: boolean;
+}): { text: string; url: string | undefined } {
+  const text = endlessShareText({
+    title: t('core.title'),
+    label: endlessLabel(r.dated),
+    genVersion: r.g,
+    judged: r.judged,
+    round: r.round,
+    day: r.day,
+    ...(r.tracker ? { assists: { tracker: true } } : {}),
+  });
+  return { text, url: platform.shareUrl() };
+}
+
 /** Spoiler-free result text, and the link it points to. */
 export function shareBody(s: Session): { text: string; url: string | undefined } {
+  if (s.mode.kind === 'endless') return endlessShareBody({ ...s.mode, g: s.content.genVersion });
   let label: string | undefined;
   if (s.mode.kind === 'daily') {
     label = s.mode.preview ? `Daily preview ${s.mode.date}` : `Daily #${s.mode.n}`;
+    if (s.mode.archive) label += ' (archive)';
     // A device that built a different Daily says so, so nobody compares apples with pears.
     if (s.mode.guard === 'mismatch') label += ' · unverified';
   }
@@ -719,6 +962,16 @@ export function applyUpdate(): void {
 
 export async function shareResult(s: Session): Promise<ShareResult> {
   const { text, url } = shareBody(s);
+  return platform.share(text, url);
+}
+
+/** The share text of a day's Endless run, from its result (the run itself has gone). */
+export const endlessResultBody = (r: EndlessResult): { text: string; url: string | undefined } =>
+  endlessShareBody({ ...r, dated: r });
+
+/** Shares a day's Endless run from the title card. */
+export async function shareEndless(r: EndlessResult): Promise<ShareResult> {
+  const { text, url } = endlessResultBody(r);
   return platform.share(text, url);
 }
 
@@ -747,7 +1000,8 @@ export function startClock(): void {
       act({ t: 'tick' });
       if (++beats % 20 === 0) {
         const current = session.peek() ?? s;
-        saveProgress(current);
+        // The Daily keeps how far its sun got; Endless has no sun, and saves on every action anyway.
+        if (current.mode.kind === 'daily') saveProgress(current);
         current.heartbeat?.();
       }
     }

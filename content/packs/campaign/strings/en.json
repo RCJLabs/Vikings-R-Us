@@ -285,5 +285,10 @@
   "coach.d16.catch": "New today: a worthy soul caught lying forfeits the hall. This one lies. Catch it: tap what they say, then what shows it false.",
   "coach.d16.stamp": "Caught. The halls of the worthy won't take a liar. Stamp HEL.",
   "coach.d17.chest": "New today: Odin's mark. Look over the heart.",
-  "coach.d17.stamp": "A spear's cut, made before death: they were marked for Odin, and the marked go to Valhalla, even from their beds. Stamp VALHALLA."
+  "coach.d17.stamp": "A spear's cut, made before death: they were marked for Odin, and the marked go to Valhalla, even from their beds. Stamp VALHALLA.",
+  "twist.freyja": "Freyja is greedy this round: her whim fits more of the worthy than usual.",
+  "twist.sea": "A fleet went down in the night. The sea gives up its dead.",
+  "twist.forgers": "The carvers have been busy. More souls than usual bring saga tallies, and not every tally is honest.",
+  "twist.loki": "Loki has brought friends. Watch the lips.",
+  "twist.muninn": "Muninn is tired. He forgets more than he remembers this round."
 }

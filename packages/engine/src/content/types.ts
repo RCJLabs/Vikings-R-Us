@@ -290,6 +290,21 @@ export interface Knobs {
   readonly spreadLines?: boolean;
 }
 
+/**
+ * An Endless twist (docs/tech-spec.md §27): the decree for a round that brings nothing new (a day with no
+ * teaching soul, or any round past the last day). It changes how the day's souls come, never its rules.
+ */
+export interface EndlessTwist {
+  readonly id: string;
+  /** The first day whose mechanics it needs. */
+  readonly since: number;
+  /** What is read out for the round, in place of the day's decree. */
+  readonly decree: string;
+  readonly knobs?: Partial<Knobs>;
+  /** Replaces the day's share of these destinations. */
+  readonly mix?: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
+}
+
 export interface DayParam {
   readonly pool: readonly { readonly id: string; readonly text: string; readonly is: Pred }[];
 }
@@ -580,4 +595,6 @@ export interface Content {
   readonly procedures?: readonly ProcedureDef[];
   /** Saga tally lines (Day 11 on). */
   readonly tallies?: readonly TallyTemplate[];
+  /** Endless's twists for rounds that bring nothing new. */
+  readonly twists?: readonly EndlessTwist[];
 }

@@ -180,6 +180,41 @@ kbd {
   font-size: 1.1rem;
 }
 
+/* Past Dailies: a fold in the Daily card, closed by default. */
+.archive {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+}
+
+.archive summary {
+  cursor: pointer;
+  color: var(--accent);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.archive select {
+  font: inherit;
+  min-height: 44px;
+  max-width: 100%;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+
+.endless__today {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.endless__today p {
+  margin: 0;
+}
+
 .card--settings summary {
   cursor: pointer;
   color: var(--accent);
@@ -230,6 +265,12 @@ kbd {
 }
 
 .briefing__queue {
+  font-weight: 600;
+  margin: 0;
+}
+
+.briefing__twist {
+  color: var(--accent);
   font-weight: 600;
   margin: 0;
 }

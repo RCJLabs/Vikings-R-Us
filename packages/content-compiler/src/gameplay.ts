@@ -6,6 +6,7 @@ import {
   CampaignPartSchema,
   CueSchema,
   DaySpecSchema,
+  EndlessTwistSchema,
   FactSchema,
   LawSchema,
   NamedPredicateSchema,
@@ -30,6 +31,7 @@ import type {
   Content,
   CueDef,
   DaySpec,
+  EndlessTwist,
   FactDef,
   FactLaw,
   NamedPredicate,
@@ -78,6 +80,8 @@ export interface PackContent {
   scripted: ScriptedCaseDef[];
   procedures: ProcedureDef[];
   tallies: TallyTemplate[];
+  /** Endless's twists (`endless.yaml`). */
+  twists: EndlessTwist[];
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -123,6 +127,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     scripted: each('cases', ScriptedCaseSchema),
     procedures: list('procedures.yaml', ProcedureSchema),
     tallies: list('templates/tallies.yaml', TallyTemplateSchema),
+    twists: list('endless.yaml', EndlessTwistSchema),
     ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
     ...(existsSync(primerFile) ? { primer: parse(DaySpecSchema, readYaml(primerFile), primerFile) } : {}),
     ...(existsSync(campaignFile) ? { campaign: parse(CampaignPartSchema, readYaml(campaignFile), campaignFile) } : {}),
@@ -190,6 +195,7 @@ export function emptyPackContent(): PackContent {
     scripted: [],
     procedures: [],
     tallies: [],
+    twists: [],
   };
 }
 
@@ -208,6 +214,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
   const scripted = cat('scripted');
   const procedures = cat('procedures');
   const tallies = cat('tallies');
+  const twists = cat('twists');
   return {
     genVersion,
     facts: cat('facts'),
@@ -232,6 +239,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     ...(scripted.length > 0 ? { scripted } : {}),
     ...(procedures.length > 0 ? { procedures } : {}),
     ...(tallies.length > 0 ? { tallies } : {}),
+    ...(twists.length > 0 ? { twists } : {}),
   };
 }
 
@@ -248,6 +256,7 @@ export function idsOf(c: PackContent): string[] {
     ...c.testimony.map((x) => x.id),
     ...c.ravens.map((x) => x.id),
     ...c.questions.map((x) => x.id),
+    ...c.twists.map((x) => x.id),
     ...Object.keys(c.pools),
     ...Object.values(c.daily?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
     ...Object.values(c.primer?.params ?? {}).flatMap((p) => p.pool.map((x) => x.id)),
@@ -476,6 +485,7 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
   if (content.campaign) problems.push(...lintCampaign(content, strings));
   problems.push(...lintScripted(content, strings));
   problems.push(...lintLessons(content, strings));
+  problems.push(...lintTwists(content, strings));
 
   const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
   if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
@@ -512,6 +522,31 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
       .sort((a, b) => a.order - b.order);
     const last = inForce[inForce.length - 1];
     if (!last || !('always' in last.when)) problems.push(`${name}: the last rule in force must always apply.`);
+  }
+  return problems;
+}
+
+/**
+ * Endless's twists (docs/tech-spec.md §27): a decree the build has, a day they can start on, and shares
+ * only of destinations some rule sends souls to by that day. The tests generate every twist on every day
+ * it can come.
+ */
+function lintTwists(content: Content, strings: Readonly<Record<string, string>>): string[] {
+  const problems: string[] = [];
+  const ids = new Set<string>();
+  const lastDay = Math.max(0, ...content.days.map((d) => d.day));
+  for (const tw of content.twists ?? []) {
+    const where = `Endless twist ${tw.id}`;
+    if (ids.has(tw.id)) problems.push(`Duplicate Endless twist "${tw.id}".`);
+    ids.add(tw.id);
+    if (!(tw.decree in strings)) problems.push(`${where} uses missing string "${tw.decree}".`);
+    if (tw.since > lastDay) problems.push(`${where} starts on day ${tw.since}, after the build's last day.`);
+    for (const [dest, range] of Object.entries(tw.mix ?? {})) {
+      if (!content.rules.some((r) => r.then === dest && r.since <= tw.since)) {
+        problems.push(`${where} asks for ${dest} souls, which no rule sends anywhere by day ${tw.since}.`);
+      }
+      if (range && range[0] > range[1]) problems.push(`${where} has an empty share for ${dest}.`);
+    }
   }
   return problems;
 }

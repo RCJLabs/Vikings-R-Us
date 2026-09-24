@@ -1,0 +1,6 @@
+# Endless's twists for the full game's mechanics (see demo/endless.yaml). DRAFT text.
+- { id: twist.freyja, since: 4, decree: twist.freyja, mix: { FOLKVANGR: [25, 40] } }
+- { id: twist.sea, since: 5, decree: twist.sea, mix: { RAN: [30, 45] } }
+- { id: twist.forgers, since: 11, decree: twist.forgers, knobs: { tallyRate: 80 } }
+- { id: twist.loki, since: 12, decree: twist.loki, mix: { DETAIN: [15, 25] } }
+- { id: twist.muninn, since: 13, decree: twist.muninn, knobs: { forgetRate: 70 } }
