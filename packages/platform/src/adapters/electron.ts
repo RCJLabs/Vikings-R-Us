@@ -1,5 +1,5 @@
 import type { Platform } from '../index';
-import { noUpdates, shareWithFallback } from '../share';
+import { noAchievements, noUpdates, shareWithFallback } from '../share';
 import { openStore } from '../storage';
 
 /**
@@ -12,4 +12,6 @@ export const platform: Platform = {
   shareUrl: () => undefined,
   openStore: () => openStore(),
   watchForUpdate: noUpdates,
+  // Steam's achievements arrive with the Electron shell (M6), through SteamPort, mapped from the game's ids.
+  unlockAchievement: noAchievements,
 };

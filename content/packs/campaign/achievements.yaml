@@ -1,0 +1,30 @@
+# The campaign's achievements (docs/tech-spec.md §34): each story ending, found; two corners of the story;
+# and two for playing it well. An ending's achievement takes the ending's own title. The failure endings
+# (demoted, an empty house) earn nothing. DRAFT text.
+- { id: ach.odin, title: ending.odin.title, text: ach.odin.text, hidden: true, when: { at: ending, endings: [ending.odin] } }
+- { id: ach.freyja, title: ending.freyja.title, text: ach.freyja.text, hidden: true, when: { at: ending, endings: [ending.freyja] } }
+- { id: ach.hel, title: ending.hel.title, text: ach.hel.text, hidden: true, when: { at: ending, endings: [ending.hel] } }
+- { id: ach.naglfar, title: ending.naglfar.title, text: ach.naglfar.text, hidden: true, when: { at: ending, endings: [ending.naglfar] } }
+- { id: ach.transfer, title: ending.transfer.title, text: ach.transfer.text, hidden: true, when: { at: ending, endings: [ending.transfer] } }
+- { id: ach.smuggled, title: ending.smuggled.title, text: ach.smuggled.text, hidden: true, when: { at: ending, endings: [ending.smuggled] } }
+- { id: ach.rebirth, title: ending.rebirth.title, text: ach.rebirth.text, hidden: true, when: { at: ending, endings: [ending.rebirth] } }
+- { id: ach.wolf, title: ending.wolf.title, text: ach.wolf.text, hidden: true, when: { at: ending, endings: [ending.wolf] } }
+- { id: ach.lastStand, title: ending.lastStand.title, text: ach.lastStand.text, hidden: true, when: { at: ending, endings: [ending.lastStand] } }
+- id: ach.stitched
+  title: ach.stitched.title
+  text: ach.stitched.text
+  hidden: true
+  when: { at: run, test: { state: flags.loki_detained, gte: 1 } }
+- id: ach.unlucky
+  title: ach.unlucky.title
+  text: ach.unlucky.text
+  hidden: true
+  when: { at: run, test: { all: [{ state: flags.thorvald_returned, gte: 1 }, { state: flags.thorvald16_returned, gte: 1 }] } }
+- id: ach.nobodyLeft
+  title: ach.nobodyLeft.title
+  text: ach.nobodyLeft.text
+  when: { at: run, test: { all: [{ state: day, gte: 20 }, { state: family.gone, is: 0 }] } }
+- id: ach.spotless
+  title: ach.spotless.title
+  text: ach.spotless.text
+  when: { at: shift, modes: [campaign], test: { all: [{ state: perfect, is: 1 }, { state: day, gte: 10 }] } }

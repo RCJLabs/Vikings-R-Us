@@ -1,4 +1,6 @@
 import {
+  type AchievementDef,
+  type AchievementMoment,
   type Assists,
   billTotal,
   type Content,
@@ -7,6 +9,7 @@ import {
   type DayLedger,
   type Destination,
   defaultBills,
+  earnedAt,
   economyOf,
   FACTIONS,
   type Faction,
@@ -18,6 +21,9 @@ import {
   ragnarokStrength,
   recordAction,
   runContext,
+  type ShiftAction,
+  type ShiftState,
+  shiftFacts,
   shopFor,
   solve,
   stampsFor,
@@ -250,6 +256,8 @@ export interface RunResult {
   readonly standing: Readonly<Record<Faction, number>>;
   /** Every day's accounts. */
   readonly ledger: readonly DayLedger[];
+  /** The achievements the run earned, of those asked for (SimOptions.achievements). */
+  readonly achievements: readonly string[];
 }
 
 export interface SimOptions {
@@ -258,6 +266,8 @@ export interface SimOptions {
   readonly scenes?: SceneTable;
   /** Assists the bot plays every shift with (only waiving fines changes what a bot's day comes to). */
   readonly assists?: Assists;
+  /** Achievements to check as the run goes, as the game checks them: each shift as it ends, the run each day. */
+  readonly achievements?: readonly AchievementDef[];
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -276,15 +286,25 @@ export function simulateRun(
   let storyRings = 0;
   let ledgerOk = true;
   const lastDay = campaignOf(content).lastDay;
+  const defs = options.achievements ?? [];
+  const earned: string[] = [];
+  const note = (moment: AchievementMoment) => {
+    if (defs.length > 0) earned.push(...earnedAt(defs, moment, (id) => earned.includes(id)));
+  };
   for (let guard = 0; guard < lastDay + 1 && run.phase !== 'ending'; guard++) {
     const ctx = runContext(content, run);
     const start = run.rings;
     if (options.scenes) run = playStory(run, content, ctx, options.scenes, 'morning', policy);
     const nails = policy.longNails;
     const longNails = nails && (!nails.deal || (run.flags.loki_deal ?? 0) > 0) ? nails.perDay : 0;
+    let initial: ShiftState | undefined;
+    const log: ShiftAction[] = [];
     for (const a of shiftActions(run, content, ctx, judging, rng, longNails, options.assists)) {
       run = stepRun(run, a, { content, ctx }).state;
+      if (a.t === 'beginShift') initial = run.shift ?? undefined;
+      else if (a.t === 'shift') log.push(a.action);
     }
+    if (initial && defs.length > 0) note({ at: 'shift', mode: 'campaign', facts: shiftFacts(initial, log, ctx) });
     run = stepRun(run, { t: 'endAudit' }, { content, ctx }).state;
     if (options.scenes) run = playStory(run, content, ctx, options.scenes, 'night', policy);
     for (const a of nightActions(run, content, ctx, strategy)) run = stepRun(run, a, { content, ctx }).state;
@@ -299,7 +319,9 @@ export function simulateRun(
     }
     lowest = Math.min(lowest, run.rings);
     sickNights += run.family.filter((m) => m.status === 'sick').length;
+    note({ at: 'run', run });
   }
+  if (run.ending) note({ at: 'ending', ending: run.ending });
   return {
     ending: run.ending,
     day: run.day,
@@ -314,6 +336,7 @@ export function simulateRun(
     naglfar: run.naglfar ?? 0,
     standing: run.standing,
     ledger: run.ledger,
+    achievements: earned,
   };
 }
 

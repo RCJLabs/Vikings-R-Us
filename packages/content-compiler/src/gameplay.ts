@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  AchievementSchema,
   ArchetypeSchema,
   type CampaignPart,
   CampaignPartSchema,
@@ -26,6 +27,7 @@ import {
   WorldSchema,
 } from '@cots/content-schema';
 import type {
+  AchievementDef,
   ArchetypeDef,
   CampaignDef,
   Content,
@@ -49,7 +51,16 @@ import type {
   ToolDef,
   WorldConstraint,
 } from '@cots/engine';
-import { COACH_FOCUS, createDayContext, type Effect, STATE_PATHS, type StatePred, scriptedCase } from '@cots/engine';
+import {
+  COACH_FOCUS,
+  createDayContext,
+  type Effect,
+  factPathOk,
+  predPaths,
+  STATE_PATHS,
+  type StatePred,
+  scriptedCase,
+} from '@cots/engine';
 import { z } from 'zod';
 
 /** The gameplay content one pack defines. Every list is optional in the pack's folder. */
@@ -82,6 +93,8 @@ export interface PackContent {
   tallies: TallyTemplate[];
   /** Endless's twists (`endless.yaml`). */
   twists: EndlessTwist[];
+  /** What can be earned (`achievements.yaml`). */
+  achievements: AchievementDef[];
 }
 
 type Parse = <T>(schema: z.ZodType<T, unknown>, value: unknown, file: string) => T;
@@ -128,6 +141,7 @@ export function loadPackContent(dir: string, readYaml: ReadYaml, parse: Parse): 
     procedures: list('procedures.yaml', ProcedureSchema),
     tallies: list('templates/tallies.yaml', TallyTemplateSchema),
     twists: list('endless.yaml', EndlessTwistSchema),
+    achievements: list('achievements.yaml', AchievementSchema),
     ...(existsSync(dailyFile) ? { daily: parse(DaySpecSchema, readYaml(dailyFile), dailyFile) } : {}),
     ...(existsSync(primerFile) ? { primer: parse(DaySpecSchema, readYaml(primerFile), primerFile) } : {}),
     ...(existsSync(campaignFile) ? { campaign: parse(CampaignPartSchema, readYaml(campaignFile), campaignFile) } : {}),
@@ -196,6 +210,7 @@ export function emptyPackContent(): PackContent {
     procedures: [],
     tallies: [],
     twists: [],
+    achievements: [],
   };
 }
 
@@ -215,6 +230,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
   const procedures = cat('procedures');
   const tallies = cat('tallies');
   const twists = cat('twists');
+  const achievements = cat('achievements');
   return {
     genVersion,
     facts: cat('facts'),
@@ -240,6 +256,7 @@ export function mergeContent(parts: readonly PackContent[], genVersion: number):
     ...(procedures.length > 0 ? { procedures } : {}),
     ...(tallies.length > 0 ? { tallies } : {}),
     ...(twists.length > 0 ? { twists } : {}),
+    ...(achievements.length > 0 ? { achievements } : {}),
   };
 }
 
@@ -265,6 +282,7 @@ export function idsOf(c: PackContent): string[] {
     ...c.scripted.map((x) => x.id),
     ...c.procedures.map((x) => x.id),
     ...c.tallies.map((x) => x.id),
+    ...c.achievements.map((x) => x.id),
     ...c.days.flatMap((d) => Object.values(d.params ?? {}).flatMap((p) => p.pool.map((x) => x.id))),
   ];
 }
@@ -499,6 +517,7 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
   problems.push(...lintScripted(content, strings));
   problems.push(...lintLessons(content, strings));
   problems.push(...lintTwists(content, strings));
+  problems.push(...lintAchievements(content, strings));
 
   const specs = content.days.map((d) => ({ d, name: `day ${d.day}` }));
   if (content.daily) specs.push({ d: content.daily, name: `the Daily (day ${content.daily.day} mechanics)` });
@@ -559,6 +578,32 @@ function lintTwists(content: Content, strings: Readonly<Record<string, string>>)
         problems.push(`${where} asks for ${dest} souls, which no rule sends anywhere by day ${tw.since}.`);
       }
       if (range && range[0] > range[1]) problems.push(`${where} has an empty share for ${dest}.`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * Achievements (docs/tech-spec.md §34): strings, tests that read only what their moment has, and endings
+ * the build has. Whether each can be earned is for the tests, which play for them.
+ */
+function lintAchievements(content: Content, strings: Readonly<Record<string, string>>): string[] {
+  const problems: string[] = [];
+  const ids = new Set<string>();
+  const endings = new Set((content.campaign?.endings ?? []).map((e) => e.id));
+  for (const a of content.achievements ?? []) {
+    const where = `achievement ${a.id}`;
+    if (ids.has(a.id)) problems.push(`Duplicate achievement "${a.id}".`);
+    ids.add(a.id);
+    for (const k of [a.title, a.text]) if (!(k in strings)) problems.push(`${where} uses missing string "${k}".`);
+    const w = a.when;
+    if (w.at === 'ending') {
+      for (const e of w.endings)
+        if (!endings.has(e)) problems.push(`${where} waits on ending "${e}", which the build doesn't have.`);
+      continue;
+    }
+    for (const path of predPaths(w.test)) {
+      if (!factPathOk(w.at, path)) problems.push(`${where} reads "${path}", which a ${w.at} doesn't have.`);
     }
   }
   return problems;

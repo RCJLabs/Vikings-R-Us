@@ -1,5 +1,6 @@
 import { dailyChecks, dailyContent, gameContent, manifest } from 'virtual:content';
 import {
+  type AchievementMoment,
   type Assists,
   type CivilDate,
   type Content,
@@ -11,6 +12,7 @@ import {
   dailyNumber,
   dailySeed,
   ENDLESS_STRIKES,
+  earnedAt,
   endlessContext,
   endlessRound,
   endlessSeed,
@@ -18,13 +20,16 @@ import {
   expectedChecksum,
   type GuardResult,
   guardDaily,
+  type PlayMode,
   queueChecksum,
   type ShiftAction,
   type ShiftEvent,
   type ShiftState,
   shareMarks,
   shareText,
+  shiftFacts,
   shiftScore,
+  soulFacts,
   startShift,
   stepShift,
   type Verdict,
@@ -92,6 +97,8 @@ export interface Settings {
   readonly reduceMotion: boolean;
   /** Papers moved on the desk layout, and where they lie (docs/tech-spec.md §33). Empty: all in their places. */
   readonly deskPapers: DeskPapers;
+  /** Achievements earned on this device (docs/tech-spec.md §34), each with the time it was first earned. */
+  readonly achievements: Readonly<Record<string, number>>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -114,6 +121,7 @@ export const DEFAULT_SETTINGS: Settings = {
   coached: [],
   reduceMotion: false,
   deskPapers: {},
+  achievements: {},
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -150,6 +158,66 @@ export function noteCoached(day: number): void {
 /** Remembers that a campaign ending was reached here (for the endings gallery). */
 export function noteEnding(id: string): void {
   if (!settings.peek().endingsSeen.includes(id)) updateSettings({ endingsSeen: [...settings.peek().endingsSeen, id] });
+}
+
+// ---------- achievements (docs/tech-spec.md §34) ----------
+
+/**
+ * Achievements earned and not yet announced. The notice (App's AchievementNote) waits for a screen that
+ * isn't a shift: nothing covers the desk while the sun runs.
+ */
+export const unannounced = signal<readonly string[]>([]);
+
+/** How a session is played, as achievements see it: only the day's Daily played for the record is `daily`. */
+export function playMode(mode: Mode): PlayMode {
+  return mode.kind === 'daily' ? (mode.ranked ? 'daily' : 'archive') : mode.kind;
+}
+
+/**
+ * Keeps what these moments earn: the time it was first earned here, a notice, and the platform's own
+ * achievements (Steam's and Google Play's, once those builds exist; a no-op on the web).
+ */
+export function unlock(...moments: AchievementMoment[]): void {
+  const defs = gameContent.achievements ?? [];
+  const have = settings.peek().achievements;
+  const fresh: string[] = [];
+  for (const m of moments) fresh.push(...earnedAt(defs, m, (id) => Object.hasOwn(have, id) || fresh.includes(id)));
+  if (fresh.length === 0) return;
+  const at = Date.now();
+  updateSettings({ achievements: { ...have, ...Object.fromEntries(fresh.map((id) => [id, at])) } });
+  for (const id of fresh) platform.unlockAchievement(id);
+  unannounced.value = [...unannounced.peek(), ...fresh];
+}
+
+/** A Daily result as achievements see it: what the record keeps (not hints, say, so nothing that needs them). */
+function dailyFacts(r: DailyResult): Readonly<Record<string, number>> {
+  const pct = r.assists?.sunPct ?? 100;
+  const sunMs = Math.floor(((dailyContent?.daily?.sunS ?? 0) * 1000 * 100) / pct);
+  return {
+    total: r.total,
+    correct: r.correct,
+    perfect: r.total > 0 && r.correct === r.total ? 1 : 0,
+    dusk: r.endedBy === 'dusk' ? 1 : 0,
+    sunLeft: sunMs > 0 && r.endedBy === 'queue' ? Math.floor((r.spareMs * 100) / sunMs) : 0,
+    assisted: r.assists && Object.keys(cleanAssists(r.assists)).length > 0 ? 1 : 0,
+  };
+}
+
+/**
+ * Grants what this device's records already show (endings found, the Endless best, Dailies played for
+ * the record, from before achievements were kept or from a backup), and tells the platform about every
+ * achievement earned here, which it takes as often as it's told.
+ */
+export function settleAchievements(): void {
+  const s = settings.peek();
+  unlock(
+    ...s.endingsSeen.map((ending): AchievementMoment => ({ at: 'ending', ending })),
+    { at: 'endless', facts: { score: s.endlessBest } },
+    ...Object.values(dailyRecord.peek().results).map(
+      (r): AchievementMoment => ({ at: 'shift', mode: 'daily', facts: dailyFacts(r) }),
+    ),
+  );
+  for (const id of Object.keys(settings.peek().achievements)) platform.unlockAchievement(id);
 }
 
 export function updateSettings(patch: Partial<Settings>): void {
@@ -363,6 +431,7 @@ export async function initStorage(): Promise<void> {
     storageReady.value = true;
   });
   applySettings();
+  settleAchievements();
 }
 
 /** A day's Endless run: the same souls for everyone on that date, numbered like the Daily. */
@@ -566,6 +635,10 @@ export function act(input: ActionInput): void {
   batch(() => {
     session.value = next;
     for (const e of r.events) onEvent(e, next);
+    // A judged soul, read from the shift as it stood before the send (its questions and hints are still on it).
+    for (const e of r.events) {
+      if (e.e === 'judged') unlock({ at: 'soul', mode: playMode(s.mode), facts: soulFacts(s.state, e.verdict) });
+    }
   });
   // The events may have moved the session on (an Endless score, or its next round).
   if (changed) saveProgress(session.peek() ?? next);
@@ -638,6 +711,7 @@ function saveProgress(s: Session): void {
 function finish(s: Session): void {
   citation.value = null;
   answer.value = null;
+  unlock({ at: 'shift', mode: playMode(s.mode), facts: shiftFacts(s.initial, s.actions, s.ctx) });
   // The run has already audited the shift; the campaign's own screens take over.
   if (s.mode.kind === 'campaign') {
     screen.value = 'audit';
@@ -930,6 +1004,7 @@ function countEndless(correct: boolean): void {
   const m = s.mode;
   const mode = correct ? { ...m, judged: m.judged + 1 } : { ...m, strikes: m.strikes + 1 };
   session.value = { ...s, mode };
+  unlock({ at: 'endless', facts: { score: mode.judged, round: mode.round, strikes: mode.strikes } });
   if (mode.strikes < ENDLESS_STRIKES) return;
   endEndless(mode);
   screen.value = 'endless';

@@ -1,5 +1,6 @@
 import { effect } from '@preact/signals';
 import { useEffect, useLayoutEffect } from 'preact/hooks';
+import { AchievementNote } from './achievements-ui';
 import { initArt } from './art';
 import { setVolume, unlockAudio } from './audio';
 import { campaignUi } from './campaign/lazy';
@@ -34,6 +35,15 @@ export function App() {
   // Each screen opens at its top, wherever the last one was scrolled to.
   useLayoutEffect(toTop, [screen.value]);
 
+  return (
+    <>
+      <Screen />
+      <AchievementNote />
+    </>
+  );
+}
+
+function Screen() {
   switch (screen.value) {
     case 'briefing':
       return <Briefing />;

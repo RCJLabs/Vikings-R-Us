@@ -31,6 +31,7 @@ const SETTINGS: Settings = {
   coached: [],
   reduceMotion: false,
   deskPapers: {},
+  achievements: {},
 };
 
 const slot = (seed: string, day: number, savedAt: number, rev = 1): SlotRecord => ({
@@ -165,6 +166,31 @@ describe('restoring a backup', () => {
     const again = mergeBackup(here({ settings: next.settings }), theirs, OPTS);
     expect(again.next.settings).toBe(next.settings);
     expect(again.report.records).toBe(false);
+  });
+
+  it('adds the achievements this device hasn’t got, each at the earlier time it was earned', () => {
+    const mine = here({ settings: { ...SETTINGS, achievements: { 'ach.a': 500, 'ach.b': 100 } } });
+    const theirs = backup({
+      settings: {
+        ...SETTINGS,
+        // Earlier here, later there, one new, one this build doesn't have, and junk that isn't a time.
+        achievements: { 'ach.a': 300, 'ach.b': 900, 'ach.c': 700, 'ach.fromTheFullGame': 800, 'ach.bad': 'yesterday' },
+      },
+    });
+    const { next, report } = mergeBackup(mine, theirs, OPTS);
+    expect(next.settings.achievements).toEqual({
+      'ach.a': 300,
+      'ach.b': 100,
+      'ach.c': 700,
+      'ach.fromTheFullGame': 800,
+    });
+    expect(report.records).toBe(true);
+    const again = mergeBackup(here({ settings: next.settings }), theirs, OPTS);
+    expect(again.next.settings).toBe(next.settings);
+    expect(again.report.records).toBe(false);
+    // A backup from before achievements were kept changes nothing.
+    const old = backup({ settings: { ...SETTINGS, achievements: undefined } });
+    expect(mergeBackup(mine, old, OPTS).next.settings).toBe(mine.settings);
   });
 
   it('puts a campaign in its own slot if it’s free, else the first free one, else nowhere', () => {

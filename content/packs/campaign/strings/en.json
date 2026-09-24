@@ -318,5 +318,22 @@
   "twist.sea": "A fleet went down in the night. The sea gives up its dead.",
   "twist.forgers": "The carvers have been busy. More souls than usual bring saga tallies, and not every tally is honest.",
   "twist.loki": "Loki has brought friends. Watch the lips.",
-  "twist.muninn": "Muninn is tired. He forgets more than he remembers this round."
+  "twist.muninn": "Muninn is tired. He forgets more than he remembers this round.",
+  "ach.odin.text": "Keep Odin's hall full to the end, and be named chooser for the world after.",
+  "ach.freyja.text": "Give Freyja the souls she asked for, and be taken in among her own.",
+  "ach.hel.text": "Fill the quiet hall, and be made its steward.",
+  "ach.naglfar.text": "Leave the nails long, take Loki's bargain, and sail early.",
+  "ach.transfer.text": "Sign the clerk's contract and take the warmer room.",
+  "ach.smuggled.text": "Pay the ferryman to take your family where the wolf can't follow.",
+  "ach.rebirth.text": "Learn what Odin knew, and walk your family out onto the green earth.",
+  "ach.wolf.text": "Watch the fire come from the gate.",
+  "ach.lastStand.text": "Judge all twenty days, and see the host you chose fight and fall.",
+  "ach.stitched.title": "Stitched",
+  "ach.stitched.text": "Detain Loki at the gate.",
+  "ach.unlucky.title": "Unlucky, not dead",
+  "ach.unlucky.text": "Send Thorvald the Unlucky home the first time he comes, and the last.",
+  "ach.nobodyLeft.title": "Nobody left behind",
+  "ach.nobodyLeft.text": "Reach Ragnarök with your whole family still at home.",
+  "ach.spotless.title": "Spotless",
+  "ach.spotless.text": "Judge every soul rightly on a campaign day, Day 10 or later."
 }

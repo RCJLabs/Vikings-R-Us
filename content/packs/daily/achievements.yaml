@@ -1,0 +1,21 @@
+# The Daily's achievements (docs/tech-spec.md §34). `daily` is the day's Daily played for the record: the
+# archive, and today's Daily played again, don't count. Accuracy counts with assists on; speed and doing it
+# alone don't. DRAFT text.
+- id: ach.cleanSlate
+  title: ach.cleanSlate.title
+  text: ach.cleanSlate.text
+  when: { at: shift, modes: [daily], test: { state: perfect, is: 1 } }
+- id: ach.nobodysHelp
+  title: ach.nobodysHelp.title
+  text: ach.nobodysHelp.text
+  when:
+    at: shift
+    modes: [daily]
+    test: { all: [{ state: perfect, is: 1 }, { state: hints, is: 0 }, { state: assisted, is: 0 }] }
+- id: ach.homeBeforeDark
+  title: ach.homeBeforeDark.title
+  text: ach.homeBeforeDark.text
+  when:
+    at: shift
+    modes: [daily]
+    test: { all: [{ state: perfect, is: 1 }, { state: sunLeft, gte: 50 }, { state: assisted, is: 0 }] }

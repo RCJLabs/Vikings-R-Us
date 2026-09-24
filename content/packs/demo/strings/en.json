@@ -42,5 +42,9 @@
   "twist.liars": "Word has gone round that the chooser is new. This round the dead lie to you more readily.",
   "twist.beds": "A fever went through the camps. Many of this round's dead died in their beds.",
   "twist.battle": "A great battle at the fjord. Many of this round's dead fell fighting.",
-  "twist.mist": "A cold morning: breath hangs at the lips of the dead as well as the living. Trust the feather."
+  "twist.mist": "A cold morning: breath hangs at the lips of the dead as well as the living. Trust the feather.",
+  "ach.longWatch.title": "The long watch",
+  "ach.longWatch.text": "Judge 25 souls rightly in one Endless run.",
+  "ach.notAScratch.title": "Not a scratch",
+  "ach.notAScratch.text": "Judge 15 souls rightly in Endless before your first wrong stamp."
 }

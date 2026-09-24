@@ -198,14 +198,35 @@ function mergeSettings(here: Settings, theirs: unknown): { settings: Settings; r
   const coached = union(here.coached, listOf(theirs.coached, isCount));
   const primerDone = here.primerDone || theirs.primerDone === true;
   const endlessToday = later(here.endlessToday, isEndlessResult(theirs.endlessToday) ? theirs.endlessToday : null);
+  const achievements = earliest(here.achievements, theirs.achievements);
   const records =
     best !== here.endlessBest ||
     endingsSeen.length !== here.endingsSeen.length ||
     coached.length !== here.coached.length ||
     primerDone !== here.primerDone ||
-    endlessToday !== here.endlessToday;
+    endlessToday !== here.endlessToday ||
+    achievements !== here.achievements;
   if (!records) return { settings: here, records };
-  return { settings: { ...here, endlessBest: best, endingsSeen, coached, primerDone, endlessToday }, records };
+  return {
+    settings: { ...here, endlessBest: best, endingsSeen, coached, primerDone, endlessToday, achievements },
+    records,
+  };
+}
+
+/**
+ * Achievements from both, each at the earlier time it was earned. Ids this build doesn't have come along
+ * too, as endings do: a backup from the full game keeps them when it goes through the demo.
+ */
+function earliest(mine: Readonly<Record<string, number>>, theirs: unknown): Readonly<Record<string, number>> {
+  if (!isObject(theirs)) return mine;
+  let merged: Record<string, number> | null = null;
+  for (const [id, at] of Object.entries(theirs)) {
+    const have = mine[id];
+    if (!isCount(at) || (have !== undefined && have <= at)) continue;
+    merged ??= { ...mine };
+    merged[id] = at;
+  }
+  return merged ?? mine;
 }
 
 function mergeDaily(here: DailyRecord, theirs: unknown): { daily: DailyRecord; added: number } {
