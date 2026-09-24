@@ -14,7 +14,7 @@ import { openReport } from './report';
 import { SavesSettings } from './saves-ui';
 import { skippedText } from './shift/evidence';
 import { Decree, RulesPanel } from './shift/Rules';
-import { ReportDialog, ToastView, useAutoFocus } from './shift/Shift';
+import { modeTitle, ReportDialog, useAutoFocus } from './shift/Shift';
 import {
   applyUpdate,
   begin,
@@ -29,7 +29,6 @@ import {
   epochText,
   isoDate,
   resumeEndless,
-  type Session,
   type Settings,
   session,
   settings,
@@ -395,7 +394,14 @@ function ShareBox({ text, url, share }: { text: string; url: string | undefined;
           {shared}
         </p>
       ) : null}
-      <textarea class="share" readOnly rows={4} data-testid="share-text" value={url ? `${text}\n${url}` : text} />
+      <textarea
+        class="share"
+        readOnly
+        rows={4}
+        aria-label={t('ui.share.textLabel')}
+        data-testid="share-text"
+        value={url ? `${text}\n${url}` : text}
+      />
     </>
   );
 }
@@ -489,15 +495,6 @@ function EndlessToday({ result }: { result: EndlessResult }) {
   );
 }
 
-function modeTitle(s: Session): string {
-  if (s.mode.kind === 'practice') return t('ui.briefing.practice', { n: s.mode.day });
-  if (s.mode.kind === 'endless') return t('ui.endless.round', { n: s.mode.round + 1, day: s.mode.day });
-  if (s.mode.kind === 'primer') return t('primer.title');
-  if (s.mode.kind === 'campaign') return t('ui.campaign.day', { n: s.mode.day });
-  if (s.mode.archive) return t('ui.briefing.archive', { n: s.mode.n, date: s.mode.date });
-  return s.mode.preview ? t('ui.briefing.preview') : t('ui.briefing.daily', { n: s.mode.n });
-}
-
 export function Briefing() {
   const focus = useAutoFocus<HTMLButtonElement>();
   const s = session.value;
@@ -547,6 +544,7 @@ export function Briefing() {
         </button>
       </div>
       <section class="card">
+        <h2>{t('ui.tab.rules')}</h2>
         <RulesPanel ctx={s.ctx} decree={false} />
       </section>
       <ReportDialog />
@@ -710,7 +708,6 @@ export function Summary() {
         ) : null}
       </div>
       <ReportDialog />
-      <ToastView />
     </main>
   );
 }

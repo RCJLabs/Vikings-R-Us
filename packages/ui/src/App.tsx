@@ -7,7 +7,7 @@ import { campaignUi } from './campaign/lazy';
 import { Briefing, EndlessOver, Summary, Title } from './screens';
 import { toTop } from './scroll';
 import { onShiftKey } from './shift/keys';
-import { ShiftScreen } from './shift/Shift';
+import { ShiftScreen, ToastView } from './shift/Shift';
 import { initStorage, screen, settings, startClock } from './store';
 
 // A reload reopens the game at the top, not where the page was scrolled (docs/tech-spec.md §30). Set as this
@@ -35,9 +35,12 @@ export function App() {
   // Each screen opens at its top, wherever the last one was scrolled to.
   useLayoutEffect(toTop, [screen.value]);
 
+  // One toast and one notice for every screen: a live region made along with its message isn't read out, so
+  // these stay put while the screens change (the last soul's verdict is said as the summary opens).
   return (
     <>
       <Screen />
+      <ToastView />
       <AchievementNote />
     </>
   );

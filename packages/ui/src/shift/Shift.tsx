@@ -22,6 +22,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { art, usePixelFrame } from '../art';
 import { clockText, listText, t } from '../i18n';
 import { openReport, reportFor, reportTitle, reportUrl, type SoulReport } from '../report';
+import { toTop } from '../scroll';
 import {
   act,
   answer,
@@ -90,6 +91,16 @@ export function questionable(s: Session): string | undefined {
 }
 
 // ---------- pieces ----------
+
+/** What the shift is called: the Daily's number, the practice day, the campaign day. */
+export function modeTitle(s: Session): string {
+  if (s.mode.kind === 'practice') return t('ui.briefing.practice', { n: s.mode.day });
+  if (s.mode.kind === 'endless') return t('ui.endless.round', { n: s.mode.round + 1, day: s.mode.day });
+  if (s.mode.kind === 'primer') return t('primer.title');
+  if (s.mode.kind === 'campaign') return t('ui.campaign.day', { n: s.mode.day });
+  if (s.mode.archive) return t('ui.briefing.archive', { n: s.mode.n, date: s.mode.date });
+  return s.mode.preview ? t('ui.briefing.preview') : t('ui.briefing.daily', { n: s.mode.n });
+}
 
 function SunBar({ s }: { s: Session }) {
   now.value; // re-render on every tick
@@ -533,6 +544,8 @@ function DeskPaper({ p, spot, rank }: { p: PaperDef; spot?: PaperSpot; rank?: nu
 }
 
 function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 'drawer' }) {
+  // Each soul starts at the top, where a shift that scrolls (large text on a phone) was left further down.
+  useLayoutEffect(toTop, []);
   // Keyboard players land on the first thing to look at when a new soul arrives.
   useEffect(() => {
     if (document.activeElement === document.body || document.activeElement === null) {
@@ -626,9 +639,11 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
         {tabs.map(([id, label]) => (
           <button
             key={id}
+            id={`tab-${id}`}
             type="button"
             role="tab"
             aria-selected={tab === id}
+            aria-controls="drawer-panel"
             data-tab={id}
             onClick={() => (drawerTab.value = id)}
           >
@@ -636,8 +651,19 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           </button>
         ))}
       </div>
-      {/* Keyed by tab, so each tab opens at its top rather than where the last one was scrolled to. */}
-      <div key={tab} class="drawer__panel" role="tabpanel">
+      {/*
+       * Keyed by tab, so each tab opens at its top rather than where the last one was scrolled to. It can take
+       * the focus, so a keyboard can scroll a long tab (the rules) as well as a pointer can.
+       */}
+      <div
+        key={tab}
+        id="drawer-panel"
+        class="drawer__panel"
+        role="tabpanel"
+        aria-labelledby={`tab-${tab}`}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling tab panel must take the focus to scroll by keyboard
+        tabIndex={0}
+      >
         {tab === 'words' ? (
           <Words s={s} c={c} />
         ) : tab === 'ravens' ? (
@@ -647,7 +673,11 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
         ) : tab === 'tally' ? (
           <Tally s={s} c={c} />
         ) : (
-          <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />
+          <>
+            {/* The tab says it's the rules; this says so to a screen reader's list of headings too. */}
+            <h2 class="sr-only">{t('ui.tab.rules')}</h2>
+            <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />
+          </>
         )}
       </div>
       <CompareBar />
@@ -711,14 +741,17 @@ function AnswerDialog() {
 function AnswerBox({ a }: { a: { readonly name: string; readonly lines: readonly string[] } }) {
   const focus = useAutoFocus<HTMLButtonElement>();
   return (
-    <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="answer-title">
+    <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="answer-title" aria-describedby="answer-lines">
       <div class="dialog dialog--answer">
         <h2 id="answer-title">{t('ui.answer.title', { name: a.name })}</h2>
-        {a.lines.map((l) => (
-          <p key={l} class="dialog__line">
-            {l}
-          </p>
-        ))}
+        {/* Read out with the dialog: the answer is the point of asking. */}
+        <div id="answer-lines">
+          {a.lines.map((l) => (
+            <p key={l} class="dialog__line">
+              {l}
+            </p>
+          ))}
+        </div>
         <button
           type="button"
           class="btn btn--primary"
@@ -747,19 +780,30 @@ function CitationBox({ s, v }: { s: Session; v: Verdict }) {
   const name = c?.evidence.look.name ?? '';
   const dest = t(`dest.${v.expected}`);
   return (
-    <div class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="citation-title">
+    <div
+      class="overlay"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="citation-title"
+      aria-describedby="citation-body"
+    >
       <div class="dialog dialog--citation">
         <h2 id="citation-title">{t('ui.citation.title')}</h2>
-        {v.stamped === v.expected && skipped.length > 0 ? (
-          <p data-testid="citation-skipped">{t('ui.citation.skippedOnly', { name, dest, procs: listText(skipped) })}</p>
-        ) : (
-          <p>{t('ui.citation.should', { name, dest })}</p>
-        )}
-        {v.stamped !== v.expected && skipped.length > 0 ? (
-          <p data-testid="citation-skipped">{t('ui.citation.skipped', { procs: listText(skipped) })}</p>
-        ) : null}
-        {rule ? <p class="dialog__rule">{t(ruleText(rule, s.ctx.day))}</p> : null}
-        {missed.length > 0 ? <p>{t('ui.citation.missed', { fields: listText(missed) })}</p> : null}
+        {/* Read out with the dialog, not just its title and button: why the stamp was wrong. */}
+        <div id="citation-body">
+          {v.stamped === v.expected && skipped.length > 0 ? (
+            <p data-testid="citation-skipped">
+              {t('ui.citation.skippedOnly', { name, dest, procs: listText(skipped) })}
+            </p>
+          ) : (
+            <p>{t('ui.citation.should', { name, dest })}</p>
+          )}
+          {v.stamped !== v.expected && skipped.length > 0 ? (
+            <p data-testid="citation-skipped">{t('ui.citation.skipped', { procs: listText(skipped) })}</p>
+          ) : null}
+          {rule ? <p class="dialog__rule">{t(ruleText(rule, s.ctx.day))}</p> : null}
+          {missed.length > 0 ? <p>{t('ui.citation.missed', { fields: listText(missed) })}</p> : null}
+        </div>
         <div class="row">
           <button
             type="button"
@@ -801,7 +845,14 @@ function ReportBox({ r }: { r: SoulReport }) {
         <h2 id="report-title">{t('ui.report.title')}</h2>
         <p>{t('ui.report.body')}</p>
         <p class="muted">{reportTitle(r)}</p>
-        <textarea class="share share--small" readOnly rows={4} value={json} data-testid="report-text" />
+        <textarea
+          class="share share--small"
+          readOnly
+          rows={4}
+          value={json}
+          aria-label={t('ui.report.textLabel')}
+          data-testid="report-text"
+        />
         <div class="row">
           {url ? (
             <a class="btn btn--primary" href={url} target="_blank" rel="noopener noreferrer" data-testid="report-open">
@@ -916,11 +967,13 @@ export function ShiftScreen() {
   const lesson = activeLesson(s, coachState());
   const coach = coachStep(s, coachAcks.value, lesson);
   return (
-    <div
+    <main
       class={`shift shift--${layout}${paused ? ' is-paused' : ''}${comparing.value ? ' is-comparing' : ''}`}
       data-layout={layout}
       data-coach={coach?.focus ?? pendingHintFocus(s.state)}
     >
+      {/* The page's name for screen readers; the desk shows it in the sun bar and the soul count. */}
+      <h1 class="sr-only">{modeTitle(s)}</h1>
       <div class="shift__desk" inert={blocked}>
         <Sky s={s} />
         <SunBar s={s} />
@@ -931,7 +984,6 @@ export function ShiftScreen() {
       <AnswerDialog />
       <CitationSlip s={s} />
       <ReportDialog />
-      <ToastView />
-    </div>
+    </main>
   );
 }

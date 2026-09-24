@@ -1760,6 +1760,65 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - Steam and Google Play achievements need those builds. Nothing is sent anywhere from the web.
 - The text is a first draft.
 
+## 35. After M7: accessibility pass (phase 5)
+
+**What was measured.** Before any change, every screen was walked on the phone (412×915), the desktop (1920×1080), and a 360×740 phone with the text at 175%. axe-core ran its WCAG 2.2 A and AA rules and its best practices on each:
+- **WCAG A/AA:**
+  - muted text and quiet buttons in the citation and report dialogs at 1.84:1 on the paper colour;
+  - unlabelled share and report text boxes;
+  - two scrolling areas a keyboard couldn't reach: the phone's Rules tab, and the night's "nights ahead" table.
+- **Best practice:** the shift had no main landmark or level-one heading, and headings skipped a level in the briefing's rules, the journal and the phone's Rules tab.
+- **Taps:** 11 kinds of control on the phone were under 44 px:
+  - the small buttons, at 36 px (back up, restore, buy, skip the lesson, report);
+  - the two dropdowns, at 33 px;
+  - the campaign slots' Story Mode checkbox, 23 px tall, under WCAG's own 24 px floor.
+- **175% text on 360 px:**
+  - The shift was unusable: Pause and Judge sat past the screen's right edge, the sun meter shrank to nothing, and the evidence got about 75 px.
+  - The title, morning and journal were wider than the phone. The settings' dropdowns and the assists fieldset wouldn't shrink, and neither would the Daily card's grid column once the archive's dropdown was there.
+
+**What changed**
+- **Contrast.** Muted text and quiet buttons on paper use `--paper-muted` (#675743, 5.6:1).
+- **Labels and structure:**
+  - The text boxes have labels.
+  - The phone's evidence panel is a proper tab panel: labelled by its tab, and it takes the focus so a keyboard can scroll it. The nights-ahead table is a focusable, labelled region.
+  - The shift screen is a `main` with a hidden level-one heading, its mode's title.
+  - Heading levels no longer skip: the briefing's rules card has its own heading, each journal day is a heading, and the phone's Rules tab has a hidden one.
+- **Touch targets.** On a touch screen (`pointer: coarse`), small buttons and dropdowns are at least 44 px. Story Mode's label is 44 px tall everywhere. Checkboxes and radio buttons are 1.5 rem, 24 px at the default size, and grow with the text.
+- **Large text:**
+  - The sun bar and the action bar wrap instead of overflowing.
+  - Dropdowns never outgrow their box, and grid columns and fieldsets can shrink.
+  - From a text size of 1.4 up (`LARGE_TEXT`, marked on the page as `data-text="large"`), a portrait phone's shift scrolls like a page instead of fitting the screen. The sun bar stays at the top and the action bar at the bottom. The body keeps 45% of the screen and the evidence reads in full, with nothing scrolling inside anything else.
+  - Each new soul starts at the top of the page.
+  - At the default size nothing changes, and the shift still fits one screen.
+- **What screen readers hear:**
+  - **Verdicts.** They were already said, through the toast's live region. But each screen had its own toast, and a live region made along with its message isn't read out, so the last soul's verdict could be lost as the summary opened. Now one toast serves every screen, made once with the app.
+  - **Citations.** The dialog is described by its text, so a screen reader reads why the stamp was wrong along with the title and button. The same goes for a questioned soul's answer.
+  - **The sun.** With a minute of sun left, the toast says so, once a shift; dusk was already said. The sun meter stays hidden from screen readers, and the time beside it can be read.
+
+**Tests** (`tests/e2e/accessibility.spec.ts`, `@axe-core/playwright` 4.13.0)
+- **Every screen passes axe** (WCAG 2.2 A and AA, and best practices), on the phone and the desktop:
+  - title, briefing, shift and each phone tab, pause, citation, answer, summary, report;
+  - the primer, a practice lesson, Endless's briefing and end;
+  - save slots, morning and its scene, journal, audit, night and its scene;
+  - in the full game, the warning before an ending and the ending.
+- **On the phone**, every control is at least 44 px each way. Links inside running text are exempt, and a checkbox counts its label.
+- **On a 360×740 phone**, at 100% and at 175% text, the same screens pass axe and the tap check, and nothing reaches past the screen's edge.
+- **At 175%**, the shift's sun, count, Pause, Judge and Compare are on screen at the top and bottom of the page, the evidence isn't cut to a scrolling sliver, and the next soul starts at the top. At 100%, the shift fits one screen.
+- **Screen readers:**
+  - a citation's accessible description is its reason, and an answer's is its lines;
+  - there's one live region, outside every screen, and it holds the last verdict when the summary opens;
+  - under a fake clock, "A minute of sun left." comes at five minutes into a six-minute Daily, and dusk after it.
+- The scan waits for animations to finish, so a notice fading in isn't measured at half opacity.
+
+**Known limits**
+- **What axe can't check.** Automated checks find only some problems. Nobody has played the game with a screen reader yet, and someone who uses one should. In particular:
+  - whether reading the body's signs as chips is enough without seeing the body;
+  - whether Compare's two-step picking makes sense by ear.
+- **Landscape phones.** With large text they keep their fixed side-by-side layout. It isn't checked at 175%, and it's likely cramped.
+- **Desktop large text.** The desk layout was scanned at 100% only. It wasn't checked at 175%, on a desktop or on the Steam Deck's 1280×800.
+- **Sound.** There are no captions, because every sound has something visible with it (a stamp, a citation, a toast). If music or ambience carries meaning later (phase 9), it will need them.
+- **Target sizes on desktop.** The 44 px rule applies to touch screens. With a mouse, the small buttons stay 36 px and the dropdowns 33 px, above WCAG 2.2's 24 px AA minimum.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

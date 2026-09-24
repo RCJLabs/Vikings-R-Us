@@ -43,7 +43,7 @@ import { CopyBox } from '../saves-ui';
 import { toTop, toTopOf } from '../scroll';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
-import { ReportDialog, ToastView, useAutoFocus } from '../shift/Shift';
+import { ReportDialog, useAutoFocus } from '../shift/Shift';
 import { currentAssists, type Screen, session, settings, storageKept, toTitle } from '../store';
 import {
   active,
@@ -293,7 +293,7 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
       <section class="card slot" data-testid={`slot-${i}`}>
         <h2>{t('ui.campaign.slot', { n: i + 1 })}</h2>
         <p class="muted">{t('ui.campaign.empty')}</p>
-        <label>
+        <label class="slot__story">
           <input
             type="checkbox"
             checked={story}
@@ -471,7 +471,6 @@ function SlotsScreen() {
           {t('ui.back')}
         </button>
       </div>
-      <ToastView />
     </main>
   );
 }
@@ -710,7 +709,9 @@ function JournalView() {
               if (now !== open.includes(day)) setOpen(now ? [...open, day] : open.filter((d) => d !== day));
             }}
           >
-            <summary>{t('ui.campaign.day', { n: day })}</summary>
+            <summary>
+              <h3 class="journal__dayTitle">{t('ui.campaign.day', { n: day })}</h3>
+            </summary>
             {open.includes(day)
               ? entries
                   .filter((e) => e.day === day)
@@ -867,7 +868,6 @@ function Morning() {
         </button>
       </div>
       {journalOpen.value ? <JournalView /> : null}
-      <ToastView />
     </main>
   );
 }
@@ -977,7 +977,6 @@ function Audit() {
         </button>
       </div>
       <ReportDialog />
-      <ToastView />
     </main>
   );
 }
@@ -1095,8 +1094,10 @@ function NightsAhead({ run }: { run: RunState }) {
   if (ahead.length === 0) return null;
   const home = run.family.filter((m) => m.status !== 'gone').length;
   return (
-    <div class="ahead" data-testid="nights-ahead">
-      <h3>{t('ui.night.ahead')}</h3>
+    // A region that can take the focus: on a narrow screen the table scrolls sideways, by keyboard too.
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must take the focus to scroll by keyboard
+    <section class="ahead" data-testid="nights-ahead" aria-labelledby="nights-ahead-title" tabIndex={0}>
+      <h3 id="nights-ahead-title">{t('ui.night.ahead')}</h3>
       <table class="ledger">
         <thead>
           <tr>
@@ -1118,7 +1119,7 @@ function NightsAhead({ run }: { run: RunState }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </section>
   );
 }
 
@@ -1290,7 +1291,6 @@ function Night() {
         </button>
       </div>
       {journalOpen.value ? <JournalView /> : null}
-      <ToastView />
     </main>
   );
 }
