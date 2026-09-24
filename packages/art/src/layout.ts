@@ -52,7 +52,7 @@ export const REGION_KEYS: Readonly<Record<HotspotId, readonly string[]>> = {
   hair: ['hair'],
   face: ['skin', 'lips', 'lipScars', 'breath', 'breathFog'],
   neck: ['ornament', 'amulet', 'brokenRing'],
-  chest: ['woundsFront', 'freshCarving', 'spearMark'],
+  chest: ['woundsFront', 'freshCarving', 'spearCut'],
   handR: HAND_KEYS,
   handL: HAND_KEYS,
   back: ['woundsBack'],
@@ -78,7 +78,7 @@ export const SIGN_VIEWS: Readonly<Record<string, BodyView>> = {
   freshCarving: 'front',
   amulet: 'front',
   lipScars: 'front',
-  spearMark: 'front',
+  spearCut: 'front',
 };
 
 /** The hotspot regions over the shared layout, in 300x420 frame units. */

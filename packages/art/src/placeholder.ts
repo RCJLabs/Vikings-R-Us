@@ -363,7 +363,7 @@ function brokenRing(on: boolean): string {
 }
 
 /** Day 17's spear mark: a spear point cut over the heart before death (our right). */
-function spearMark(on: boolean): string {
+function spearCut(on: boolean): string {
   if (!on) return '';
   return [
     `<path d="M176 202L182 214L176 224L170 214Z" fill="${WOUND}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`,
@@ -400,7 +400,7 @@ function draw(scene: BodyScene): string {
           amulet(scene.obs.amulet),
           brokenRing(scene.cues.includes('brokenRing')),
           freshTally(scene.cues.includes('freshCarving'), scene.look),
-          spearMark(scene.obs.spearMark === true),
+          spearCut(scene.obs.spearCut === true),
           wounds(scene.obs.woundsFront, FRONT_WOUNDS),
         ]
       : [figure(scene), hair(scene), wounds(scene.obs.woundsBack, BACK_WOUNDS)];
@@ -437,7 +437,7 @@ export const placeholderBody: BodyArtProvider = {
     freshCarving: 2,
     amulet: 2,
     lipScars: 1,
-    spearMark: 2,
+    spearCut: 2,
   },
   views: SIGN_VIEWS,
 };
