@@ -29,6 +29,8 @@ const SETTINGS: Settings = {
   noFines: false,
   coach: true,
   coached: [],
+  reduceMotion: false,
+  deskPapers: {},
 };
 
 const slot = (seed: string, day: number, savedAt: number, rev = 1): SlotRecord => ({

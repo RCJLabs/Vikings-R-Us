@@ -6,6 +6,7 @@ import {
   cleanAssists,
   DAILY_EPOCH,
   type DayCtx,
+  type Destination,
   dailyDate,
   dailyNumber,
   dailySeed,
@@ -37,6 +38,7 @@ import { type LayoutMode, layoutMode } from './layout';
 import { links } from './links';
 import { activeLesson, type CoachState } from './shift/coach';
 import { hintTarget } from './shift/hint';
+import type { DeskPapers } from './shift/papers';
 import { sendGuard, sendShift } from './telemetry';
 import { type BuildInfo, shiftRecord } from './telemetry-payload';
 
@@ -86,6 +88,10 @@ export interface Settings {
   /** The coach's lessons for each day's new rule or tool (docs/tech-spec.md §25), and the days taught here. */
   readonly coach: boolean;
   readonly coached: readonly number[];
+  /** Leave out the desk's decorative movement (docs/tech-spec.md §33), whatever the device says. */
+  readonly reduceMotion: boolean;
+  /** Papers moved on the desk layout, and where they lie (docs/tech-spec.md §33). Empty: all in their places. */
+  readonly deskPapers: DeskPapers;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -106,6 +112,8 @@ export const DEFAULT_SETTINGS: Settings = {
   noFines: false,
   coach: true,
   coached: [],
+  reduceMotion: false,
+  deskPapers: {},
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -152,7 +160,11 @@ export function updateSettings(patch: Partial<Settings>): void {
 }
 
 function applySettings(): void {
-  document.documentElement.style.fontSize = `${Math.round(settings.value.textScale * 100)}%`;
+  const root = document.documentElement;
+  root.style.fontSize = `${Math.round(settings.value.textScale * 100)}%`;
+  // The stylesheet stills every animation under this, as it does for the device's own setting.
+  if (settings.value.reduceMotion) root.dataset.motion = 'reduced';
+  else delete root.dataset.motion;
 }
 
 // ---------- Daily records ----------
@@ -512,6 +524,8 @@ export interface Toast {
 export const toast = signal<Toast | null>(null);
 export const answer = signal<{ readonly name: string; readonly lines: readonly string[] } | null>(null);
 export const citation = signal<Verdict | null>(null);
+/** The soul just sent, and its stamp: the desk shows it walking off that way (shift/motion.ts). */
+export const departed = signal<{ readonly caseId: string; readonly dest: Destination } | null>(null);
 export const comparing = signal(false);
 export const compareFirst = signal<string | null>(null);
 export const drawerTab = signal<'words' | 'ravens' | 'registry' | 'tally' | 'rules'>('words');
@@ -587,6 +601,8 @@ function onEvent(e: ShiftEvent, s: Session): void {
       break;
     }
     case 'judged': {
+      const sent = cases[e.verdict.index];
+      departed.value = sent && e.verdict.stamped ? { caseId: sent.id, dest: e.verdict.stamped } : null;
       const dest = t(`dest.${e.verdict.stamped}`);
       say(t(e.verdict.correct ? 'ui.verdict.right' : 'ui.verdict.wrong', { dest }), e.verdict.correct ? 'good' : 'bad');
       resetSoulUi();

@@ -75,6 +75,12 @@ test.describe('a landscape phone', () => {
     await page.getByTestId('practice-3').click();
     await page.getByTestId('begin').click();
     await expect(page.getByTestId('coach')).toHaveCount(coach ? 1 : 0);
+    // The soul walks up to the desk (docs/tech-spec.md §33): measure where it stands, not where it's walking.
+    await page
+      .locator('.stage__frame')
+      .evaluate((el) =>
+        Promise.all(el.getAnimations().map((a: { finished: Promise<unknown> }) => a.finished)).then(() => true),
+      );
     const frame = await page.locator('.stage__frame').boundingBox();
     const right = (frame?.x ?? 0) + (frame?.width ?? 0);
     const tools = await page
