@@ -10,6 +10,7 @@ import { openCampaign } from './campaign/lazy';
 import { clockText, listText, t } from './i18n';
 import { issueFormUrl, links } from './links';
 import { openReport } from './report';
+import { SavesSettings } from './saves-ui';
 import { skippedText } from './shift/evidence';
 import { Decree, RulesPanel } from './shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from './shift/Shift';
@@ -271,6 +272,7 @@ function SettingsCard() {
         </label>
       ) : null}
       <AssistSettings campaign={gameContent.campaign !== undefined} />
+      <SavesSettings />
       {telemetryAvailable() ? (
         <label>
           <input

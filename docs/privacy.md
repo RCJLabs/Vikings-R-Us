@@ -6,6 +6,9 @@ your browser's storage on your device. There are no
 accounts, ads or third-party trackers. The page is served by GitHub Pages or
 itch.io, which, like any web host, see your IP address when you load it.
 
+A backup (Settings → Saves) is a file you download, or text you copy: the game
+doesn't upload it anywhere.
+
 ## Optional play data (alpha only)
 
 If you say yes when asked, or tick "Share anonymous play data" in Settings, the

@@ -37,10 +37,12 @@ import { useState } from 'preact/hooks';
 import { AssistSettings, assistText, atSunSpeed } from '../assists';
 import { clockText, hasText, listText, t } from '../i18n';
 import { openReport } from '../report';
+import { unreadableText } from '../saves';
+import { CopyBox } from '../saves-ui';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, ToastView, useAutoFocus } from '../shift/Shift';
-import { currentAssists, type Screen, session, settings, toTitle } from '../store';
+import { currentAssists, type Screen, session, settings, storageKept, toTitle } from '../store';
 import {
   active,
   branchFrom,
@@ -59,6 +61,7 @@ import {
   sleep,
   slots,
   toGate,
+  unreadable,
 } from './run-store';
 
 /*
@@ -387,17 +390,79 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
   );
 }
 
+/** A slot whose save this build can't read: kept as found, to copy for a bug report or clear. */
+function UnreadableSlot({ i }: { i: number }) {
+  const [copy, setCopy] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <section class="card slot slot--unreadable" data-testid={`slot-${i}`}>
+      <h2>{t('ui.campaign.slot', { n: i + 1 })}</h2>
+      <p data-testid={`unreadable-${i}`}>{t('ui.campaign.unreadable')}</p>
+      <div class="row">
+        <button
+          type="button"
+          class="btn btn--small"
+          data-testid={`unreadable-copy-${i}`}
+          aria-expanded={copy}
+          onClick={() => setCopy(!copy)}
+        >
+          {t('ui.campaign.unreadable.copy')}
+        </button>
+        {confirm ? null : (
+          <button
+            type="button"
+            class="btn btn--quiet btn--small"
+            data-testid={`unreadable-clear-${i}`}
+            onClick={() => setConfirm(true)}
+          >
+            {t('ui.campaign.unreadable.clear')}
+          </button>
+        )}
+      </div>
+      {copy ? (
+        <CopyBox text={unreadableText(i)} file={`chooser-of-the-slain-slot-${i + 1}.json`} id={`unreadable-${i}`} />
+      ) : null}
+      {confirm ? (
+        <div class="row">
+          <span>{t('ui.campaign.unreadable.confirm')}</span>
+          <button
+            type="button"
+            class="btn btn--danger btn--small"
+            data-testid={`unreadable-clear-yes-${i}`}
+            onClick={() => deleteSlot(i)}
+          >
+            {t('ui.campaign.deleteYes')}
+          </button>
+          <button type="button" class="btn btn--small" onClick={() => setConfirm(false)}>
+            {t('ui.campaign.cancel')}
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function SlotsScreen() {
   const focus = useAutoFocus<HTMLHeadingElement>();
+  const kept = storageKept.value;
   return (
     <main class="screen screen--campaign">
       <h1 ref={focus} tabIndex={-1} data-testid="campaign-title">
         {t('ui.campaign')}
       </h1>
       <p class="muted">{t(manifest.edition === 'demo' ? 'ui.campaign.hint.demo' : 'ui.campaign.hint.full')}</p>
-      {Array.from({ length: SLOT_COUNT }, (_, i) => (
-        <Slot key={`${i}:${slots.value[i]?.rev ?? 0}`} i={i} record={slots.value[i] ?? null} />
-      ))}
+      {kept === 'maybe' || kept === 'session' ? (
+        <p class="muted" data-testid="backup-hint">
+          {t('ui.campaign.backupHint')}
+        </p>
+      ) : null}
+      {Array.from({ length: SLOT_COUNT }, (_, i) =>
+        unreadable.value[i] ? (
+          <UnreadableSlot key={`${i}:unreadable`} i={i} />
+        ) : (
+          <Slot key={`${i}:${slots.value[i]?.rev ?? 0}`} i={i} record={slots.value[i] ?? null} />
+        ),
+      )}
       <EndingsGallery />
       <div class="row">
         <button type="button" class="btn" data-testid="campaign-back" onClick={toTitle}>

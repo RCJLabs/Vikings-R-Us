@@ -28,7 +28,7 @@ import {
   stepShift,
   type Verdict,
 } from '@cots/engine';
-import { type KeyValueStore, memoryStore, requestPersistence, type ShareResult } from '@cots/platform';
+import { isPersisted, type KeyValueStore, memoryStore, requestPersistence, type ShareResult } from '@cots/platform';
 import { platform } from '@platform';
 import { batch, signal } from '@preact/signals';
 import { holdAudio, play, soundFor } from './audio';
@@ -223,6 +223,83 @@ export function readMirror<T>(key: string): T | undefined {
   }
 }
 
+/** The mirror's text as stored, readable or not (null when there's none). */
+export function readMirrorRaw(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+const parsed = (raw: string | null): unknown => {
+  try {
+    return raw === null ? undefined : JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+};
+
+const isV1 = (x: unknown): boolean => typeof x === 'object' && x !== null && (x as { v?: unknown }).v === 1;
+
+/**
+ * Keeps a copy this build can't read (damaged, or from a newer version) under `<key>.unread` before
+ * anything writes over it. Backups carry it, so it can still be looked at or recovered.
+ */
+function setAside(key: string, stored: unknown, mirrorRaw: string | null): void {
+  const found = {
+    ...(stored !== undefined && !isV1(stored) ? { stored } : {}),
+    ...(mirrorRaw !== null && !isV1(parsed(mirrorRaw)) ? { mirror: mirrorRaw } : {}),
+  };
+  if (Object.keys(found).length > 0) void store?.set(`${key}.unread`, found);
+}
+
+/** Keys that setAside may have used, for backups. */
+export const UNREAD_KEYS = ['settings.unread', 'daily.unread'] as const;
+
+/**
+ * Whether this device will keep the saves: the browser has agreed to ('kept'), it may clear them after
+ * a while unused ('maybe': Safari does after 7 days), or they last only as long as the tab ('session':
+ * a private window, or storage blocked). Null until storage is open.
+ */
+export const storageKept = signal<'kept' | 'maybe' | 'session' | null>(null);
+
+let keepAsked: Promise<boolean> | null = null;
+
+/** Asks the browser, once a session, not to clear the saves. Called when there's something worth keeping. */
+export function keepStorage(): Promise<boolean> {
+  keepAsked ??= requestPersistence().then((kept) => {
+    if (kept) storageKept.value = 'kept';
+    return kept;
+  });
+  return keepAsked;
+}
+
+async function checkKept(s: KeyValueStore): Promise<void> {
+  if (!s.persistent) storageKept.value = 'session';
+  // The Steam and Play builds keep their saves as app data, which nothing clears behind the player's back.
+  else if (platform.kind === 'electron' || platform.kind === 'android') storageKept.value = 'kept';
+  else storageKept.value = (await isPersisted()) ? 'kept' : 'maybe';
+}
+
+export function saveDailyRecord(record: DailyRecord): void {
+  dailyRecord.value = record;
+  mirror(MIRROR.record, record);
+  void store?.set('daily', record);
+}
+
+export function saveDailyProgress(progress: DailyProgress | null): void {
+  dailyProgress.value = progress;
+  mirror(MIRROR.progress, progress);
+  void (progress ? store?.set('daily-progress', progress) : store?.remove('daily-progress'));
+}
+
+export function saveEndlessProgress(progress: EndlessProgress | null): void {
+  endlessProgress.value = progress;
+  mirror(MIRROR.endless, progress);
+  void (progress ? store?.set('endless-progress', progress) : store?.remove('endless-progress'));
+}
+
 function mergeRecords(a: DailyRecord | undefined, b: DailyRecord | undefined): DailyRecord {
   return { v: 1, results: { ...(a?.v === 1 ? a.results : {}), ...(b?.v === 1 ? b.results : {}) } };
 }
@@ -258,6 +335,9 @@ export async function initStorage(): Promise<void> {
     store.get<DailyProgress>('daily-progress'),
     store.get<EndlessProgress>('endless-progress'),
   ]);
+  setAside('settings', s, readMirrorRaw(MIRROR.settings));
+  setAside('daily', record, readMirrorRaw(MIRROR.record));
+  void checkKept(store);
   batch(() => {
     // The synchronous copy is never older than IndexedDB's.
     const saved = readMirror<Settings>(MIRROR.settings) ?? s;
@@ -536,16 +616,7 @@ function saveProgress(s: Session): void {
     return;
   }
   if (s.mode.kind !== 'daily' || !s.mode.ranked || s.state.phase === 'done') return;
-  const progress: DailyProgress = {
-    v: 1,
-    n: s.mode.n,
-    g: s.content.genVersion,
-    actions: s.actions,
-    seenAt: clock(),
-  };
-  dailyProgress.value = progress;
-  mirror(MIRROR.progress, progress);
-  void store?.set('daily-progress', progress);
+  saveDailyProgress({ v: 1, n: s.mode.n, g: s.content.genVersion, actions: s.actions, seenAt: clock() });
 }
 
 function finish(s: Session): void {
@@ -592,14 +663,10 @@ function finish(s: Session): void {
       guard: s.mode.guard,
       ...(s.state.config.assists ? { assists: s.state.config.assists } : {}),
     };
-    dailyRecord.value = { v: 1, results: { ...dailyRecord.value.results, [String(s.mode.n)]: result } };
-    dailyProgress.value = null;
     // Result first, then drop the progress: an unload between the two must not lose both.
-    mirror(MIRROR.record, dailyRecord.value);
-    mirror(MIRROR.progress, null);
-    void store?.set('daily', dailyRecord.value);
-    void store?.remove('daily-progress');
-    void requestPersistence();
+    saveDailyRecord({ v: 1, results: { ...dailyRecord.value.results, [String(s.mode.n)]: result } });
+    saveDailyProgress(null);
+    void keepStorage();
   }
   screen.value = 'summary';
 }
@@ -802,17 +869,14 @@ function saveEndless(s: Session): void {
   const right = s.state.verdicts.filter((v) => v.correct).length;
   const wrong = s.state.verdicts.length - right;
   const mode: EndlessMode = { ...s.mode, judged: s.mode.judged - right, strikes: s.mode.strikes - wrong };
-  const progress: EndlessProgress = {
+  saveEndlessProgress({
     v: 1,
     g: s.content.genVersion,
     mode,
     actions: s.actions,
     judged: s.mode.judged,
     strikes: s.mode.strikes,
-  };
-  endlessProgress.value = progress;
-  mirror(MIRROR.endless, progress);
-  void store?.set('endless-progress', progress);
+  });
 }
 
 /** The run is over: its best, the day's result when it was the day's run, then the saved run dropped. */
@@ -832,9 +896,8 @@ function endEndless(m: EndlessMode): void {
     : {};
   // Result first, then drop the saved run: an unload between the two must not lose both.
   if (Object.keys(best).length > 0 || m.dated) updateSettings({ ...best, ...dated });
-  endlessProgress.value = null;
-  mirror(MIRROR.endless, null);
-  void store?.remove('endless-progress');
+  saveEndlessProgress(null);
+  if (m.dated) void keepStorage();
 }
 
 /** Ends the saved run (if any) where it stands, before another begins: a day's run is recorded as it is. */
