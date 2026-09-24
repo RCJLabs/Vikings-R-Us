@@ -1,6 +1,6 @@
 import { dailyContent, gameContent, manifest } from 'virtual:content';
 import { placeholderSigil } from '@cots/art';
-import { shiftScore } from '@cots/engine';
+import { ENDLESS_SOULS, ENDLESS_STRIKES, shiftScore } from '@cots/engine';
 import type { ComponentType } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { artStyle } from './art';
@@ -25,6 +25,7 @@ import {
   shareBody,
   shareResult,
   startDaily,
+  startEndless,
   startPractice,
   startPrimer,
   storageReady,
@@ -251,6 +252,20 @@ export function Title() {
         </div>
         <p class="muted">{t('ui.practice.hint')}</p>
       </section>
+      <section class="card" data-testid="endless-card">
+        <h2>{t('ui.endless')}</h2>
+        <p class="muted">{t('ui.endless.hint', { n: ENDLESS_SOULS, strikes: ENDLESS_STRIKES })}</p>
+        <div class="row">
+          <button type="button" class="btn" data-testid="endless-start" onClick={startEndless}>
+            {t('ui.endless.start')}
+          </button>
+          {settings.value.endlessBest > 0 ? (
+            <span class="muted" data-testid="endless-best">
+              {t('ui.endless.best', { n: settings.value.endlessBest })}
+            </span>
+          ) : null}
+        </div>
+      </section>
       {manifest.edition === 'demo' && links.steam ? (
         <a class="btn btn--big wishlist" href={links.steam} target="_blank" rel="noopener noreferrer">
           {t('demo.wishlist')}
@@ -275,6 +290,7 @@ export function Title() {
 
 function modeTitle(s: Session): string {
   if (s.mode.kind === 'practice') return t('ui.briefing.practice', { n: s.mode.day });
+  if (s.mode.kind === 'endless') return t('ui.endless.round', { n: s.mode.round + 1, day: s.mode.day });
   if (s.mode.kind === 'primer') return t('primer.title');
   if (s.mode.kind === 'campaign') return t('ui.campaign.day', { n: s.mode.day });
   return s.mode.preview ? t('ui.briefing.preview') : t('ui.briefing.daily', { n: s.mode.n });
@@ -296,6 +312,11 @@ export function Briefing() {
           </button>
         </div>
       ) : null}
+      {s.mode.kind === 'endless' ? (
+        <p class="briefing__queue" data-testid="endless-status">
+          {t('ui.endless.status', { n: s.mode.judged, strikes: s.mode.strikes, max: ENDLESS_STRIKES })}
+        </p>
+      ) : null}
       <Decree ctx={s.ctx} />
       <p class="briefing__queue">
         {st.config.untimed
@@ -314,6 +335,33 @@ export function Briefing() {
         <RulesPanel ctx={s.ctx} decree={false} />
       </section>
       <ReportDialog />
+    </main>
+  );
+}
+
+/** Endless is over: three strikes. */
+export function EndlessOver() {
+  const focus = useAutoFocus<HTMLButtonElement>();
+  const s = session.value;
+  if (s?.mode.kind !== 'endless') return null;
+  const m = s.mode;
+  return (
+    <main class="screen screen--summary">
+      <h1 data-testid="endless-over">{t('ui.endless.over')}</h1>
+      <p class="summary__score" data-testid="endless-score">
+        {t('ui.endless.score', { n: m.judged, day: m.day })}
+      </p>
+      <p data-testid="endless-record">
+        {m.judged > m.bestBefore ? t('ui.endless.newBest') : t('ui.endless.best', { n: settings.value.endlessBest })}
+      </p>
+      <div class="row">
+        <button type="button" class="btn btn--primary" data-testid="endless-again" ref={focus} onClick={startEndless}>
+          {t('ui.endless.again')}
+        </button>
+        <button type="button" class="btn" data-testid="home" onClick={toTitle}>
+          {t('ui.summary.home')}
+        </button>
+      </div>
     </main>
   );
 }

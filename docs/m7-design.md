@@ -126,9 +126,11 @@ The problem: by Day 6 a competent player has about 126 rings and nothing to buy.
 
 **As tuned (M7.7).** A competent player who paid every bill and bought every upgrade used to finish on about 576 rings, with nothing to buy after Day 15. Cutting wages or raising bills enough to fix that also demotes most novices (fines, not bills, are what sink them), so the late winter got optional sinks instead: four more speed-only upgrades from Day 13 (175 rings in all), bills 10% higher from Day 13, and a ferry fare of 100. With the story played (plain policy, 12 seeds): competent players end on about 368 rings (305 at worst), experts on about 691, and frugal novices survive 6 times in 8. Careless players are still always demoted, and pay-everything novices mostly. This misses the target: a competent player can still afford the ferry without giving anything up. Squeezing harder costs the novices; that trade-off wants playtests, not bots.
 
-## Endless (last in M7; first to cut)
+## Endless (built in M7.7)
 
-Walk the days' rules in order, five souls per day's rules, three strikes, no sun. The score is the souls judged. It reuses the day specs, so it needs no new content.
+Walk the days' rules in order, five souls per day's rules, three strikes, no sun. The score is the souls judged rightly. It reuses the day specs, so it needs no new content.
+
+As built: round *r* plays the first five souls of day *r*'s own queue (so each day's teaching soul, its new rule, comes first), then the last day's rules for as long as the player lasts. A wrong stamp, or unclipped nails, is a strike, and the third ends the run where it stands. The best score is kept on the device. The demo walks Days 1–3; the full game Days 1–20. `packages/engine/src/shift/endless.ts`; the UI keeps the run as a session mode (`packages/ui/src/store.ts`).
 
 ## Order of work
 
@@ -137,7 +139,7 @@ Walk the days' rules in order, five souls per day's rules, three strikes, no sun
 - M7.4: Day 16 (liars) and Day 17 (spear mark, art).
 - M7.5: Days 18–20, the 20-day campaign, endings state and conditions, economy.
 - M7.6: story drafts for Days 7–11 and 13–20.
-- M7.7: bots reach every ending; every day meets the generation gates; Endless if time allows.
+- M7.7: bots reach every ending; every day meets the generation gates; Endless.
 
 ## Open questions for you
 

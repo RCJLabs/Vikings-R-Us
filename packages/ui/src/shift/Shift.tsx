@@ -1,5 +1,14 @@
 import type { Hotspot } from '@cots/art';
-import { type CaseSpec, currentCase, type Field, PENALTY, stampsFor, sunLeft, type Verdict } from '@cots/engine';
+import {
+  type CaseSpec,
+  currentCase,
+  ENDLESS_STRIKES,
+  type Field,
+  PENALTY,
+  stampsFor,
+  sunLeft,
+  type Verdict,
+} from '@cots/engine';
 import { copyText } from '@cots/platform';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { art, usePixelFrame } from '../art';
@@ -82,6 +91,11 @@ function SunBar({ s }: { s: Session }) {
       <span class="sunbar__count" data-testid="soul-count">
         {t('ui.soul.count', { n: Math.min(st.cursor + 1, st.cases.length), total: st.cases.length })}
       </span>
+      {s.mode.kind === 'endless' ? (
+        <span class="sunbar__count" data-testid="strikes">
+          {t('ui.endless.strikes', { n: s.mode.strikes, max: ENDLESS_STRIKES })}
+        </span>
+      ) : null}
       <button type="button" class="btn btn--quiet" onClick={() => act({ t: 'pause' })} data-testid="pause">
         {t('ui.pause')}
       </button>

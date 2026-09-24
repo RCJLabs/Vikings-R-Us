@@ -6,6 +6,8 @@ import {
   type DayCtx,
   dailyNumber,
   dailySeed,
+  ENDLESS_STRIKES,
+  endlessRound,
   expectedChecksum,
   type GuardResult,
   guardDaily,
@@ -63,6 +65,8 @@ export interface Settings {
   readonly primerDone: boolean;
   /** Sound volume, 0 (off) to 1. */
   readonly sound: number;
+  /** Endless: the most souls judged rightly in one run on this device. */
+  readonly endlessBest: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -75,6 +79,7 @@ export const DEFAULT_SETTINGS: Settings = {
   telemetryAsked: false,
   primerDone: false,
   sound: 0.6,
+  endlessBest: 0,
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -237,8 +242,24 @@ export type Mode =
       readonly guard: GuardResult;
     }
   | { readonly kind: 'practice'; readonly day: number }
+  | EndlessMode
   | { readonly kind: 'primer' }
   | { readonly kind: 'campaign'; readonly day: number; readonly story: boolean };
+
+/** Endless (docs/m7-design.md): rounds of five souls on each day's rules in turn, until three strikes. */
+export interface EndlessMode {
+  readonly kind: 'endless';
+  /** The run's seed; each round's comes from it (endlessRound). */
+  readonly seed: string;
+  readonly round: number;
+  readonly day: number;
+  /** Wrong stamps so far. */
+  readonly strikes: number;
+  /** Souls judged rightly so far: the score. */
+  readonly judged: number;
+  /** The best score when the run began, to tell a new best. */
+  readonly bestBefore: number;
+}
 
 export interface Session {
   readonly mode: Mode;
@@ -275,7 +296,17 @@ export const telemetryBase = (): string | undefined =>
 
 export const telemetryAvailable = (): boolean => telemetryBase() !== undefined;
 
-export type Screen = 'title' | 'briefing' | 'shift' | 'summary' | 'campaign' | 'morning' | 'audit' | 'night' | 'ending';
+export type Screen =
+  | 'title'
+  | 'briefing'
+  | 'shift'
+  | 'summary'
+  | 'endless'
+  | 'campaign'
+  | 'morning'
+  | 'audit'
+  | 'night'
+  | 'ending';
 
 export const screen = signal<Screen>('title');
 export const session = signal<Session | null>(null);
@@ -359,6 +390,7 @@ function onEvent(e: ShiftEvent, s: Session): void {
       const dest = t(`dest.${e.verdict.stamped}`);
       say(t(e.verdict.correct ? 'ui.verdict.right' : 'ui.verdict.wrong', { dest }), e.verdict.correct ? 'good' : 'bad');
       resetSoulUi();
+      if (s.mode.kind === 'endless') countEndless(e.verdict.correct);
       break;
     }
     case 'citation':
@@ -398,6 +430,12 @@ function finish(s: Session): void {
   // The run has already audited the shift; the campaign's own screens take over.
   if (s.mode.kind === 'campaign') {
     screen.value = 'audit';
+    return;
+  }
+  // An Endless round that ends without the third strike goes straight on to the next day's rules.
+  if (s.mode.kind === 'endless') {
+    const m = session.peek()?.mode;
+    if (m?.kind === 'endless' && m.strikes < ENDLESS_STRIKES) startEndlessRound({ ...m, round: m.round + 1 });
     return;
   }
   const telemetry = telemetryBase();
@@ -515,6 +553,41 @@ export function startPractice(day: number): void {
   resetSoulUi();
   session.value = { mode: { kind: 'practice', day }, content: gameContent, ctx, initial: state, state, actions: [] };
   screen.value = 'briefing';
+}
+
+export function startEndless(): void {
+  // Random on purpose, like practice; only the engine has to be deterministic.
+  const seed = `endless:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e9).toString(36)}`;
+  const best = settings.peek().endlessBest;
+  startEndlessRound({ kind: 'endless', seed, round: 0, day: 0, strikes: 0, judged: 0, bestBefore: best });
+}
+
+function startEndlessRound(mode: EndlessMode): void {
+  const r = endlessRound(gameContent, mode.seed, mode.round);
+  const { state, ctx } = startShift(
+    gameContent,
+    { mode: 'practice', seed: r.seed, day: r.day, untimed: true },
+    r.cases,
+  );
+  resetSoulUi();
+  batch(() => {
+    citation.value = null;
+    answer.value = null;
+    session.value = { mode: { ...mode, day: r.day }, content: gameContent, ctx, initial: state, state, actions: [] };
+    screen.value = 'briefing';
+  });
+}
+
+/** Scores a stamp in Endless; the third wrong one ends the run where it stands. */
+function countEndless(correct: boolean): void {
+  const s = session.peek();
+  if (s?.mode.kind !== 'endless') return;
+  const m = s.mode;
+  const mode = correct ? { ...m, judged: m.judged + 1 } : { ...m, strikes: m.strikes + 1 };
+  session.value = { ...s, mode };
+  if (mode.strikes < ENDLESS_STRIKES) return;
+  if (mode.judged > settings.peek().endlessBest) updateSettings({ endlessBest: mode.judged });
+  screen.value = 'endless';
 }
 
 /** The fixed seed that gives everyone the same primer. */

@@ -3,7 +3,7 @@ import { useEffect } from 'preact/hooks';
 import { initArt } from './art';
 import { setVolume, unlockAudio } from './audio';
 import { campaignUi } from './campaign/lazy';
-import { Briefing, Summary, Title } from './screens';
+import { Briefing, EndlessOver, Summary, Title } from './screens';
 import { onShiftKey } from './shift/keys';
 import { ShiftScreen } from './shift/Shift';
 import { initStorage, screen, settings, startClock } from './store';
@@ -32,6 +32,8 @@ export function App() {
       return <ShiftScreen />;
     case 'summary':
       return <Summary />;
+    case 'endless':
+      return <EndlessOver />;
     case 'campaign':
     case 'morning':
     case 'audit':
