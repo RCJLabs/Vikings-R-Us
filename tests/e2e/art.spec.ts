@@ -2,9 +2,9 @@ import { expect, type Page, test } from '@playwright/test';
 import { FULL } from './urls';
 
 /*
- * The art directions under trial (M5): `?art=` switches the body art and is
- * remembered on the device; pixel art is scaled in whole device pixels; the
- * dev build's Body Lab switches it too.
+ * Body art: the woodcut is the default; `?art=` switches to another style and
+ * is remembered on the device; pixel art is scaled in whole device pixels;
+ * the dev build's Body Lab switches it too.
  */
 
 /** A Day 1 practice shift (unlike the Daily, it can be started again and again). */
@@ -14,18 +14,22 @@ async function openShift(page: Page, query = '') {
   await page.getByTestId('begin').click();
 }
 
-test('?art= picks the body art, and the choice is remembered', async ({ page }) => {
-  await openShift(page, '?art=woodcut');
-  await expect(page.locator('.stage')).toHaveAttribute('data-art', 'woodcut');
-  await expect(page.locator('.hotspot').first()).toBeVisible();
-
+test('the woodcut is the default; ?art= picks another style, and the choice is remembered', async ({ page }) => {
   await openShift(page);
   await expect(page.locator('.stage')).toHaveAttribute('data-art', 'woodcut');
+  await expect(page.locator('.hotspot').first()).toBeVisible();
 
   await openShift(page, '?art=placeholder');
   await expect(page.locator('.stage')).toHaveAttribute('data-art', 'placeholder');
   await openShift(page);
   await expect(page.locator('.stage')).toHaveAttribute('data-art', 'placeholder');
+
+  // Going back to the default forgets the choice.
+  await openShift(page, '?art=woodcut');
+  await expect(page.locator('.stage')).toHaveAttribute('data-art', 'woodcut');
+  expect(await page.evaluate(() => localStorage.getItem('cots.art'))).toBeNull();
+  await openShift(page);
+  await expect(page.locator('.stage')).toHaveAttribute('data-art', 'woodcut');
 });
 
 test('pixel art is scaled in whole device pixels', async ({ page }) => {
@@ -65,7 +69,7 @@ test.describe('a landscape phone', () => {
 
   test('shows the body down the side at full height, with the tools clear of it', async ({ page }, info) => {
     test.skip(info.project.name === 'desktop', 'the viewport is set here; one run is enough');
-    await page.goto('./?art=placeholder');
+    await page.goto('./');
     await page.getByTestId('practice-3').click();
     await page.getByTestId('begin').click();
     const frame = await page.locator('.stage__frame').boundingBox();

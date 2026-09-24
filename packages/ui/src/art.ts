@@ -1,23 +1,26 @@
 import { ART_STYLES, type ArtStyle, type BodyArtProvider, placeholderBody } from '@cots/art';
+import { woodcutBody } from '@cots/art/woodcut';
 import { signal } from '@preact/signals';
 import { useLayoutEffect, useState } from 'preact/hooks';
 import { mirror, readMirror } from './store';
 
 /**
- * The body art in use (docs/tech-spec.md §6.5). The placeholder ships in the
- * main bundle; the candidate art directions load when chosen. Choose one with
- * `?art=woodcut` or `?art=pixel` (remembered on this device) or in the Body
- * Lab; `?art=placeholder` goes back. Art never changes what a soul is or how
- * it's judged.
+ * The body art in use (docs/tech-spec.md §6.5). The woodcut, the chosen art
+ * direction, is the default and ships in the main bundle, so the first soul
+ * never waits for it. The placeholder and the pixel candidate stay for
+ * comparison: choose one with `?art=placeholder` or `?art=pixel` (remembered
+ * on this device) or in the Body Lab; `?art=woodcut` goes back. Art never
+ * changes what a soul is or how it's judged.
  */
-export const art = signal<BodyArtProvider>(placeholderBody);
-export const artStyle = signal<ArtStyle>('placeholder');
+export const DEFAULT_ART: ArtStyle = 'woodcut';
+export const art = signal<BodyArtProvider>(woodcutBody);
+export const artStyle = signal<ArtStyle>(DEFAULT_ART);
 
 const KEY = 'cots.art';
 
 const LOADERS: Readonly<Record<ArtStyle, () => Promise<BodyArtProvider>>> = {
   placeholder: async () => placeholderBody,
-  woodcut: () => import('@cots/art/woodcut').then((m) => m.woodcutBody),
+  woodcut: async () => woodcutBody,
   pixel: () => import('@cots/art/pixel').then((m) => m.pixelBody),
 };
 
@@ -28,7 +31,7 @@ export const loadArt = (style: ArtStyle): Promise<BodyArtProvider> => LOADERS[st
 
 export async function setArtStyle(style: ArtStyle): Promise<void> {
   artStyle.value = style;
-  mirror(KEY, style === 'placeholder' ? null : style);
+  mirror(KEY, style === DEFAULT_ART ? null : style);
   const provider = await loadArt(style);
   if (artStyle.value === style) art.value = provider;
 }
@@ -43,7 +46,7 @@ export function initArt(): void {
   }
   const style = isArtStyle(asked) ? asked : readMirror<string>(KEY);
   if (isArtStyle(style) && style !== artStyle.value) void setArtStyle(style);
-  else if (isArtStyle(asked)) mirror(KEY, asked === 'placeholder' ? null : asked);
+  else if (isArtStyle(asked)) mirror(KEY, asked === DEFAULT_ART ? null : asked);
 }
 
 /**

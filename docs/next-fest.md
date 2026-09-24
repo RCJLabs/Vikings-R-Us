@@ -13,13 +13,13 @@ From the build plan's sources (Valve's Next Fest pages, checked when the plan wa
 
 Where the project is (September 2026):
 
-- The M5 engineering is done: the art swap with two candidate directions, Days 10 and 12, the vertical slice path (Days 1–3, then Day 12), placeholder sound, and a second draft of the Days 1–3 writing.
+- The M5 engineering is done: the art swap (the woodcut is chosen and is the default), Days 10 and 12, the vertical slice path (Days 1–3, then Day 12), placeholder sound, and a second draft of the Days 1–3 writing.
 - That is about five months ahead of the plan's calendar, which had M5 in February and March 2027.
-- The remaining M5 work is yours or a hired artist's: choosing the art direction, final art and writing for Days 1–3 and Day 12, and the audio direction.
+- The remaining M5 work is yours or a hired artist's: final woodcut art and writing for Days 1–3 and Day 12, and the audio direction.
 
 ## What June needs by early April
 
-1. The art direction chosen and final art for Days 1–3 delivered. Commissioning lead time is the unknown: weeks to months, depending on the artist (speculation).
+1. Final woodcut art for Days 1–3 delivered (the direction is chosen). Commissioning lead time is the unknown: weeks to months, depending on the artist (speculation).
 2. The Days 1–3 text signed off.
 3. The Steam page public, with capsule art and a trailer or gameplay capture.
 4. The demo build on Steam (M6: Electron, a separate demo app ID).
@@ -28,7 +28,7 @@ The engineering in items 3 and 4 is about three weeks of M6. Items 1 and 2 decid
 
 ## Recommendation
 
-**Plan for October 2027, with a checkpoint on 1 March 2027.** If the art direction is chosen, the first commissioned art is in the game, and the Days 1–3 text is signed off by then, June becomes realistic, with about seven weeks to the April 25 registration.
+**Plan for October 2027, with a checkpoint on 1 March 2027.** If the first commissioned art is in the game, and the Days 1–3 text is signed off by then, June becomes realistic, with about seven weeks to the April 25 registration.
 
 This is my judgment, not a measurement. What sways it:
 
@@ -38,5 +38,5 @@ This is my judgment, not a measurement. What sways it:
 ## Do now either way
 
 - **Pay the Steam Direct fee.** It has been open since M3, and it gates everything in M6.
-- **Pick the art direction** from the trial page, then ask one or two artists for a sample and a quote on the sign sheet in `docs/art-brief.md`.
+- **Commission the woodcut art:** ask one or two artists for a sample and a quote on the sign sheet in `docs/art-brief.md`.
 - **Sign off, or rewrite, the Days 1–3 scenes** (`docs/story-drafts.md`).
