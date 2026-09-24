@@ -37,7 +37,7 @@ What the drafts set up, so a rewrite can keep or change it on purpose:
 - **Day 12:** Skögul explains Brokkr's scars; the clerk of the White Christ has his own table. If you met the stranger, tell Skögul (`told_skogul`, Odin +1) or keep quiet (`kept_quiet`, Loki +1). The story soul Hrafn Sigurdsson is Loki and knows you: DETAIN sets `loki_detained` (Odin +1), VALHALLA `loki_in_valhalla` (Loki +2). At night the stranger comes back either way, holding a letter from home. If Ulf went north he is building Loki's ship; if he stayed, Loki knows about the Ulfberhts. He'll leave your brother (or family) out of his report if you leave him out of yours: name him (`reported_loki`, Odin +2, Loki −2) or cover for him (`covered_loki`, Loki +2, Odin −1).
 - **Day 13 (the midpoint twist):** both ravens report. At night Muninn tells you Odin woke the seeress and knows how it ends, his own death included. Ask what else she said (`truth` +1: "something green, after"), ask why Odin goes on (Odin +1), or ask whether Skögul knows.
 - **Day 14:** Hel's hall is full and her straw deaths go to the clerk, who has "plenty of room" (offering help is clerk +1). At night Móðguðr, who keeps the bridge to Hel, says Hel is on strike until someone at the gate says the quiet dead count. Ask about Grandfather (`truth` +1: he sits near Baldr, who walks out into the new world after the fire). Then side with Hel (`sided_hel`, Hel +2, Odin −1), with Odin (Odin +1, Hel −1), or neither.
-- **Day 15:** Freyja asks you to send her the souls Odin now claims. Side with her (`sided_freyja`, Freyja +2, Odin −1), with the decree (`sided_odin`, Odin +2, Freyja −1), or with the Order. At night a ferryman at the fjord's mouth offers the family a shore the wolf won't reach: 20 rings now (`ferryman`), 60 on the day.
+- **Day 15:** Freyja asks you to send her the souls Odin now claims. Side with her (`sided_freyja`, Freyja +2, Odin −1), with the decree (`sided_odin`, Odin +2, Freyja −1), or with the Order. At night a ferryman at the fjord's mouth offers the family a shore the wolf won't reach: 20 rings now (`ferryman`), 100 on the day.
 - **Day 16:** Liars forfeit the halls. Thorvald is in the queue, still alive (story soul, RETURN; `thorvald16_judged`, `thorvald16_returned`). At dusk he tells you about Hoddmímir's wood, where nothing finds you: ask about it and Skögul tells the song of the two who survive the fire (`truth` +1, `wood_known`).
 - **Day 17 (the family's fate):** Skögul tells how Odin marked himself with a spear. At night home asks where the family should be when the horn blows. The ship (if you have Loki's deal, or Ulf is at the shipyard: `loki_deal`), the ferry (`ferryman`, or pay the 20 now), Hoddmímir's wood (if you know of it: `wood`), or home together (`stay_home`). Each choice drops the others.
 - **Day 18:** The last Draupnir. The clerk offers a transfer to his department, "unaffected" by Ragnarök, for a 10-ring fee (`clerk_contract`, clerk +2). At night Loki's last offer: keep the deal (Loki +1) or break it (`broke_loki`, Loki −3, Odin +1); without a deal, take it now (`loki_deal`, which replaces Day 17's plan) or refuse.
@@ -53,14 +53,14 @@ Endings are checked every night in order; the first that holds ends the run (`co
 
 | Ending | Needs | Reached through |
 |---|---|---|
-| Naglfar sails early | Day 18 or later, `loki_deal`, 6+ souls sent on with their nails uncut | Loki's deal (Day 8, the ship on Day 17, or Day 18), then leaving nails long on purpose. Each is a citation. |
-| The green earth (the true ending) | Day 20, `wood`, `truth` 3+, a strong host (ragnarok 40+), someone at home | Asking on Days 13, 14, 16 and 19 (three of the four), and Hoddmímir's wood on Day 17 |
-| Smuggled home | Day 20, `ferryman`, 60+ rings, someone at home | The ferry (Day 15 or 17), and saving the fare |
+| Naglfar sails early | Day 18 or later, `loki_deal`, 10+ souls sent on with their nails uncut | Loki's deal (Day 8, the ship on Day 17, or Day 18), then leaving nails long on purpose. Each is a citation. |
+| The green earth (the true ending) | Day 20, `wood`, `truth` 3+, a strong host (ragnarok 260+), someone at home | Asking on Days 13, 14, 16 and 19 (three of the four), and Hoddmímir's wood on Day 17 |
+| Smuggled home | Day 20, `ferryman`, 100+ rings (the fare), someone at home | The ferry (Day 15 or 17), and saving the fare |
 | The transfer | Day 20, `clerk_contract`, clerk standing 4+ | The contract (Day 18), and helping the clerk (Days 10 and 14) |
 | Hel's steward | Day 20, Hel leads the factions, Hel 3+ | Siding with Hel (Days 14 and 19) |
 | Freyja's own | Day 20, Freyja leads, Freyja 3+ | Siding with Freyja (Days 4, 15 and 19) |
 | Chooser eternal | Day 20, Odin leads | Siding with Odin |
-| The wolf wins | Day 20, a weak host (ragnarok 0 or less) | Judging badly |
+| The wolf wins | Day 20, a weak host (ragnarok 240 or less) | Judging badly, or leaving nails long on purpose |
 | The last stand | Day 20, otherwise | Everything else |
 
 The two failures (demoted, and an empty house) can end any night.

@@ -26,6 +26,7 @@ EXTERNAL rings()
 You would know. You spent the afternoon dropping tallies like that into a basket.
 * [Tell them the truth: it won't work.]
   # fx: flag letters_honest +1
+  # fx: standing hel +1
   You write that a forged tally doesn't move anyone anywhere, that you'd see it under the lens, and that the dead are where they are.
   "Hel keeps a quiet hall," you write. It's all you know about it.
 * [Ask for the carver's name.]

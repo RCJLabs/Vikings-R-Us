@@ -16,7 +16,7 @@ She is very pale and very tidy, and her hair is braided so tight it looks painfu
   "Say it. Mean it. My lady will know if you don't." # speaker: modgudr
 - She waits.
 * ["The quiet dead count."]
-  # fx: standing hel +2
+  # fx: standing hel +3
   # fx: standing odin -1
   # fx: flag sided_hel
   You say it out loud, at the gate, with the whole queue listening. Far below, very faintly, a bridge stops ringing, and then starts again.

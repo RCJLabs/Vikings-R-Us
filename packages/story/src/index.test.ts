@@ -1,7 +1,7 @@
 import { FACTIONS } from '@cots/engine';
 import { Compiler } from 'inkjs/full';
 import { describe, expect, it } from 'vitest';
-import { parseFx, playScene, type SceneEnv, walkScene } from './index';
+import { parseFx, playScene, type SceneEnv, scenePaths, walkScene } from './index';
 
 const compile = (src: string) => {
   const story = new Compiler(src).Compile();
@@ -114,6 +114,34 @@ describe('walkScene', () => {
     const json = compile('* [a] Fine.\n* [b] Broken. # fx: rings lots\n- End.');
     expect(() => playScene(json, env(), [0])).not.toThrow();
     expect(() => walkScene(json, env())).toThrow(/bad number/);
+  });
+
+  it('gives the choices of each path, and the same effects as playing it', () => {
+    const src = [
+      'EXTERNAL rings()',
+      '* [a]',
+      '  ** [a1]',
+      '     # fx: flag a1',
+      '     A1.',
+      '  ** { rings() > 100 } [a2]',
+      '     # fx: flag a2',
+      '     A2.',
+      '* [b]',
+      '  B. # fx: rings -3',
+      '- End. # fx: flag done',
+    ].join('\n');
+    const json = compile(src);
+    const paths = scenePaths(json, env());
+    expect(paths.map((p) => p.choices)).toEqual([[0, 0], [1]]);
+    expect(paths.map((p) => p.effects)).toEqual([
+      [
+        { flag: 'a1', set: 1 },
+        { flag: 'done', set: 1 },
+      ],
+      [{ rings: -3 }, { flag: 'done', set: 1 }],
+    ]);
+    for (const p of paths) expect(p.effects).toEqual(playScene(json, env(), p.choices).effects);
+    expect(scenePaths(json, env({ rings: 500 })).map((p) => p.choices)).toEqual([[0, 0], [0, 1], [1]]);
   });
 
   it('gives up on scenes with too many paths', () => {

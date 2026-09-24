@@ -79,18 +79,29 @@ Checked each night in this order. The first that holds ends the run. Faction end
 |---|---|---|
 | 10 | Demoted | two nights in a row below −30 rings (exists) |
 | 20 | Alone | the whole family gone (exists) |
-| 100 | Naglfar Sails Early | from Day 18: a deal with Loki, and enough nails left uncut |
-| 200 | Rebirth (true ending) | Day 20: the truth learned (story flags), the family hidden in Hoddmímir's wood, a strong host, someone at home |
-| 300 | Smuggled Home | Day 20: the ferryman paid (story), 60+ rings, someone left to smuggle |
+| 100 | Naglfar Sails Early | from Day 18: a deal with Loki, and 10+ souls sent on with nails uncut |
+| 200 | Rebirth (true ending) | Day 20: the truth learned (`truth` 3+), the family hidden in Hoddmímir's wood, a strong host (260+), someone at home |
+| 300 | Smuggled Home | Day 20: a place on the ferry (story), 100+ rings for the fare, someone left to smuggle |
 | 400 | The Transfer | Day 20: the clerk's contract signed, clerk standing 4+ |
 | 500 | Hel's Steward | Day 20: Hel leads the factions, standing 3+ |
 | 510 | Freyja's Own | Day 20: Freyja leads, standing 3+ |
 | 520 | Chooser Eternal | Day 20: Odin leads |
-| 990 | The Wolf Wins | Day 20: the host is too weak |
+| 990 | The Wolf Wins | Day 20: the host is too weak (240 or less) |
 | 1000 | The Last Stand | Day 20, otherwise |
 
-- **Host strength** = 2 × worthy einherjar − unworthy + 2 × Fólkvangr + 2 × Hel − 2 × uncut nails. This is the plan's formula scaled by two, so it stays integer.
-- **Bots must reach every ending.** The campaign sim gains story policies (side with Loki, save for the ferryman, and so on).
+- **Host strength** = 2 × worthy einherjar − unworthy + 2 × Fólkvangr + 2 × Hel − 2 × uncut nails. This is the plan's formula scaled by two, so it stays integer. It grows with every soul sent to a hall, so its thresholds are absolute numbers for this campaign's queue sizes: bots end near 320 (expert), 290 (competent), 240 (competent, leaving two nails a day) and 210 (novice). The reach test below catches drift if queue sizes change.
+- **Bots reach every ending** (M7.7). The campaign sim plays each day's scenes with a story policy: it weighs every path through a scene by the effects the path has (flags, standing, rings), never by its words, so rewriting a scene keeps the bots working. Policies: plain (no deals, family home), naglfar, rebirth, ferry, transfer, hel, freyja, odin and wolf. `packages/testkit/src/campaign-sim.test.ts` names a bot for each ending and fails if none of six seeds reaches it; a negative control (an unaffordable fare) fails it.
+
+| Ending | Reached by (12 seeds each) |
+|---|---|
+| Naglfar, Rebirth, Smuggled Home | 12 of 12, expert or competent |
+| Hel's Steward, Freyja's Own, Chooser Eternal | 12 of 12 expert; competent 2, 8 and 3 of 12 |
+| The Transfer | 11 of 12 expert; 3 of 12 competent |
+| The Wolf Wins | novices who survive; 4 of 12 competent saboteurs |
+| The Last Stand | most plain players |
+| Demoted, An Empty House | careless judging; bills never paid |
+
+Mistakes cost standing (a wrong stamp angers the god who lost the soul), so a competent player's Odin ends near −16 however they side, and the faction endings mostly go to careful players.
 
 ## Story (M7.6, first draft)
 
@@ -112,6 +123,8 @@ The problem: by Day 6 a competent player has about 126 rings and nothing to buy.
 - **New upgrades (speed only).** Each new tool gets one, and so do the ravens and questioning. They cost 20–40 rings.
 - **Story costs.** Choices in the story cost rings: the healer, a brother's debt, the clerk's fee, the ferryman. The ferryman (Smuggled Home) is the big goal to save for.
 - **Tuning.** `pnpm sim campaign` sets the numbers; the target is a careful player ending Day 20 with savings, only if they skipped the ferryman.
+
+**As tuned (M7.7).** A competent player who paid every bill and bought every upgrade used to finish on about 576 rings, with nothing to buy after Day 15. Cutting wages or raising bills enough to fix that also demotes most novices (fines, not bills, are what sink them), so the late winter got optional sinks instead: four more speed-only upgrades from Day 13 (175 rings in all), bills 10% higher from Day 13, and a ferry fare of 100. With the story played (plain policy, 12 seeds): competent players end on about 368 rings (305 at worst), experts on about 691, and frugal novices survive 6 times in 8. Careless players are still always demoted, and pay-everything novices mostly. This misses the target: a competent player can still afford the ferry without giving anything up. Squeezing harder costs the novices; that trade-off wants playtests, not bots.
 
 ## Endless (last in M7; first to cut)
 

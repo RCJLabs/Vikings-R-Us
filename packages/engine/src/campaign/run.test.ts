@@ -7,6 +7,7 @@ import {
   campaignOf,
   campaignQueue,
   defaultBills,
+  endingFor,
   newRun,
   type RunAction,
   type RunEnv,
@@ -36,7 +37,7 @@ function drive(content: Content, run0: RunState, actions: readonly RunAction[]) 
   return { run, events, ctx };
 }
 
-/** A whole shift: stamp each soul right, or wrong where `wrong(i)` says so; catch lies if asked. */
+/** A whole shift: judge each soul right (clipping what needs it), or wrong where `wrong(i)` says so; catch lies if asked. */
 function shiftActions(
   run: RunState,
   content: Content,
@@ -53,7 +54,13 @@ function shiftActions(
       // Look at everything, then flag each contradiction the careful player would find.
       actions.push({ t: 'shift', action: { t: 'inspect', fields: c.evidence.fields.map((f) => f.id), at } });
     }
-    const dest: Destination = opts.wrong?.(i) ? (c.expect.dest === 'HEL' ? 'VALHALLA' : 'HEL') : c.expect.dest;
+    const wrong = opts.wrong?.(i) ?? false;
+    const dest: Destination = wrong ? (c.expect.dest === 'HEL' ? 'VALHALLA' : 'HEL') : c.expect.dest;
+    // Judging right includes what must be done first (from Day 8, clipping long nails).
+    for (const id of wrong ? [] : (c.expect.procedures ?? [])) {
+      const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+      if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+    }
     actions.push({ t: 'shift', action: { t: 'stamp', dest, at } }, { t: 'shift', action: { t: 'send', at } });
   });
   return actions;
@@ -267,7 +274,10 @@ describe('endings', () => {
     for (let d = 1; d <= 3; d++) f = playDay(full, f).run;
     expect(f).toMatchObject({ phase: 'morning', day: 4 });
     for (let d = 4; d <= campaignOf(full).lastDay; d++) f = playDay(full, f).run;
-    expect(f).toMatchObject({ phase: 'ending', ending: campaignOf(full).finale });
+    // To Ragnarök's night. Detaining the story Loki pleased Odin, so a perfect chooser with no story is his;
+    // without that point nothing else holds, and the finale ends the run.
+    expect(f).toMatchObject({ phase: 'ending', day: campaignOf(full).lastDay, ending: 'ending.odin' });
+    expect(endingFor({ ...f, standing: { ...f.standing, odin: 0 } }, full)).toBe(campaignOf(full).finale);
   });
 
   it('Draupnir drips rings on its nights', () => {

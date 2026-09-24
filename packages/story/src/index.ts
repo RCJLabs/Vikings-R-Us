@@ -146,23 +146,57 @@ export function playScene(json: string | object, env: SceneEnv, choices: readonl
   }
 }
 
+/** One complete way through a scene: the choices made and everything they did. */
+export interface ScenePath {
+  readonly choices: readonly number[];
+  readonly effects: readonly Effect[];
+}
+
+/**
+ * Every path through a scene, depth-first over choices (up to `limit` paths).
+ * One story is parsed and reset for each path, so it's cheap enough for bots
+ * that weigh every option of every scene in a whole campaign.
+ */
+export function scenePaths(json: string | object, env: SceneEnv, limit = 500): ScenePath[] {
+  const story = typeof json === 'string' ? new Story(json) : new Story(json as Record<string, unknown>);
+  bind(story, env);
+  const play = (choices: readonly number[]): { open: number; effects: Effect[] } => {
+    story.ResetState();
+    story.state.storySeed = env.seed;
+    const effects: Effect[] = [];
+    let i = 0;
+    for (;;) {
+      while (story.canContinue) {
+        story.Continue();
+        for (const t of story.currentTags ?? []) {
+          const fx = parseFx(t);
+          if (fx) effects.push(fx);
+        }
+      }
+      const open = story.currentChoices.length;
+      if (open === 0 || i >= choices.length) return { open, effects };
+      story.ChooseChoiceIndex(choices[i++] as number);
+    }
+  };
+  const paths: ScenePath[] = [];
+  const visit = (choices: number[]): void => {
+    if (paths.length >= limit) throw new Error(`more than ${limit} paths`);
+    const { open, effects } = play(choices);
+    if (open === 0) {
+      paths.push({ choices, effects });
+      return;
+    }
+    for (let i = 0; i < open; i++) visit([...choices, i]);
+  };
+  visit([]);
+  return paths;
+}
+
 /**
  * Every path through a scene (depth-first over choices, up to `limit` paths),
  * for the content linter: each must end, and every fx tag on it must parse.
  */
 export function walkScene(json: string | object, env: SceneEnv, limit = 500): { paths: number; effects: Effect[][] } {
-  const effects: Effect[][] = [];
-  const visit = (choices: number[]): void => {
-    if (effects.length >= limit) throw new Error(`more than ${limit} paths`);
-    const frame = playScene(json, env, choices);
-    if (frame.done) {
-      effects.push([...frame.effects]);
-      return;
-    }
-    frame.choices.forEach((_, i) => {
-      visit([...choices, i]);
-    });
-  };
-  visit([]);
+  const effects = scenePaths(json, env, limit).map((p) => [...p.effects]);
   return { paths: effects.length, effects };
 }

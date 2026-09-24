@@ -22,13 +22,13 @@ Skögul sits on the end of your table with her spear across her knees, and for o
 - She stands and slings the spear over her shoulder.
 "Who do you ride with, in your heart? Everybody gets asked, the last night." # speaker: skogul
 * ["Odin."]
-  # fx: standing odin +2
+  # fx: standing odin +3
   "Good. He'll need it." # speaker: skogul
 * ["Freyja."]
-  # fx: standing freyja +2
+  # fx: standing freyja +3
   "She'll know. She always knows." # speaker: skogul
 * ["Hel, and the quiet dead."]
-  # fx: standing hel +2
+  # fx: standing hel +3
   "Someone should." # speaker: skogul
 * ["Nobody. I stamp."]
   Skögul smiles, for the first time since you've known her.

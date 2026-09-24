@@ -30,12 +30,12 @@ You sit with it until the lamp burns low.
   You write that they should go north, to the ship, when it's time. You don't write what it's made of. They'll see.
 * { flag("ferryman") } [The ferry.]
   # fx: flag loki_deal = 0
-  You write that they should be at the mouth of the fjord when the horn blows, with warm clothes and the sixty rings you'll send. Sixty rings. You count what you have, and then count it again, as if it might have changed.
+  You write that they should be at the mouth of the fjord when the horn blows, with warm clothes and the hundred rings you'll send. A hundred rings. You count what you have, and then count it again, as if it might have changed.
 * { not flag("ferryman") && rings() >= 20 } [The ferry. Send twenty rings for a place.]
   # fx: rings -20
   # fx: flag ferryman
   # fx: flag loki_deal = 0
-  You wrap twenty rings in your answer for a place on the ferry, and write that there'll be sixty more on the day.
+  You wrap twenty rings in your answer for a place on the ferry, and write that there'll be a hundred more on the day.
 * { flag("wood_known") } [Hoddmímir's wood.]
   # fx: flag wood
   # fx: flag loki_deal = 0
