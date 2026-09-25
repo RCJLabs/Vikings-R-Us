@@ -2,11 +2,12 @@
  * Generator sweeps and campaign simulations (docs/tech-spec.md §9-10).
  *   pnpm sim sweep [--seeds 200] [--days 1-11] [--prefix sweep] [--no-timing]   (default: every day with a spec)
  *   pnpm sim sweep --daily [--seeds 200]      Dailies #1..#seeds
- *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all] [--no-fines] [--pace 25] [--serve freyja] [--promote]
+ *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all] [--no-fines] [--pace 25] [--serve freyja] [--promote] [--bribes]
  *     Bots play the target's scenes with each story policy (plain by default; see STORY_POLICIES);
  *     --no-fines plays every shift with that assist on; --pace sets the seconds of sun a bot spends on each
  *     soul (25 by default, when the sun never sets on the line), and adds the souls left at dusk; --serve has bots
- *     do one god's requests (docs/tech-spec.md §42) and adds each god's standing and the requests done.
+ *     do one god's requests (docs/tech-spec.md §42) and adds each god's standing and the requests done; --bribes
+ *     has bots take what story souls offer for a wrong stamp (§47).
  * Sweeps print a report and exit 1 if any CI threshold is breached.
  */
 import type { TargetId } from '@cots/content-schema';
@@ -40,6 +41,7 @@ if (cmd === 'campaign') {
   const pace = process.argv.includes('--pace') ? Number(arg('pace', '25')) : undefined;
   const serve = process.argv.includes('--serve') ? (arg('serve', 'freyja') as Faction) : undefined;
   const promote = process.argv.includes('--promote') ? true : undefined;
+  const bribes = process.argv.includes('--bribes');
   const reports = simulateCampaign(
     loadContent(target),
     seeds,
@@ -51,9 +53,10 @@ if (cmd === 'campaign') {
     pace,
     serve,
     promote,
+    bribes,
   );
   console.log(
-    `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}${pace !== undefined ? `, ${pace}s a soul` : ''}${serve ? `, serving ${serve}` : ''}${promote ? ', taking promotions' : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
+    `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}${pace !== undefined ? `, ${pace}s a soul` : ''}${serve ? `, serving ${serve}` : ''}${promote ? ', taking promotions' : ''}${bribes ? ', taking bribes' : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
   );
   console.log(
     `judging    night          story      demoted  family lost  rings (mean / min)  upgrades   host${pace !== undefined ? '  left / died   Hel  Odin' : ''}${serve ? '  met/asked  Odin Freyja   Hel Clerk' : ''}${promote ? '  days at rank' : ''}  endings`,

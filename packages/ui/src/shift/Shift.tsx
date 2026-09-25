@@ -15,6 +15,7 @@ import {
   ruleText,
   soulCtx,
   stampsFor,
+  storyOffer,
   sunLeft,
   type Verdict,
 } from '@cots/engine';
@@ -991,6 +992,21 @@ function CoachBar({ s, lesson }: { s: Session; lesson: Lesson | null }) {
 }
 
 /**
+ * What a story soul offers for a stamp where it doesn't belong (docs/tech-spec.md §47), said openly while it's at
+ * the desk: taking it is a choice, never a slip. The stamp is still wrong, with its citation.
+ */
+function OfferNote({ s, c }: { s: Session; c: CaseSpec }) {
+  const offer = storyOffer(s.content, c);
+  if (!offer) return null;
+  const name = `${c.evidence.look.name} ${c.evidence.look.patronym}`;
+  return (
+    <p class="shift__appeal" data-testid="offer-banner">
+      {t('ui.offer', { name, n: offer.rings, dest: t(`dest.${offer.dest}`) })}
+    </p>
+  );
+}
+
+/**
  * A noon decree (docs/tech-spec.md §45): from `notice` souls before it holds, the raven's news on the desk with the
  * new choices, and once it holds, a line to say what changed at noon. The rulebook shows the rules of the soul at
  * the desk throughout.
@@ -1107,6 +1123,7 @@ export function ShiftScreen() {
             {t('ui.line.waited', { n: c.day })}
           </p>
         ) : null}
+        {s.mode.kind === 'campaign' && c ? <OfferNote s={s} c={c} /> : null}
         <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>

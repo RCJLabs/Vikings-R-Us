@@ -38,7 +38,7 @@ Ulf has written on both sides of the bark and down the edges.
      # fx: flag ulf_home
      He stays. The next letter from home is the happiest in weeks.
 - Up at the hall, somebody is counting Draupnir's rings out loud, and getting it wrong, and starting again.
--> END
+-> jarl
 
 === without_ulf ===
 Your mother's letter is short.
@@ -49,4 +49,11 @@ Your mother's letter is short.
 * [Ask what the man looked like.]
   "Clean," she writes back. "His hands especially. I didn't like him." # speaker: mother
 - Up at the hall, somebody is counting Draupnir's rings out loud, and getting it wrong, and starting again.
+-> jarl
+
+// The jarl's rings (docs/tech-spec.md §47), if you took them at the desk today.
+=== jarl ===
+{ flag("jarl_bribe"):
+  You count the jarl's thirty rings into the pot with the rest. They look exactly like the others. You'd hoped they wouldn't.
+}
 -> END

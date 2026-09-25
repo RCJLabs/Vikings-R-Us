@@ -1,0 +1,26 @@
+# DRAFT writing (item 7, docs/tech-spec.md §47). Day 9, Draupnir's day: Jarl Asgaut, from over the mountains,
+# died in his bed at seventy-four with his sword put in his hand, and doesn't mean to go to Hel's hall. He walks
+# past the whole line to the front of it, and offers rings for Valhalla. The stamp is the answer. VALHALLA takes
+# his rings at the audit, and it's a wrong stamp all the same, with its usual costs: no wage, a citation, a fine
+# past the day's warnings, standing (Odin and Hel mind a soul of Hel's in Valhalla) and an unworthy man on Odin's
+# benches. HEL refuses them. The 30 is in his words too (case.jarl.offer) and in the scenes that remember him
+# (d9.night, d13.night).
+id: case.jarl
+personas: [braggart]
+truth:
+  alive: { is: false }
+  cause: { is: oldAge }
+  grip: { is: weapon }
+  weaponOwner: { is: self }
+  woundsFront: { is: 0 }
+  woundsBack: { is: 0 }
+  outlaw: { is: false }
+  nailsGrown: { is: false }
+lies: []
+look: { gender: m, name: Asgaut, patronym: Thorolfsson, age: 74, build: heavy, beard: long }
+lines: [case.jarl.front, case.jarl.sons, case.jarl.offer]
+words: { pool.weapons: sword }
+expect: HEL
+onStamp:
+  - { stamped: VALHALLA, effects: [{ rings: 30 }, { flag: jarl_bribe }] }
+  - { stamped: HEL, effects: [{ flag: jarl_refused }] }

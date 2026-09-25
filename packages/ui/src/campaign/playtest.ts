@@ -154,10 +154,12 @@ function mistakeLine(p: PlaytestInput, day: number, m: DayMistake): string {
   const skip = skipped.length > 0 ? ` Skipped: ${skipped.join(', ')}.` : '';
   // A soul after the day's noon decree (docs/tech-spec.md §45) was judged under it.
   const noon = m.noon ? ' After the noon decree.' : '';
+  // A stamp a story soul paid for (docs/tech-spec.md §47) was a choice, not a slip.
+  const paid = m.paid ? ` A bribe: ${m.paid} rings for the stamp.` : '';
   if (m.stamped === m.expected)
     return `- Day ${day}: the right stamp, ${t(`dest.${m.stamped}`)}, but a step skipped.${skip}${noon}`;
   const why = rule ? `“${t(ruleText(rule, day))}”` : m.rule;
-  return `- Day ${day}: stamped ${t(`dest.${m.stamped}`)} for a soul that belonged in ${t(`dest.${m.expected}`)}. The rule: ${why}${skip}${noon}`;
+  return `- Day ${day}: stamped ${t(`dest.${m.stamped}`)} for a soul that belonged in ${t(`dest.${m.expected}`)}. The rule: ${why}${skip}${noon}${paid}`;
 }
 
 /** Every soul sent wrong, day by day, with the rule that decided where it belonged. */

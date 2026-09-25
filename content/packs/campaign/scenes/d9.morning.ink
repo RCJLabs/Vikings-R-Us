@@ -28,5 +28,5 @@ She takes out a small book and opens it at a page with your name on it, and a 10
 - -> queue
 
 === queue ===
-The first soul is already at the table, dripping on the slates and looking hopefully at your belt.
+The first soul at the table didn't queue. He's an old man in a good red cloak, and he walked past the whole line to get here. Nobody stopped him. Nobody ever has.
 -> END

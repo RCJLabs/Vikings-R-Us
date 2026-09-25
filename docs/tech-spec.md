@@ -2640,6 +2640,81 @@ The brainstorm's version, and what changed:
 - **Only Day 18 has a visit.** More are content: a scene and a line in a day's queue.
 - **The words are drafts.**
 
+## 47. After M7: interruptions at the desk, part 3: a jarl's bribe (gameplay brainstorm, item 7)
+
+**Why.** The last of item 7's interruptions (§45, §46): someone who won't wait in line, and wants to pay for his stamp.
+
+The brainstorm's version, and what changed:
+- **"A jarl jumps the queue"** is kept literally. He is a story soul placed first in Day 9's line, ahead of everyone, even the souls who waited through the night (§41).
+- **"With a bribe"** is kept, and it's made plain. The offer is on the desk the whole time he's there: how many rings, for which stamp, and that it's still a mistake. The design rule (§3.9, `docs/voice.md`) is that consequences come from choices, never from slips. A bribe hidden in his words would be easy to take by accident.
+- **The stamp is the answer.** There's no separate choice. Stamping him Valhalla takes the rings; stamping him Hel refuses them. The fairness check proves he belongs to Hel under every whim of the day, like any story soul, so the right stamp is always there to be found.
+- **A wrong stamp all the same.** Taking the rings costs what any wrong stamp costs, as a god's request does (§42):
+  - no wage;
+  - a citation, and a fine once the day's warnings are used up;
+  - the standing a Hel soul sent to Valhalla costs (Odin −1, Hel −1);
+  - an unworthy man on Odin's benches at Ragnarök;
+  - a day that isn't clean, for promotion (§44).
+
+  Nothing is added on top: a first draft had Hel −1 as well, which counted the same wrong twice.
+
+**The rule** (`storyOffer`, `stampRings`; `DayMistake.paid`)
+- **An offer is data.** It's a story soul's `onStamp` rings for a stamp other than where it belongs. `storyOffer(content, soul)` finds it, and `stampRings` says what any stamp pays.
+- **The same numbers everywhere.** The desk, the audit, the report and the sim all read those two functions, so what the banner promises is what the audit pays.
+- **At the audit** the rings come with the story souls' other effects. The day's mistake for that soul is filed with `paid`.
+- **Story souls never appeal** (§40), so a bribe can't be taken back the next morning.
+
+**The screens**
+- **The desk:** while he's there, a banner reads "Asgaut Thorolfsson offers you 30 rings for a Valhalla stamp: paid at the audit, and a mistake all the same."
+- **The citation:** stamping Valhalla is cited on the spot, like any wrong stamp.
+- **The audit:** a row "Rings from Asgaut Thorolfsson, +30".
+- **The playtest report:** the mistake ends "A bribe: 30 rings for the stamp."
+
+**Day 9** (drafts for your sign-off: `case.jarl`, strings `case.jarl.*`, and three scene lines)
+- **Who:** Jarl Asgaut Thorolfsson, from over the mountains. He died in his bed at 74, and his sons put his sword in his hand before he was cold.
+- **What shows:** his body shows no wounds and dry lips (a straw death). His words say "I went in my sleep", and nothing he says is a lie.
+- **His lines:**
+  - "I don't stand in lines."
+  - "My sons put the sword in my hand…"
+  - "Thirty rings when that stamp says Valhalla. Odin's ring only drips eight."
+- **The morning scene** now ends on him: "The first soul at the table didn't queue."
+- **That night,** if you took the rings, you count them in with the rest: "They look exactly like the others. You'd hoped they wouldn't."
+- **Day 13's night:** Muninn, who has forgotten what he came to say, remembers the jarl either way (`jarl_bribe`, `jarl_refused`).
+
+**Numbers.** `pnpm sim campaign --seeds 40`, with and without `--bribes` (bots that take every offer), plain story. First guesses.
+
+| Bots | Purse at the end | Odin's ending | Host at Ragnarök |
+|---|---|---|---|
+| Expert | +2 to +23 rings | 60 → 52 of 120 runs | −3 |
+| Competent | +14 to +20 | 1 → 0 of 120 | −3 |
+| Novice | +2 to +4 (demotions within noise) | — | within noise |
+
+Notes on the table:
+- **Why the purse gains less than 30:** the rings are 30, minus the wage he'd have earned, and minus what the standing costs later. A god below a favour's mark can mean chance sickness at home, and medicine to pay.
+- **Odin's ending is where it shows.** His −1 is enough to move an expert run in eight under his mark.
+- **Careless bots** are demoted before Day 9.
+- **Refused,** the day is as it was before, plus the jarl's wage.
+
+**Tests**
+- **Engine (3):**
+  - he's first on his day, ahead of the souls who waited;
+  - `storyOffer` names the stamp and the rings, and no other soul offers anything;
+  - taken, the rings reach the purse at the audit, with the wrong stamp's wage, citation, standing and unworthy einherjar, the mistake filed with `paid`, and no appeal; refused, nothing is paid and the day is clean.
+- **Sim (2):**
+  - only a bot that takes bribes takes it, and its accounts add up;
+  - the Day 9 night and Muninn on Day 13 say what they should for each answer.
+- **Report (1).**
+- **e2e on the full game** (phone and desktop), from a Day 9 save made in Node:
+  - he's first in line, with the offer's banner, an accessibility scan and no sideways scroll;
+  - taking it is cited, and the banner goes with him;
+  - the audit's row;
+  - the night's line.
+
+**Known limits**
+- **An accidental Valhalla stamp takes the rings too.** The offer is on the desk the whole time, so it never comes as a surprise, but a slip pays like a choice.
+- **The 30 is written into his words and two scenes** as well as his `onStamp`. Changing one means changing all four; the case file says so.
+- **One bribe in the campaign.** Another is content: a story soul whose stamp pays rings.
+- **The words are drafts.**
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
