@@ -5,6 +5,7 @@ import {
   type Destination,
   ENDLESS_STRIKES,
   type Field,
+  factionKey,
   type Lesson,
   nextHint,
   PENALTY,
@@ -1033,6 +1034,19 @@ export function ShiftScreen() {
             {modeTitle(s)}
           </p>
         ) : null}
+        {/* The gods' requests today, and how far along each is (docs/tech-spec.md §42). */}
+        {s.mode.kind === 'campaign'
+          ? (s.mode.requests ?? []).map((r) => (
+              <p key={r.id} class="shift__request" data-testid="request-progress">
+                {t('ui.request.progress', {
+                  god: t(factionKey(s.content, r.god, s.ctx.day)),
+                  done: s.state.verdicts.filter((v) => v.expected === r.from && v.stamped === r.to).length,
+                  n: r.n,
+                  to: t(`dest.${r.to}`),
+                })}
+              </p>
+            ))
+          : null}
         {/* A soul the sun set on yesterday, back first today and judged by today's rules (docs/tech-spec.md §41). */}
         {s.mode.kind === 'campaign' && c && c.day < s.ctx.day ? (
           <p class="shift__appeal" data-testid="waited-banner">

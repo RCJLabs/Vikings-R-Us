@@ -1,4 +1,4 @@
-import { type Destination, FACTIONS, type Faction, type StatePred } from '../content/types';
+import { type Destination, FACTIONS, type Faction, type RequestDef, type StatePred } from '../content/types';
 import type { CaseSpec } from '../gen/types';
 import type { Assists, ShiftState } from '../shift/shift';
 
@@ -75,6 +75,24 @@ export interface AppealHeard {
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
 }
 
+/** A god's request for the day (docs/tech-spec.md §42), as the morning brought it. */
+export type DayRequest = Omit<RequestDef, 'since' | 'until'>;
+
+/** How a request went, as the day's audit filed it. */
+export interface RequestSettled {
+  readonly id: string;
+  readonly god: Faction;
+  /** Souls that belonged here, asked for there. */
+  readonly from: Destination;
+  readonly to: Destination;
+  readonly n: number;
+  /** Souls sent as asked. */
+  readonly done: number;
+  readonly met: boolean;
+  /** The reward, when it was done in full. */
+  readonly standing: Readonly<Partial<Record<Faction, number>>>;
+}
+
 /** A soul in the line at dusk, as the audit names it. */
 export interface LineSoul {
   readonly id: string;
@@ -117,6 +135,8 @@ export interface DayLedger {
   readonly appeal?: AppealHeard;
   /** The line at dusk, when souls were left in it and there's a next day for them. */
   readonly waiting?: DayWaiting;
+  /** The day's requests, and how they went. */
+  readonly requests?: readonly RequestSettled[];
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;
@@ -179,6 +199,11 @@ export interface RunState {
    * first in today's line. Absent when none.
    */
   readonly waiting?: readonly CaseSpec[];
+  /**
+   * The gods' requests (docs/tech-spec.md §42): today's, from the morning through the audit, which settles them
+   * and brings the next day's. Absent when none.
+   */
+  readonly requests?: readonly DayRequest[];
 }
 
 /** The host at Ragnarök, part by part: the counts behind ragnarokStrength. */
@@ -237,7 +262,11 @@ export function factionsMet(run: RunState): Faction[] {
       moved(run.storyStanding, f) ||
       run.ledger.some(
         (l) =>
-          moved(l.standing, f) || moved(l.story, f) || moved(l.appeal?.standing, f) || moved(l.waiting?.standing, f),
+          moved(l.standing, f) ||
+          moved(l.story, f) ||
+          moved(l.appeal?.standing, f) ||
+          moved(l.waiting?.standing, f) ||
+          (l.requests ?? []).some((r) => moved(r.standing, f)),
       ),
   );
 }

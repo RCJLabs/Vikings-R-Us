@@ -1406,6 +1406,26 @@ select {
   text-align: center;
 }
 
+/* A god's request in the morning, in their words (docs/tech-spec.md §42). */
+.request__words {
+  font-style: italic;
+}
+
+.request-results {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.25rem;
+}
+
+/* A god's request at the desk: how far along it is. */
+.shift__request {
+  margin: 0;
+  padding: 0.25rem 0.75rem;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .coach {
   display: flex;
   flex-wrap: wrap;
@@ -1773,6 +1793,38 @@ a.btn {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   padding-left: 1rem;
+}
+
+/*
+ * The audit's standing, with a column for each thing that moved it: wider than a phone once the appeal, the line
+ * and the requests all have one, or with large text. It scrolls in its own box (LedgerScroll), with the powers'
+ * names held in place and each column coming to rest against them. Smaller headers keep the usual five columns
+ * inside a 360 px screen.
+ */
+.ledger-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline-start: var(--held, 0px);
+  padding-inline-end: var(--tail, 0px);
+}
+
+.ledger-scroll th {
+  font-size: 0.8rem;
+}
+
+.ledger-scroll .num {
+  padding-left: 0.75rem;
+  scroll-snap-align: start;
+}
+
+.ledger .ledger__who {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding-right: 0.5rem;
+  background: var(--bg);
+  box-shadow: inset -1px 0 0 var(--line);
 }
 
 .ledger__total td {

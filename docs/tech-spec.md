@@ -2253,6 +2253,96 @@ The counts are for bots that last the run. Careless bots are demoted early, so t
 - **The costs are small on purpose,** and so are the thresholds that decide endings. The bots' pace is a guess; the playtest build will say how often real players leave souls.
 - **Story Mode has no dusk,** so no line. **The Daily is untouched.**
 
+## 42. After M7: the gods' requests (gameplay brainstorm, item 2)
+
+**Why.** Only mistakes move standing, and the campaign's rows already let a mistake please the god who gains the soul: a warrior of Valhalla's sent to Hel is Odin −1 and Hel +1. Nothing said so, and nothing in a shift let a player court a god on purpose. Now, some mornings, a god asks openly.
+
+The brainstorm's version, and what changed:
+- **"Freyja wants two more for Fólkvangr" didn't say whose.** More for Fólkvangr has to come from another hall, and whose decides the cost: the rows charge Odin 2 for each of his warriors sent to her. So each request names both ends, souls that belong in one place sent to another, and the desk counts only those.
+- **It said a favour "risks" a citation.** It's certain. Every soul sent as asked is a mistake, with no wage, a citation, and a fine once the day's warnings are used. The morning says so, and says what the rows will move.
+- **It had requests that test skill,** such as "Hel: nobody fit for my hall goes elsewhere". They're dropped. The wage already pays for judging rightly, and the rows already charge Hel's favour for a soul of hers sent elsewhere, so such a request would pay for skill twice and punish a mistake twice. It offers no choice, which was the point of the item. Only favours are asked.
+- **Requests that conflict** are kept, as rivals. Freyja and Hel both want Odin's warriors, so on some mornings both ask for the same souls, to be sent to different halls. When the line holds enough for both, both can be done, at twice the mistakes.
+
+**The draw** (`drawRequests` in `campaign/run.ts`, at each audit, for the next morning)
+- **When:** from `requests.from` (Day 4), on `chance`% of mornings, whenever there's a next day.
+- **Its own stream** of the run's seed (`<seed>|requests|<day>`), so nothing else in a run changes: a bot that ignores requests plays exactly as it did before them.
+- **Which:** a request is open on a day inside its `since` and `until` when both its places are stamps that day and the next day's line holds at least `n` souls that belong where it asks from. That line includes the souls who wait from tonight (§41), so every request can be done.
+- **One** open request is picked. Then, `rivals`% of the time, another god's open request for the same souls joins it.
+- **Replays:** the morning's save keeps them, so replaying the day brings the same requests.
+
+**The morning** shows each request under the scene: the god's words, then the terms.
+- **The terms** say how many souls, from where, to send where, and the reward.
+- **They say what each soul costs** as the mistake it is: no wage, a citation, a fine once the day's warnings are used, and the rows' standing, which `standingFx` works out for that pair of places. In Story Mode, or with the no-fines assist (which can be set on the same page), they leave the fine out.
+- **Declining** costs nothing and needs nothing.
+
+**The desk** shows each request's count under the sun: "Hel's request: 1 of 2 sent to Hel".
+
+**The audit** (`settleRequests`)
+- **Counts** the souls that belonged where the request asked from and were sent where it asked.
+- **Done in full** (`n` or more): the reward, in a "Requests" column of the standing table, so the accounts still add up, with a note under the table. Each soul's own mistake moves standing in the Mistakes column, as it always did. **In part:** nothing.
+- **Lists** each request, done or not: "Freyja's request: not done (0 of 2)."
+- **The ledger** keeps them as `requests`. The playtest report lists them.
+- **A soul given to a god whose request was done in full doesn't appeal** (§40). Righting it would keep the reward without its cost. Souls sent for a request done only in part appeal like any mistake.
+
+**The standing table** had to change for the extra column.
+- **The bug:** at 360 px, a fifth column (the appeal's or the line's) already pushed the page sideways; with the requests' column the table ran into the gutter at 412 px as well.
+- **Now** it scrolls in its own box (`LedgerScroll` in `campaign/screens.tsx`), never the page, and the box takes keyboard focus.
+- **The names stay put.** A column scrolled to comes to rest against them, never half under them, where a "+1" half hidden reads as "-1". The box measures the names' column, snaps to it, and leaves room after the last column so that every resting place is a column's start.
+- **Smaller headers** keep the usual five columns inside a 360 px screen. With 175% text the table scrolls.
+
+**Numbers.** The campaign pack's settings are `from 4, chance 50, rivals 25`, each reward +1: first guesses.
+
+| God | Asks for souls that belong in | Sent to | Souls | From Day | Each soul's rows |
+|---|---|---|---|---|---|
+| Freyja | Valhalla | Fólkvangr | 2 | 4 | Odin −2, Freyja +1 |
+| Odin | Fólkvangr | Valhalla | 1 | 4 | Freyja −2, Odin +1 |
+| Hel | Valhalla | Hel | 2 | 5 | Odin −1, Hel +1 |
+| The clerk | Hel | TRANSFER | 2 | 10 | Hel −1, the clerk +1 |
+
+- **How often:** a run brings about 11 requests. On Day 5, 18 of 30 seeds had one, and 4 of those a rival.
+- **The sim** (`pnpm sim campaign --serve <god>`, 12 runs per policy, plain story): bots do every request of one god they can, with souls they've judged rightly, and ignore the rest. The rows below are the payAll policy's; the other nights are close.
+
+| Serving | Done in a run | Expert: standing at the end | Expert: endings | Competent: standing | Competent: endings |
+|---|---|---|---|---|---|
+| Nobody | 0 | Odin 2.8, Freyja 2.8, Hel 3.4 | Hel 6, the last stand 3, Freyja 2, Odin 1 | Odin −11.2, Freyja 1.3, Hel −3.1 | the last stand 9, Freyja 2, Hel 1 |
+| Freyja | 3.3 | Freyja 12.8, Odin −10.8 | Freyja 12 | Freyja 10.3, Odin −23.4 | Freyja 11, the last stand 1 |
+| Hel | 3.2 | Hel 11.3, Odin −2.1 | Hel 12 | Hel 4.4, Odin −16.5 | Hel 8, the last stand 3, Freyja 1 |
+| Odin | 2.4 | Odin 7.6, Freyja −2.1 | Odin 11, the last stand 1 | Odin −6.4 | the last stand 9, one each of Hel, Freyja, Odin |
+| The clerk | 1.8 | the clerk 7.0 | the last stand 12 | the clerk 5.5 | the last stand 11, Freyja 1 |
+
+**What decides the endings.** Freyja's and Hel's endings need standing 3 and the lead; Odin's only the lead. An expert who ignores the requests ends with the three gods within a point or so of each other, so which of them the run ends with is close to a coin toss. One favour moves more than that, and the rows do most of the moving:
+
+| Favours done (payAll, plain) | Expert: Freyja's ending, reward 0 / +1 | Expert: Hel's | Competent: Freyja's | Competent: Hel's |
+|---|---|---|---|---|
+| 0 | 2 / 2 of 12 | 6 / 6 | 2 / 2 | 1 / 1 |
+| 1 | 9 / 10 | 10 / 12 | 6 / 7 | 2 / 2 |
+| 2 | 12 / 12 | 12 / 12 | 10 / 11 | 2 / 7 |
+| Every one asked (about 3) | 12 / 12 | 12 / 12 | 11 / 11 | 3 / 9 |
+
+So for an expert, a single favour of Freyja's or Hel's mostly decides the ending, whatever the reward. The choice is now made openly rather than by accident, but it's cheap. Raising those endings' thresholds would make them take a run's commitment: standing 8, for example, takes about two favours with the current rows and rewards. That changes the story's paths, and would put Hel's ending out of a competent player's reach without the story's help, so it's for you to decide.
+
+**Tests**
+- **Engine (5):**
+  - requests come from their first day on, only when the line holds the souls asked for, and a second one is a rival for the same souls;
+  - the reward is paid when done in full, on top of what each soul's mistake moves;
+  - nothing extra is paid when done in part, and nothing at all is charged when declined;
+  - a saved morning brings the same requests; there are none without the setting or after the last day;
+  - a soul given for a request done in full never appeals, while those of one done in part may.
+- **Sim:** a slow bot's standing adds up, requests' column included.
+- **Report (1).**
+- **e2e on the full game** (phone and desktop): a save made in Node on Day 5's morning, with two gods asking for the same souls. It checks:
+  - the morning's terms, with and without the no-fines assist;
+  - the desk's counts, and the citations;
+  - the audit's results, its Requests column and note;
+  - the standing table on a 360 px phone: it fits; at 175% text it scrolls in its own box, never the page, and no column comes to rest half under the names.
+
+**Known limits**
+- **One favour mostly decides the ending** (above).
+- **The clerk's favours alone never reach his ending,** which also needs the contract from the story (`flags.clerk_contract`).
+- **A mistake can do a request by accident.** Competent bots that ignore requests still complete 0.2–0.3 a run, with mistakes that happen to match one. The god is pleased all the same.
+- **The gods' words are drafts,** like the rest of the story.
+- **The Daily and Endless are untouched,** and the demo ends before Day 4.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

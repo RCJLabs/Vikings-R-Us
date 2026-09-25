@@ -596,6 +596,42 @@ export interface CampaignDef {
   readonly appeals?: AppealsDef;
   /** Souls still in line at dusk wait for the next day (docs/tech-spec.md §41); without it they're gone. */
   readonly waiting?: WaitingDef;
+  /** The gods' requests (docs/tech-spec.md §42); none without it. */
+  readonly requests?: RequestsDef;
+}
+
+/**
+ * The gods' requests: some mornings a god asks, openly, for a favour: souls that belong to another god, sent
+ * their way instead. Doing it in full earns the request's reward; each soul is still sent wrong, and costs what
+ * that always costs. Declining costs nothing.
+ */
+export interface RequestsDef {
+  /** The first day a god may ask. */
+  readonly from: number;
+  /** Percent of mornings from then on that bring a request. */
+  readonly chance: number;
+  /** Percent of those when a second god asks for the same souls. */
+  readonly rivals: number;
+  readonly list: readonly RequestDef[];
+}
+
+export interface RequestDef {
+  readonly id: string;
+  /** Who asks. */
+  readonly god: Faction;
+  /** Souls that belong here by the day's rules, */
+  readonly from: Destination;
+  /** sent here instead. */
+  readonly to: Destination;
+  /** How many make the request done. */
+  readonly n: number;
+  /** What doing it in full is worth, on top of what each soul sent wrong moves. */
+  readonly reward: Readonly<Partial<Record<Faction, number>>>;
+  /** The first day this is asked, and the first day it no longer is (absent: to the end). */
+  readonly since: number;
+  readonly until?: number;
+  /** What the god wants, in their words (a string key). */
+  readonly text: string;
 }
 
 /**

@@ -187,6 +187,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(all('threads').length > 0 ? { threads: all('threads') } : {}),
     ...(last('appeals') ? { appeals: last('appeals') as NonNullable<CampaignDef['appeals']> } : {}),
     ...(last('waiting') ? { waiting: last('waiting') as NonNullable<CampaignDef['waiting']> } : {}),
+    ...(last('requests') ? { requests: last('requests') as NonNullable<CampaignDef['requests']> } : {}),
   };
 }
 
@@ -707,6 +708,15 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (th.count !== undefined && !STATE_PATHS.test(th.count)) {
       problems.push(`thread ${th.id} counts unknown run state "${th.count}".`);
     }
+  }
+  const requestIds = new Set<string>();
+  for (const r of c.requests?.list ?? []) {
+    if (requestIds.has(r.id)) problems.push(`Duplicate request "${r.id}".`);
+    requestIds.add(r.id);
+    key(r.text, `request ${r.id}`);
+    // Souls sent where they belong are no favour: that would be a reward for judging rightly.
+    if (r.from === r.to) problems.push(`request ${r.id} asks for souls sent where they already belong.`);
+    if (r.until !== undefined && r.until <= r.since) problems.push(`request ${r.id} stops before it starts.`);
   }
   if (!content.predicates.some((p) => p.id === c.worthy)) {
     problems.push(`The campaign's worthy predicate "${c.worthy}" doesn't exist.`);

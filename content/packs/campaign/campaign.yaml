@@ -13,6 +13,21 @@ standing:
   - { expected: TRANSFER, stamped: HEL, fx: { clerk: -1, hel: 1 } }
   - { expected: TRANSFER, stamped: '*', fx: { clerk: -1 } }
   - { expected: DETAIN, stamped: '*', fx: { odin: -2, loki: 2 } }
+# The gods' requests (docs/tech-spec.md §42): on some mornings a god asks, openly, for souls that belong to
+# another. Doing it in full earns the reward, on top of the rows above; each soul is still sent wrong (no
+# wage, a citation, a fine past the day's warnings). Declining costs nothing. Freyja and Hel both want Odin's
+# warriors, so they can be rivals for them. The rows do most of the moving: an expert bot that does a single
+# favour of Freyja's comes to her ending in 9 runs of 12 even with no reward (2 of 12 doing none), 10 of 12
+# with +1 (docs/tech-spec.md §42). First guesses; `pnpm sim campaign --serve <god>` measures them.
+requests:
+  from: 4
+  chance: 50
+  rivals: 25
+  list:
+    - { id: req.freyja, god: freyja, from: VALHALLA, to: FOLKVANGR, n: 2, reward: { freyja: 1 }, since: 4, text: request.freyja }
+    - { id: req.odin, god: odin, from: FOLKVANGR, to: VALHALLA, n: 1, reward: { odin: 1 }, since: 4, text: request.odin }
+    - { id: req.hel, god: hel, from: VALHALLA, to: HEL, n: 2, reward: { hel: 1 }, since: 5, text: request.hel }
+    - { id: req.clerk, god: clerk, from: HEL, to: TRANSFER, n: 2, reward: { clerk: 1 }, since: 10, text: request.clerk }
 # Speed only (docs/build-plan.md §1): cheaper tools and questions, more sun.
 shop:
   - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }

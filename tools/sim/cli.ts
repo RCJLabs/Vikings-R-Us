@@ -2,13 +2,15 @@
  * Generator sweeps and campaign simulations (docs/tech-spec.md §9-10).
  *   pnpm sim sweep [--seeds 200] [--days 1-11] [--prefix sweep] [--no-timing]   (default: every day with a spec)
  *   pnpm sim sweep --daily [--seeds 200]      Dailies #1..#seeds
- *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all] [--no-fines] [--pace 25]
+ *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all] [--no-fines] [--pace 25] [--serve freyja]
  *     Bots play the target's scenes with each story policy (plain by default; see STORY_POLICIES);
  *     --no-fines plays every shift with that assist on; --pace sets the seconds of sun a bot spends on each
- *     soul (25 by default, when the sun never sets on the line), and adds the souls left at dusk.
+ *     soul (25 by default, when the sun never sets on the line), and adds the souls left at dusk; --serve has bots
+ *     do one god's requests (docs/tech-spec.md §42) and adds each god's standing and the requests done.
  * Sweeps print a report and exit 1 if any CI threshold is breached.
  */
 import type { TargetId } from '@cots/content-schema';
+import type { Faction } from '@cots/engine';
 import {
   checkThresholds,
   JUDGING,
@@ -36,6 +38,7 @@ if (cmd === 'campaign') {
   const strategies = ['payAll', 'frugal', 'upgradesFirst'] as const;
   const noFines = process.argv.includes('--no-fines');
   const pace = process.argv.includes('--pace') ? Number(arg('pace', '25')) : undefined;
+  const serve = process.argv.includes('--serve') ? (arg('serve', 'freyja') as Faction) : undefined;
   const reports = simulateCampaign(
     loadContent(target),
     seeds,
@@ -45,12 +48,13 @@ if (cmd === 'campaign') {
     loadScenes(target),
     noFines ? { noFines: true } : undefined,
     pace,
+    serve,
   );
   console.log(
-    `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}${pace !== undefined ? `, ${pace}s a soul` : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
+    `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}${pace !== undefined ? `, ${pace}s a soul` : ''}${serve ? `, serving ${serve}` : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
   );
   console.log(
-    `judging    night          story      demoted  family lost  rings (mean / min)  upgrades   host${pace !== undefined ? '  left / died   Hel  Odin' : ''}  endings`,
+    `judging    night          story      demoted  family lost  rings (mean / min)  upgrades   host${pace !== undefined ? '  left / died   Hel  Odin' : ''}${serve ? '  met/asked  Odin Freyja   Hel Clerk' : ''}  endings`,
   );
   for (const r of reports) {
     const pct = (n: number) => `${((n * 100) / r.runs).toFixed(1)}%`.padStart(6);
@@ -69,6 +73,15 @@ if (cmd === 'campaign') {
               `${r.meanLeft.toFixed(1)} / ${r.meanDied.toFixed(1)}`.padStart(12),
               r.meanStanding.hel.toFixed(1).padStart(5),
               r.meanStanding.odin.toFixed(1).padStart(5),
+            ]
+          : []),
+        ...(serve
+          ? [
+              `${r.meanMet.toFixed(1)}/${r.meanAsked.toFixed(1)}`.padStart(10),
+              r.meanStanding.odin.toFixed(1).padStart(5),
+              r.meanStanding.freyja.toFixed(1).padStart(6),
+              r.meanStanding.hel.toFixed(1).padStart(5),
+              r.meanStanding.clerk.toFixed(1).padStart(5),
             ]
           : []),
         ` ${Object.entries(r.endings)

@@ -7,6 +7,7 @@ import {
   cleanAssists,
   DAILY_EPOCH,
   type DayCtx,
+  type DayRequest,
   type Destination,
   dailyDate,
   dailyNumber,
@@ -539,7 +540,13 @@ export type Mode =
   | { readonly kind: 'practice'; readonly day: number }
   | EndlessMode
   | { readonly kind: 'primer' }
-  | { readonly kind: 'campaign'; readonly day: number; readonly story: boolean }
+  | {
+      readonly kind: 'campaign';
+      readonly day: number;
+      readonly story: boolean;
+      /** The gods' requests today (docs/tech-spec.md §42), for the desk to count. */
+      readonly requests?: readonly DayRequest[];
+    }
   /** A soul from an earlier campaign day judged again at the desk (docs/tech-spec.md §40). */
   | { readonly kind: 'appeal'; readonly day: number; readonly stamped: Destination };
 

@@ -33,10 +33,12 @@ import {
   type Bills,
   type DayLedger,
   type DayMistake,
+  type DayRequest,
   type DayWaiting,
   evalState,
   type FamilyMember,
   type LineSoul,
+  type RequestSettled,
   type RunState,
   stateValue,
 } from './state';
@@ -231,7 +233,7 @@ export function defaultBills(run: RunState): Bills {
 const matches = (want: Destination | '*', got: Destination) => want === '*' || want === got;
 
 /** What sending a soul that belonged in `expected` to `stamped` does to standing: nothing when it's right. */
-function standingFx(
+export function standingFx(
   campaign: CampaignDef,
   expected: Destination,
   stamped: Destination,
@@ -256,12 +258,13 @@ function chooseAppeal(
   campaign: CampaignDef,
   costs: ReadonlyMap<number, { fine: number; standing: Partial<Record<Faction, number>>; worthy: boolean }>,
   fined: boolean,
+  given: (v: Verdict) => boolean,
 ): Appeal | undefined {
   const def = campaign.appeals;
   if (!def || run.day < def.from || run.day >= campaign.lastDay) return undefined;
   const story = (v: Verdict) => shift.cases[v.index]?.script !== undefined;
   const judged = shift.verdicts.filter((v) => v.stamped !== null && !story(v));
-  const wronged = judged.filter((v) => v.stamped !== v.expected);
+  const wronged = judged.filter((v) => v.stamped !== v.expected && !given(v));
   const chancers = judged.filter((v) => v.correct && GRUDGES.has(v.expected));
   if (wronged.length + chancers.length === 0) return undefined;
   const rng = new Rng(`${run.seed}|appeal|${run.day}`);
@@ -347,18 +350,13 @@ function hearAppeal(run: RunState, appeal: Appeal, stamped: Destination | null, 
 }
 
 /**
- * Today's queue: the generated souls, with the day's story souls placed among
- * them. Generated souls are the same with or without the story souls, which
- * only appear when their `when` holds as the shift begins. Souls who waited
- * through the night (docs/tech-spec.md §41) come first, after the day's
- * teaching soul, each in the place of one of today's: one who shares its name
- * if there is one, so no two in the line do, else the last. The line is no
- * longer for them.
+ * A day's own souls, with those who waited through the night (docs/tech-spec.md §41) placed first, after the
+ * day's teaching soul, each in the place of one of the day's: one who shares its name if there is one, so no
+ * two in the line do, else the last. The line is no longer for them.
  */
-export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
-  const cases = generateDay(run.seed, env.ctx).cases.slice();
-  const waiting = run.waiting ?? [];
-  const teach = env.ctx.spec.queue.teachFirst;
+function lineFor(seed: string, ctx: DayCtx, waiting: readonly CaseSpec[]): CaseSpec[] {
+  const cases = generateDay(seed, ctx).cases.slice();
+  const teach = ctx.spec.queue.teachFirst;
   const front = teach !== undefined && cases[0]?.archetype === teach ? 1 : 0;
   for (const w of waiting) {
     const same = cases.findIndex((c, i) => i >= front && c.evidence.look.name === w.evidence.look.name);
@@ -366,6 +364,17 @@ export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
     if (drop >= front) cases.splice(drop, 1);
   }
   cases.splice(front, 0, ...waiting);
+  return cases;
+}
+
+/**
+ * Today's queue: the day's line (its own souls and any who waited through the
+ * night), with the day's story souls placed among them. Generated souls are the
+ * same with or without the story souls, which only appear when their `when`
+ * holds as the shift begins.
+ */
+export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
+  const cases = lineFor(run.seed, env.ctx, run.waiting ?? []);
   const slots = [...(env.ctx.spec.queue.scripted ?? [])].sort((a, b) => a.at - b.at);
   for (const slot of slots) {
     const def = env.content.scripted?.find((d) => d.id === slot.case);
@@ -446,6 +455,47 @@ function waitingLine(
   };
 }
 
+/**
+ * The next morning's requests (docs/tech-spec.md §42), from their own stream of the run's seed: on some
+ * mornings from `from` on, a god asks for souls that belong to another, of a kind the next day's line holds
+ * enough of; now and then a second god asks for the same souls. `waiting` are the souls who'll be in that
+ * line from tonight's.
+ */
+function drawRequests(run: RunState, env: RunEnv, waiting: readonly CaseSpec[]): DayRequest[] {
+  const campaign = campaignOf(env.content);
+  const def = campaign.requests;
+  const day = dayAfter(run, campaign, run.day);
+  if (!def || day === null || day < def.from) return [];
+  const rng = new Rng(`${run.seed}|requests|${day}`);
+  if (!rng.chance(def.chance, 100)) return [];
+  const ctx = createDayContext(env.content, day, run.seed);
+  const line = lineFor(run.seed, ctx, waiting);
+  const held = (dest: Destination) => line.filter((c) => c.expect.dest === dest).length;
+  const open = def.list.filter(
+    (r) =>
+      r.since <= day &&
+      (r.until === undefined || day < r.until) &&
+      ctx.destinations.has(r.from) &&
+      ctx.destinations.has(r.to) &&
+      held(r.from) >= r.n,
+  );
+  if (open.length === 0) return [];
+  const first = open[rng.int(0, open.length - 1)];
+  if (!first) return [];
+  const rivals = open.filter((r) => r.god !== first.god && r.from === first.from);
+  const rival = rivals.length > 0 && rng.chance(def.rivals, 100) ? rivals[rng.int(0, rivals.length - 1)] : undefined;
+  return [first, ...(rival ? [rival] : [])].map(({ since: _, until: __, ...r }) => r);
+}
+
+/** How today's requests went: the souls sent as asked, and each reward for one done in full. */
+function settleRequests(run: RunState, shift: ShiftState): RequestSettled[] {
+  return (run.requests ?? []).map((r) => {
+    const done = shift.verdicts.filter((v) => v.expected === r.from && v.stamped === r.to).length;
+    const met = done >= r.n;
+    return { id: r.id, god: r.god, from: r.from, to: r.to, n: r.n, done, met, standing: met ? { ...r.reward } : {} };
+  });
+}
+
 /** Pay, fines, standing and einherjar for a finished shift. */
 function audit(
   run: RunState,
@@ -512,6 +562,8 @@ function audit(
   });
   // The souls still in line at dusk: tomorrow's first, or (the living) lost in the night.
   const line = waitingLine(run, shift, env);
+  // Today's requests settled; tomorrow's come with the morning.
+  const requests = settleRequests(run, shift);
   const ledger: DayLedger = {
     day: run.day,
     correct,
@@ -525,12 +577,18 @@ function audit(
     ...(mistakes.length > 0 ? { mistakes } : {}),
     ...(run.appealHeard ? { appeal: run.appealHeard } : {}),
     ...(line ? { waiting: line.waiting } : {}),
+    ...(requests.length > 0 ? { requests } : {}),
   };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
   for (const [f, n] of Object.entries(line?.waiting.standing ?? {})) nextStanding[f as Faction] += n ?? 0;
-  const appeal = chooseAppeal(run, shift, campaign, costs, fined);
-  const { appealHeard: _, appeal: __, waiting: ___, ...rest } = run;
+  for (const r of requests) for (const [f, n] of Object.entries(r.standing)) nextStanding[f as Faction] += n ?? 0;
+  // A soul given to a god whose request was done in full is that god's now, and doesn't appeal: righting it would
+  // keep the reward without its cost.
+  const given = (v: Verdict) => requests.some((r) => r.met && v.expected === r.from && v.stamped === r.to);
+  const appeal = chooseAppeal(run, shift, campaign, costs, fined, given);
+  const asked = drawRequests(run, env, line?.carried ?? []);
+  const { appealHeard: _, appeal: __, waiting: ___, requests: ____, ...rest } = run;
   return {
     run: {
       ...rest,
@@ -542,6 +600,7 @@ function audit(
       ledger: [...run.ledger, ledger],
       ...(appeal ? { appeal } : {}),
       ...(line && line.carried.length > 0 ? { waiting: line.carried } : {}),
+      ...(asked.length > 0 ? { requests: asked } : {}),
     },
     ledger,
     flags,

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { AppealsDef, CampaignDef, Content, Destination, Effect, ScriptedCaseDef } from '../content/types';
 import { generateDay, tierKnobs } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
+import type { CaseSpec } from '../gen/types';
 import { validateCase } from '../gen/validate';
 import { createDayContext, type DayCtx } from '../logic/context';
 import { judge } from '../logic/judge';
@@ -1137,10 +1138,144 @@ describe('the line at dusk', () => {
     for (const f of ['odin', 'freyja', 'hel', 'loki', 'clerk'] as const) {
       const sum = next.ledger.reduce(
         (n, l) =>
-          n + (l.standing[f] ?? 0) + (l.story?.[f] ?? 0) + (l.appeal?.standing[f] ?? 0) + (l.waiting?.standing[f] ?? 0),
+          n +
+          (l.standing[f] ?? 0) +
+          (l.story?.[f] ?? 0) +
+          (l.appeal?.standing[f] ?? 0) +
+          (l.waiting?.standing[f] ?? 0) +
+          (l.requests ?? []).reduce((m, q) => m + (q.standing[f] ?? 0), 0),
         0,
       );
       expect(next.standing[f], f).toBe(sum);
     }
+  });
+});
+
+describe('the gods’ requests', () => {
+  /** The morning of `day`, every earlier soul judged rightly. */
+  function morningOf(content: Content, seed: string, day: number): RunState {
+    let run = newRun(content, seed);
+    while (run.day < day) run = playDay(content, run).run;
+    return run;
+  }
+  /** A day where each soul goes where `send` says (its right place when it says nothing). */
+  function serveDay(content: Content, run: RunState, send: (c: CaseSpec, i: number) => Destination | undefined) {
+    const ctx = runContext(content, run);
+    const started = stepRun(run, { t: 'beginShift', at: 0 }, { content, ctx }).state;
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+    (started.shift?.cases ?? []).forEach((c, i) => {
+      const at = (i + 1) * 1000;
+      const dest = send(c, i) ?? c.expect.dest;
+      for (const id of dest === c.expect.dest ? (c.expect.procedures ?? []) : []) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+      }
+      actions.push({ t: 'shift', action: { t: 'stamp', dest, at } }, { t: 'shift', action: { t: 'send', at } });
+    });
+    return drive(content, run, actions).run;
+  }
+  /** Each of the first `n` souls who belong in `from` goes to `to` instead. */
+  const favour = (from: Destination, to: Destination, n: number) => {
+    let sent = 0;
+    return (c: CaseSpec) => (c.expect.dest === from && sent++ < n ? to : undefined);
+  };
+  /** The first seeds whose morning of `day` brings a request that passes `ok`. */
+  function asked(day: number, ok: (r: RunState) => boolean = () => true, tries = 12): RunState {
+    for (let i = 0; i < tries; i++) {
+      const run = morningOf(full, `ask-${day}-${i}`, day);
+      if ((run.requests?.length ?? 0) > 0 && ok(run)) return run;
+    }
+    throw new Error(`no request on day ${day} in ${tries} seeds`);
+  }
+
+  it('comes from its first day on, when the day’s line holds the souls asked for', () => {
+    const def = campaignOf(full).requests;
+    expect(def).toBeDefined();
+    if (!def) return;
+    // None before the first day a god may ask.
+    for (let i = 0; i < 4; i++) expect(morningOf(full, `ask-early-${i}`, def.from - 1).requests).toBeUndefined();
+    let seen = 0;
+    for (let i = 0; i < 8; i++) {
+      const run = morningOf(full, `ask-${i}`, 5);
+      for (const r of run.requests ?? []) {
+        seen++;
+        const line = campaignQueue(run, { content: full, ctx: runContext(full, run) });
+        expect(line.filter((c) => c.expect.dest === r.from).length, r.id).toBeGreaterThanOrEqual(r.n);
+        expect(r.god).not.toBe(undefined);
+      }
+      // A second request is a rival for the same souls.
+      const [a, b] = run.requests ?? [];
+      if (a && b) {
+        expect(b.from).toBe(a.from);
+        expect(b.god).not.toBe(a.god);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it('pays its reward when done in full, on top of what each soul sent wrong moves', () => {
+    const run = asked(5);
+    const [r] = run.requests ?? [];
+    if (!r) return;
+    const after = serveDay(full, run, favour(r.from, r.to, r.n));
+    const ledger = after.ledger.at(-1);
+    const settled = ledger?.requests?.find((x) => x.id === r.id);
+    expect(settled).toMatchObject({ god: r.god, n: r.n, done: r.n, met: true, standing: r.reward });
+    // Each soul sent as asked is still a mistake: no wage, and the standing rows move as they always do.
+    expect(ledger?.wrong).toBeGreaterThanOrEqual(r.n);
+    for (const [f, n] of Object.entries(r.reward)) {
+      const faction = f as keyof typeof after.standing;
+      const rows = ledger?.standing[faction] ?? 0;
+      expect(after.standing[faction] - run.standing[faction], f).toBe(
+        rows + (n ?? 0) + (ledger?.story?.[faction] ?? 0),
+      );
+    }
+  });
+
+  it('pays nothing extra when done in part, and nothing at all when declined', () => {
+    const run = asked(5, (x) => (x.requests?.[0]?.n ?? 0) >= 2);
+    const [r] = run.requests ?? [];
+    if (!r) return;
+    const part = serveDay(full, run, favour(r.from, r.to, r.n - 1)).ledger.at(-1)?.requests?.[0];
+    expect(part).toMatchObject({ done: r.n - 1, met: false, standing: {} });
+    const declined = serveDay(full, run, () => undefined);
+    expect(declined.ledger.at(-1)?.requests?.[0]).toMatchObject({ done: 0, met: false, standing: {} });
+    expect(declined.ledger.at(-1)?.wrong).toBe(0);
+  });
+
+  it('keeps a soul given to a god from appealing when the request was done in full, since its reward stays paid', () => {
+    let partAppeals = 0;
+    for (let i = 0; i < 8; i++) {
+      const run = morningOf(full, `ask-appeal-${i}`, 5);
+      const [r] = run.requests ?? [];
+      if (!r) continue;
+      // The day's only mistakes are the favour's, so any appeal is a soul judged rightly, trying its luck.
+      const done = serveDay(full, run, favour(r.from, r.to, r.n));
+      expect(done.ledger.at(-1)?.requests?.[0]?.met).toBe(true);
+      if (done.appeal) expect(done.appeal.stamped, run.seed).toBe(done.appeal.case.expect.dest);
+      // Done in part, there's no reward to keep: those souls may appeal like any other mistake.
+      if (r.n >= 2) {
+        const part = serveDay(full, run, favour(r.from, r.to, r.n - 1));
+        if (part.appeal && part.appeal.stamped !== part.appeal.case.expect.dest) partAppeals++;
+      }
+    }
+    expect(partAppeals).toBeGreaterThan(0);
+  });
+
+  it('comes with the same requests from a saved morning, and never without the setting or after the last day', () => {
+    const run = asked(6);
+    const env = { content: full, ctx: runContext(full, run) };
+    // The audit that brought them, replayed, brings them again.
+    const before = morningOf(full, run.seed, 5);
+    const again = serveDay(full, before, () => undefined);
+    expect(again.requests).toEqual(run.requests);
+    expect(JSON.parse(JSON.stringify(run)).requests).toEqual(run.requests);
+    expect(campaignQueue(run, env).length).toBeGreaterThan(0);
+    const { requests: _, ...plain } = campaignOf(full);
+    const none: Content = { ...full, campaign: plain };
+    expect(serveDay(none, morningOf(none, run.seed, 5), () => undefined).requests).toBeUndefined();
+    // The demo's last day has no next morning to ask for.
+    const demoLast = morningOf(demo, 'ask-demo', 3);
+    expect(serveDay(demo, demoLast, () => undefined).requests).toBeUndefined();
   });
 });

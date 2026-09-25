@@ -30,12 +30,14 @@ import {
   shiftScore,
   shopFor,
   stampEffects,
+  standingFx,
   standingLead,
   threadsInPlay,
   withEffects,
 } from '@cots/engine';
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
 import { effect, signal } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { AssistSettings, assistText, atSunSpeed } from '../assists';
 import { clockText, hasText, listText, t } from '../i18n';
@@ -851,6 +853,7 @@ function Morning() {
       ) : (
         <>
           <AppealCard run={run} />
+          <RequestCards run={run} fined={!run.story && !assists.noFines} />
           <section class="card">
             <Decree ctx={ctx} />
             <RulebookChanges day={run.day} />
@@ -908,6 +911,68 @@ function leftNote(ledger: DayLedger, id: string | undefined): string {
   if (id !== undefined && ledger.waiting?.carried.some((s) => s.id === id)) return t('ui.audit.waits');
   if (id !== undefined && ledger.waiting?.died.some((s) => s.id === id)) return t('ui.audit.diedWaiting');
   return t('ui.summary.unjudged');
+}
+
+// ---------- the gods' requests ----------
+
+/** Standing changes as words: "Odin -2 and Freyja +1". */
+const fxText = (fx: Readonly<Partial<Record<Faction, number>>>, day: number) =>
+  listText(
+    Object.entries(fx)
+      .filter(([, n]) => (n ?? 0) !== 0)
+      .map(([f, n]) => `${factionName(f as Faction, day)} ${signed(n ?? 0)}`),
+  );
+
+/**
+ * This morning's requests (docs/tech-spec.md §42): who asks, for which souls, what it's worth and what it costs
+ * (with no fine in Story Mode or with the no-fines assist, which can be set on this same page).
+ */
+function RequestCards({ run, fined }: { run: RunState; fined: boolean }) {
+  const campaign = campaignOf(gameContent);
+  return (
+    <>
+      {(run.requests ?? []).map((r) => {
+        const god = factionName(r.god, run.day);
+        return (
+          <section key={r.id} class="card request" data-testid="request">
+            <h2>{t('ui.request.title', { god })}</h2>
+            <p class="request__words">{t(r.text)}</p>
+            <p class="muted">
+              {t('ui.request.terms', {
+                n: r.n,
+                from: t(`dest.${r.from}`),
+                to: t(`dest.${r.to}`),
+                god,
+                reward: fxText(r.reward, run.day),
+                fined: fined ? 'yes' : 'no',
+                cost: fxText(standingFx(campaign, r.from, r.to), run.day),
+              })}
+            </p>
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
+/** How the day's requests went, under the audit's standing. */
+function RequestResults({ ledger, day }: { ledger: DayLedger; day: number }) {
+  const settled = ledger.requests ?? [];
+  if (settled.length === 0) return null;
+  return (
+    <ul class="request-results" data-testid="request-results">
+      {settled.map((r) => {
+        const god = factionName(r.god, day);
+        return (
+          <li key={r.id}>
+            {r.met
+              ? t('ui.request.met', { god, reward: fxText(r.standing, day) })
+              : t('ui.request.unmet', { god, done: r.done, n: r.n })}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 // ---------- appeals ----------
@@ -1032,6 +1097,7 @@ function Audit() {
         </tbody>
       </table>
       <StandingTable run={a.run} ledger={ledger} />
+      <RequestResults ledger={ledger} day={a.run.day} />
       <ol class="verdicts">
         {shift.verdicts.map((v) => {
           const c = shift.cases[v.index];
@@ -1087,6 +1153,50 @@ function Audit() {
 }
 
 /**
+ * A table that can be wider than the screen (the audit's standing, with every column, or with large text): it
+ * scrolls in its own box, by keyboard too, never the page, with its first column held in place. A column scrolled
+ * to comes to rest against that one, never half under it, where a sign half hidden could read as another: the box
+ * snaps to the held column's width, and leaves room after the last column for it to come to rest there too.
+ */
+function LedgerScroll({ label, children }: { label: string; children: ComponentChildren }) {
+  const box = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    const table = el?.querySelector('table');
+    if (!el || !table) return;
+    const fit = () => {
+      const heads = el.querySelectorAll<HTMLElement>('thead th');
+      const held = heads[0]?.offsetWidth ?? 0;
+      const last = heads[heads.length - 1]?.offsetWidth ?? 0;
+      el.style.setProperty('--held', `${held}px`);
+      const tail = table.offsetWidth > el.clientWidth ? Math.max(0, el.clientWidth - held - last) : 0;
+      el.style.setProperty('--tail', `${tail}px`);
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return;
+    // Refitted in the next frame, not in the observer's own callback: the box's padding changing there would be a
+    // resize within the same frame, which the browser reports as an error ("ResizeObserver loop").
+    let frame = 0;
+    const watch = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    });
+    watch.observe(el);
+    watch.observe(table);
+    return () => {
+      cancelAnimationFrame(frame);
+      watch.disconnect();
+    };
+  }, []);
+  return (
+    // biome-ignore lint/a11y/noNoninteractiveTabindex: a box that scrolls must take focus to scroll by keyboard.
+    <section ref={box} class="ledger-scroll" aria-label={label} tabIndex={0}>
+      {children}
+    </section>
+  );
+}
+
+/**
  * Where the player stands with each power they've had dealings with, and what moved it since the
  * last audit: today's mistakes at the gate, and the story (last night's scene, this morning's, the
  * story souls). The last audit's standing plus both columns is the standing now.
@@ -1100,34 +1210,44 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
   // So did the line at dusk (docs/tech-spec.md §41): a crowded gate, and the living lost in the night.
   const line = ledger.waiting?.standing ?? {};
   const waited = Object.keys(line).length > 0;
+  // And the gods' requests done in full (§42).
+  const asked: Partial<Record<Faction, number>> = {};
+  for (const r of ledger.requests ?? [])
+    for (const [f, n] of Object.entries(r.standing)) asked[f as Faction] = (asked[f as Faction] ?? 0) + (n ?? 0);
+  const favoured = Object.keys(asked).length > 0;
   return (
     <>
-      <table class="ledger" data-testid="standing">
-        <thead>
-          <tr>
-            <th>{t('ui.audit.standing')}</th>
-            <th class="num">{t('ui.audit.mistakes')}</th>
-            {appealed ? <th class="num">{t('ui.audit.appealColumn')}</th> : null}
-            {waited ? <th class="num">{t('ui.audit.lineColumn')}</th> : null}
-            <th class="num">{t('ui.audit.story')}</th>
-            <th class="num">{t('ui.audit.now')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((f) => (
-            <tr key={f}>
-              <td>{factionName(f, run.day)}</td>
-              <td class="num">{signed(ledger.standing[f] ?? 0)}</td>
-              {appealed ? <td class="num">{signed(appeal[f] ?? 0)}</td> : null}
-              {waited ? <td class="num">{signed(line[f] ?? 0)}</td> : null}
-              <td class="num">{signed(ledger.story?.[f] ?? 0)}</td>
-              <td class="num">{signed(run.standing[f])}</td>
+      <LedgerScroll label={t('ui.audit.standing')}>
+        <table class="ledger" data-testid="standing">
+          <thead>
+            <tr>
+              <th class="ledger__who">{t('ui.audit.standing')}</th>
+              <th class="num">{t('ui.audit.mistakes')}</th>
+              {appealed ? <th class="num">{t('ui.audit.appealColumn')}</th> : null}
+              {waited ? <th class="num">{t('ui.audit.lineColumn')}</th> : null}
+              {favoured ? <th class="num">{t('ui.audit.requestsColumn')}</th> : null}
+              <th class="num">{t('ui.audit.story')}</th>
+              <th class="num">{t('ui.audit.now')}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((f) => (
+              <tr key={f}>
+                <td class="ledger__who">{factionName(f, run.day)}</td>
+                <td class="num">{signed(ledger.standing[f] ?? 0)}</td>
+                {appealed ? <td class="num">{signed(appeal[f] ?? 0)}</td> : null}
+                {waited ? <td class="num">{signed(line[f] ?? 0)}</td> : null}
+                {favoured ? <td class="num">{signed(asked[f] ?? 0)}</td> : null}
+                <td class="num">{signed(ledger.story?.[f] ?? 0)}</td>
+                <td class="num">{signed(run.standing[f])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </LedgerScroll>
       <p class="muted ledger__note">{t('ui.audit.standingNote')}</p>
       {waited ? <p class="muted ledger__note">{t('ui.audit.lineNote')}</p> : null}
+      {favoured ? <p class="muted ledger__note">{t('ui.audit.requestsNote')}</p> : null}
     </>
   );
 }

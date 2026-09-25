@@ -209,6 +209,22 @@ function line(p: PlaytestInput): string[] {
   return ['### The line at dusk', '', ...(lines.length > 0 ? lines : ['Nobody was left in line.'])];
 }
 
+/** Each god's request, and how it went (docs/tech-spec.md §42). */
+function requests(p: PlaytestInput): string[] {
+  const god = (f: Faction, day: number) => p.t(factionKey(p.content, f, day));
+  const lines = p.run.ledger.flatMap((l) =>
+    (l.requests ?? []).map((r) => {
+      const reward = Object.entries(r.standing)
+        .filter(([, n]) => n !== 0)
+        .map(([f, n]) => `${god(f as Faction, l.day)} ${signed(n ?? 0)}`)
+        .join(', ');
+      const asked = `${god(r.god, l.day)} asked for ${r.n} from ${p.t(`dest.${r.from}`)} sent to ${p.t(`dest.${r.to}`)}`;
+      return `- Day ${l.day}: ${asked}; ${r.done} sent as asked: ${r.met ? `done (${reward})` : 'not done'}.`;
+    }),
+  );
+  return ['### Requests', '', ...(lines.length > 0 ? lines : ['None yet.'])];
+}
+
 /** Every scene played, with the options picked in it, read back by playing it again as the journal does. */
 function choices(p: PlaytestInput): string[] {
   const lines = (p.save.journal ?? []).map((e) => {
@@ -250,6 +266,8 @@ export function playtestReport(p: PlaytestInput): string {
     ...appeals(p),
     '',
     ...line(p),
+    '',
+    ...requests(p),
     '',
     ...choices(p),
     '',

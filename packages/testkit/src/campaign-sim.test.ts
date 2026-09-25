@@ -40,7 +40,8 @@ describe('the campaign economy', () => {
       expect(r.ledgerOk).toBe(true);
       expect(r.leftAtDusk).toBeGreaterThan(0);
       expect(r.ledger.some((l) => (l.waiting?.carried.length ?? 0) > 0)).toBe(true);
-      // Standing is every audit's columns added up (no scenes here, so nothing waits to be filed).
+      // Standing is every audit's columns added up: mistakes, story, the appeal, the line and the requests (no scenes
+      // here, so nothing waits to be filed).
       for (const f of FACTIONS) {
         const sum = r.ledger.reduce(
           (n, l) =>
@@ -48,7 +49,8 @@ describe('the campaign economy', () => {
             (l.standing[f] ?? 0) +
             (l.story?.[f] ?? 0) +
             (l.appeal?.standing[f] ?? 0) +
-            (l.waiting?.standing[f] ?? 0),
+            (l.waiting?.standing[f] ?? 0) +
+            (l.requests ?? []).reduce((m, q) => m + (q.standing[f] ?? 0), 0),
           0,
         );
         expect(r.standing[f], `${seed} ${f}`).toBe(sum);
