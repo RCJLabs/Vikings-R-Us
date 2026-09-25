@@ -881,6 +881,7 @@ describe('appeals', () => {
     const verdicts = afterShift.shift?.verdicts ?? [];
     const v = verdicts.find((x) => afterShift.shift?.cases[x.index]?.id === appeal.case.id);
     expect(v?.stamped).toBe(appeal.stamped);
+    if (!v) return;
     expect(appeal.stamped).not.toBe(appeal.case.expect.dest);
     // Its fine is the one its place among the day's mistakes drew: the first few are only warnings.
     const economy = content.days[0]?.economy;
