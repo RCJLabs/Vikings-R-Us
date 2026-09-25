@@ -75,7 +75,7 @@ const REACH: readonly [
   judging: string,
   night: NightStrategy,
   story: string,
-  options?: Pick<SimOptions, 'appeals' | 'serve'>,
+  options?: Pick<SimOptions, 'appeals' | 'serve' | 'oath'>,
 ][] = [
   ['ending.demoted', 'careless', 'payAll', 'plain'],
   ['ending.alone', 'novice', 'neglect', 'plain'],
@@ -86,7 +86,8 @@ const REACH: readonly [
   // Freyja's and Hel's endings take the story and their requests too (docs/tech-spec.md §42).
   ['ending.hel', 'expert', 'payAll', 'hel', { serve: 'hel' }],
   ['ending.freyja', 'expert', 'payAll', 'freyja', { serve: 'freyja' }],
-  ['ending.odin', 'expert', 'payAll', 'odin'],
+  // Under the oath (docs/tech-spec.md §49), which its achievement asks for: no warnings before the fines.
+  ['ending.odin', 'expert', 'payAll', 'odin', { oath: true }],
   // A weak host: a novice who lets the appeals stand (righting mistakes sends souls where they belong).
   ['ending.wolf', 'novice', 'frugal', 'plain', { appeals: false }],
   ['ending.lastStand', 'competent', 'payAll', 'plain'],

@@ -8,6 +8,7 @@ import {
 } from '../content/types';
 import type { CaseSpec } from '../gen/types';
 import type { Assists, ShiftState } from '../shift/shift';
+import type { DayGrade } from './grade';
 
 /**
  * A campaign run (docs/tech-spec.md §4). Plain JSON, never reads a clock:
@@ -154,6 +155,8 @@ export interface DayLedger {
   readonly favours?: readonly string[];
   /** The rank the day was worked at (docs/tech-spec.md §44), when there was one. */
   readonly rank?: number;
+  /** The day's grade (docs/tech-spec.md §49); absent in Story Mode, and in saves from before grades. */
+  readonly grade?: DayGrade;
   /** The morning's promotion, offered and taken or not. */
   readonly offer?: { readonly rank: number; readonly taken: boolean };
   /** The rank stepped down from that night. */
@@ -216,6 +219,11 @@ export interface RunState {
   readonly ending: string | null;
   /** Story Mode: no sun and no fines. */
   readonly story: boolean;
+  /**
+   * The oath, sworn at the start of the run (docs/tech-spec.md §49): no hints, no replays, and fines from the
+   * first mistake. Never with Story Mode.
+   */
+  readonly oath?: true;
   /** A vertical-slice run: after the slice's first days it jumps to its late day. */
   readonly slice?: boolean;
   /** A soul asking to be judged again this morning (docs/tech-spec.md §40). */
@@ -327,6 +335,8 @@ export function stateValue(run: RunState, path: string): number {
       return ragnarokStrength(run);
     case 'day':
       return run.day;
+    case 'oath':
+      return run.oath ? 1 : 0;
     case 'rings':
       return run.rings;
     case 'debtNights':
@@ -371,4 +381,4 @@ export function predPaths(p: StatePred): string[] {
 
 /** Paths a StatePred may use (the content linter checks endings against it). */
 export const STATE_PATHS =
-  /^(day|rings|debtNights|naglfar|ragnarok|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;
+  /^(day|rings|debtNights|naglfar|ragnarok|oath|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;

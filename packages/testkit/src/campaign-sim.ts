@@ -3,6 +3,7 @@ import {
   type AchievementMoment,
   type Assists,
   billTotal,
+  type CaseSpec,
   type Content,
   campaignOf,
   createDayContext,
@@ -178,6 +179,31 @@ function playScene(
   return stepRun(run, action, { content, ctx }).state;
 }
 
+/**
+ * What a careful player does to catch a soul in a lie: find a contradiction the evidence exposes, turn the body
+ * over and use the tools its fields need, look at them, and call it out. Nothing when no lie of the soul's can be
+ * caught that way. (Bots before this looked at everything without turning the body over or using a tool, so
+ * any contradiction on the back or in a tool's reading was missed; docs/tech-spec.md §49.)
+ */
+export function catchLie(c: CaseSpec, ctx: DayCtx, at: number): ShiftAction[] {
+  for (const x of solve(c.evidence.fields, soulCtx(ctx, c)).contradictions) {
+    // The shift finds a contradiction among the fields seen, so every field it rests on must be looked at.
+    if (!c.lies.some((l) => l.field === x.lie) || x.against.some((id) => id.startsWith('q:'))) continue;
+    const ids = [x.lie, ...x.against.filter((id) => id !== 'world')];
+    const other = ids[1];
+    if (!other) continue;
+    const fields = c.evidence.fields.filter((f) => ids.includes(f.id));
+    const tools = [...new Set(fields.flatMap((f) => (f.tool && f.tool !== 'flip' ? [f.tool] : [])))];
+    return [
+      ...(fields.some((f) => f.view === 'back') ? [{ t: 'flip' as const, at }] : []),
+      ...tools.map((tool) => ({ t: 'tool' as const, tool, at })),
+      { t: 'inspect', fields: ids, at },
+      { t: 'compare', a: x.lie, b: other, at },
+    ];
+  }
+  return [];
+}
+
 /** The sun a bot spends on each soul unless told otherwise: under every day's sun per soul, so none is left. */
 export const BOT_PACE_S = 25;
 
@@ -206,14 +232,7 @@ function shiftActions(
     at += paceS * 1000;
     const right = rng.chance(Math.round(judging.accuracy * 1000), 1000);
     if (right && c.lies.length > 0 && rng.chance(Math.round(judging.catches * 1000), 1000)) {
-      const x = solve(c.evidence.fields, soulCtx(ctx, c)).contradictions[0];
-      const other = x?.against.find((id) => !id.startsWith('q:') && id !== 'world');
-      if (x && other) {
-        actions.push(
-          { t: 'shift', action: { t: 'inspect', fields: c.evidence.fields.map((f) => f.id), at } },
-          { t: 'shift', action: { t: 'compare', a: x.lie, b: other, at } },
-        );
-      }
+      for (const action of catchLie(c, ctx, at)) actions.push({ t: 'shift', action });
     }
     const wrongs = stamps.filter((d) => d !== c.expect.dest);
     // A soul the bot knows belongs where a favour asks for souls from goes where the favour asks instead.
@@ -338,6 +357,8 @@ export interface SimOptions {
   readonly promote?: boolean;
   /** Whether the bot takes what story souls offer for a wrong stamp (docs/tech-spec.md §47); it never does unless told. */
   readonly bribes?: boolean;
+  /** Whether the run is played under the oath (docs/tech-spec.md §49): fines from the first mistake. */
+  readonly oath?: boolean;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -349,7 +370,7 @@ export function simulateRun(
   options: SimOptions = {},
 ): RunResult {
   const policy = options.story ?? PLAIN;
-  let run = newRun(content, seed);
+  let run = newRun(content, seed, options.oath ? { oath: true } : {});
   const rng = new Rng(`sim|${seed}|${judging.name}|${strategy}`);
   let lowest = run.rings;
   let sickNights = 0;

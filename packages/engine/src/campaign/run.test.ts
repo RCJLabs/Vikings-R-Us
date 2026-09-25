@@ -1,4 +1,4 @@
-import { loadContent } from '@cots/testkit';
+import { catchLie, loadContent } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
 import type { AppealsDef, CampaignDef, Content, Destination, Effect, Faction, ScriptedCaseDef } from '../content/types';
@@ -8,7 +8,9 @@ import type { CaseSpec } from '../gen/types';
 import { validateCase } from '../gen/validate';
 import { createDayContext, type DayCtx, soulCtx } from '../logic/context';
 import { judge } from '../logic/judge';
-import { DUSK_GRACE_MS, ruledOut } from '../shift/shift';
+import { solve } from '../logic/solver';
+import { type Assists, DUSK_GRACE_MS, ruledOut, stepShift } from '../shift/shift';
+import { beatsDay, dayGrade, GRADES } from './grade';
 import {
   billForecast,
   campaignOf,
@@ -37,8 +39,8 @@ import {
   storyOffer,
   threadsInPlay,
 } from './run';
-import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
-import { type FamilyMember, factionsMet, hostParts, type RunState, ragnarokStrength } from './state';
+import { type RunSave, recordAction, replayableDays, replayDay, resumeSave, runContext, startSave } from './save';
+import { type FamilyMember, factionsMet, hostParts, type RunState, ragnarokStrength, stateValue } from './state';
 
 const demo = loadContent('web-demo');
 const full = loadContent('dev-full');
@@ -1723,6 +1725,133 @@ describe('a jarl’s bribe (docs/tech-spec.md §47)', () => {
     expect(t.einherjar.unworthy).toBe(r.einherjar.unworthy + 1);
     // A story soul never appeals.
     expect(t.appeal?.case.script).toBeUndefined();
+  });
+});
+
+describe('grades and the oath (docs/tech-spec.md §49)', () => {
+  const DAY = 6;
+  /**
+   * Day DAY played to its audit: the souls at `wrong` stamped wrong, the rest rightly; with `catchAll`, every liar
+   * first caught in a lie the evidence exposes, as a careful player would.
+   */
+  const played = (opts: {
+    wrong?: number[];
+    catchAll?: boolean;
+    oath?: boolean;
+    story?: boolean;
+    assists?: Assists;
+  }) => {
+    const base: RunState = {
+      ...newRun(full, 'grades', { ...(opts.oath ? { oath: true } : {}), ...(opts.story ? { story: true } : {}) }),
+      day: DAY,
+    };
+    const ctx = runContext(full, base);
+    const queue = campaignQueue(base, { content: full, ctx });
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0, ...(opts.assists ? { assists: opts.assists } : {}) }];
+    queue.forEach((c, i) => {
+      const at = (i + 1) * 1000;
+      if (opts.catchAll) for (const action of catchLie(c, ctx, at)) actions.push({ t: 'shift', action });
+      const wrong = opts.wrong?.includes(i) ?? false;
+      const dest: Destination = wrong ? (c.expect.dest === 'HEL' ? 'VALHALLA' : 'HEL') : c.expect.dest;
+      for (const id of wrong ? [] : (c.expect.procedures ?? [])) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+      }
+      actions.push({ t: 'shift', action: { t: 'stamp', dest, at } }, { t: 'shift', action: { t: 'send', at } });
+    });
+    const r = drive(full, base, actions);
+    return { ...r, grade: r.run.ledger.at(-1)?.grade };
+  };
+
+  it('grades a day by the souls it got wrong, and at the top by the liars caught before their stamp', () => {
+    const flawless = played({ catchAll: true }).grade;
+    expect(flawless?.liars).toBeGreaterThan(0);
+    expect(flawless).toMatchObject({ grade: 'flawless', mistakes: 0, caught: flawless?.liars });
+    expect(played({}).grade).toMatchObject({ grade: 'sharp', mistakes: 0, caught: 0 });
+    expect(played({ wrong: [0] }).grade?.grade).toBe('steady');
+    expect(played({ wrong: [0, 1] }).grade?.grade).toBe('shaky');
+    expect(played({ wrong: [0, 1, 2] }).grade?.grade).toBe('shaky');
+    expect(played({ wrong: [0, 1, 2, 3] }).grade).toMatchObject({ grade: 'rough', mistakes: 4 });
+    // Sun to spare is kept for personal bests; a day without assists isn't marked.
+    expect(flawless?.spareMs).toBeGreaterThan(0);
+    expect(flawless?.assisted).toBeUndefined();
+  });
+
+  it('marks a grade earned with a slower sun or the rule tracker, not one with fines waived; Story Mode has none', () => {
+    expect(played({ assists: { sunPct: 50 } }).grade?.assisted).toBe(true);
+    expect(played({ assists: { tracker: true } }).grade?.assisted).toBe(true);
+    expect(played({ assists: { noFines: true } }).grade?.assisted).toBeUndefined();
+    expect(played({ story: true }).grade).toBeUndefined();
+  });
+
+  it('never asks for a lie the evidence doesn’t expose', () => {
+    const { run, ctx } = played({ catchAll: true });
+    const shift = run.shift;
+    if (!shift) throw new Error('no shift');
+    // One liar's contradicting evidence taken away: that lie can't be caught, so it isn't counted.
+    const i = shift.cases.findIndex((c) => c.lies.length > 0);
+    const c = shift.cases[i];
+    if (!c) throw new Error('no liar');
+    let hidden = c;
+    for (let left = solve(c.evidence.fields, soulCtx(ctx, c)).contradictions; left.length > 0; ) {
+      const against = new Set(left.flatMap((x) => x.against));
+      hidden = {
+        ...hidden,
+        evidence: { ...hidden.evidence, fields: hidden.evidence.fields.filter((f) => !against.has(f.id)) },
+      };
+      left = solve(hidden.evidence.fields, soulCtx(ctx, hidden)).contradictions;
+    }
+    expect(solve(hidden.evidence.fields, soulCtx(ctx, hidden)).contradictions).toEqual([]);
+    const cases = shift.cases.map((x, k) => (k === i ? hidden : x));
+    const verdicts = shift.verdicts.map((v) => (v.index === i ? { ...v, caught: 0 } : v));
+    const before = dayGrade(shift, ctx);
+    expect(dayGrade({ ...shift, cases, verdicts }, ctx)).toMatchObject({
+      grade: 'flawless',
+      liars: before.liars - 1,
+      caught: before.caught - 1,
+    });
+  });
+
+  it('keeps as a best the better grade, then one played without assists, then more sun to spare', () => {
+    expect(GRADES[0]).toBe('flawless');
+    const day = (grade: (typeof GRADES)[number], spareMs: number, assisted?: true) => ({
+      grade,
+      spareMs,
+      ...(assisted ? { assisted } : {}),
+    });
+    expect(beatsDay(day('sharp', 0), undefined)).toBe(true);
+    expect(beatsDay(day('flawless', 0), day('sharp', 90_000))).toBe(true);
+    expect(beatsDay(day('sharp', 90_000), day('flawless', 0))).toBe(false);
+    expect(beatsDay(day('sharp', 0), day('sharp', 90_000, true))).toBe(true);
+    expect(beatsDay(day('sharp', 90_000, true), day('sharp', 0))).toBe(false);
+    expect(beatsDay(day('sharp', 60_000), day('sharp', 50_000))).toBe(true);
+    expect(beatsDay(day('sharp', 50_000), day('sharp', 50_000))).toBe(false);
+  });
+
+  it('holds a run under the oath to it: fines from the first mistake, whatever the assists; no hints; no replays', () => {
+    expect(() => newRun(full, 'x', { oath: true, story: true })).toThrow(/oath/);
+    const sworn = { ...newRun(full, 'grades', { oath: true }), day: DAY };
+    const plain = { ...newRun(full, 'grades'), day: DAY };
+    expect(sworn.oath).toBe(true);
+    expect(stateValue(sworn, 'oath')).toBe(1);
+    expect(stateValue(plain, 'oath')).toBe(0);
+    const env = { content: full, ctx: runContext(full, plain) };
+    expect(economyFor(plain, env).warnings).toBeGreaterThan(0);
+    expect(economyFor(sworn, env).warnings).toBe(0);
+    // One mistake: forgiven in a plain run, fined under the oath, even with fines waived by the assist.
+    expect(played({ wrong: [0] }).run.ledger.at(-1)?.fines).toBe(0);
+    expect(played({ wrong: [0], oath: true }).run.ledger.at(-1)?.fines).toBeGreaterThan(0);
+    expect(played({ wrong: [0], assists: { noFines: true } }).run.ledger.at(-1)?.fines).toBe(0);
+    expect(played({ wrong: [0], oath: true, assists: { noFines: true } }).run.ledger.at(-1)?.fines).toBeGreaterThan(0);
+    // Skögul gives no hints.
+    const begun = drive(full, sworn, [{ t: 'beginShift', at: 0 }]).run;
+    if (!begun.shift) throw new Error('no shift');
+    expect(begun.shift.config.oath).toBe(true);
+    const hint = stepShift(begun.shift, { t: 'hint', at: 1000 }, runContext(full, sworn));
+    expect(hint.events).toContainEqual({ e: 'rejected', reason: 'no hints under the oath' });
+    // No day can be replayed; a plain run's days can.
+    expect(replayableDays(startSave(full, 'x', 1, { oath: true }))).toEqual([]);
+    expect(replayableDays(startSave(full, 'x', 1))).toEqual([1]);
   });
 });
 

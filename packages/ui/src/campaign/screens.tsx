@@ -8,6 +8,7 @@ import {
   campaignOf,
   careFor,
   createDayContext,
+  type DayGrade,
   type DayLedger,
   DESTINATIONS,
   debtLimit,
@@ -144,6 +145,87 @@ function StandingStrip({ run }: { run: RunState }) {
   );
 }
 
+// ---------- grades (docs/tech-spec.md §49) ----------
+
+/** How a best was played, when it wasn't plain: with assists, under the oath. */
+function bestMarks(b: { readonly assisted?: true; readonly oath?: true }): string {
+  const marks = [...(b.assisted ? [t('ui.grade.mark.assisted')] : []), ...(b.oath ? [t('ui.grade.mark.oath')] : [])];
+  return marks.length > 0 ? ` (${listText(marks)})` : '';
+}
+
+const spareText = (ms: number) => (ms > 0 ? t('ui.grade.spare', { time: clockText(ms) }) : '');
+
+/**
+ * The day's grade at the audit: what it was made of, what the next grade up takes, and the day's best on this
+ * device (the audit has already kept this one if it beat it).
+ */
+function DayMark({ grade: g, day }: { grade: DayGrade; day: number }) {
+  const best = settings.value.dayBests[String(day)];
+  const isBest = best && best.grade === g.grade && best.spareMs === g.spareMs && !best.assisted === !g.assisted;
+  return (
+    <section class="card day-mark" data-testid="day-mark">
+      <h2 data-testid="day-grade">{t('ui.grade.title', { grade: t(`ui.grade.${g.grade}`) })}</h2>
+      <p data-testid="day-grade-why">
+        {t(`ui.grade.why.${g.grade}`, { n: g.mistakes, caught: g.caught, liars: g.liars })}
+      </p>
+      {best ? (
+        <p class="muted" data-testid="day-best">
+          {isBest
+            ? t('ui.grade.bestYet', { day })
+            : t('ui.grade.best', { day, grade: t(`ui.grade.${best.grade}`), spare: spareText(best.spareMs) }) +
+              bestMarks(best)}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** Days as runs, for a line: "2, 4–6, 9". */
+function dayRuns(days: readonly number[]): string {
+  const runs: string[] = [];
+  for (let i = 0; i < days.length; ) {
+    let j = i;
+    while (j + 1 < days.length && days[j + 1] === (days[j] ?? 0) + 1) j++;
+    runs.push(i === j ? String(days[i]) : `${days[i]}–${days[j]}`);
+    i = j + 1;
+  }
+  return runs.join(', ');
+}
+
+/**
+ * Each day's best on this device, once there's one (docs/tech-spec.md §49): a goal for replaying a day. The days
+ * without one go on a single line, so the card stays short on a phone.
+ */
+function BestDays() {
+  const bests = settings.value.dayBests;
+  const days = gameContent.days.map((d) => d.day).filter((d) => d >= 1);
+  const graded = days.filter((d) => bests[String(d)] !== undefined);
+  if (graded.length === 0) return null;
+  const rest = days.filter((d) => bests[String(d)] === undefined);
+  return (
+    <section class="card best-days" data-testid="best-days">
+      <h2>{t('ui.bestDays.title')}</h2>
+      <p class="muted">{t('ui.bestDays.note')}</p>
+      <ul class="best-days__list">
+        {graded.map((d) => {
+          const b = bests[String(d)];
+          return b ? (
+            <li key={d} data-testid="best-day">
+              {t('ui.bestDays.day', { day: d, grade: t(`ui.grade.${b.grade}`), spare: spareText(b.spareMs) })}
+              {bestMarks(b)}
+            </li>
+          ) : null;
+        })}
+      </ul>
+      {rest.length > 0 ? (
+        <p class="muted" data-testid="best-days-none">
+          {t('ui.bestDays.none', { n: rest.length, days: dayRuns(rest) })}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 // ---------- endings ----------
 
 /** Every ending this build's campaign can come to: the ones found on this device by name, the rest unnamed. */
@@ -271,6 +353,7 @@ function SlotSummary({ record }: { record: SlotRecord }) {
     <p data-testid="slot-summary">
       {t('ui.campaign.summary', { day: run.day, rings: run.rings, home, family: run.family.length })}
       {run.story ? ` · ${t('ui.campaign.story')}` : ''}
+      {run.oath ? ` · ${t('ui.campaign.sworn')}` : ''}
       {run.slice ? ` · ${t('ui.campaign.slice')}` : ''}
     </p>
   );
@@ -307,6 +390,7 @@ function StartChoice({ i, value, onChange }: { i: number; value: Start; onChange
 
 function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
   const [story, setStory] = useState(false);
+  const [oath, setOath] = useState(false);
   const [start, setStart] = useState<Start>('campaign');
   const [confirm, setConfirm] = useState(false);
   const days = record ? replayableDays(record.save) : [];
@@ -320,10 +404,22 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
           <input
             type="checkbox"
             checked={story}
+            disabled={oath}
             data-testid={`story-${i}`}
             onChange={(e) => setStory((e.target as HTMLInputElement).checked)}
           />{' '}
           {t('ui.campaign.storyMode')}
+        </label>
+        {/* The oath (docs/tech-spec.md §49): for players who want it hard. Not with Story Mode. */}
+        <label class="slot__story">
+          <input
+            type="checkbox"
+            checked={oath}
+            disabled={story}
+            data-testid={`oath-${i}`}
+            onChange={(e) => setOath((e.target as HTMLInputElement).checked)}
+          />{' '}
+          {t('ui.campaign.oath')}
         </label>
         <StartChoice i={i} value={start} onChange={setStart} />
         <div class="row">
@@ -331,7 +427,7 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
             type="button"
             class="btn btn--primary"
             data-testid={`new-${i}`}
-            onClick={() => newCampaign(i, story, start === 'campaign' ? undefined : start)}
+            onClick={() => newCampaign(i, story, start === 'campaign' ? undefined : start, oath && !story)}
           >
             {t('ui.campaign.new')}
           </button>
@@ -490,6 +586,7 @@ function SlotsScreen() {
         ),
       )}
       <EndingsGallery />
+      <BestDays />
       <PlaytestDialog slots={slots.value} scenes={scenes} />
       <div class="row">
         <button type="button" class="btn" data-testid="campaign-back" data-back onClick={toTitle}>
@@ -874,8 +971,9 @@ function Morning() {
   const { run, ctx } = a;
   const scene = pendingScene(run, 'morning');
   const sunS = ctx.spec.sunS + (shiftMods(run, gameContent).sunS ?? 0);
-  // Story Mode has no sun (and no fines): only the rule tracker means anything there.
-  const assists = currentAssists(!run.story, run.story);
+  // Story Mode has no sun (and no fines): only the rule tracker means anything there. Under the oath (docs/tech-spec.md
+  // §49) fines are never waived.
+  const assists = currentAssists(!run.story && !run.oath, run.story);
   const assisted = assistText(assists);
   const bills = billTotal(run, economyOf({ content: gameContent, ctx }), defaultBills(run));
   const tonight = bills.hearth + bills.food + bills.medicine + (rankOf(run, gameContent)?.tithe ?? 0);
@@ -885,6 +983,7 @@ function Morning() {
       <p class="muted">
         {t('ui.campaign.purse', { n: run.rings })}
         {run.story ? ` · ${t('ui.campaign.story')}` : ''}
+        {run.oath ? ` · ${t('ui.campaign.sworn')}` : ''}
         <RankName run={run} />
       </p>
       <StandingStrip run={run} />
@@ -922,7 +1021,12 @@ function Morning() {
               {t('ui.settings.assists')}
               {assisted ? <span class="muted">: {assisted}</span> : null}
             </summary>
-            <AssistSettings campaign={!run.story} sun={!run.story} titled={false} />
+            <AssistSettings campaign={!run.story && !run.oath} sun={!run.story} titled={false} />
+            {run.oath ? (
+              <p class="muted" data-testid="oath-terms">
+                {t('ui.campaign.oathTerms')}
+              </p>
+            ) : null}
           </details>
           <div class="row">
             <button type="button" class="btn btn--primary btn--big" data-testid="to-gate" onClick={toGate}>
@@ -1238,7 +1342,7 @@ function Audit() {
   const shift = a.run.shift;
   if (!ledger || !shift) return null;
   const economy = economyFor(a.run, { content: gameContent, ctx: a.ctx });
-  const waived = a.run.story || ledger.assists?.noFines === true;
+  const waived = a.run.story || (ledger.assists?.noFines === true && !a.run.oath);
   const forgiven = Math.min(ledger.wrong, waived ? ledger.wrong : economy.warnings);
   const assisted = assistText(ledger.assists);
   const score = shiftScore(shift);
@@ -1279,7 +1383,7 @@ function Audit() {
           ) : null}
           {ledger.fines > 0 || (ledger.eased ?? 0) > 0 ? (
             <tr>
-              <td>{t('ui.audit.fines', { n: ledger.wrong - forgiven })}</td>
+              <td>{t(forgiven > 0 ? 'ui.audit.fines' : 'ui.audit.finesAll', { n: ledger.wrong - forgiven })}</td>
               <td class="num">{signed(-ledger.fines)}</td>
             </tr>
           ) : null}
@@ -1304,6 +1408,7 @@ function Audit() {
         </tbody>
       </table>
       <FinesEased ledger={ledger} day={a.run.day} />
+      {ledger.grade ? <DayMark grade={ledger.grade} day={a.run.day} /> : null}
       <StandingTable run={a.run} ledger={ledger} />
       <RequestResults ledger={ledger} day={a.run.day} />
       <ol class="verdicts">

@@ -83,6 +83,7 @@ function header(p: PlaytestInput): string[] {
     `slot ${p.slot + 1}`,
     `seed \`${run.seed}\``,
     run.story ? 'Story Mode' : '',
+    run.oath ? 'under oath' : '',
     run.slice ? 'the slice' : '',
   ]
     .filter((s) => s !== '')
@@ -103,6 +104,7 @@ function header(p: PlaytestInput): string[] {
 
 const DAY_HEADS = [
   'Day',
+  'Grade',
   'Right',
   'Wrong',
   'Unjudged',
@@ -122,8 +124,11 @@ function days(ledger: readonly DayLedger[]): string[] {
   if (ledger.length === 0) return ['### Days', '', 'No day finished yet.'];
   const rows = ledger.map((l) => {
     const n = l.night;
+    // The day's grade (docs/tech-spec.md §49), with the liars caught before their stamp.
+    const g = l.grade;
     const cells = [
       String(l.day),
+      g ? `${g.grade} (${g.caught}/${g.liars} liars)${g.assisted ? ', assisted' : ''}` : '',
       String(l.correct),
       String(l.wrong),
       String(l.unjudged),
@@ -139,7 +144,8 @@ function days(ledger: readonly DayLedger[]): string[] {
     ];
     return `| ${cells.join(' | ')} |`;
   });
-  const align = DAY_HEADS.map((_, i) => (i === DAY_HEADS.length - 1 ? '---' : '---:'));
+  // Numbers to the right; the grade and the assists are words.
+  const align = DAY_HEADS.map((h) => (h === 'Grade' || h === 'Assists' ? '---' : '---:'));
   return ['### Days', '', `| ${DAY_HEADS.join(' | ')} |`, `| ${align.join(' | ')} |`, ...rows];
 }
 

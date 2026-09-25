@@ -31,6 +31,7 @@ import {
   stepShift,
   type Verdict,
 } from '../shift/shift';
+import { dayGrade } from './grade';
 import {
   type Appeal,
   type AppealHeard,
@@ -116,6 +117,8 @@ export function campaignOf(content: Content): CampaignDef {
 export interface NewRunOptions {
   /** Story Mode: no sun and no fines. */
   readonly story?: boolean;
+  /** The oath (docs/tech-spec.md §49): no hints, no replays, fines from the first mistake. Not with Story Mode. */
+  readonly oath?: boolean;
   /** The vertical slice: its first days, then the jump to its late day ('fromJump' starts on that day). */
   readonly slice?: 'play' | 'fromJump';
 }
@@ -123,6 +126,7 @@ export interface NewRunOptions {
 export function newRun(content: Content, seed: string, opts: NewRunOptions = {}): RunState {
   const campaign = campaignOf(content);
   if (opts.slice && !campaign.slice) throw new Error('This build has no vertical slice');
+  if (opts.oath && opts.story) throw new Error('The oath and Story Mode are not played together');
   const run = firstMorning(campaign, seed, content.genVersion, opts);
   return opts.slice === 'fromJump' && campaign.slice ? jump(run, campaign.slice) : run;
 }
@@ -149,6 +153,7 @@ function firstMorning(campaign: CampaignDef, seed: string, genVersion: number, o
     spent: 0,
     ending: null,
     story: opts.story === true,
+    ...(opts.oath ? { oath: true as const } : {}),
     ...(opts.slice ? { slice: true } : {}),
   };
 }
@@ -284,7 +289,9 @@ export function titheTonight(run: RunState, content: Content): number {
 export function economyFor(run: RunState, env: RunEnv): Economy {
   const e = economyOf(env);
   const rank = rankOf(run, env.content);
-  return rank ? { ...e, wage: e.wage + rank.wage, warnings: Math.max(0, e.warnings + rank.warnings) } : e;
+  const ranked = rank ? { ...e, wage: e.wage + rank.wage, warnings: Math.max(0, e.warnings + rank.warnings) } : e;
+  // Under the oath (docs/tech-spec.md §49) no mistake is forgiven: fines from the first.
+  return run.oath ? { ...ranked, warnings: 0 } : ranked;
 }
 
 /** What tonight's bills cost as set. */
@@ -681,7 +688,8 @@ function audit(
   let naglfar = run.naglfar ?? 0;
   const flags: Record<string, number> = { ...run.flags };
   const assists = shift.config.assists;
-  const fined = !run.story && !assists?.noFines;
+  // The oath (docs/tech-spec.md §49) fines from the first mistake, whatever the assists say.
+  const fined = !run.story && (run.oath === true || !assists?.noFines);
   // A god's favour can lighten each fine (docs/tech-spec.md §43).
   const finePct = shift.config.mods?.finePct ?? 100;
   let eased = 0;
@@ -756,6 +764,8 @@ function audit(
     ...(requests.length > 0 ? { requests } : {}),
     ...(favours.length > 0 ? { favours } : {}),
     ...(run.rank ? { rank: run.rank } : {}),
+    // The day's grade (docs/tech-spec.md §49): Story Mode has no sun and no fines, so no grade either.
+    ...(run.story ? {} : { grade: dayGrade(shift, env.ctx) }),
     ...(run.answered ? { offer: run.answered } : {}),
   };
   const nextStanding = { ...run.standing };
@@ -1099,6 +1109,7 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         seed: today.seed,
         day: today.day,
         ...(today.story ? { untimed: true } : {}),
+        ...(today.oath ? { oath: true as const } : {}),
         mods: shiftMods(today, env.content),
       };
       const { state } = startShift(env.content, config, env.queue ?? campaignQueue(today, env));

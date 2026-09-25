@@ -92,8 +92,12 @@ export function resumeSave(save: RunSave, content: Content, engine: number): { r
   return { run, rewound: false };
 }
 
-/** Days that can be replayed from their start (every morning in the save). */
+/**
+ * Days that can be replayed from their start (every morning in the save), none for a run under the oath
+ * (docs/tech-spec.md §49). The game can still start the day again itself when an update can't replay it.
+ */
 export function replayableDays(save: RunSave): number[] {
+  if (save.mornings[save.mornings.length - 1]?.oath) return [];
   return save.mornings.map((m) => m.day);
 }
 

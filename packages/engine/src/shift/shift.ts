@@ -76,6 +76,8 @@ export interface ShiftConfig {
   readonly mods?: ShiftMods;
   /** Set as the shift begins, from the `begin` action, so replays keep them. */
   readonly assists?: Assists;
+  /** A campaign run under the oath (docs/tech-spec.md §49): Skögul gives no hints. */
+  readonly oath?: true;
 }
 
 export interface SoulState {
@@ -467,6 +469,7 @@ export function stepShift(
       });
     }
     case 'hint': {
+      if (s.config.oath) return withSun(reject(s, 'no hints under the oath'));
       const field = nextHint(s);
       if (!field) return withSun(reject(s, 'nothing left to point at'));
       const soul = { ...s.soul, hinted: [...(s.soul.hinted ?? []), field] };

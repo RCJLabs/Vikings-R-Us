@@ -7,8 +7,12 @@ import type { Session } from '../store';
  * this says where it is (her line) and what to highlight until the player has looked.
  */
 
-/** Hints are for shifts with a sun or a story: not Endless (a score) or the primer (the coach guides it). */
-export const hintsAllowed = (s: Session): boolean => s.mode.kind !== 'endless' && s.mode.kind !== 'primer';
+/**
+ * Hints are for shifts with a sun or a story: not Endless (a score), the primer (the coach guides it), or a
+ * campaign run under the oath (docs/tech-spec.md §49).
+ */
+export const hintsAllowed = (s: Session): boolean =>
+  s.mode.kind !== 'endless' && s.mode.kind !== 'primer' && s.state.config.oath !== true;
 
 /** Where Skögul points for a piece of evidence: her line's string key, and what to highlight. */
 export function hintTarget(f: Field, state: ShiftState): { readonly text: string; readonly focus: string } {

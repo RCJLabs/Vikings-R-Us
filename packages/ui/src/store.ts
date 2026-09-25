@@ -2,11 +2,13 @@ import { dailyChecks, dailyContent, gameContent, manifest } from 'virtual:conten
 import {
   type AchievementMoment,
   type Assists,
+  beatsDay,
   type CivilDate,
   type Content,
   cleanAssists,
   DAILY_EPOCH,
   type DayCtx,
+  type DayGrade,
   type DayRequest,
   type Destination,
   dailyDate,
@@ -19,6 +21,7 @@ import {
   endlessSeed,
   endlessShareText,
   expectedChecksum,
+  type GradeId,
   type GuardResult,
   guardDaily,
   type PlayMode,
@@ -104,6 +107,18 @@ export interface Settings {
   readonly deskPapers: DeskPapers;
   /** Achievements earned on this device (docs/tech-spec.md §34), each with the time it was first earned. */
   readonly achievements: Readonly<Record<string, number>>;
+  /** Each campaign day's best on this device, by day (docs/tech-spec.md §49). */
+  readonly dayBests: Readonly<Record<string, DayBest>>;
+}
+
+/** A campaign day's best on this device (docs/tech-spec.md §49): its grade, the sun to spare, and how it was played. */
+export interface DayBest {
+  readonly grade: GradeId;
+  readonly spareMs: number;
+  /** With a slower sun or the rule tracker. */
+  readonly assisted?: true;
+  /** In a run under the oath. */
+  readonly oath?: true;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -129,6 +144,7 @@ export const DEFAULT_SETTINGS: Settings = {
   reduceMotion: false,
   deskPapers: {},
   achievements: {},
+  dayBests: {},
 };
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -234,6 +250,22 @@ export function updateSettings(patch: Partial<Settings>): void {
   applySettings();
   mirror(MIRROR.settings, settings.value);
   void store?.set('settings', settings.value);
+}
+
+/**
+ * Keeps a campaign day's grade as its best on this device when it beats the one kept (docs/tech-spec.md §49): a
+ * better grade; at the same grade, one played without assists; then more sun to spare.
+ */
+export function noteDayBest(day: number, grade: DayGrade, oath: boolean): void {
+  const bests = settings.peek().dayBests;
+  if (!beatsDay(grade, bests[String(day)])) return;
+  const best: DayBest = {
+    grade: grade.grade,
+    spareMs: grade.spareMs,
+    ...(grade.assisted ? { assisted: true as const } : {}),
+    ...(oath ? { oath: true as const } : {}),
+  };
+  updateSettings({ dayBests: { ...bests, [String(day)]: best } });
 }
 
 /**

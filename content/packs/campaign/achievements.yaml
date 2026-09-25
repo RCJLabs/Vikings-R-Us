@@ -1,6 +1,6 @@
 # The campaign's achievements (docs/tech-spec.md §34): each story ending, found; two corners of the story;
-# and two for playing it well. An ending's achievement takes the ending's own title. The failure endings
-# (demoted, an empty house) earn nothing. DRAFT text.
+# two for playing it well; and the oath kept (§49). An ending's achievement takes the ending's own title. The
+# failure endings (demoted, an empty house) earn nothing. DRAFT text.
 - { id: ach.odin, title: ending.odin.title, text: ach.odin.text, hidden: true, when: { at: ending, endings: [ending.odin] } }
 - { id: ach.freyja, title: ending.freyja.title, text: ach.freyja.text, hidden: true, when: { at: ending, endings: [ending.freyja] } }
 - { id: ach.hel, title: ending.hel.title, text: ach.hel.text, hidden: true, when: { at: ending, endings: [ending.hel] } }
@@ -28,3 +28,8 @@
   title: ach.spotless.title
   text: ach.spotless.text
   when: { at: shift, modes: [campaign], test: { all: [{ state: perfect, is: 1 }, { state: day, gte: 10 }] } }
+# The oath (docs/tech-spec.md §49): kept to the last day, where the host rides out.
+- id: ach.oathkept
+  title: ach.oathkept.title
+  text: ach.oathkept.text
+  when: { at: run, test: { all: [{ state: oath, is: 1 }, { state: day, gte: 20 }] } }
