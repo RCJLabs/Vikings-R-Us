@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import preact from '@preact/preset-vite';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { isTargetId, PAGES_BASE, TARGET_IDS, TARGETS } from '../../packages/content-schema/src/targets.ts';
+import { isTargetId, PAGES_BASE, PAGES_FULL, TARGET_IDS, TARGETS } from '../../packages/content-schema/src/targets.ts';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '../..');
@@ -35,6 +35,21 @@ function noPwaPlugin(): Plugin {
   };
 }
 
+/**
+ * The playtest build is for invited players, and on Pages it sits unlisted at /full/ (docs/tech-spec.md §48):
+ * search engines are asked not to list it.
+ */
+function noIndexPlugin(): Plugin {
+  return {
+    name: 'cots-noindex',
+    transformIndexHtml: () => [
+      { tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' }, injectTo: 'head' },
+    ],
+  };
+}
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // One config, six build targets: `vite build --mode <target>` (docs/build-plan.md §3).
 export default defineConfig(({ mode }) => {
   if (!isTargetId(mode)) {
@@ -51,6 +66,7 @@ export default defineConfig(({ mode }) => {
       contentPlugin(mode),
       preact(),
       !target.pwa && noPwaPlugin(),
+      target.playtest && noIndexPlugin(),
       target.pwa &&
         VitePWA({
           // Updates wait for the player: the web adapter registers the worker and the
@@ -72,7 +88,11 @@ export default defineConfig(({ mode }) => {
               { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
             ],
           },
-          workbox: { globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'] },
+          workbox: {
+            globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+            // The whole game sits beside the demo on Pages (docs/tech-spec.md §48): its pages aren't the demo's.
+            navigateFallbackDenylist: [new RegExp(`^${escapeRegExp(base)}${PAGES_FULL}`)],
+          },
         }),
     ],
     resolve: {
