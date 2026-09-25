@@ -30,6 +30,8 @@ jobs:
       - run: pnpm leak-check
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm e2e
+      # Every store capture moment still plays to its shot (docs/tech-spec.md §37), clips cut short.
+      - run: pnpm store:check
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

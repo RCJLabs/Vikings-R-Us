@@ -1894,6 +1894,71 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - **Dragging.** Papers can't be dragged with a controller. They stay in place, as they do for the keyboard.
 - **The primer's wording.** It says "tap the hands" and "tap their claim, then the wound"; with a controller, that's A. Wording that follows the controller is a writing change, left for sign-off.
 
+## 37. After M7: store screenshots and trailer capture (phase 7)
+
+**Why.** Store pages need screenshots at set sizes and short clips, and they go stale whenever the art changes. The capture replays chosen moments with the same souls every time, so a new set takes minutes.
+
+**Running it** (`tools/store-capture`)
+- `pnpm build:electron-full && pnpm store:capture` writes `dist/store`:
+  - `steam/*.png`: 11 shots at 1920×1080;
+  - `play-landscape/*.jpg`: the same 11 as JPEG, for tablets and landscape listings;
+  - `play-phone/*.jpg`: 7 shots at 1080×1920;
+  - for each of 3 clips: `clips/<id>.gif` (640 px wide, 15 fps), `clips/<id>/frames/*.png` (1920×1080 at 30 fps, for editing a trailer), and `clips/<id>.mp4` (H.264) when ffmpeg is on the PATH;
+  - `index.html`, a contact sheet of everything with the checks below; `manifest.json`.
+- `STORE_ART=pixel pnpm store:capture` shoots another art style.
+- On GitHub: Actions, Store capture, Run workflow. The files come back as the run's artifact, with MP4s, since the runner installs ffmpeg.
+- CI runs `pnpm store:check` on every push, in about 30 seconds. It plays every moment to its shot, cuts each clip to a frame per step, and checks every file.
+
+**How it stays the same**
+- **The build:** the Steam build (`electron-full`), served locally.
+- **The clock and the dice:** each moment opens a fresh browser at 2027-01-10 12:00 UTC (Daily #41), with the clock stopped and `Math.random` seeded for that moment. A new run's seed comes from those two, so it's the same run each time.
+- **Getting there:** the campaign moments start from `scenarioSave` saves (Days 3, 5 and 6, and a finished run), or from the vertical slice's start on Day 12. The engine works out the right stamps, as it does for the e2e tests.
+- **Stills:** taken with the device's reduced motion, which the game honours, so everything is at rest. Toasts and achievement notices are waited out. Focus rings, the caret and the scenes' "draft" label are hidden.
+- **Clips:** shot a frame at a time. Each frame runs the game's clock on by one frame (its timers, its animation frames, the sun), then moves every CSS and Web Animation on by hand. An animation is paused when first seen and set frame by frame; at its end it's finished, so whatever waits on it (a soul walking off) goes on. A frame takes about 170 ms to shoot, and the clip still plays at 30 fps.
+- **How close two runs come:** a clip's frames matched to within a few pixels of anti-aliasing on the soul's art (about 60 of 2 million). That's the same souls and the same frames, not bit for bit. Before the clock was paused and running animations were settled, most frames differed.
+
+**Sizes**
+- **Steam:** the desk as a 1280×720 window drawn at 1.5×, which is 1920×1080. The text stays readable in Steam's thumbnails, where a 1920-wide desk would shrink it.
+- **Google Play, phone:** a 432×768 phone at 2.5×, which is 1080×1920 (9:16). JPEG, since Play refuses alpha.
+- **GIFs:** cropped to the action and shrunk to at most 640 px wide by area averaging. Each clip has one 256-colour palette, so what stays still doesn't flicker. 15 fps, looping.
+
+**The stores' rules.** `finish.ts` checks every file against them, and the contact sheet shows the result. The rules below are from Steamworks' and the Play Console's own pages, as quoted in search results; this environment's network blocks the pages themselves.
+- **Steam:** at least 5 screenshots, at 1280×720 or 1920×1080.
+- **Google Play:**
+  - JPEG or 24-bit PNG, with no alpha;
+  - each side 320–3840 px, and the long side at most twice the short;
+  - for a game to count for promotion, at least 3 landscape shots at 16:9 and 1920×1080 or more, or 3 portrait shots at 9:16 and 1080×1920 or more;
+  - the preview video is a YouTube link, not a file.
+- **GIF size:** anything over 5 MB gets a warning. That's a judgement about load times, not a store rule.
+
+**The moments** (`catalog.ts`; `moments.ts` plays to each):
+- **Daily #41 on the desk:**
+  - a soul at the gate with every sign looked at;
+  - a lie caught, with the Lie mark and Question;
+  - the liar's confession;
+  - the first soul stamped, ink on its legs;
+  - a citation;
+  - dusk, with 40 seconds of sun left.
+- **The campaign:**
+  - Day 6's registry entry, with its portrait;
+  - Day 12's Loki, the stitch scars on his lips;
+  - Day 3's morning scene;
+  - Night 5's bills, with a sick child;
+  - an ending's report of the host at Ragnarök.
+- **Phone shots:** 7 of the above.
+- **Clips:**
+  - stamp and send: the soul walks off, the next walks up;
+  - catching a lie: to the soul's answer;
+  - sundown: the six-minute sun in four seconds.
+
+**Known limits**
+- **Not final.** The art is the woodcut built in code, not commissioned art, and the story is a draft. The draft label is hidden, but the text isn't final: the ending's own text ends "DRAFT.". As the brainstorm said, the tool is for the real store page once the art is final.
+- **MP4s need ffmpeg.** There's none in this environment, so the MP4 step runs only on the workflow's runner.
+- **Story screens on Steam.** The morning, night and ending screens are one column on the wide frame, with empty space either side.
+- **Nothing checks that a picture looks good.** The dry run checks that each moment still gets there and that each file meets the rules. Looking at the contact sheet is a person's job.
+- **Other store assets.** Steam's capsules and library art aren't made here; they're commissioned (docs/capsule-brief.md). The trailer is still to be edited, from these clips.
+- **Fragility.** The moments follow the UI's test ids, so a UI change can break one; CI's dry run catches it. The frame-stepping relies on Playwright's clock and Chromium's animation API, so a browser update could shift frames slightly.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

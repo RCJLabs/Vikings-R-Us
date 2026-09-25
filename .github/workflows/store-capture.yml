@@ -1,0 +1,40 @@
+name: Store capture
+
+# Takes the store's screenshots and clips again (docs/tech-spec.md §37), on demand: Actions, Store capture,
+# Run workflow. The files come back as the run's "store-capture" artifact: Steam's PNGs, Google Play's JPEGs,
+# the clips' GIFs, MP4s and full frames, and the contact sheet (index.html).
+on:
+  workflow_dispatch:
+    inputs:
+      art:
+        description: Art style to shoot (blank for the game's default)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The clips' MP4s need ffmpeg; without it the capture still makes the GIFs and frames.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: pnpm build:electron-full
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm store:capture
+        env:
+          STORE_ART: ${{ inputs.art }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-capture
+          path: dist/store
+          retention-days: 30
