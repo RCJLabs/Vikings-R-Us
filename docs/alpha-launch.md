@@ -25,6 +25,8 @@ screen (never mid-shift) when a new version is deployed.
 
 Without the secret and variable the itch workflow skips itself.
 
+The whole game, for invited playtesters, goes on a second, restricted itch.io page: see [`playtest.md`](playtest.md).
+
 ## 3. Telemetry (optional; strongly recommended for tuning)
 
 It's opt-in and anonymous; `docs/privacy.md` says exactly what is sent. Setup

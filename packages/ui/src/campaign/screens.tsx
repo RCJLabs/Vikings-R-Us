@@ -45,6 +45,7 @@ import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, useAutoFocus } from '../shift/Shift';
 import { currentAssists, type Screen, session, settings, storageKept, toTitle } from '../store';
+import { PlaytestButton, PlaytestDialog } from './playtest-ui';
 import {
   active,
   branchFrom,
@@ -326,6 +327,7 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
         <button type="button" class="btn btn--primary" data-testid={`continue-${i}`} onClick={() => openSlot(i)}>
           {ended ? t('ui.campaign.seeEnding') : t('ui.campaign.continue')}
         </button>
+        <PlaytestButton i={i} />
       </div>
       {days.length > 0 ? (
         <div class="row">
@@ -466,6 +468,7 @@ function SlotsScreen() {
         ),
       )}
       <EndingsGallery />
+      <PlaytestDialog slots={slots.value} scenes={scenes} />
       <div class="row">
         <button type="button" class="btn" data-testid="campaign-back" data-back onClick={toTitle}>
           {t('ui.back')}

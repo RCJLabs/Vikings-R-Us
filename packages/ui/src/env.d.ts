@@ -4,6 +4,10 @@ declare module 'virtual:content' {
     readonly target: string;
     readonly edition: 'demo' | 'full';
     readonly lab: boolean;
+    /** A build for invited playtesters (docs/playtest.md). */
+    readonly playtest: boolean;
+    /** The build's own name for what it keeps in a browser, or null where it keeps things with the other builds. */
+    readonly storage: string | null;
     readonly packs: readonly string[];
     readonly canaries: readonly string[];
     readonly contentHash: string;

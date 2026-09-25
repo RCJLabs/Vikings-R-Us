@@ -1,0 +1,46 @@
+name: Campaign playtest report
+description: How a campaign run went, with the report the game made from your save.
+title: "Campaign playtest"
+labels: [playtest, campaign]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thank you for playing. The report below comes from the game (Playtest report, on your save slot):
+        rings night by night, the souls sent wrong, and your choices. Add what it can't know.
+  - type: textarea
+    id: report
+    attributes:
+      label: The game's report
+      description: Filled in by the game, or pasted from Playtest report on your save slot.
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: What did you play on?
+      options:
+        - Phone
+        - Tablet
+        - Laptop or desktop
+        - Steam Deck
+  - type: textarea
+    id: money
+    attributes:
+      label: How did the money feel?
+      description: Too tight, too easy, or about right? Which nights hurt, and what did you give up?
+  - type: textarea
+    id: unfair
+    attributes:
+      label: What felt unfair or confusing?
+      description: Souls you were sure you judged rightly, rules or signs you couldn't follow.
+  - type: textarea
+    id: story
+    attributes:
+      label: The story
+      description: What pulled you on, what fell flat, and what you wanted to choose but couldn't.
+  - type: textarea
+    id: bugs
+    attributes:
+      label: Anything broken?
+      description: What you did, what you expected, what happened. Screenshots help.

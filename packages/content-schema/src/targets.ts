@@ -28,14 +28,51 @@ export interface TargetDef {
   base: 'pages' | 'relative' | 'root';
   /** Includes the Case Lab debug tools. */
   lab: boolean;
+  /** A build for invited playtesters (docs/playtest.md): it says so, and each save slot offers a playtest report. */
+  playtest: boolean;
+  /**
+   * Its own name for what it keeps in a browser (its localStorage keys and IndexedDB database), or null to keep
+   * things where the other builds do. itch.io may serve every HTML5 game from one origin, so the playtest build
+   * keeps apart from the public demo, which would find a playtester's saves unreadable and offer to clear them.
+   */
+  storage: string | null;
 }
 
 const DEMO_PACKS = ['core', 'daily', 'demo'] as const satisfies readonly PackId[];
 const ALL_PACKS = PACK_IDS;
 
 export const TARGETS = {
-  'web-demo': { edition: 'demo', packs: DEMO_PACKS, platform: 'web', pwa: true, base: 'pages', lab: false },
-  'web-itch': { edition: 'demo', packs: DEMO_PACKS, platform: 'itch', pwa: false, base: 'relative', lab: false },
+  'web-demo': {
+    edition: 'demo',
+    packs: DEMO_PACKS,
+    platform: 'web',
+    pwa: true,
+    base: 'pages',
+    lab: false,
+    playtest: false,
+    storage: null,
+  },
+  'web-itch': {
+    edition: 'demo',
+    packs: DEMO_PACKS,
+    platform: 'itch',
+    pwa: false,
+    base: 'relative',
+    lab: false,
+    playtest: false,
+    storage: null,
+  },
+  // The whole game for invited playtesters, on its own restricted itch.io page (docs/playtest.md).
+  'web-playtest': {
+    edition: 'full',
+    packs: ALL_PACKS,
+    platform: 'itch',
+    pwa: false,
+    base: 'relative',
+    lab: false,
+    playtest: true,
+    storage: 'playtest',
+  },
   'electron-demo': {
     edition: 'demo',
     packs: DEMO_PACKS,
@@ -43,6 +80,8 @@ export const TARGETS = {
     pwa: false,
     base: 'relative',
     lab: false,
+    playtest: false,
+    storage: null,
   },
   'electron-full': {
     edition: 'full',
@@ -51,6 +90,8 @@ export const TARGETS = {
     pwa: false,
     base: 'relative',
     lab: false,
+    playtest: false,
+    storage: null,
   },
   'android-full': {
     edition: 'full',
@@ -59,8 +100,19 @@ export const TARGETS = {
     pwa: false,
     base: 'relative',
     lab: false,
+    playtest: false,
+    storage: null,
   },
-  'dev-full': { edition: 'full', packs: ALL_PACKS, platform: 'web', pwa: false, base: 'root', lab: true },
+  'dev-full': {
+    edition: 'full',
+    packs: ALL_PACKS,
+    platform: 'web',
+    pwa: false,
+    base: 'root',
+    lab: true,
+    playtest: true,
+    storage: null,
+  },
 } as const satisfies Record<string, TargetDef>;
 
 export type TargetId = keyof typeof TARGETS;

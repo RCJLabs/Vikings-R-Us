@@ -27,6 +27,16 @@ export interface Bills {
   readonly medicine: readonly string[];
 }
 
+/** A soul sent to the wrong place, as the audit filed it: the rule that decided, and what went wrong. */
+export interface DayMistake {
+  /** The rule that said where the soul belonged. */
+  readonly rule: string;
+  readonly expected: Destination;
+  readonly stamped: Destination;
+  /** Procedures the soul needed that weren't done (nails left uncut). */
+  readonly skipped?: readonly string[];
+}
+
 /** One day's accounts, shown at the audit and the night. */
 export interface DayLedger {
   readonly day: number;
@@ -45,6 +55,8 @@ export interface DayLedger {
   readonly story?: Readonly<Partial<Record<Faction, number>>>;
   /** The assists the day's shift was played with (absent when none). */
   readonly assists?: Assists;
+  /** Each soul sent wrong (absent when none, and in saves from before they were kept): a playtest's report. */
+  readonly mistakes?: readonly DayMistake[];
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;

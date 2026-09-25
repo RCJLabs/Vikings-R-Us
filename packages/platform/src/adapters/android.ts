@@ -10,7 +10,7 @@ export const platform: Platform = {
   kind: 'android',
   share: shareWithFallback,
   shareUrl: () => undefined,
-  openStore: () => openStore(),
+  openStore: (name) => openStore(name),
   watchForUpdate: noUpdates,
   // Google Play Games achievements arrive with the Capacitor shell (M9), mapped from the game's ids.
   unlockAchievement: noAchievements,

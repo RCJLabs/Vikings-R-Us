@@ -2,7 +2,7 @@ import { ART_STYLES, type ArtStyle, type BodyArtProvider, placeholderBody } from
 import { woodcutBody } from '@cots/art/woodcut';
 import { signal } from '@preact/signals';
 import { useLayoutEffect, useState } from 'preact/hooks';
-import { mirror, readMirror } from './store';
+import { localKey, mirror, readMirror } from './store';
 
 /**
  * The body art in use (docs/tech-spec.md §6.5). The woodcut, the chosen art
@@ -16,7 +16,7 @@ export const DEFAULT_ART: ArtStyle = 'woodcut';
 export const art = signal<BodyArtProvider>(woodcutBody);
 export const artStyle = signal<ArtStyle>(DEFAULT_ART);
 
-const KEY = 'cots.art';
+const KEY = localKey('art');
 
 const LOADERS: Readonly<Record<ArtStyle, () => Promise<BodyArtProvider>>> = {
   placeholder: async () => placeholderBody,

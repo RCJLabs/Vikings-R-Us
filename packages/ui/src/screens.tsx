@@ -7,6 +7,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { AchievementsCard } from './achievements-ui';
 import { artStyle } from './art';
 import { AssistSettings, assistText, atSunSpeed } from './assists';
+import { buildLabel } from './build';
 import { openCampaign } from './campaign/lazy';
 import { clockText, listText, t } from './i18n';
 import { issueFormUrl, links } from './links';
@@ -313,6 +314,11 @@ export function Title() {
         <div class="title__sigil" dangerouslySetInnerHTML={{ __html: placeholderSigil() }} />
         <h1>{t('core.title')}</h1>
         <p class="muted">{t('core.tagline')}</p>
+        {manifest.playtest ? (
+          <p class="playtest-note" data-testid="playtest-note">
+            {t('ui.playtest.note', { build: buildLabel })}
+          </p>
+        ) : null}
       </header>
       <DailyCard />
       <CampaignCard />

@@ -10,7 +10,7 @@ export const platform: Platform = {
   kind: 'electron',
   share: shareWithFallback,
   shareUrl: () => undefined,
-  openStore: () => openStore(),
+  openStore: (name) => openStore(name),
   watchForUpdate: noUpdates,
   // Steam's achievements arrive with the Electron shell (M6), through SteamPort, mapped from the game's ids.
   unlockAchievement: noAchievements,

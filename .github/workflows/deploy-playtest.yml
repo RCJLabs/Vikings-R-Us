@@ -1,0 +1,69 @@
+name: Deploy playtest build
+
+# Uploads the whole game for invited playtesters (docs/playtest.md) to its own restricted itch.io page, when
+# run by hand: Actions, Deploy playtest build, Run workflow. Needs the BUTLER_API_KEY secret and the
+# ITCH_PLAYTEST_TARGET variable (e.g. rcjlabs/chooser-of-the-slain-playtest:html5); skips cleanly without them,
+# and won't push the campaign to the public demo's page.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: itch-playtest
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      ITCH_TARGET: ${{ vars.ITCH_PLAYTEST_TARGET }}
+      DEMO_TARGET: ${{ vars.ITCH_TARGET }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$BUTLER_API_KEY" ] || [ -z "$ITCH_TARGET" ]; then
+            echo "The playtest page isn't configured (BUTLER_API_KEY secret, ITCH_PLAYTEST_TARGET variable); skipping."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$DEMO_TARGET" ] && [ "${ITCH_TARGET%%:*}" = "${DEMO_TARGET%%:*}" ]; then
+            echo "ITCH_PLAYTEST_TARGET is the public demo's page; the whole campaign needs a restricted page of its own." >&2
+            exit 1
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.config.outputs.ready == 'true'
+        uses: actions/checkout@v4
+      - if: steps.config.outputs.ready == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.config.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.config.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.config.outputs.ready == 'true'
+        # The commit goes in the build, so each playtest report says which build it came from.
+        run: VITE_BUILD="${GITHUB_SHA::7}" pnpm build:web-playtest
+        env:
+          VITE_TELEMETRY_URL: ${{ vars.TELEMETRY_URL }}
+          VITE_COMMUNITY_URL: ${{ vars.COMMUNITY_URL }}
+      - if: steps.config.outputs.ready == 'true'
+        run: pnpm leak-check --targets web-playtest
+      - if: steps.config.outputs.ready == 'true'
+        name: Check itch's limits (1,000 files, 500 MB)
+        run: |
+          files=$(find dist/web-playtest -type f | wc -l)
+          size=$(du -sm dist/web-playtest | cut -f1)
+          echo "$files files, $size MB"
+          test "$files" -le 1000 && test "$size" -le 500
+      - if: steps.config.outputs.ready == 'true'
+        name: Push with butler
+        run: |
+          curl -sSfL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler && chmod +x butler/butler
+          ./butler/butler push dist/web-playtest "$ITCH_TARGET" --userversion "${GITHUB_SHA::7}"

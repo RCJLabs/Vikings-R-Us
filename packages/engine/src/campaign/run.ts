@@ -27,7 +27,15 @@ import {
   stepShift,
   type Verdict,
 } from '../shift/shift';
-import { type Bills, type DayLedger, evalState, type FamilyMember, type RunState, stateValue } from './state';
+import {
+  type Bills,
+  type DayLedger,
+  type DayMistake,
+  evalState,
+  type FamilyMember,
+  type RunState,
+  stateValue,
+} from './state';
 
 /*
  * The campaign's day loop (docs/tech-spec.md §4):
@@ -275,6 +283,7 @@ function audit(
   const flags: Record<string, number> = { ...run.flags };
   const assists = shift.config.assists;
   const fined = !run.story && !assists?.noFines;
+  const mistakes: DayMistake[] = [];
   shift.verdicts.forEach((v: Verdict) => {
     const c = shift.cases[v.index];
     if (v.stamped === null) {
@@ -287,6 +296,12 @@ function audit(
       if (v.caught > 0) bonus += economy.docBonus;
     } else {
       wrong++;
+      mistakes.push({
+        rule: v.rule,
+        expected: v.expected,
+        stamped: v.stamped,
+        ...(v.skipped && v.skipped.length > 0 ? { skipped: v.skipped } : {}),
+      });
       if (fined && wrong > economy.warnings) {
         const i = Math.min(wrong - economy.warnings - 1, economy.fines.length - 1);
         fines += economy.fines[i] ?? 0;
@@ -316,6 +331,7 @@ function audit(
     fines,
     standing,
     ...(assists ? { assists } : {}),
+    ...(mistakes.length > 0 ? { mistakes } : {}),
   };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
