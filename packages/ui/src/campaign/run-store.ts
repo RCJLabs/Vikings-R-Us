@@ -1,5 +1,6 @@
 import { gameContent } from 'virtual:content';
 import {
+  createDayContext,
   type DayCtx,
   ENGINE_MAJOR,
   type RunAction,
@@ -14,8 +15,11 @@ import {
   type ShiftAction,
   type ShiftEvent,
   type ShiftState,
+  shiftMods,
   startSave,
+  startShift,
   stepRun,
+  stepShift,
 } from '@cots/engine';
 import { batch, signal } from '@preact/signals';
 import { t } from '../i18n';
@@ -248,6 +252,54 @@ export function toGate(): void {
   if (!r || !a || a.run.phase !== 'shift') return;
   openShift(a);
   screen.value = 'shift';
+}
+
+/**
+ * The morning's appeal heard at the desk (docs/tech-spec.md §40): the soul alone, with no sun, on the rules
+ * and stamps of the day it was judged. Its stamp settles the appeal and the morning goes on; leaving from the
+ * pause keeps the appeal for later.
+ */
+export function hearAppeal(): void {
+  const a = active.peek();
+  const appeal = a?.run.appeal;
+  if (!a || !appeal || a.run.phase !== 'morning') return;
+  const ctx = createDayContext(gameContent, appeal.day, a.run.seed);
+  const config = {
+    mode: 'practice' as const,
+    seed: a.run.seed,
+    day: appeal.day,
+    untimed: true,
+    mods: shiftMods(a.run, gameContent),
+  };
+  const { state } = startShift(gameContent, config, [appeal.case]);
+  const begin: ShiftAction = { t: 'begin', at: clock() };
+  const back = () => {
+    batch(() => {
+      session.value = null;
+      screen.value = 'morning';
+    });
+  };
+  resetSoulUi();
+  session.value = {
+    mode: { kind: 'appeal', day: appeal.day, stamped: appeal.stamped },
+    content: gameContent,
+    ctx,
+    initial: state,
+    state: stepShift(state, begin, ctx).state,
+    actions: [begin],
+    done: (s) => {
+      const stamped = s.state.verdicts[0]?.stamped ?? null;
+      back();
+      if (stamped) dispatch({ t: 'appeal', stamped });
+    },
+    leave: back,
+  };
+  screen.value = 'shift';
+}
+
+/** The morning's appeal turned away unheard: the verdict stands. */
+export function letAppealStand(): void {
+  dispatch({ t: 'appeal', stamped: null });
 }
 
 export function endAudit(): void {

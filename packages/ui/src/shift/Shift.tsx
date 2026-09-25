@@ -99,6 +99,7 @@ export function modeTitle(s: Session): string {
   if (s.mode.kind === 'endless') return t('ui.endless.round', { n: s.mode.round + 1, day: s.mode.day });
   if (s.mode.kind === 'primer') return t('primer.title');
   if (s.mode.kind === 'campaign') return t('ui.campaign.day', { n: s.mode.day });
+  if (s.mode.kind === 'appeal') return t('ui.appeal.desk', { n: s.mode.day, dest: t(`dest.${s.mode.stamped}`) });
   if (s.mode.archive) return t('ui.briefing.archive', { n: s.mode.n, date: s.mode.date });
   return s.mode.preview ? t('ui.briefing.preview') : t('ui.briefing.daily', { n: s.mode.n });
 }
@@ -741,6 +742,8 @@ function PauseOverlay() {
   const focus = useAutoFocus<HTMLButtonElement>();
   const mode = session.value?.mode;
   const campaign = mode?.kind === 'campaign';
+  // Leaving an appeal takes it back to its morning, still to be heard.
+  const leave = session.value?.leave ?? toTitle;
   return (
     <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <div class="dialog">
@@ -763,7 +766,7 @@ function PauseOverlay() {
             </button>
           ) : mode ? (
             // The shift is paused, and a Daily or Endless run is already saved as it stands.
-            <button type="button" class="btn" data-testid="leave-shift" onClick={toTitle}>
+            <button type="button" class="btn" data-testid="leave-shift" onClick={leave}>
               {t('ui.leave')}
             </button>
           ) : null}
@@ -1025,6 +1028,11 @@ export function ShiftScreen() {
       <div class="shift__desk" inert={blocked}>
         <Sky s={s} />
         <SunBar s={s} />
+        {s.mode.kind === 'appeal' ? (
+          <p class="shift__appeal" data-testid="appeal-banner">
+            {modeTitle(s)}
+          </p>
+        ) : null}
         <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>

@@ -1,4 +1,5 @@
 import { type Destination, FACTIONS, type Faction, type StatePred } from '../content/types';
+import type { CaseSpec } from '../gen/types';
 import type { Assists, ShiftState } from '../shift/shift';
 
 /**
@@ -37,6 +38,43 @@ export interface DayMistake {
   readonly skipped?: readonly string[];
 }
 
+/**
+ * A soul from an earlier day asking to be judged again (docs/tech-spec.md §40), heard the next morning on
+ * the rules of the day it was judged.
+ */
+export interface Appeal {
+  /** The day it was judged: that day's rules decide it. */
+  readonly day: number;
+  /** The soul as it stood at the gate. */
+  readonly case: CaseSpec;
+  readonly stamped: Destination;
+  /** Whether a Valhalla stamp made it a worthy einherjar (the day's rules said), for moving it. */
+  readonly worthy: boolean;
+  /** Whether that day's mistakes were fined (not in Story Mode, nor with the no-fines assist). */
+  readonly fined: boolean;
+  /** What the verdict cost if it was wrong: its fine, and the standing it moved. Both come back if it's righted. */
+  readonly fine: number;
+  readonly standing: Readonly<Partial<Record<Faction, number>>>;
+}
+
+/** How an appeal went: righted (it was wrong, and now it's right), upheld (it was right, and stays), wrong, or left to stand. */
+export type AppealOutcome = 'righted' | 'upheld' | 'wrong' | 'letStand';
+
+export interface AppealHeard {
+  /** The day the soul was judged. */
+  readonly day: number;
+  readonly name: string;
+  readonly outcome: AppealOutcome;
+  /** Where it was sent, where the appeal sent it (null: the verdict was left to stand), and where it belonged. */
+  readonly from: Destination;
+  readonly to: Destination | null;
+  readonly expected: Destination;
+  /** The rule that decides it, for saying why. */
+  readonly rule: string;
+  readonly rings: number;
+  readonly standing: Readonly<Partial<Record<Faction, number>>>;
+}
+
 /** One day's accounts, shown at the audit and the night. */
 export interface DayLedger {
   readonly day: number;
@@ -57,6 +95,8 @@ export interface DayLedger {
   readonly assists?: Assists;
   /** Each soul sent wrong (absent when none, and in saves from before they were kept): a playtest's report. */
   readonly mistakes?: readonly DayMistake[];
+  /** The appeal heard that morning, if one came. */
+  readonly appeal?: AppealHeard;
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;
@@ -110,6 +150,10 @@ export interface RunState {
   readonly story: boolean;
   /** A vertical-slice run: after the slice's first days it jumps to its late day. */
   readonly slice?: boolean;
+  /** A soul asking to be judged again this morning (docs/tech-spec.md §40). */
+  readonly appeal?: Appeal;
+  /** How this morning's appeal went, until the day's audit files it in its ledger. */
+  readonly appealHeard?: AppealHeard;
 }
 
 /** The host at Ragnarök, part by part: the counts behind ragnarokStrength. */

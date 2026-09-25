@@ -117,6 +117,28 @@ describe('the playtest report', () => {
     expect(report(old)).toMatch(/- Day 1: \d+ sent wrong \(not itemised/);
   });
 
+  it('lists each appeal heard: whose, what was decided, and the rings', () => {
+    // A day of mistakes, and a seed whose next morning brings an appeal.
+    const found = ['a1', 'a2', 'a3', 'a4', 'a5']
+      .map((seed) => played(`playtest-appeal-${seed}`, 1, wrong))
+      .find((save) => resumeSave(save, content, ENGINE_MAJOR).run.appeal !== undefined);
+    expect(found).toBeDefined();
+    if (!found) return;
+    let save = found;
+    let run = resumeSave(save, content, ENGINE_MAJOR).run;
+    const expected = run.appeal?.case.expect.dest ?? 'HEL';
+    const action: RunAction = { t: 'appeal', stamped: expected };
+    const next = stepRun(run, action, { content, ctx: runContext(content, run) }).state;
+    save = recordAction(save, run, action, next);
+    run = next;
+    const text = report(save);
+    expect(text).toContain('### Appeals');
+    expect(text).toMatch(
+      /^- Day 2, this morning: \S+, judged on Day 1 and sent to dest\.\w+: righted, to dest\.\w+, [+-]?\d+ rings\.$/m,
+    );
+    expect(report(played('playtest-appeal-none', 1, right))).toContain('### Appeals\n\nNone.');
+  });
+
   it('reads back the options picked in each scene, as the journal does', () => {
     const save = played('playtest-story', 1, right, true);
     const entry = save.journal?.[0];

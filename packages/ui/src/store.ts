@@ -175,7 +175,9 @@ export function noteEnding(id: string): void {
 export const unannounced = signal<readonly string[]>([]);
 
 /** How a session is played, as achievements see it: only the day's Daily played for the record is `daily`. */
-export function playMode(mode: Mode): PlayMode {
+export function playMode(mode: Mode): PlayMode | null {
+  // An appeal re-hears one soul already judged: it earns nothing on its own (docs/tech-spec.md §40).
+  if (mode.kind === 'appeal') return null;
   return mode.kind === 'daily' ? (mode.ranked ? 'daily' : 'archive') : mode.kind;
 }
 
@@ -537,7 +539,9 @@ export type Mode =
   | { readonly kind: 'practice'; readonly day: number }
   | EndlessMode
   | { readonly kind: 'primer' }
-  | { readonly kind: 'campaign'; readonly day: number; readonly story: boolean };
+  | { readonly kind: 'campaign'; readonly day: number; readonly story: boolean }
+  /** A soul from an earlier campaign day judged again at the desk (docs/tech-spec.md §40). */
+  | { readonly kind: 'appeal'; readonly day: number; readonly stamped: Destination };
 
 /** Endless (docs/m7-design.md): rounds of five souls on each day's rules in turn, until three strikes. */
 export interface EndlessMode {
@@ -576,6 +580,10 @@ export interface Session {
   };
   /** Called every few seconds while the sun runs, to save how far it got. */
   readonly heartbeat?: () => void;
+  /** Takes over when the shift is done, instead of the summary (an appeal goes back to its morning). */
+  readonly done?: (s: Session) => void;
+  /** What leaving it from the pause does, instead of going to the title. */
+  readonly leave?: () => void;
 }
 
 /** What telemetry and reports say about this build. */
@@ -661,7 +669,8 @@ export function act(input: ActionInput): void {
     for (const e of r.events) onEvent(e, next);
     // A judged soul, read from the shift as it stood before the send (its questions and hints are still on it).
     for (const e of r.events) {
-      if (e.e === 'judged') unlock({ at: 'soul', mode: playMode(s.mode), facts: soulFacts(s.state, e.verdict) });
+      const mode = playMode(s.mode);
+      if (e.e === 'judged' && mode) unlock({ at: 'soul', mode, facts: soulFacts(s.state, e.verdict) });
     }
   });
   // The events may have moved the session on (an Endless score, or its next round).
@@ -735,7 +744,12 @@ function saveProgress(s: Session): void {
 function finish(s: Session): void {
   citation.value = null;
   answer.value = null;
-  unlock({ at: 'shift', mode: playMode(s.mode), facts: shiftFacts(s.initial, s.actions, s.ctx) });
+  if (s.done) {
+    s.done(s);
+    return;
+  }
+  const mode = playMode(s.mode);
+  if (mode) unlock({ at: 'shift', mode, facts: shiftFacts(s.initial, s.actions, s.ctx) });
   // The run has already audited the shift; the campaign's own screens take over.
   if (s.mode.kind === 'campaign') {
     screen.value = 'audit';
@@ -747,6 +761,8 @@ function finish(s: Session): void {
     if (m?.kind === 'endless' && m.strikes < ENDLESS_STRIKES) startEndlessRound({ ...m, round: m.round + 1 });
     return;
   }
+  // An appeal is its campaign's business (its `done` has it), never telemetry's.
+  if (s.mode.kind === 'appeal') return;
   const telemetry = telemetryBase();
   // Assisted shifts stay home until the telemetry schema can say so; the alpha's numbers stay comparable.
   if (telemetry && settings.peek().telemetry && !s.state.config.assists) {

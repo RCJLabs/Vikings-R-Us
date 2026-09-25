@@ -185,6 +185,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     endings: all('endings'),
     ...(all('aliases').length > 0 ? { aliases: all('aliases') } : {}),
     ...(all('threads').length > 0 ? { threads: all('threads') } : {}),
+    ...(last('appeals') ? { appeals: last('appeals') as NonNullable<CampaignDef['appeals']> } : {}),
   };
 }
 

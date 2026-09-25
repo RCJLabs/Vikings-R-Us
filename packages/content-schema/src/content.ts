@@ -483,6 +483,16 @@ export const CampaignPartSchema = z.strictObject({
   threads: z
     .array(z.strictObject({ id: Id, when: StatePredSchema, text: Key, count: z.string().optional() }))
     .optional(),
+  appeals: z
+    .strictObject({
+      from: Day,
+      afterMistake: Percent,
+      otherwise: Percent,
+      chancers: Percent,
+      bonus: Int.min(0),
+      fine: Int.min(0),
+    })
+    .optional(),
 });
 export type CampaignPart = z.infer<typeof CampaignPartSchema>;
 

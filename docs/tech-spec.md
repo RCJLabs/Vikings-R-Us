@@ -2104,6 +2104,76 @@ The field is absent on a day with none, and in saves from before this build, whi
 - **Offline, the PWA plays no music.** Its precache leaves audio out, so the web demo fetches each bed when first heard. Add runtime caching for sound when files exist.
 - **No captions,** as §35 said, because nothing new is carried by sound: the tension follows the sun on screen, and ducking follows text on screen.
 
+## 40. After M7: appeals (gameplay brainstorm, item 5)
+
+**Why.** A mistake was cited, fined and forgotten. Now the soul can come back the next morning to be judged again. The brainstorm's first version was "admit or defend". That would have been an empty choice, because the citation already tells the player on the spot that a verdict was wrong. So:
+- an appeal is heard by judging the soul again, at the desk;
+- some appeals come from souls judged rightly, trying their luck, so an appeal is no proof of a mistake.
+
+**Who appeals** (engine, at the audit: `chooseAppeal` in `campaign/run.ts`)
+- **Days:** from `appeals.from` (Day 1) up to the day before the last, whose mistakes have no morning left.
+- **Candidates:**
+  - souls sent to the wrong place;
+  - "chancers": souls judged rightly into Hel, Rán or the clerk's hall.
+
+  Story souls never appeal; their stories have their own consequences.
+- **The draw:** from its own stream of the run's seed (`<seed>|appeal|<day>`), so a run always brings the same appeals.
+  - 70% after a day with a soul sent wrong, 25% after a day without.
+  - When both kinds are there, 25% of appeals come from a chancer.
+- **What's kept for the morning:** the soul as it stood (its case), the stamp, whether a Valhalla stamp made it a worthy einherjar, and what the mistake cost (its fine, the standing it moved).
+
+**Hearing it** (UI)
+- **Where:** a card on the morning screen, after the morning's scene, before the decree.
+- **Hear the appeal** opens the desk for that one soul.
+  - It has no sun, and uses the rules and stamps of the day it was judged.
+  - A banner says the day and what the soul was stamped.
+- **Leaving from the pause** keeps the appeal for later.
+- **Let the verdict stand** closes it. Going to the gate unheard lets it lapse the same way.
+- **The session:** it's a practice-mode shift with its own `appeal` mode. It earns no achievements, sends no telemetry, and skips the summary: its stamp becomes the run's `appeal` action.
+
+**Outcomes** (`hearAppeal`)
+
+| Verdict was | Stamped on appeal | Outcome | Rings | Standing | The soul |
+|---|---|---|---|---|---|
+| wrong | where it belongs | righted | its fine back | the mistake's undone | moves to its hall |
+| right | the same | upheld | +3 | none | stays |
+| either | anywhere wrong | wrong | −5 (none in Story Mode, or if that day waived fines) | as for that mistake | moves there |
+| either | not heard | let stand | none | none | stays |
+
+Moving a soul keeps the Ragnarök host true: the counts of souls sent, and the worthy and unworthy einherjar.
+
+**Records**
+- The day it's heard, the audit files it in that day's ledger (`appeal`). The audit shows its rings as a row, and its standing as its own column, so the accounts still add up.
+- The playtest report lists every appeal.
+- The save's log keeps the action, so replays and resumes give the same run.
+
+**Numbers.** These are first guesses in `content/packs/demo/campaign.yaml`: `from 1, afterMistake 70, otherwise 25, chancers 25, bonus 3, fine 5`. The sim (12 runs per policy) has bots hear every appeal and judge it with their accuracy at the gate:
+- experts end about 12 rings up, and competent bots about 6;
+- novices are demoted as often as before.
+
+Appeals add depth and a second look; they don't fix the economy's missing middle. Bots understate them, since a person with no sun should judge better than at the gate.
+
+**Tests**
+- **Engine (6):**
+  - the appeal and what it cost;
+  - righting a mistake: fine, standing, the soul's hall;
+  - upheld, wrong and let stand;
+  - lapsing at the gate, and the ledger;
+  - no appeal from story souls, after the last day, or without the settings;
+  - replaying from a save.
+- **Report (1):** each appeal listed.
+- **Sim:** hears appeals. The bot that plays for the wolf ending (a weak host) lets them stand, because righting mistakes strengthens the host.
+- **e2e on the web demo** (phone and desktop), with the clock and `Math.random` pinned to a run whose first soul appeals:
+  - righted, including leaving from the pause;
+  - decided wrongly, with the audit's −5 row;
+  - let stand.
+
+**Known limits**
+- **The pleas are generic.** There's one line per destination stamped, and they're draft copy for your sign-off.
+- **Memory is a real edge.** A player who remembers yesterday's citations knows which appeals have merit. That's part of the game. Chancers keep an appeal from being proof, but they don't make it a mystery.
+- **Rewards stay small** (3 and 5 rings) until playtests say otherwise.
+- **The Daily is untouched.** It has no appeals.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

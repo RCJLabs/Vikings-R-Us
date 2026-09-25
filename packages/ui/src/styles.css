@@ -1392,6 +1392,17 @@ select {
 }
 
 /* The primer's coach bar and the things it points at */
+/* An appeal at the desk says so, and what the soul was stamped (docs/tech-spec.md §40). */
+.shift__appeal {
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  text-align: center;
+}
+
 .coach {
   display: flex;
   flex-wrap: wrap;
@@ -1670,6 +1681,11 @@ a.btn {
 
 .scene__speaker {
   color: var(--accent);
+}
+
+/* The morning's appeal: the soul's own words, set apart (docs/tech-spec.md §40). */
+.appeal__plea {
+  font-style: italic;
 }
 
 .scene__line--chosen {

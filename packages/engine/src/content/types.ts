@@ -592,6 +592,27 @@ export interface CampaignDef {
   readonly aliases?: readonly FactionAlias[];
   /** What the journal lists as still in play (Loki's deal, the ferry, the wood), in order. */
   readonly threads?: readonly ThreadDef[];
+  /** Souls asking to be judged again the next morning (docs/tech-spec.md §40); none without it. */
+  readonly appeals?: AppealsDef;
+}
+
+/**
+ * Appeals: the morning after a day, one soul from it may ask to be judged again. Most often one sent to
+ * the wrong place; sometimes one judged rightly that tries its luck, so an appeal isn't proof of a mistake.
+ */
+export interface AppealsDef {
+  /** The first day whose verdicts can be appealed. */
+  readonly from: number;
+  /** Percent chance of an appeal after a day with a soul sent to the wrong place. */
+  readonly afterMistake: number;
+  /** Percent chance of one after a day without: a soul judged rightly tries its luck. */
+  readonly otherwise: number;
+  /** When there are both kinds, the percent of appeals from souls judged rightly. */
+  readonly chancers: number;
+  /** Rings for turning down an appeal that had no merit. */
+  readonly bonus: number;
+  /** Rings fined for an appeal decided wrongly. */
+  readonly fine: number;
 }
 
 /** A story thread the journal lists while `when` holds. */

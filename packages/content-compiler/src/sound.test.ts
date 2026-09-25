@@ -109,7 +109,8 @@ describe('the sound a target ships', () => {
     expect(code).toContain('// 2 of 7 sound files named in sound.yaml are here; the rest are silent.');
   });
 
-  it("names the campaign's music only in the full game", () => {
+  // This builds whole targets (content, scenes, story souls, the Daily check table): seconds on a busy CI runner.
+  it("names the campaign's music only in the full game", { timeout: 30_000 }, () => {
     const repo = resolve(import.meta.dirname, '../../..');
     const packs = loadPacks(join(repo, 'content/packs'), join(root, 'no-assets'));
     const beds = (id: 'web-demo' | 'dev-full') => {

@@ -10,6 +10,7 @@ The public builds stop at Day 3, and the campaign's economy has only been tuned 
   - the run so far: the day, the rings, the family, and standing with the powers met;
   - one row per day: the souls judged rightly and wrongly, pay, bonus, fines, bills, shop, story, Draupnir, and the rings after the night;
   - every soul sent wrong: the stamp, where it belonged, and the rule that decided it;
+  - every appeal heard, and how it went;
   - every choice made in a scene.
 - **Open the playtest form** opens the GitHub form *Campaign playtest report* with the report already filled in. A long run doesn't fit in a link (over 8,000 characters), so the form opens empty, and the game says to copy the report and paste it in.
 - **Copy the report,** for testers who'd rather send it another way.
