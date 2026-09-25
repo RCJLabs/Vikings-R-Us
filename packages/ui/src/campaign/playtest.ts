@@ -225,6 +225,19 @@ function requests(p: PlaytestInput): string[] {
   return ['### Requests', '', ...(lines.length > 0 ? lines : ['None yet.'])];
 }
 
+/** The gods' favours each day held (docs/tech-spec.md §43), as the gate granted them. */
+function favours(p: PlaytestInput): string[] {
+  const defs = new Map((p.content.campaign?.favours ?? []).map((f) => [f.id, f]));
+  const lines = p.run.ledger.flatMap((l) => {
+    const held = (l.favours ?? []).flatMap((id) => {
+      const f = defs.get(id);
+      return f ? [`${p.t(factionKey(p.content, f.faction, l.day))}'s favour (${p.t(f.text)})`] : [];
+    });
+    return held.length > 0 ? [`- Day ${l.day}: ${held.join('; ')}.`] : [];
+  });
+  return ['### Favours', '', ...(lines.length > 0 ? lines : ['None yet.'])];
+}
+
 /** Every scene played, with the options picked in it, read back by playing it again as the journal does. */
 function choices(p: PlaytestInput): string[] {
   const lines = (p.save.journal ?? []).map((e) => {
@@ -268,6 +281,8 @@ export function playtestReport(p: PlaytestInput): string {
     ...line(p),
     '',
     ...requests(p),
+    '',
+    ...favours(p),
     '',
     ...choices(p),
     '',

@@ -137,6 +137,8 @@ export interface DayLedger {
   readonly waiting?: DayWaiting;
   /** The day's requests, and how they went. */
   readonly requests?: readonly RequestSettled[];
+  /** The gods' favours the gate granted for the day and its night (docs/tech-spec.md §43), by id. */
+  readonly favours?: readonly string[];
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;

@@ -6,6 +6,7 @@ import type {
   Effect,
   EndingDef,
   Faction,
+  FavourDef,
   SliceDef,
   StatePred,
   UpgradeDef,
@@ -192,11 +193,44 @@ export function shiftMods(run: RunState, content: Content): ShiftMods {
     else if ('questionS' in e) questionS = Math.min(questionS ?? e.questionS, e.questionS);
     else sunS += e.sunS;
   }
+  // The gods' favours for the day (docs/tech-spec.md §43); a sick member's extra night is the night's, not the shift's.
+  let freeQuestions = 0;
+  let finePct: number | undefined;
+  for (const f of favoursFor(run, content)) {
+    const e = f.effect;
+    if ('sunS' in e) sunS += e.sunS;
+    else if ('freeQuestions' in e) freeQuestions += e.freeQuestions;
+    else if ('finePct' in e) finePct = Math.min(finePct ?? e.finePct, e.finePct);
+  }
   return {
     ...(Object.keys(toolCostS).length > 0 ? { toolCostS } : {}),
     ...(questionS !== undefined ? { questionS } : {}),
     ...(sunS > 0 ? { sunS } : {}),
+    ...(freeQuestions > 0 ? { freeQuestions } : {}),
+    ...(finePct !== undefined ? { finePct } : {}),
   };
+}
+
+/**
+ * The gods' favours (docs/tech-spec.md §43) that the run's standing earns now: each god whose standing is at a
+ * favour's mark. The gate grants them for the day and its night, so the morning's standing decides the day's.
+ */
+export function favoursFor(run: RunState, content: Content): FavourDef[] {
+  return (campaignOf(content).favours ?? []).filter((f) => run.standing[f.faction] >= f.at);
+}
+
+/**
+ * Family care tonight: the campaign's, and the nights more that a god's favour gives the sick. The favours are
+ * the day's, as its audit filed them; before then, those the gate will grant.
+ */
+export function careFor(run: RunState, content: Content): CampaignDef['care'] {
+  const campaign = campaignOf(content);
+  const today = run.ledger[run.ledger.length - 1];
+  const ids = today?.day === run.day ? (today.favours ?? []) : favoursFor(run, content).map((f) => f.id);
+  const extra = (campaign.favours ?? [])
+    .filter((f) => ids.includes(f.id))
+    .reduce((n, f) => n + ('sickNights' in f.effect ? f.effect.sickNights : 0), 0);
+  return extra > 0 ? { ...campaign.care, sickNights: campaign.care.sickNights + extra } : campaign.care;
 }
 
 /** The upgrades on sale tonight. */
@@ -517,6 +551,8 @@ function audit(
   const flags: Record<string, number> = { ...run.flags };
   const assists = shift.config.assists;
   const fined = !run.story && !assists?.noFines;
+  // A god's favour can lighten each fine (docs/tech-spec.md §43).
+  const finePct = shift.config.mods?.finePct ?? 100;
   const mistakes: DayMistake[] = [];
   // What each verdict cost, for an appeal to give back.
   const costs = new Map<number, { fine: number; standing: Partial<Record<Faction, number>>; worthy: boolean }>();
@@ -541,7 +577,7 @@ function audit(
       });
       if (fined && wrong > economy.warnings) {
         const i = Math.min(wrong - economy.warnings - 1, economy.fines.length - 1);
-        fines += economy.fines[i] ?? 0;
+        fines += Math.floor(((economy.fines[i] ?? 0) * finePct) / 100);
       }
     }
     // Only mistakes move standing: a god isn't angered (or flattered) by a soul sent where it belongs.
@@ -564,6 +600,8 @@ function audit(
   const line = waitingLine(run, shift, env);
   // Today's requests settled; tomorrow's come with the morning.
   const requests = settleRequests(run, shift);
+  // The favours the gate granted (standing hasn't moved since it opened), for the night and the records.
+  const favours = favoursFor(run, env.content).map((f) => f.id);
   const ledger: DayLedger = {
     day: run.day,
     correct,
@@ -578,6 +616,7 @@ function audit(
     ...(run.appealHeard ? { appeal: run.appealHeard } : {}),
     ...(line ? { waiting: line.waiting } : {}),
     ...(requests.length > 0 ? { requests } : {}),
+    ...(favours.length > 0 ? { favours } : {}),
   };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
@@ -681,7 +720,7 @@ function upkeep(run: RunState, env: RunEnv, bills: Bills) {
     draupnir,
     rings,
     debtNights: rings < campaign.debtFloor ? run.debtNights + 1 : 0,
-    members: run.family.map((m) => memberNight(m, bills, campaign.care, adults.get(m.id) === true)),
+    members: run.family.map((m) => memberNight(m, bills, careFor(run, env.content), adults.get(m.id) === true)),
   };
 }
 

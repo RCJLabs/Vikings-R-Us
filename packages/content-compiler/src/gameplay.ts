@@ -162,7 +162,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     for (let i = parts.length - 1; i >= 0; i--) if (parts[i]?.[k] !== undefined) return parts[i]?.[k];
     return undefined;
   };
-  const all = <K extends 'standing' | 'shop' | 'endings' | 'aliases' | 'threads'>(k: K) =>
+  const all = <K extends 'standing' | 'shop' | 'endings' | 'aliases' | 'threads' | 'favours'>(k: K) =>
     parts.flatMap((p) => (p[k] ?? []) as NonNullable<CampaignPart[K]>[number][]);
   const required = ['lastDay', 'finale', 'startRings', 'family', 'draupnir', 'debtFloor', 'care', 'worthy'] as const;
   const missing = required.filter((k) => last(k) === undefined);
@@ -188,6 +188,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(last('appeals') ? { appeals: last('appeals') as NonNullable<CampaignDef['appeals']> } : {}),
     ...(last('waiting') ? { waiting: last('waiting') as NonNullable<CampaignDef['waiting']> } : {}),
     ...(last('requests') ? { requests: last('requests') as NonNullable<CampaignDef['requests']> } : {}),
+    ...(all('favours').length > 0 ? { favours: all('favours') } : {}),
   };
 }
 
@@ -708,6 +709,12 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (th.count !== undefined && !STATE_PATHS.test(th.count)) {
       problems.push(`thread ${th.id} counts unknown run state "${th.count}".`);
     }
+  }
+  const favourIds = new Set<string>();
+  for (const f of c.favours ?? []) {
+    if (favourIds.has(f.id)) problems.push(`Duplicate favour "${f.id}".`);
+    favourIds.add(f.id);
+    key(f.text, `favour ${f.id}`);
   }
   const requestIds = new Set<string>();
   for (const r of c.requests?.list ?? []) {

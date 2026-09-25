@@ -6,6 +6,7 @@ import {
   billTotal,
   type Content,
   campaignOf,
+  careFor,
   createDayContext,
   type DayLedger,
   DESTINATIONS,
@@ -14,8 +15,10 @@ import {
   type Effect,
   economyOf,
   type Faction,
+  type FavourDef,
   factionKey,
   factionsMet,
+  favoursFor,
   hostMarks,
   hostParts,
   type JournalEntry,
@@ -858,6 +861,7 @@ function Morning() {
             <Decree ctx={ctx} />
             <RulebookChanges day={run.day} />
             <WaitingNote run={run} />
+            <FavoursToday run={run} noFines={assists.noFines === true} />
             <p class="briefing__queue">
               {run.story
                 ? t('ui.campaign.untimed')
@@ -867,6 +871,7 @@ function Morning() {
               {t('ui.campaign.tonightBills', { n: tonight })}
             </p>
           </section>
+          <FavourGuide run={run} />
           <details class="card morning__assists" data-testid="morning-assists">
             <summary>
               {t('ui.settings.assists')}
@@ -889,6 +894,84 @@ function Morning() {
       </div>
       {journalOpen.value ? <JournalView /> : null}
     </main>
+  );
+}
+
+// ---------- the gods' favour ----------
+
+/** Whether a favour does anything today: Story Mode has no sun and no fines, and the assist can waive fines. */
+const moot = (f: FavourDef, story: boolean, noFines: boolean): boolean =>
+  'sunS' in f.effect || 'freeQuestions' in f.effect ? story : 'finePct' in f.effect ? story || noFines : false;
+
+/** The favours the gate will grant today (docs/tech-spec.md §43), of those that do anything today. */
+function FavoursToday({ run, noFines }: { run: RunState; noFines: boolean }) {
+  const today = favoursFor(run, gameContent).filter((f) => !moot(f, run.story, noFines));
+  return (
+    <>
+      {today.map((f) => (
+        <p key={f.id} class="morning__favour" data-testid="favour-today">
+          {t('ui.favour.today', { god: factionName(f.faction, run.day), text: t(f.text) })}
+        </p>
+      ))}
+    </>
+  );
+}
+
+/** Every favour there is, the standing each takes and the standing now: for a player deciding whom to court. */
+function FavourGuide({ run }: { run: RunState }) {
+  const all = campaignOf(gameContent).favours ?? [];
+  if (all.length === 0) return null;
+  const today = new Set(favoursFor(run, gameContent).map((f) => f.id));
+  return (
+    <details class="card morning__favours" data-testid="favours">
+      <summary>{t('ui.favour.title')}</summary>
+      <ul class="favours">
+        {all.map((f) => (
+          <li key={f.id} data-testid="favour" class={today.has(f.id) ? 'is-yours' : undefined}>
+            {t('ui.favour.item', {
+              god: factionName(f.faction, run.day),
+              at: f.at,
+              now: signed(run.standing[f.faction]),
+              text: t(f.text),
+            })}
+            {today.has(f.id) ? <b> {t('ui.favour.yours')}</b> : null}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/** At the audit, the favour that lightened the day's fines, when there were fines to lighten. */
+function FinesEased({ ledger, day }: { ledger: DayLedger; day: number }) {
+  if (ledger.fines === 0) return null;
+  const eased = (campaignOf(gameContent).favours ?? []).filter(
+    (f) => (ledger.favours ?? []).includes(f.id) && 'finePct' in f.effect,
+  );
+  return (
+    <>
+      {eased.map((f) => (
+        <p key={f.id} class="muted ledger__note" data-testid="favour-fines">
+          {t('ui.favour.today', { god: factionName(f.faction, day), text: t(f.text) })}
+        </p>
+      ))}
+    </>
+  );
+}
+
+/** The day's favours that act at night (the sick's extra night), as the gate granted them. */
+function FavoursTonight({ run }: { run: RunState }) {
+  const today = run.ledger[run.ledger.length - 1];
+  const ids = today?.day === run.day ? (today.favours ?? []) : [];
+  const tonight = (campaignOf(gameContent).favours ?? []).filter((f) => ids.includes(f.id) && 'sickNights' in f.effect);
+  return (
+    <>
+      {tonight.map((f) => (
+        <p key={f.id} class="muted" data-testid="favour-tonight">
+          {t('ui.favour.tonight', { god: factionName(f.faction, run.day), text: t(f.text) })}
+        </p>
+      ))}
+    </>
   );
 }
 
@@ -1096,6 +1179,7 @@ function Audit() {
           </tr>
         </tbody>
       </table>
+      <FinesEased ledger={ledger} day={a.run.day} />
       <StandingTable run={a.run} ledger={ledger} />
       <RequestResults ledger={ledger} day={a.run.day} />
       <ol class="verdicts">
@@ -1256,7 +1340,8 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
 
 /** The family: who is well, sick (and, when planning the night, how soon they need medicine) or gone. */
 function FamilyList({ run, plan = false }: { run: RunState; plan?: boolean }) {
-  const care = campaignOf(gameContent).care;
+  // Hel's favour can give the sick a night more (docs/tech-spec.md §43).
+  const care = careFor(run, gameContent);
   return (
     <ul class="family" data-testid="family">
       {run.family.map((m) => {
@@ -1301,7 +1386,7 @@ function Outlook({ run, outlook, bills }: { run: RunState; outlook: NightOutlook
       ];
     }
     if (was?.status === 'sick' && n.member.status === 'sick') {
-      const left = campaign.care.sickNights - n.member.sickNights;
+      const left = careFor(run, gameContent).sickNights - n.member.sickNights;
       return [{ key: n.member.id, id: 'outlook-worse', text: t('ui.night.worse', { name, how, left }) }];
     }
     return [];
@@ -1514,6 +1599,7 @@ function Night() {
           <section class="card">
             <h2>{t('ui.night.family')}</h2>
             <FamilyList run={run} plan />
+            <FavoursTonight run={run} />
           </section>
           <BillsCard run={run} outlook={outlook} />
           <ShopCard run={run} />
