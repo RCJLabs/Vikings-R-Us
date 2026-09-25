@@ -2526,6 +2526,73 @@ So for a bot a rank is money and a stronger host for the flawless, and a wash fo
 - **Rank names and words are drafts.**
 - **The Daily and Endless are untouched,** and the demo never reaches Day 4.
 
+## 45. After M7: interruptions at the desk, part 1: the noon decree (gameplay brainstorm, item 7)
+
+**Why.** Papers, Please gets its best moments from interruptions at the booth. Item 7 brings three to the desk, authored like story souls:
+- a raven with a noon decree (Day 19, this section);
+- a god who stops at the desk (Day 18);
+- a jarl who jumps the queue with a bribe (Day 9).
+
+The god and the jarl follow in their own changes.
+
+The brainstorm's version, and what changed:
+- **"A raven brings a noon decree, announced with time to adapt"** is kept. Two souls before the change, a raven lands on the desk with the news. The soul at the desk and the next are still judged by the morning's rules.
+- **"Noon" is a place in the line, not a time of day.** A soul's destination is settled when it's made, so that its fairness can be proved. If the change followed the sun, the same soul would belong in two places depending on how fast the player worked. So the decree holds from a fixed soul of the day's own line: the ninth, on Day 19.
+- **"The fairness check tests each soul against the rule in force when it's judged"** is kept, literally. Every soul after noon is made under the decree's rules: generated, given its evidence and validated under them. It's then judged under them at the desk. Every soul before noon is handled under the morning's rules.
+- **The decree draws a day param again**, never to the same choice. Params are the rules that already change each day (Freyja's whim, Odin's claim). No rule text changes: the rulebook's rules read the params.
+- **Its first soul shows the change.** That soul is made from the decree's `teach` archetype, as a day's first soul teaches its new rule. On Day 19 it's one of Freyja's picks under her new whim.
+
+**The rule** (`NoonDecree` on a day spec; `createDayContext`, `soulCtx`)
+- `noon: { at, notice, redraw, text, teach? }`.
+- **The afternoon:** the day's context carries a second one for after noon. It's the same day, with the `redraw` params drawn again from the run's seed, never to the morning's choice.
+- **Which souls:** `generateCase` makes a soul whose place in the day's line is `at` or later under the afternoon, and marks it (`noon`). Story souls placed at `at` or later are made the same way. A rank's extra souls come after the day's own line, so after noon too.
+- **The line:** every soul made under the decree comes after every soul made before it. Souls who waited through the night come first, which can push a story soul past noon's place; the decree's souls are moved last, keeping their order.
+- **The desk:** `stepShift`, the rule tracker (`ruledOut`) and the evidence it can read (`inspectable`) take the soul at the desk under its own rules (`soulCtx`).
+- **Appeals:** an appeal of an afternoon soul is heard under the decree, since the appeal's desk holds that soul alone.
+- **The line at dusk:** a soul the sun sets on is seen afresh the next day, under that day's rules, and loses its mark.
+- **Where there are none:** Endless never brings a noon decree, and the compiler refuses one on the Daily or the primer.
+
+**The screens**
+- **The desk:** from `notice` souls before noon, the raven's news sits under the sun bar: its words, and the new choice's own. From noon, a line says "Since noon: …". The spot is a live region from the start of the shift, so screen readers hear the news when it comes.
+- **The rulebook** shows the whims in force for the soul at the desk.
+- **The playtest report** marks a mistake made after noon.
+
+**Day 19.** Freyja's whim is drawn again from the ninth soul, and the raven comes two souls earlier. Its words are a draft for your sign-off: "A raven thumps down on the desk with word from Fólkvangr: Freyja has changed her mind, on the last day there is. From the soul after next, she wants others."
+
+**Measured** (40 seeds, from a fresh Day 19 morning)
+- **Fairness:** 686 souls, 326 of them after noon. Every one validates under the rules it's judged by, and no soul from before noon comes after one from after it.
+- **Effect:** the decree changes where some soul goes on 36 days of 40, mostly its first soul after noon. Before `teach` it was 25 of 40. On the other four days, the first soul after noon fits both whims.
+- **Cost to the morning:** on 4 seeds of 12, the afternoon had no slot bound for Fólkvangr. The planner brings one forward from the morning, so one morning soul changes, but the day's mix stays as drawn.
+- **The sim can't show it.** Bots judge by where a soul belongs, not by the rules, so what the decree costs a person is for the playtest to show.
+
+**Tests**
+- **Engine (4):**
+  - the redraw: never the same choice, the same every time, only on days with a decree, never on the Daily;
+  - 8 days of souls, each judged and valid under its own rules, in order, with the teaching soul first after noon;
+  - the rule tracker reads a soul after noon by the decree (by the morning's rules it would rule out the rule that decides it), and a stamp by the morning's whim is cited and filed as after noon;
+  - souls left at dusk lose the decree.
+- **Endless (1):** no round brings one.
+- **Generator:** the fairness property tests, the oracle comparison and the sweep's ideal bot now read each soul under its own rules. Without that they failed on Day 19, as they should.
+- **Compiler (1):** a decree is refused if:
+  - the raven comes before the first soul;
+  - noon falls past the shortest line;
+  - a param has no other choice to draw;
+  - the teaching archetype isn't in the day's queue;
+  - its words are missing.
+- **Report (1).**
+- **e2e on the full game** (phone and desktop), from a Day 19 save made in Node:
+  - no raven at first;
+  - the raven two souls before noon, with an accessibility scan and no sideways scroll;
+  - the new whim in the rulebook from noon;
+  - a stamp by the morning's whim, cited.
+- **Goldens:** Day 19's summaries changed. The Dailies didn't.
+- **Also fixed:** on the desk layout, a rulebook long enough to scroll (Day 19's) couldn't be reached by the keyboard. The accessibility scan found it once the raven made the paper shorter. The rules paper is now a named region the keyboard can reach.
+
+**Known limits**
+- **One decree a day, and only params.** A decree that adds or repeals a rule would need rule texts that know about noon. None is needed yet.
+- **The bots don't feel it** (above).
+- **The words are drafts.**
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

@@ -27,6 +27,7 @@ import {
   shiftFacts,
   shopFor,
   solve,
+  soulCtx,
   stampsFor,
   startSave,
   stepRun,
@@ -191,7 +192,7 @@ function shiftActions(
     at += paceS * 1000;
     const right = rng.chance(Math.round(judging.accuracy * 1000), 1000);
     if (right && c.lies.length > 0 && rng.chance(Math.round(judging.catches * 1000), 1000)) {
-      const x = solve(c.evidence.fields, ctx).contradictions[0];
+      const x = solve(c.evidence.fields, soulCtx(ctx, c)).contradictions[0];
       const other = x?.against.find((id) => !id.startsWith('q:') && id !== 'world');
       if (x && other) {
         actions.push(

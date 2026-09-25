@@ -1,7 +1,7 @@
 import { loadContent, loadDailyContent, oracleSolve } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
-import { createDayContext } from '../logic/context';
+import { createDayContext, soulCtx } from '../logic/context';
 import { judge } from '../logic/judge';
 import { solve } from '../logic/solver';
 import { questionResponse } from '../narrative/questions';
@@ -43,7 +43,8 @@ describe('fairness contract (F1–F8)', () => {
     (seed, day) => {
       const ctx = createDayContext(content, day, seed);
       for (const c of generateDay(seed, ctx).cases) {
-        const v = revalidate(c, ctx);
+        // Each soul under the rules it's judged by: after a noon decree, the decree's (docs/tech-spec.md §45).
+        const v = revalidate(c, soulCtx(ctx, c));
         expect(v.ok ? 'ok' : `${v.code}: ${v.detail}`).toBe('ok');
       }
     },
@@ -55,10 +56,11 @@ describe('fairness contract (F1–F8)', () => {
     (seed, day) => {
       const ctx = createDayContext(content, day, seed);
       for (const c of generateDay(seed, ctx).cases) {
-        const s = solve(c.evidence.fields, ctx).judgment;
+        const cx = soulCtx(ctx, c);
+        const s = solve(c.evidence.fields, cx).judgment;
         expect(s.kind).toBe('determined');
         if (s.kind === 'determined')
-          expect(oracleSolve(c.evidence.fields, ctx)).toEqual({ kind: 'determined', dest: s.dest });
+          expect(oracleSolve(c.evidence.fields, cx)).toEqual({ kind: 'determined', dest: s.dest });
       }
     },
     TIMEOUT_MS,
@@ -68,9 +70,10 @@ describe('fairness contract (F1–F8)', () => {
     const ctx = createDayContext(content, day, seed);
     const rng = new Rng(`subset|${pick}`);
     for (const c of generateDay(seed, ctx).cases) {
+      const cx = soulCtx(ctx, c);
       const subset = c.evidence.fields.filter(() => rng.chance(1, 2));
-      const s = solve(subset, ctx).judgment;
-      if (s.kind === 'determined') expect(oracleSolve(subset, ctx)).toEqual({ kind: 'determined', dest: s.dest });
+      const s = solve(subset, cx).judgment;
+      if (s.kind === 'determined') expect(oracleSolve(subset, cx)).toEqual({ kind: 'determined', dest: s.dest });
     }
   };
   test.prop([seedArb, dayArb, fc.integer()], { numRuns: RUNS })(
@@ -221,8 +224,9 @@ describe('metamorphic', { timeout: 30_000 }, () => {
     (seed, day, shuffleSeed) => {
       const ctx = createDayContext(content, day, seed);
       for (const c of generateDay(seed, ctx).cases) {
-        const base = solve(c.evidence.fields, ctx);
-        const shuffled = solve(new Rng(`${shuffleSeed}`).shuffle(c.evidence.fields), ctx);
+        const cx = soulCtx(ctx, c);
+        const base = solve(c.evidence.fields, cx);
+        const shuffled = solve(new Rng(`${shuffleSeed}`).shuffle(c.evidence.fields), cx);
         expect(shuffled.judgment).toEqual(base.judgment);
         expect(shuffled.contradictions.map((x) => x.lie).sort()).toEqual(base.contradictions.map((x) => x.lie).sort());
         if (day >= 3) {
@@ -234,7 +238,7 @@ describe('metamorphic', { timeout: 30_000 }, () => {
             cost: 0,
             cue: { key: 'breathFog' },
           };
-          expect(solve([...c.evidence.fields, decoy], ctx).judgment).toEqual(base.judgment);
+          expect(solve([...c.evidence.fields, decoy], cx).judgment).toEqual(base.judgment);
         }
       }
     },

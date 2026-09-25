@@ -559,6 +559,24 @@ export function lintContent(content: Content, strings: Readonly<Record<string, s
       .sort((a, b) => a.order - b.order);
     const last = inForce[inForce.length - 1];
     if (!last || !('always' in last.when)) problems.push(`${name}: the last rule in force must always apply.`);
+    const noon = d.noon;
+    if (noon) {
+      // A noon decree (docs/tech-spec.md §45): news before the change, a change within the shortest line.
+      if (d === content.daily || d === content.primer) {
+        problems.push(`${name} has a noon decree; only campaign days do.`);
+      }
+      key(noon.text, `${name} noon decree`);
+      if (noon.notice >= noon.at) problems.push(`${name}: the noon raven must come after the first soul.`);
+      if (noon.at >= d.queue.count[0]) problems.push(`${name}: noon must come before the end of the shortest line.`);
+      for (const param of noon.redraw) {
+        if ((d.params?.[param]?.pool.length ?? 0) < 2) {
+          problems.push(`${name}: noon draws "${param}" again, which has no other choice to draw.`);
+        }
+      }
+      if (noon.teach && !d.queue.archetypes.some((a) => a.id === noon.teach)) {
+        problems.push(`${name}: noon teaches with "${noon.teach}", which isn't in its queue.`);
+      }
+    }
   }
   return problems;
 }

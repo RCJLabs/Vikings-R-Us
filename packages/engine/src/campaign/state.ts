@@ -36,6 +36,8 @@ export interface DayMistake {
   readonly stamped: Destination;
   /** Procedures the soul needed that weren't done (nails left uncut). */
   readonly skipped?: readonly string[];
+  /** The soul came after the day's noon decree, and was judged under it (docs/tech-spec.md §45). */
+  readonly noon?: true;
 }
 
 /**

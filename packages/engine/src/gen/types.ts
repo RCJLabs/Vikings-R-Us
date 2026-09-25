@@ -82,6 +82,8 @@ export interface CaseSpec {
   readonly procIndex: number;
   /** The ScriptedCaseDef this soul was made from, if it is a story soul. */
   readonly script?: string;
+  /** Made, and judged, under the day's noon decree (docs/tech-spec.md §45): see `soulCtx`. */
+  readonly noon?: true;
   readonly archetype: string;
   readonly truth: Truth;
   readonly lies: readonly Lie[];

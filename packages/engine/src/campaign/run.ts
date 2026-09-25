@@ -475,20 +475,25 @@ function extraSouls(seed: string, ctx: DayCtx, n: number, line: readonly CaseSpe
  * Today's queue: the day's line (its own souls and any who waited through the
  * night), with the day's story souls placed among them. Generated souls are the
  * same with or without the story souls, which only appear when their `when`
- * holds as the shift begins.
+ * holds as the shift begins. After a noon decree (docs/tech-spec.md §45), every
+ * soul made under it comes after every soul made before it.
  */
 export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
   const line = lineFor(run.seed, env.ctx, run.waiting ?? []);
   const cases = [...line, ...extraSouls(run.seed, env.ctx, rankOf(run, env.content)?.souls ?? 0, line)];
   const slots = [...(env.ctx.spec.queue.scripted ?? [])].sort((a, b) => a.at - b.at);
+  const noon = env.ctx.noon;
   for (const slot of slots) {
     const def = env.content.scripted?.find((d) => d.id === slot.case);
     if (!def || (def.when && !evalState(def.when, run))) continue;
-    // The compiler proves shipped story souls can be made; if one can't, the day goes on without it.
-    const made = scriptedCase(def, env.ctx, run.seed, slot.at);
-    if (made.ok) cases.splice(Math.min(slot.at, cases.length), 0, made.case);
+    // The compiler proves shipped story souls can be made, under every choice of the day's params (so under a
+    // noon decree too); if one can't, the day goes on without it.
+    const late = noon !== undefined && slot.at >= noon.at;
+    const made = scriptedCase(def, late ? noon.ctx : env.ctx, run.seed, slot.at);
+    if (made.ok) cases.splice(Math.min(slot.at, cases.length), 0, late ? { ...made.case, noon: true } : made.case);
   }
-  return cases;
+  // Souls who waited through the night can push the day's own later: keep the decree's souls last.
+  return noon ? [...cases.filter((c) => !c.noon), ...cases.filter((c) => c.noon)] : cases;
 }
 
 /** The story threads still in play for the journal: each text key, with `{n}` when it counts something. */
@@ -667,6 +672,7 @@ function audit(
         expected: v.expected,
         stamped: v.stamped,
         ...(v.skipped && v.skipped.length > 0 ? { skipped: v.skipped } : {}),
+        ...(c?.noon ? { noon: true as const } : {}),
       });
       if (fined && wrong > economy.warnings) {
         const fine = economy.fines[Math.min(wrong - economy.warnings - 1, economy.fines.length - 1)] ?? 0;

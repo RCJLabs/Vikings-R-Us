@@ -422,6 +422,23 @@ export interface DaySpec {
   };
   /** The coach's lesson for the day's first soul (the teaching one), when the day brings something new. */
   readonly lesson?: Lesson;
+  /** Campaign only: a decree a raven brings at noon, changing the day's rules for the souls after it. */
+  readonly noon?: NoonDecree;
+}
+
+/**
+ * A noon decree (docs/tech-spec.md §45): from soul `at` of the day's own line (0-based), the day's `redraw` params
+ * are drawn again, never to the same choice, and those souls are made and judged under them. A raven brings the
+ * news `notice` souls earlier, so there's time to adapt.
+ */
+export interface NoonDecree {
+  readonly at: number;
+  readonly notice: number;
+  readonly redraw: readonly string[];
+  /** The raven's words (a string key); the new choices' own words follow them. */
+  readonly text: string;
+  /** Archetype for the first soul under the decree, to show the change (as `queue.teachFirst` does a day's rule). */
+  readonly teach?: string;
 }
 
 /** A condition on the campaign run (endings); two-valued. Paths are listed in engine/campaign/state.ts. */

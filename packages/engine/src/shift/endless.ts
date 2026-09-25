@@ -44,8 +44,10 @@ export function endlessTwist(content: Content, seed: string, round: number): End
 /** The spec a round plays: its day's, with the round's twist (if any) in its decree, knobs and mix. */
 export function endlessSpec(content: Content, seed: string, round: number): DaySpec {
   const day = endlessDay(content, round);
-  const base = content.days.find((d) => d.day === day);
-  if (!base) throw new Error(`No day spec for day ${day}`);
+  const found = content.days.find((d) => d.day === day);
+  if (!found) throw new Error(`No day spec for day ${day}`);
+  // A round is the start of its day: a noon decree (docs/tech-spec.md §45) is the campaign's, never Endless's.
+  const { noon: _noon, ...base } = found;
   const twist = endlessTwist(content, seed, round);
   if (!twist) return base;
   // Nothing new to teach, so no teaching soul comes first: the round's first soul is as open as the rest.

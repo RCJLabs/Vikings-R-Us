@@ -6,9 +6,9 @@ import { generateDay, tierKnobs } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
 import type { CaseSpec } from '../gen/types';
 import { validateCase } from '../gen/validate';
-import { createDayContext, type DayCtx } from '../logic/context';
+import { createDayContext, type DayCtx, soulCtx } from '../logic/context';
 import { judge } from '../logic/judge';
-import { DUSK_GRACE_MS } from '../shift/shift';
+import { DUSK_GRACE_MS, ruledOut } from '../shift/shift';
 import {
   billForecast,
   campaignOf,
@@ -1410,6 +1410,136 @@ describe('the gods’ favour (docs/tech-spec.md §43)', () => {
     expect((halved.eased ?? 0) + halved.fines).toBe(plain.fines);
     expect(waived.fines).toBe(0);
     expect(waived.eased).toBe(plain.fines);
+  });
+});
+
+describe('a noon decree (docs/tech-spec.md §45)', () => {
+  const spec = full.days.find((d) => d.noon !== undefined);
+  const noonDay = spec?.day ?? 0;
+  /** The morning of the decree's day in a fresh run: its queue depends only on the seed and the day. */
+  const morningOf = (seed: string): RunState => ({ ...newRun(full, seed), day: noonDay });
+  const knobs = (ctx: DayCtx) => tierKnobs('widenBand', ctx.spec.queue.knobs);
+
+  it('draws its params again for the souls after noon, never to the same choice, and the same way every time', () => {
+    expect(spec?.noon?.redraw.length).toBeGreaterThan(0);
+    for (let i = 0; i < 12; i++) {
+      const ctx = createDayContext(full, noonDay, `noon${i}`);
+      const noon = ctx.noon;
+      if (!noon || !spec?.noon) throw new Error('no noon decree');
+      for (const [name, choice] of Object.entries(ctx.paramChoices)) {
+        const after = noon.ctx.paramChoices[name]?.id;
+        if (spec.noon.redraw.includes(name)) expect(after).not.toBe(choice.id);
+        else expect(after).toBe(choice.id);
+      }
+      expect(noon.ctx.noon).toBeUndefined();
+      expect(createDayContext(full, noonDay, `noon${i}`).noon?.ctx.paramChoices).toEqual(noon.ctx.paramChoices);
+    }
+    // Only days that have one, and never the Daily.
+    for (const d of full.days) expect(createDayContext(full, d.day, 'x').noon === undefined).toBe(d.noon === undefined);
+    if (full.daily) expect(createDayContext(full, full.daily.day, 'x', full.daily).noon).toBeUndefined();
+  });
+
+  it('makes and judges each soul by the rules in force when it comes to the desk: the decree’s, after noon', () => {
+    let changed = 0;
+    for (let i = 0; i < 8; i++) {
+      const run = morningOf(`noon${i}`);
+      const ctx = runContext(full, run);
+      const noon = ctx.noon;
+      if (!noon) throw new Error('no noon decree');
+      const queue = campaignQueue(run, { content: full, ctx });
+      const first = queue.findIndex((c) => c.noon);
+      // Every soul after the first under the decree is under it too, and the raven comes after a soul at least.
+      expect(first).toBeGreaterThan(noon.notice);
+      expect(queue.slice(first).every((c) => c.noon)).toBe(true);
+      expect(queue.slice(0, first).some((c) => c.noon)).toBe(false);
+      // Each soul meets the contract under the rules it's judged by.
+      for (const c of queue) {
+        const cx = soulCtx(ctx, c);
+        expect(c.expect).toEqual(judge(c.truth, cx));
+        expect(validateCase(c.evidence, c.truth, c.lies, c.expect, c.meta.decisive, cx, knobs(cx)).ok).toBe(true);
+        if (c.noon && judge(c.truth, ctx).dest !== c.expect.dest) changed++;
+      }
+      // The decree's first soul is made to show the change.
+      expect(queue.find((c) => c.noon && c.procIndex === noon.at)?.archetype).toBe(spec?.noon?.teach);
+    }
+    // Most days it sends a soul somewhere the morning's rules wouldn't have.
+    expect(changed).toBeGreaterThanOrEqual(6);
+  });
+
+  it('cites a soul after noon stamped by the morning’s rules', () => {
+    // A day whose decree's first soul would have gone elsewhere under the morning's rules.
+    const found = Array.from({ length: 12 }, (_, i) => morningOf(`noon${i}`)).flatMap((run) => {
+      const ctx = runContext(full, run);
+      const queue = campaignQueue(run, { content: full, ctx });
+      const k = queue.findIndex((c) => c.noon && judge(c.truth, ctx).dest !== c.expect.dest);
+      return k >= 0 ? [{ run, ctx, queue, k }] : [];
+    })[0];
+    if (!found) throw new Error('no day where the decree changes a soul');
+    const { run, ctx, queue, k } = found;
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+    queue.forEach((c, i) => {
+      const at = (i + 1) * 1000;
+      const dest = i === k ? judge(c.truth, ctx).dest : c.expect.dest;
+      for (const id of i === k ? [] : (c.expect.procedures ?? [])) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+      }
+      actions.push({ t: 'shift', action: { t: 'stamp', dest, at } }, { t: 'shift', action: { t: 'send', at } });
+    });
+    // At the desk, the rule tracker reads the soul by the decree: the rule that decides it is never ruled out.
+    const soul = queue[k];
+    if (!soul) throw new Error('no soul');
+    const before = actions.findIndex(
+      (a) => a.t === 'shift' && a.action.t === 'stamp' && a.action.at === (k + 1) * 1000,
+    );
+    const look: RunAction = {
+      t: 'shift',
+      action: { t: 'inspect', fields: soul.evidence.fields.map((f) => f.id), at: (k + 1) * 1000 },
+    };
+    const desk = drive(full, run, [...actions.slice(0, before), look]).run.shift;
+    if (!desk) throw new Error('no shift');
+    expect(ruledOut(desk, ctx)).not.toContain(soul.expect.rule);
+    expect(ruledOut(desk, { ...ctx, noon: undefined })).toContain(soul.expect.rule);
+    const day = drive(full, run, actions);
+    const ledger = day.run.ledger.at(-1);
+    expect(ledger?.wrong).toBe(1);
+    expect(ledger?.mistakes).toEqual([
+      expect.objectContaining({
+        expected: queue[k]?.expect.dest,
+        stamped: judge(queue[k]?.truth ?? {}, ctx).dest,
+        noon: true,
+      }),
+    ]);
+  });
+
+  it('is over for souls left at dusk, who are seen afresh under the next day’s rules', () => {
+    const run = morningOf('noon-dusk');
+    const ctx = runContext(full, run);
+    const queue = campaignQueue(run, { content: full, ctx });
+    const first = queue.findIndex((c) => c.noon);
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+    queue.slice(0, first).forEach((c, i) => {
+      const at = (i + 1) * 1000;
+      for (const id of c.expect.procedures ?? []) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+      }
+      actions.push(
+        { t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at } },
+        { t: 'shift', action: { t: 'send', at } },
+      );
+    });
+    const begun = stepRun(run, { t: 'beginShift', at: 0 }, { content: full, ctx }).state;
+    actions.push({ t: 'shift', action: { t: 'tick', at: (begun.shift?.sunMs ?? 0) + DUSK_GRACE_MS + 1 } });
+    const shift = drive(full, run, actions);
+    const next = drive(full, shift.run, [{ t: 'endAudit' }, { t: 'endNight' }]).run;
+    const waiting = next.waiting ?? [];
+    expect(waiting.length).toBeGreaterThan(0);
+    const tomorrow = runContext(full, next);
+    for (const c of waiting) {
+      expect(c.noon).toBeUndefined();
+      expect(c.expect).toEqual(judge(c.truth, tomorrow));
+    }
   });
 });
 
