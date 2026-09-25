@@ -18,7 +18,9 @@ const RULES = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-pra
 // Daily #41, as daily.spec.ts plays it; the engine works out the right stamps.
 const DATE = new Date('2027-01-10T12:00:00Z');
 const N = 41;
-test.use({ timezoneId: 'UTC' });
+// With the device's reduced motion the game stills every animation, so nothing is measured mid-fade: a notice that
+// appears just as a scan starts (an achievement, on the summary) is already at its own colours.
+test.use({ timezoneId: 'UTC', contextOptions: { reducedMotion: 'reduce' } });
 const content = loadDailyContent();
 const spec = content.daily;
 if (!spec) throw new Error('No Daily in content');
@@ -85,12 +87,11 @@ async function check(page: Page, where: string, checks: Checks) {
   await page.evaluate(
     `window.__folded = [...document.querySelectorAll('details')].filter((d) => !d.open); window.__folded.forEach((d) => { d.open = true; })`,
   );
-  // Whatever is sliding or fading in has arrived: colours are measured as they end up, not halfway.
-  await page.evaluate(
-    `Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => null)))`,
-  );
   const axe = await new AxeBuilder({ page }).withTags(RULES).analyze();
-  const found = axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`);
+  // Each finding with axe's own reason (a contrast finding gives both colours and the ratio).
+  const found = axe.violations.flatMap((v) =>
+    v.nodes.map((n) => `${v.id}: ${n.target.join(' ')}: ${[...n.any, ...n.all].map((c) => c.message).join('; ')}`),
+  );
   expect.soft(found, `axe on ${where}`).toEqual([]);
   if (checks.taps) expect.soft(await page.evaluate<string[]>(SMALL_TARGETS), `small targets on ${where}`).toEqual([]);
   if (checks.fit) expect.soft(await page.evaluate<string[]>(OVERFLOW), `too wide on ${where}`).toEqual([]);
