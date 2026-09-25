@@ -2177,6 +2177,18 @@ a.btn {
   gap: 0.35rem;
 }
 
+/* A day's grade at the audit, and each day's best on this device (docs/tech-spec.md §49). */
+.day-mark h2 {
+  margin-top: 0;
+}
+
+.best-days__list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
 .gallery__list summary {
   cursor: pointer;
   min-height: 44px;

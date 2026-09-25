@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 
 export {
+  catchLie,
   JUDGING,
   type Judging,
   type NightStrategy,

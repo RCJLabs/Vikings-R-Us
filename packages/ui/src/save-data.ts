@@ -1,5 +1,13 @@
-import { cleanAssists, isRunSave, type RunSave } from '@cots/engine';
-import type { DailyProgress, DailyRecord, DailyResult, EndlessProgress, EndlessResult, Settings } from './store';
+import { beatsDay, cleanAssists, GRADES, isRunSave, type RunSave } from '@cots/engine';
+import type {
+  DailyProgress,
+  DailyRecord,
+  DailyResult,
+  DayBest,
+  EndlessProgress,
+  EndlessResult,
+  Settings,
+} from './store';
 
 /*
  * What the game keeps on a device, and backups of it (docs/tech-spec.md §28).
@@ -199,19 +207,41 @@ function mergeSettings(here: Settings, theirs: unknown): { settings: Settings; r
   const primerDone = here.primerDone || theirs.primerDone === true;
   const endlessToday = later(here.endlessToday, isEndlessResult(theirs.endlessToday) ? theirs.endlessToday : null);
   const achievements = earliest(here.achievements, theirs.achievements);
+  const dayBests = bestDays(here.dayBests, theirs.dayBests);
   const records =
     best !== here.endlessBest ||
     endingsSeen.length !== here.endingsSeen.length ||
     coached.length !== here.coached.length ||
     primerDone !== here.primerDone ||
     endlessToday !== here.endlessToday ||
-    achievements !== here.achievements;
+    achievements !== here.achievements ||
+    dayBests !== here.dayBests;
   if (!records) return { settings: here, records };
   return {
-    settings: { ...here, endlessBest: best, endingsSeen, coached, primerDone, endlessToday, achievements },
+    settings: { ...here, endlessBest: best, endingsSeen, coached, primerDone, endlessToday, achievements, dayBests },
     records,
   };
 }
+
+/** Each day's better best of the two (docs/tech-spec.md §49); days this build doesn't have come along, as endings do. */
+function bestDays(mine: Readonly<Record<string, DayBest>>, theirs: unknown): Readonly<Record<string, DayBest>> {
+  if (!isObject(theirs)) return mine;
+  let merged: Record<string, DayBest> | null = null;
+  for (const [day, b] of Object.entries(theirs)) {
+    if (!/^[0-9]+$/.test(day) || !isDayBest(b) || !beatsDay(b, mine[day])) continue;
+    merged ??= { ...mine };
+    merged[day] = {
+      grade: b.grade,
+      spareMs: b.spareMs,
+      ...(b.assisted === true ? { assisted: true as const } : {}),
+      ...(b.oath === true ? { oath: true as const } : {}),
+    };
+  }
+  return merged ?? mine;
+}
+
+const isDayBest = (x: unknown): x is DayBest =>
+  isObject(x) && typeof x.grade === 'string' && (GRADES as readonly string[]).includes(x.grade) && isCount(x.spareMs);
 
 /**
  * Achievements from both, each at the earlier time it was earned. Ids this build doesn't have come along

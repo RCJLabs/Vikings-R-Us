@@ -93,7 +93,10 @@ describe('the playtest report', () => {
     const rows = text.split('\n').filter((l) => /^\| \d+ \|/.test(l));
     expect(rows).toHaveLength(3);
     const first = run.ledger[0];
-    expect(rows[0]?.startsWith(`| 1 | ${first?.correct} | 0 | 0 | +${first?.pay} |`)).toBe(true);
+    const g = first?.grade;
+    expect(g).toBeDefined();
+    const grade = `${g?.grade} (${g?.caught}/${g?.liars} liars)`;
+    expect(rows[0]?.startsWith(`| 1 | ${grade} | ${first?.correct} | 0 | 0 | +${first?.pay} |`)).toBe(true);
     expect(rows[2]).toContain(`| ${run.ledger[2]?.night?.rings} |`);
     expect(text).toContain('### Mistakes\n\nNone.');
   });

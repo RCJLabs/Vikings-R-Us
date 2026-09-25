@@ -28,6 +28,7 @@ import { clearSlot, isFree, markUnreadable, SLOT_COUNT, slots, writeSlot } from 
 import {
   clock,
   currentAssists,
+  noteDayBest,
   noteEnding,
   resetSoulUi,
   resumeClockAt,
@@ -101,6 +102,8 @@ export function dispatch(action: RunAction): { run: RunState; events: readonly R
   for (const e of r.events) {
     if (e.e === 'rejected') say(e.reason);
     else if (e.e === 'ended') noteEnding(e.ending);
+    // The day's grade, kept as its best on this device if it beats the one kept (docs/tech-spec.md §49).
+    else if (e.e === 'audited' && e.ledger.grade) noteDayBest(e.ledger.day, e.ledger.grade, r.state.oath === true);
   }
   if (r.state === a.run) return { run: a.run, events: r.events };
   const record = write(a.slot, recordAction(save, a.run, action, r.state));
@@ -216,12 +219,14 @@ export function openSlot(slot: number): void {
   screen.value = screenFor(run);
 }
 
-export function newCampaign(slot: number, story: boolean, slice?: 'play' | 'fromJump'): void {
+export function newCampaign(slot: number, story: boolean, slice?: 'play' | 'fromJump', oath = false): void {
   // Never over a save, nor over something unreadable the player hasn't cleared.
   if (!isFree(slot)) return;
   // Run seeds are random; everything after is deterministic from the seed.
   const seed = `run:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e9).toString(36)}`;
-  write(slot, startSave(gameContent, seed, ENGINE_MAJOR, { story, ...(slice ? { slice } : {}) }));
+  // The oath (docs/tech-spec.md §49) isn't sworn in Story Mode.
+  const sworn = oath && !story ? { oath: true } : {};
+  write(slot, startSave(gameContent, seed, ENGINE_MAJOR, { story, ...sworn, ...(slice ? { slice } : {}) }));
   openSlot(slot);
 }
 
@@ -250,8 +255,10 @@ export function branchFrom(slot: number, day: number): void {
 
 export function toGate(): void {
   // The day's shift takes up the assists as it begins, and the save keeps them with it.
-  const story = active.peek()?.run.story === true;
-  const assists = currentAssists(!story, story);
+  const run = active.peek()?.run;
+  const story = run?.story === true;
+  // Under the oath (docs/tech-spec.md §49) fines are never waived, so the shift doesn't keep that assist.
+  const assists = currentAssists(!story && run?.oath !== true, story);
   const r = dispatch({ t: 'beginShift', at: clock(), ...(Object.keys(assists).length > 0 ? { assists } : {}) });
   const a = active.peek();
   if (!r || !a || a.run.phase !== 'shift') return;

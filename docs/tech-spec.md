@@ -1728,6 +1728,8 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 | campaign | Nobody left behind | reaching Ragnarök with the whole family home |
 | campaign | Spotless | a perfect campaign day, Day 10 or later |
 
+Since then: Oathsworn (campaign), for reaching Day 20 under the oath (§49), the 22nd.
+
 **In the game**
 - The settings keep what's earned (`achievements`: id → the time first earned), so it's on the device and in backups like the other records.
 - A backup merges by id, keeping the earlier time. Ids the build doesn't have come along, as endings do, so a full-game backup keeps them when it goes through the demo.
@@ -2750,6 +2752,144 @@ Notes on the table:
   - after it, `/full/` shows the whole game.
 
 **To take it down:** remove the `web-playtest` steps from `deploy-web.yml`, and upload `dist/web-demo` again.
+
+## 49. After M7: mastery: a mark for each day, the day's best, and the oath (gameplay brainstorm, item 10)
+
+**Why.** Good players had nothing left to chase. Expert bots end the campaign with 750–1,150 rings and nothing to buy. A day judged perfectly paid about the same as a day judged well enough, and replaying a day from its morning (§22) had no goal. This gives them three things: a grade for each day, each day's best kept on the device, and an optional oath for a harder run.
+
+The brainstorm's version, and what changed:
+- **"A grade for each day"** is kept: five grades, from the day's mistakes and the liars caught.
+- **"A personal best, so replaying a day from its save has a goal"** is kept. The best is kept on the device, not in the run, so a replay in another slot can beat it.
+- **"An optional oath at the start of a run: no hints, no replays, and fines from the first mistake"** is kept as written. It's chosen with a new campaign, and not with Story Mode.
+- **Not added: a score or a board.** Each run has its own seed, so two players' Day 7s have different souls, and a board would compare unlike days. The Daily already has its share line.
+
+**The grades** (`dayGrade`, `DayLedger.grade`)
+
+| Grade | Takes |
+|---|---|
+| Flawless | every soul judged rightly, and every liar caught in a lie before the stamp |
+| Sharp | every soul judged rightly |
+| Steady | one soul not |
+| Shaky | two or three |
+| Rough | four or more |
+
+- **A soul not judged rightly** is one the audit counts as wrong or unjudged:
+  - a wrong stamp;
+  - a step skipped (the clippers);
+  - a soul still in line when the sun set (§41).
+- **Caught** is the catch that pays the +1 ring: the lie compared with what contradicts it, before that soul's stamp.
+- **A liar counts only if the evidence can expose the lie.**
+  - The fairness check promises a contradiction only for lies that change a judgment (F4), so a lie that changes nothing might have none to find.
+  - The grade asks the solver which lies it can expose, over the soul's evidence and the day's rules.
+  - Measured: 12 seeds × 20 days, 1,635 lies, and every one could be exposed. In practice, then, Flawless means every liar.
+- **Assisted** marks a grade played with a slower or faster sun, or with the rule tracker.
+  - A campaign without fines doesn't mark it: fines change the purse, not the judging.
+- **Story Mode has no grade.** It has no sun and no fines.
+- **At the audit,** a card under the ledger gives:
+  - the grade;
+  - what it was made of, and what the next one up takes, for example "Every soul judged rightly. Flawless also catches every liar in a lie before the stamp: 3 of 4 today.";
+  - the day's best on this device.
+
+**The day's best** (`Settings.dayBests`, `beatsDay`, `noteDayBest`)
+- **One per day, on the device,** whichever slot or run it came from. What beats what:
+  1. the better grade;
+  2. at the same grade, a day played without assists;
+  3. then more sun to spare.
+- **It's kept at the audit,** before the card is drawn, so the card can say "Your best yet for Day 4." or name the best to beat.
+- **It's kept with the settings, and so in backups.** Restoring a backup keeps the better of each day's two bests, as it does for achievements (§34). Entries the game can't read are dropped.
+- **The campaign screen lists them** under the endings, once there's one: each graded day, then one line for the rest ("No grade yet: Days 5–20").
+- **A day is bettered by replaying it** from its morning, in its own slot or a new one (§22).
+
+**The oath** (`NewRunOptions.oath`, `RunState.oath`)
+- **Sworn with a new campaign.** It's a checkbox beside Story Mode, and the two can't both be ticked. It holds for the whole run. The slot and each morning say "Under oath".
+- **No hints.** The hint button is gone and H does nothing. The engine rejects a hint action too, so a replayed log can't use one.
+- **Fines from the first mistake.**
+  - The day's warnings are 0 whatever the rank (`economyFor`).
+  - A campaign without fines is ignored: the morning's assists don't offer it, and the audit fines anyway.
+  - The audit's row reads "Fines for 2 mistakes" rather than "2 more mistakes" when nothing was forgiven. Other runs at a rank with no warnings get the same wording.
+- **No replays.** `replayableDays` is empty, so the slot offers no replay and no branch.
+  - The game can still start a day again itself when an update can't replay the saved one ("the Norns rewound the day", §16), as for any run.
+- **What it doesn't change:**
+  - the souls (a seed gives the same souls with or without it);
+  - wages, bills and the sun;
+  - the other assists. A slower sun and the rule tracker still work, and mark the day's grade as assisted.
+- **Its achievement is Oathsworn** (`ach.oathkept`): reach Day 20 under the oath. It's the campaign's 14th, and the 22nd in all.
+
+**Numbers.** 12 seeds, bots that pay every bill, plain story, measured with this change.
+
+| Bots | Liars caught | Days 1–9: Flawless / Sharp / Steady / Shaky / Rough | Days 10–20 |
+|---|---|---|---|
+| Expert | 78% | 26 / 53 / 18 / 4 / 0% | 8 / 61 / 25 / 6 / 0% |
+| Competent | 41% | 5 / 16 / 30 / 44 / 6% | 0 / 11 / 26 / 48 / 16% |
+| Novice | 13% | 0 / 2 / 10 / 43 / 45% | 0 / 0 / 3 / 26 / 70% |
+
+Under the oath, the same souls:
+
+| Bots | Fines a day | Purse at the end | Demoted |
+|---|---|---|---|
+| Expert | 0.0 → 1.9 rings | 800 → 778 | 0 → 0 of 12 |
+| Competent | 3.3 → 16.3 | 448 → 237 | 0 → 0 of 12 |
+| Novice | 22.1 → 32.3 | (demoted either way) | 11 → 12 of 12 |
+
+Notes on the tables:
+- **Flawless is rare late.** From Day 10 more souls lie, and more lies need a tool or the body's back to show. The bots judge every soul the same careful way, so real players will spread wider.
+- **The grades are the same with and without the oath:** it changes the purse, not the souls or the judging.
+- **For an expert, the oath costs about 20 rings.** A competent player loses half the purse and isn't demoted. The oath is for players who already judge well.
+
+**The bots now catch liars as a player must.** Measuring the grades showed a flaw in the sim.
+- **Before:** the bots compared a lie only with what was on the papers' fronts. They never flipped the body or used a tool to find what contradicted it, so in one test they caught 3 of 7 liars.
+- **Now:** `catchLie` (testkit) flips the body and uses the tools the contradiction needs, and spends the sun they cost.
+- **Effect on the standard sim** (`pnpm sim campaign --seeds 40`), from the +1 ring for each catch:
+
+  | Bots | Purse at the end |
+  |---|---|
+  | Expert | 762 → 808 |
+  | Competent | 438 → 464 |
+
+  - Endings and the host are unchanged.
+  - Novice demotions moved within noise: 82.5% → 87.5% of runs that pay every bill, and 45% → 37.5% of frugal ones.
+- **Earlier sections' numbers (§40–§47) were measured before this.**
+
+**The playtest report**
+- The Days table has a Grade column: "sharp (3/4 liars)", with ", assisted" when it was.
+- The header says "under oath" when it was.
+
+**Tests**
+- **Engine (5):**
+  - grades from mistakes and catches;
+  - the assisted mark, and no grade in Story Mode;
+  - a lie with nothing to expose it isn't asked for;
+  - which best beats which;
+  - the oath's rules:
+    - no warnings;
+    - fined even with the no-fines assist;
+    - hints rejected;
+    - no replays;
+    - not with Story Mode.
+- **Sim:** the run that reaches Odin's ending is played under the oath, and earns Oathsworn.
+- **Save data (1):** a backup's bests merge day by day, and junk is dropped.
+- **Report (1).**
+- **e2e on the full game** (phone and desktop):
+  - An oath run:
+    - Story Mode can't be ticked with it;
+    - the terms are on the morning;
+    - there's no hint button;
+    - the first mistake is fined;
+    - the audit shows the grade and "your best yet";
+    - the slot says "Under oath" and offers no replay;
+    - the best is on the campaign screen;
+    - accessibility scans pass.
+  - A day's best from before is shown at the audit as the one to beat, and is kept.
+
+**Known limits**
+- **The oath is kept on trust.** Restoring a backup from before a bad day undoes the day, and nothing marks the run. Backups exist to keep saves safe, and locking them to the oath would cost that.
+- **Bests are per device.** Another browser has its own, and so does the playtest build beside the demo. Backups carry them.
+- **A best doesn't say which run it came from.** Runs differ between days:
+  - A promoted day has more souls (§44).
+  - Odin's favour adds a minute of sun (§43).
+
+  So sun to spare is a tiebreak, not a race.
+- **The words are drafts:** the grades' names and lines, the oath's lines, and Oathsworn.
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

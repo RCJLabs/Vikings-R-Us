@@ -16,8 +16,8 @@ Since 25 September 2026, the Pages deploy carries the same build at `/full/`: **
 - **The whole campaign,** Days 1–20 with every ending, plus the Daily and Endless. There's no Case Lab.
 - **A note on the title screen** saying it's a playtest build and which one. For example, `web-playtest · 3f2a9c1 · content ca5b2592` gives the target, the commit and the content.
 - **A Playtest report button on each save slot.** It opens the report, which covers:
-  - the run so far: the day, the rings, the family, and standing with the powers met;
-  - one row per day: the souls judged rightly and wrongly, pay, bonus, fines, bills, shop, story, Draupnir, and the rings after the night;
+  - the run so far: the day, the rings, the family, standing with the powers met, and whether it's under oath;
+  - one row per day: the day's grade and the liars caught, the souls judged rightly and wrongly, pay, bonus, fines, bills, shop, story, Draupnir, and the rings after the night;
   - every soul sent wrong: the stamp, where it belonged, the rule that decided it, whether it came after a noon decree, and whether it was a bribe taken;
   - every appeal heard, and how it went;
   - each night the sun set on the line: who waited for the next day, who died in the night, and what it cost;
@@ -63,6 +63,7 @@ I couldn't open itch.io from here, so check steps 1, 2 and 6 against the dashboa
 
 - **Reports arrive as issues** titled *Campaign playtest: Day N* (with ", an ending" for a finished run), labelled `playtest` and `campaign` once the labels exist.
 - **The Days table is plain Markdown with ASCII signs,** so a script can read it as easily as a person.
+- **The Grade column** reads, for example, "sharp (3/4 liars)": every soul judged rightly, and three of the day's four liars caught in a lie before the stamp (§49 of the tech spec). ", assisted" means a slower or faster sun, or the rule tracker.
 - **The Mistakes list shows the rule and what each wrong soul was stamped,** not what the soul looked like.
   - To see the souls themselves, ask for a backup (Settings, on the title screen). Restored in `pnpm dev`, the tester's slots can be continued, or replayed from any day with the same seed. That gives the same souls, unless the generator has changed since their build.
 - **Choices are read back by replaying each scene with the choices made.** A scene rewritten since the tester played it shows "(the scene has changed since; options 1, 2)" instead of the words.

@@ -32,6 +32,7 @@ const SETTINGS: Settings = {
   reduceMotion: false,
   deskPapers: {},
   achievements: {},
+  dayBests: {},
 };
 
 const slot = (seed: string, day: number, savedAt: number, rev = 1): SlotRecord => ({
@@ -190,6 +191,43 @@ describe('restoring a backup', () => {
     expect(again.report.records).toBe(false);
     // A backup from before achievements were kept changes nothing.
     const old = backup({ settings: { ...SETTINGS, achievements: undefined } });
+    expect(mergeBackup(mine, old, OPTS).next.settings).toBe(mine.settings);
+  });
+
+  it('keeps each day’s better best, from here or from the backup (docs/tech-spec.md §49)', () => {
+    const mine = here({
+      settings: {
+        ...SETTINGS,
+        dayBests: { '1': { grade: 'sharp', spareMs: 60_000 }, '2': { grade: 'flawless', spareMs: 10_000 } },
+      },
+    });
+    const theirs = backup({
+      settings: {
+        ...SETTINGS,
+        dayBests: {
+          // A better grade; the same grade but with assists; a day not graded here; a day this build doesn't
+          // have; and junk.
+          '1': { grade: 'flawless', spareMs: 5_000, oath: true },
+          '2': { grade: 'flawless', spareMs: 90_000, assisted: true },
+          '3': { grade: 'steady', spareMs: 0 },
+          '20': { grade: 'rough', spareMs: 0 },
+          x: { grade: 'flawless', spareMs: 1 },
+          '4': { grade: 'brilliant', spareMs: 1 },
+          '5': { grade: 'sharp', spareMs: -1 },
+        },
+      } as unknown as Settings,
+    });
+    const { next, report } = mergeBackup(mine, theirs, OPTS);
+    expect(next.settings.dayBests).toEqual({
+      '1': { grade: 'flawless', spareMs: 5_000, oath: true },
+      '2': { grade: 'flawless', spareMs: 10_000 },
+      '3': { grade: 'steady', spareMs: 0 },
+      '20': { grade: 'rough', spareMs: 0 },
+    });
+    expect(report.records).toBe(true);
+    expect(mergeBackup(here({ settings: next.settings }), theirs, OPTS).report.records).toBe(false);
+    // A backup from before grades were kept changes nothing.
+    const old = backup({ settings: { ...SETTINGS, dayBests: undefined } as unknown as Settings });
     expect(mergeBackup(mine, old, OPTS).next.settings).toBe(mine.settings);
   });
 
