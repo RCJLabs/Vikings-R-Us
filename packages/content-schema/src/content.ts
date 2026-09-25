@@ -501,6 +501,25 @@ export const CampaignPartSchema = z.strictObject({
       died: z.partialRecord(FactionSchema, Int),
     })
     .optional(),
+  promotion: z
+    .strictObject({
+      from: Day,
+      cleanDays: Int.min(1),
+      ranks: z
+        .array(
+          z.strictObject({
+            id: Id,
+            name: Key,
+            text: Key,
+            souls: Int.min(0),
+            warnings: Int.max(0),
+            wage: Int.min(0),
+            tithe: Int.min(0),
+          }),
+        )
+        .min(1),
+    })
+    .optional(),
   favours: z
     .array(
       z.strictObject({

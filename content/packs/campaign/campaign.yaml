@@ -37,6 +37,18 @@ favours:
   - { id: fav.freyja, faction: freyja, at: 4, effect: { freeQuestions: 1 }, text: favour.freyja }
   - { id: fav.hel, faction: hel, at: 4, effect: { sickNights: 1 }, text: favour.hel }
   - { id: fav.clerk, faction: clerk, at: 4, effect: { finePct: 50 }, text: favour.clerk }
+# Promotion (docs/tech-spec.md §44): two clean days in a row (every soul judged rightly, none left at dusk)
+# bring the next rank's offer the next morning. A rank brings souls more each day (after the day's own), fewer
+# mistakes forgiven before the fines, a higher wage and a tithe to Odin each night. Declining costs nothing, and
+# a rank can be stepped down from at night (tonight's tithe is still owed). With +2 and +3 a soul and tithes of
+# 6 and 14, promoted expert bots ended far richer (1,753 rings against 764); these leave them at 1,039 with a
+# host a fifth stronger, and competent bots even. First guesses; `pnpm sim campaign --promote` measures them.
+promotion:
+  from: 4
+  cleanDays: 2
+  ranks:
+    - { id: rank.second, name: rank.second, text: rank.second.text, souls: 2, warnings: -1, wage: 1, tithe: 20 }
+    - { id: rank.first, name: rank.first, text: rank.first.text, souls: 4, warnings: -2, wage: 2, tithe: 45 }
 # Speed only (docs/build-plan.md §1): cheaper tools and questions, more sun.
 shop:
   - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }

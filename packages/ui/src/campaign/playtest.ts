@@ -238,6 +238,38 @@ function favours(p: PlaytestInput): string[] {
   return ['### Favours', '', ...(lines.length > 0 ? lines : ['None yet.'])];
 }
 
+/** Promotion (docs/tech-spec.md §44): each offer and what was made of it, the days at each rank, and steps down. */
+function ranks(p: PlaytestInput): string[] {
+  const defs = p.content.campaign?.promotion?.ranks ?? [];
+  const name = (n: number) => p.t(defs[n - 1]?.name ?? `rank ${n}`);
+  const lines: string[] = [];
+  let held: { rank: number; from: number; to: number } | null = null;
+  const flush = () => {
+    if (held) {
+      const days = held.from === held.to ? `Day ${held.from}` : `Days ${held.from}–${held.to}`;
+      lines.push(`- ${days}: worked as ${name(held.rank)}.`);
+    }
+    held = null;
+  };
+  for (const l of p.run.ledger) {
+    if (l.offer) {
+      flush();
+      lines.push(`- Day ${l.day}: offered ${name(l.offer.rank)}; ${l.offer.taken ? 'taken' : 'declined'}.`);
+    }
+    if (l.rank && held?.rank === l.rank && held.to === l.day - 1) held.to = l.day;
+    else {
+      flush();
+      if (l.rank) held = { rank: l.rank, from: l.day, to: l.day };
+    }
+    if (l.steppedDown) {
+      flush();
+      lines.push(`- Day ${l.day}: stepped down from ${name(l.steppedDown)}.`);
+    }
+  }
+  flush();
+  return ['### Rank', '', ...(lines.length > 0 ? lines : ['No promotion yet.'])];
+}
+
 /** Every scene played, with the options picked in it, read back by playing it again as the journal does. */
 function choices(p: PlaytestInput): string[] {
   const lines = (p.save.journal ?? []).map((e) => {
@@ -283,6 +315,8 @@ export function playtestReport(p: PlaytestInput): string {
     ...requests(p),
     '',
     ...favours(p),
+    '',
+    ...ranks(p),
     '',
     ...choices(p),
     '',

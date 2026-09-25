@@ -7,12 +7,14 @@ import type {
   EndingDef,
   Faction,
   FavourDef,
+  RankDef,
   SliceDef,
   StatePred,
   UpgradeDef,
 } from '../content/types';
-import { FACTIONS } from '../content/types';
-import { dressForDay, generateDay } from '../gen/generate';
+import { DESTINATIONS, FACTIONS } from '../content/types';
+import { dressForDay, generateCase, generateDay, planDay } from '../gen/generate';
+import { weightedPick } from '../gen/pick';
 import { scriptedCase } from '../gen/scripted';
 import type { CaseSpec } from '../gen/types';
 import { createDayContext, type DayCtx } from '../logic/context';
@@ -74,7 +76,11 @@ export type RunAction =
    * The morning's appeal heard: the soul stamped again at the desk, on the rules of the day it was judged
    * (docs/tech-spec.md §40), or null to let the verdict stand.
    */
-  | { readonly t: 'appeal'; readonly stamped: Destination | null };
+  | { readonly t: 'appeal'; readonly stamped: Destination | null }
+  /** The morning's promotion taken or declined (docs/tech-spec.md §44). */
+  | { readonly t: 'promotion'; readonly accept: boolean }
+  /** At night, back down a rank. */
+  | { readonly t: 'stepDown' };
 
 export type RunEvent =
   | { readonly e: 'shift'; readonly event: ShiftEvent }
@@ -86,6 +92,8 @@ export type RunEvent =
   | { readonly e: 'dayBegins'; readonly day: number }
   | { readonly e: 'ended'; readonly ending: string }
   | { readonly e: 'appealed'; readonly heard: AppealHeard }
+  | { readonly e: 'promotion'; readonly rank: number; readonly taken: boolean }
+  | { readonly e: 'steppedDown'; readonly rank: number }
   | { readonly e: 'rejected'; readonly reason: string };
 
 export interface RunEnv {
@@ -242,6 +250,28 @@ export function economyOf(env: RunEnv): Economy {
   const e = env.ctx.spec.economy;
   if (!e) throw new Error(`Day ${env.ctx.day} has no economy`);
   return e;
+}
+
+/** The rank the run holds (docs/tech-spec.md §44), if any. */
+export function rankOf(run: RunState, content: Content): RankDef | undefined {
+  return run.rank ? campaignOf(content).promotion?.ranks[run.rank - 1] : undefined;
+}
+
+/**
+ * Odin's tithe tonight (docs/tech-spec.md §44): for the rank the day was worked at, so stepping down tonight
+ * counts from tomorrow; before the day's audit files it, for the rank held now.
+ */
+export function titheTonight(run: RunState, content: Content): number {
+  const today = run.ledger[run.ledger.length - 1];
+  const rank = today?.day === run.day ? today.rank : run.rank;
+  return rank ? (campaignOf(content).promotion?.ranks[rank - 1]?.tithe ?? 0) : 0;
+}
+
+/** The day's economy at the run's rank: a higher wage, and fewer citations forgiven. */
+export function economyFor(run: RunState, env: RunEnv): Economy {
+  const e = economyOf(env);
+  const rank = rankOf(run, env.content);
+  return rank ? { ...e, wage: e.wage + rank.wage, warnings: Math.max(0, e.warnings + rank.warnings) } : e;
 }
 
 /** What tonight's bills cost as set. */
@@ -402,13 +432,42 @@ function lineFor(seed: string, ctx: DayCtx, waiting: readonly CaseSpec[]): CaseS
 }
 
 /**
+ * The souls a rank adds to the day (docs/tech-spec.md §44), after its own: each made as the day's souls are, at
+ * the places after them, bound for a destination drawn from the day's mix on a stream of its own, so the day's
+ * own line is the same at any rank. One who'd share a name with a soul already in the line is passed over.
+ */
+function extraSouls(seed: string, ctx: DayCtx, n: number, line: readonly CaseSpec[]): CaseSpec[] {
+  if (n <= 0 || ctx.spec.queue.script) return [];
+  const { mix } = ctx.spec.queue;
+  const dests = DESTINATIONS.filter((d) => mix[d] !== undefined && ctx.destinations.has(d));
+  if (dests.length === 0) return [];
+  const rng = new Rng(`${ctx.content.genVersion}|${seed}|${ctx.day}|rank`);
+  const weights = dests.map((d) => {
+    const [lo, hi] = mix[d] as readonly [number, number];
+    return Math.max(1, Math.floor((lo + hi) / 2));
+  });
+  const names = new Set(line.map((c) => `${c.evidence.look.name} ${c.evidence.look.patronym}`));
+  const extra: CaseSpec[] = [];
+  const first = planDay(seed, ctx).count;
+  for (let i = first; extra.length < n && i < first + n * 4; i++) {
+    const c = generateCase(seed, ctx, i, weightedPick(dests, weights, rng)).case;
+    const name = `${c.evidence.look.name} ${c.evidence.look.patronym}`;
+    if (names.has(name)) continue;
+    names.add(name);
+    extra.push(c);
+  }
+  return extra;
+}
+
+/**
  * Today's queue: the day's line (its own souls and any who waited through the
  * night), with the day's story souls placed among them. Generated souls are the
  * same with or without the story souls, which only appear when their `when`
  * holds as the shift begins.
  */
 export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
-  const cases = lineFor(run.seed, env.ctx, run.waiting ?? []);
+  const line = lineFor(run.seed, env.ctx, run.waiting ?? []);
+  const cases = [...line, ...extraSouls(run.seed, env.ctx, rankOf(run, env.content)?.souls ?? 0, line)];
   const slots = [...(env.ctx.spec.queue.scripted ?? [])].sort((a, b) => a.at - b.at);
   for (const slot of slots) {
     const def = env.content.scripted?.find((d) => d.id === slot.case);
@@ -530,6 +589,26 @@ function settleRequests(run: RunState, shift: ShiftState): RequestSettled[] {
   });
 }
 
+/**
+ * Clean days in a row (every soul judged rightly, none left at dusk) and, when there are enough of them, the next
+ * rank offered the next morning (docs/tech-spec.md §44). Never in Story Mode, and never for the last day.
+ */
+function promote(run: RunState, env: RunEnv, clean: boolean): Pick<RunState, 'clean' | 'offer'> {
+  const campaign = campaignOf(env.content);
+  const def = campaign.promotion;
+  if (!def || run.story) return {};
+  const streak = clean ? (run.clean ?? 0) + 1 : 0;
+  const next = (run.rank ?? 0) + 1;
+  const day = dayAfter(run, campaign, run.day);
+  const offer =
+    streak >= def.cleanDays &&
+    def.ranks[next - 1] !== undefined &&
+    day !== null &&
+    day >= def.from &&
+    day < campaign.lastDay;
+  return offer ? { clean: 0, offer: next } : { clean: streak };
+}
+
 /** Pay, fines, standing and einherjar for a finished shift. */
 function audit(
   run: RunState,
@@ -537,7 +616,8 @@ function audit(
   env: RunEnv,
 ): { run: RunState; ledger: DayLedger; flags: Record<string, number> } {
   const campaign = campaignOf(env.content);
-  const economy = economyOf(env);
+  // At a rank, a higher wage and fewer citations forgiven (docs/tech-spec.md §44).
+  const economy = economyFor(run, env);
   let correct = 0;
   let wrong = 0;
   let unjudged = 0;
@@ -617,6 +697,8 @@ function audit(
     ...(line ? { waiting: line.waiting } : {}),
     ...(requests.length > 0 ? { requests } : {}),
     ...(favours.length > 0 ? { favours } : {}),
+    ...(run.rank ? { rank: run.rank } : {}),
+    ...(run.answered ? { offer: run.answered } : {}),
   };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
@@ -627,7 +709,8 @@ function audit(
   const given = (v: Verdict) => requests.some((r) => r.met && v.expected === r.from && v.stamped === r.to);
   const appeal = chooseAppeal(run, shift, campaign, costs, fined, given);
   const asked = drawRequests(run, env, line?.carried ?? []);
-  const { appealHeard: _, appeal: __, waiting: ___, requests: ____, ...rest } = run;
+  const promotion = promote(run, env, wrong === 0 && unjudged === 0);
+  const { appealHeard: _, appeal: __, waiting: ___, requests: ____, answered: _____, ...rest } = run;
   return {
     run: {
       ...rest,
@@ -640,6 +723,7 @@ function audit(
       ...(appeal ? { appeal } : {}),
       ...(line && line.carried.length > 0 ? { waiting: line.carried } : {}),
       ...(asked.length > 0 ? { requests: asked } : {}),
+      ...promotion,
     },
     ledger,
     flags,
@@ -713,11 +797,13 @@ function upkeep(run: RunState, env: RunEnv, bills: Bills) {
   const campaign = campaignOf(env.content);
   const cost = billTotal(run, economyOf(env), bills);
   const draupnir = campaign.draupnir.nights.includes(run.day) ? campaign.draupnir.rings : 0;
-  const rings = run.rings - cost.hearth - cost.food - cost.medicine + draupnir;
+  const tithe = titheTonight(run, env.content);
+  const rings = run.rings - cost.hearth - cost.food - cost.medicine - tithe + draupnir;
   const adults = new Map(campaign.family.map((f) => [f.id, f.adult]));
   return {
     cost,
     draupnir,
+    tithe,
     rings,
     debtNights: rings < campaign.debtFloor ? run.debtNights + 1 : 0,
     members: run.family.map((m) => memberNight(m, bills, careFor(run, env.content), adults.get(m.id) === true)),
@@ -729,6 +815,8 @@ export interface NightOutlook {
   readonly cost: { readonly hearth: number; readonly food: number; readonly medicine: number };
   /** Draupnir's rings tonight (0 on other nights). */
   readonly draupnir: number;
+  /** Odin's tithe tonight, for a rank held (docs/tech-spec.md §44; 0 without one). */
+  readonly tithe: number;
   /** The purse by morning. */
   readonly rings: number;
   /** Nights in a row below the debt floor by morning (0 when tonight ends above it). */
@@ -790,7 +878,14 @@ function night(run: RunState, env: RunEnv, events: RunEvent[]): RunState {
           ...run.ledger.slice(0, -1),
           {
             ...last,
-            night: { ...u.cost, upgrades: run.spent, draupnir: u.draupnir, story: run.storyRings, rings: u.rings },
+            night: {
+              ...u.cost,
+              upgrades: run.spent,
+              draupnir: u.draupnir,
+              story: run.storyRings,
+              ...(u.tithe > 0 ? { tithe: u.tithe } : {}),
+              rings: u.rings,
+            },
           },
         ]
       : run.ledger;
@@ -813,18 +908,21 @@ export interface NightBills {
   /** Medicine for each person sick that night. */
   readonly medicine: number;
   readonly draupnir: number;
+  /** Odin's tithe, at the rank held now (docs/tech-spec.md §44). */
+  readonly tithe: number;
 }
 
 /** The bills of the run's next few nights after tonight (none after its last day), so the night screen can plan. */
 export function billForecast(run: RunState, content: Content, nights = 3): NightBills[] {
   const campaign = campaignOf(content);
   const home = run.family.filter((m) => m.status !== 'gone').length;
+  const tithe = rankOf(run, content)?.tithe ?? 0;
   const out: NightBills[] = [];
   for (let d = dayAfter(run, campaign, run.day); d !== null && out.length < nights; d = dayAfter(run, campaign, d)) {
     const costs = content.days.find((x) => x.day === d)?.economy?.costs;
     if (!costs) break;
     const draupnir = campaign.draupnir.nights.includes(d) ? campaign.draupnir.rings : 0;
-    out.push({ day: d, hearth: costs.hearth, food: costs.food * home, medicine: costs.medicine, draupnir });
+    out.push({ day: d, hearth: costs.hearth, food: costs.food * home, medicine: costs.medicine, draupnir, tithe });
   }
   return out;
 }
@@ -898,6 +996,27 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
     return { state: r, events };
   }
 
+  if (action.t === 'promotion') {
+    if (run.phase !== 'morning' || !run.offer) return reject(run, 'no promotion offered');
+    const { offer, ...rest } = run;
+    const answered = { rank: offer, taken: action.accept };
+    return {
+      state: { ...rest, ...(action.accept ? { rank: offer } : {}), answered },
+      events: [{ e: 'promotion', ...answered }],
+    };
+  }
+
+  if (action.t === 'stepDown') {
+    if (run.phase !== 'night' || !run.rank) return reject(run, 'there is no rank to step down');
+    const { rank, ...rest } = run;
+    const today = run.ledger[run.ledger.length - 1];
+    const ledger = today?.day === run.day ? [...run.ledger.slice(0, -1), { ...today, steppedDown: rank }] : run.ledger;
+    return {
+      state: { ...rest, ...(rank > 1 ? { rank: rank - 1 } : {}), clean: 0, ledger },
+      events: [{ e: 'steppedDown', rank }],
+    };
+  }
+
   if (action.t === 'appeal') {
     if (run.phase !== 'morning' || !run.appeal) return reject(run, 'no appeal to hear');
     const heard = hearAppeal(run, run.appeal, action.stamped, campaignOf(env.content));
@@ -907,8 +1026,10 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
   switch (action.t) {
     case 'beginShift': {
       if (run.phase !== 'morning') return reject(run, 'the shift starts in the morning');
-      // An appeal not heard by the time the gate opens lapses: the verdict stands.
-      const today = run.appeal ? hearAppeal(run, run.appeal, null, campaignOf(env.content)) : run;
+      // An appeal not heard by the time the gate opens lapses: the verdict stands. So does an offer, declined.
+      const heard = run.appeal ? hearAppeal(run, run.appeal, null, campaignOf(env.content)) : run;
+      const { offer, ...unoffered } = heard;
+      const today: RunState = offer ? { ...unoffered, answered: { rank: offer, taken: false } } : heard;
       const config = {
         mode: 'campaign' as const,
         seed: today.seed,

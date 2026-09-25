@@ -307,6 +307,16 @@ export function letAppealStand(): void {
   dispatch({ t: 'appeal', stamped: null });
 }
 
+/** The morning's promotion taken or declined (docs/tech-spec.md §44). */
+export function answerPromotion(accept: boolean): void {
+  dispatch({ t: 'promotion', accept });
+}
+
+/** At night, back down a rank. */
+export function stepDown(): void {
+  dispatch({ t: 'stepDown' });
+}
+
 export function endAudit(): void {
   if (dispatch({ t: 'endAudit' })) screen.value = 'night';
 }

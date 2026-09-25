@@ -600,6 +600,36 @@ export interface CampaignDef {
   readonly requests?: RequestsDef;
   /** What each god grants while their standing is high enough (docs/tech-spec.md §43); none without it. */
   readonly favours?: readonly FavourDef[];
+  /** Ranks a strong player is offered, each harder and better paid (docs/tech-spec.md §44); none without it. */
+  readonly promotion?: PromotionDef;
+}
+
+/**
+ * Promotion: after clean days (every soul judged rightly and none left at dusk), the next rank is offered for the
+ * player to take or not. Declining costs nothing; a rank taken can be stepped down from at night.
+ */
+export interface PromotionDef {
+  /** The first day an offer can come. */
+  readonly from: number;
+  /** Clean days in a row that bring an offer (the count starts again after each one). */
+  readonly cleanDays: number;
+  /** In order: the first is offered first, the next after it. */
+  readonly ranks: readonly RankDef[];
+}
+
+export interface RankDef {
+  readonly id: string;
+  /** The rank's title and what it's about (string keys). */
+  readonly name: string;
+  readonly text: string;
+  /** Souls more each day, after the day's own. */
+  readonly souls: number;
+  /** The change to the day's free citations (so, less than 0). */
+  readonly warnings: number;
+  /** Rings more for each soul judged rightly. */
+  readonly wage: number;
+  /** Rings to Odin each night. */
+  readonly tithe: number;
 }
 
 /**

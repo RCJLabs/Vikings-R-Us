@@ -56,3 +56,16 @@ describe('the gods’ favours, as content', () => {
     expect(withFavours((list) => [...list, ...list.slice(0, 1)])).toThrow(/Duplicate favour "fav\.\w+"/);
   }, 60_000);
 });
+
+// docs/tech-spec.md §44.
+describe('promotion, as content', () => {
+  type Ranks = NonNullable<CampaignPart['promotion']>['ranks'];
+  const withRanks = (change: (ranks: Ranks) => Ranks) =>
+    compileWith((c) => (c.promotion ? { ...c, promotion: { ...c.promotion, ranks: change(c.promotion.ranks) } } : c));
+  it('refuses a rank whose words are missing, or a rank named twice', () => {
+    expect(withRanks(([r, ...rest]) => (r ? [{ ...r, name: 'rank.nobody' }, ...rest] : rest))).toThrow(
+      /rank rank\.\w+ uses missing string "rank\.nobody"/,
+    );
+    expect(withRanks((list) => [...list, ...list.slice(0, 1)])).toThrow(/Duplicate rank "rank\.\w+"/);
+  }, 60_000);
+});

@@ -189,6 +189,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(last('waiting') ? { waiting: last('waiting') as NonNullable<CampaignDef['waiting']> } : {}),
     ...(last('requests') ? { requests: last('requests') as NonNullable<CampaignDef['requests']> } : {}),
     ...(all('favours').length > 0 ? { favours: all('favours') } : {}),
+    ...(last('promotion') ? { promotion: last('promotion') as NonNullable<CampaignDef['promotion']> } : {}),
   };
 }
 
@@ -709,6 +710,13 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (th.count !== undefined && !STATE_PATHS.test(th.count)) {
       problems.push(`thread ${th.id} counts unknown run state "${th.count}".`);
     }
+  }
+  const rankIds = new Set<string>();
+  for (const r of c.promotion?.ranks ?? []) {
+    if (rankIds.has(r.id)) problems.push(`Duplicate rank "${r.id}".`);
+    rankIds.add(r.id);
+    key(r.name, `rank ${r.id}`);
+    key(r.text, `rank ${r.id}`);
   }
   const favourIds = new Set<string>();
   for (const f of c.favours ?? []) {
