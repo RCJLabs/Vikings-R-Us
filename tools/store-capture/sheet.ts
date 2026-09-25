@@ -128,71 +128,73 @@ export function contactSheet(m: Manifest): string {
   return `<title>Chooser store captures</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
+/* The game's own colours: its desk by default, its paper for a light theme (packages/ui/src/styles.css). */
 :root {
-  --bg: #f6f1e7;
-  --panel: #fffaf0;
-  --ink: #2a2118;
-  --muted: #6b5d4b;
-  --line: #e2d6c1;
-  --accent: #8a5a12;
+  --bg: #15110d;
+  --panel: #221b14;
+  --ink: #efe6d2;
+  --muted: #b8aa8c;
+  --line: #3a2f24;
+  --accent: #c8a96a;
+  --ok: #79b36f;
+  --warn: #d9a441;
+  --bad: #e07b63;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #efe6d2;
+    --panel: #f7f0e1;
+    --ink: #2a211a;
+    --muted: #675743;
+    --line: #d6c7aa;
+    --accent: #6b4a1c;
+    --ok: #2f6b3a;
+    --warn: #8a5a00;
+    --bad: #a3261d;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #efe6d2;
+  --panel: #f7f0e1;
+  --ink: #2a211a;
+  --muted: #675743;
+  --line: #d6c7aa;
+  --accent: #6b4a1c;
   --ok: #2f6b3a;
   --warn: #8a5a00;
   --bad: #a3261d;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #17130f;
-    --panel: #221c16;
-    --ink: #efe6d6;
-    --muted: #b3a48d;
-    --line: #3a3027;
-    --accent: #d8ae62;
-    --ok: #7fc28b;
-    --warn: #e0b35a;
-    --bad: #f08a80;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #17130f;
-  --panel: #221c16;
-  --ink: #efe6d6;
-  --muted: #b3a48d;
-  --line: #3a3027;
-  --accent: #d8ae62;
-  --ok: #7fc28b;
-  --warn: #e0b35a;
-  --bad: #f08a80;
-  color-scheme: dark;
-}
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  padding: 2rem 16px 4rem;
+  padding-block: 2rem 4rem;
+  padding-inline: 16px;
   background: var(--bg);
   color: var(--ink);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 main { max-width: 1280px; margin: 0 auto; display: grid; gap: 2.5rem; }
-h1, h2, h3 { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; text-wrap: balance; margin: 0; }
-h1 { font-size: 2rem; }
-h2 { font-size: 1.4rem; display: flex; align-items: baseline; gap: 0.6rem; }
-h3 { font-size: 1.05rem; }
+h1, h2, h3 { font-weight: 700; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.25rem; display: flex; align-items: baseline; gap: 0.6rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--line); }
+h3 { font-size: 1rem; }
 header { display: grid; gap: 0.5rem; }
 header p { margin: 0; max-width: 70ch; }
-.count { font: 600 0.8rem/1 system-ui, sans-serif; color: var(--muted); letter-spacing: 0.04em; }
+.count { font-size: 0.75rem; font-weight: 700; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; }
 .about, .meta { color: var(--muted); margin: 0; }
 .meta { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 code { font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace; }
 a { color: var(--accent); }
 section { display: grid; gap: 0.75rem; }
-.grid { display: grid; gap: 1.25rem; }
-.grid--steam, .grid--play-landscape { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
+.grid { display: grid; gap: 1.5rem 1.25rem; }
+.grid--steam, .grid--play-landscape, .grid--clip { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
 .grid--play-phone { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
-.grid--clip { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
 .shot { margin: 0; display: grid; gap: 0.5rem; align-content: start; }
 .shot img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); }
+.shot a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 figcaption { display: grid; gap: 0.25rem; }
 figcaption p { margin: 0; }
 .checks { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; }
