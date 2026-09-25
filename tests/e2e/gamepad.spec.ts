@@ -6,7 +6,12 @@ import { FULL } from './urls';
 /*
  * Playing with a controller (docs/tech-spec.md §36). No real one is plugged in: the page's
  * navigator.getGamepads is swapped, before it loads, for one that returns a standard pad the test holds
- * the buttons of, frame by frame, as a player would.
+ * the buttons of, read by read, as a player would.
+ *
+ * A press lasts for some of the game's reads of the pad, not for some animation frames. The Daily's date
+ * comes from Playwright's clock, whose animation frames are timers that don't stay in step with the page's
+ * own: a press held for two of the test's frames could start and end between two of the game's reads, and
+ * go unseen.
  */
 
 // Daily #41, as daily.spec.ts plays it; the engine works out the right stamps.
@@ -20,7 +25,10 @@ if (!spec) throw new Error('No Daily in content');
 const { state, ctx } = startShift(content, { mode: 'daily', seed: dailySeed(N), day: spec.day, dailyNumber: N });
 const stamps = stampsFor(ctx);
 
-/** A standard pad, unplugged until `plugIn`: `window.__pad`, whose buttons and axes the test sets. */
+/**
+ * A standard pad, unplugged until `plugIn`: `window.__pad`, whose buttons and axes the test sets, and
+ * `window.__padReads(n)`, which waits until the game has read the pads n more times.
+ */
 const FAKE_PAD = `(() => {
   const pad = {
     id: 'Test pad (STANDARD GAMEPAD Vendor: 28de Product: 11ff)',
@@ -31,10 +39,21 @@ const FAKE_PAD = `(() => {
     buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })),
     axes: [0, 0, 0, 0],
   };
+  let reads = 0;
+  const waiting = [];
   window.__pad = pad;
+  window.__padReads = (n) => new Promise((done) => waiting.push({ at: reads + n, done }));
   Object.defineProperty(navigator, 'getGamepads', {
     configurable: true,
-    value: () => [pad.connected ? pad : null, null, null, null],
+    value: () => {
+      reads += 1;
+      // What waited for this read goes on once the game has acted on it, not before.
+      for (const w of waiting.filter((w) => reads >= w.at)) {
+        waiting.splice(waiting.indexOf(w), 1);
+        w.done();
+      }
+      return [pad.connected ? pad : null, null, null, null];
+    },
   });
 })();`;
 
@@ -57,34 +76,28 @@ const BUTTON = {
 } as const;
 type Button = keyof typeof BUTTON;
 
-const FRAMES = `(n) => new Promise((done) => {
-  const next = () => (--n <= 0 ? done() : requestAnimationFrame(next));
-  requestAnimationFrame(next);
-})`;
-
 async function plugIn(page: Page) {
   await page.evaluate(`window.__pad.connected = true; window.dispatchEvent(new Event('gamepadconnected'))`);
 }
 
-/** Presses a button for two frames and lets it go for two, as quick a press as a thumb makes. */
+/** Holds a button for two of the game's reads and lets it go for two, as quick a press as a thumb makes. */
 async function press(page: Page, b: Button) {
   await page.evaluate(`(async () => {
-    const frames = ${FRAMES};
     const button = window.__pad.buttons[${BUTTON[b]}];
     button.pressed = true;
     button.value = 1;
-    await frames(2);
+    await window.__padReads(2);
     button.pressed = false;
     button.value = 0;
-    await frames(2);
+    await window.__padReads(2);
   })()`);
 }
 
-/** Tilts the right stick (down for positive) for some frames. */
-async function tiltRight(page: Page, y: number, frames: number) {
+/** Tilts the right stick (down for positive) for some of the game's reads. */
+async function tiltRight(page: Page, y: number, reads: number) {
   await page.evaluate(`(async () => {
     window.__pad.axes[3] = ${y};
-    await (${FRAMES})(${frames});
+    await window.__padReads(${reads});
     window.__pad.axes[3] = 0;
   })()`);
 }
