@@ -361,6 +361,10 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
       .array(z.strictObject({ case: Id, at: Int.min(0) }))
       .min(1)
       .optional(),
+    visits: z
+      .array(z.strictObject({ scene: Id, at: Int.min(0), when: z.lazy(() => StatePredSchema).optional() }))
+      .min(1)
+      .optional(),
     archetypes: z.array(z.strictObject({ id: Id, w: Int.positive() })).min(1),
     mix: z.partialRecord(DestinationSchema, z.tuple([Percent, Percent])),
     knobs: KnobsSchema,

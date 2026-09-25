@@ -1,4 +1,5 @@
 import { nextHint, stampsFor } from '@cots/engine';
+import { campaignUi } from '../campaign/lazy';
 import { act, answer, citation, comparing, drawerTab, screen, session, stampSheet } from '../store';
 import { hintsAllowed } from './hint';
 import { questionable, toggleCompare } from './Shift';
@@ -18,6 +19,8 @@ export function onShiftKey(e: KeyboardEvent): void {
   if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
   const s = session.peek();
   if (!s || screen.peek() !== 'shift' || s.state.phase !== 'shift') return;
+  // Someone at the desk (docs/tech-spec.md §46): their scene has the keys, and the sun stays held until it ends.
+  if (s.mode.kind === 'campaign' && campaignUi.peek()?.deskDue()) return;
   const target = e.target instanceof Element ? e.target : null;
   if (target?.closest('input, textarea, select')) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;

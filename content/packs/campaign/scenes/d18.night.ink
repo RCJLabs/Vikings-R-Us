@@ -23,6 +23,12 @@ Loki is sitting on the end of your table in no borrowed face at all, only his ow
 { flag("reported_loki"):
   "You put my name in your report, once. Odin's people came up the path with torches. I was very flattered." # speaker: loki
 }
+{ flag("told_odin"):
+  "And you told him. Of course you did. He came down to the gate in that hat, didn't he? He thinks nobody knows him in that hat." # speaker: loki
+}
+{ flag("lied_to_odin"):
+  "You lied to him. To his face, such as it is. I could almost be proud of you." # speaker: loki
+}
 * { flag("loki_deal") } ["We're still friends."]
   # fx: standing loki +1
   "Good. I'd hate to rub the names out. Chalk smudges." # speaker: loki

@@ -158,13 +158,24 @@ export function lintScenes(
   const byId = new Map(scenes.map((s) => [s.id, s]));
   const playedOn = new Map<string, number[]>();
   for (const d of content.days) {
-    for (const [when, id] of Object.entries(d.scenes ?? {})) {
+    const played = [
+      ...Object.entries(d.scenes ?? {}),
+      // Scenes at the desk (docs/tech-spec.md §46), between the souls of the day's line.
+      ...(d.queue.visits ?? []).map((v): [string, string] => [`at the desk, after ${v.at} souls`, v.scene]),
+    ];
+    for (const [when, id] of played) {
       if (!id) continue;
       if (!byId.has(id)) problems.push(`day ${d.day} plays missing scene "${id}" (${when}).`);
       else playedOn.set(id, [...(playedOn.get(id) ?? []), d.day]);
     }
+    for (const v of d.queue.visits ?? []) {
+      if (v.at >= d.queue.count[0]) problems.push(`day ${d.day} plays ${v.scene} past the end of its shortest line.`);
+    }
   }
   if (content.daily?.scenes || content.primer?.scenes) problems.push('The Daily and the primer have no story scenes.');
+  if (content.daily?.queue.visits || content.primer?.queue.visits) {
+    problems.push('The Daily and the primer have no one at the desk.');
+  }
   const family = new Set((content.campaign?.family ?? []).map((m) => m.id));
   const checkEffect = (e: Effect, where: string) => {
     if ('family' in e && !family.has(e.family)) problems.push(`${where} changes unknown family member "${e.family}".`);

@@ -1721,6 +1721,21 @@ a.btn {
   gap: 0.6rem;
 }
 
+/* Someone at the desk (docs/tech-spec.md §46): a story scene over the desk, in the story's own colours (not the
+   paper's), as long as it needs to be. */
+.dialog--scene {
+  max-width: 40rem;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 0;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.dialog--scene .scene {
+  margin: 0;
+}
+
 .scene__line {
   margin: 0;
   /* Room above a line brought to the top of the view after a choice. */

@@ -23,6 +23,7 @@ import { effect } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { art, usePixelFrame } from '../art';
+import { campaignUi } from '../campaign/lazy';
 import { padInUse } from '../gamepad';
 import { clockText, listText, t } from '../i18n';
 import { openReport, reportFor, reportTitle, reportUrl, type SoulReport } from '../report';
@@ -1062,7 +1063,11 @@ export function ShiftScreen() {
   if (!s) return null;
   const layout = effectiveLayout();
   const paused = s.state.clock.pausedAt !== null;
-  const blocked = paused || answer.value !== null || citation.value !== null || reportFor.value !== null;
+  // Someone at the desk (docs/tech-spec.md §46): a campaign scene between souls, with the sun held.
+  const campaign = s.mode.kind === 'campaign' ? campaignUi.value : null;
+  const visit = campaign?.deskDue() ?? null;
+  const blocked =
+    paused || visit !== null || answer.value !== null || citation.value !== null || reportFor.value !== null;
   const c = currentCase(s.state);
   const lesson = activeLesson(s, coachState());
   const coach = coachStep(s, coachAcks.value, lesson);
@@ -1105,7 +1110,7 @@ export function ShiftScreen() {
         <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>
-      {paused ? <PauseOverlay /> : null}
+      {visit && campaign ? <campaign.DeskVisitDialog id={visit} /> : paused ? <PauseOverlay /> : null}
       <AnswerDialog />
       <CitationSlip s={s} />
       <ReportDialog />

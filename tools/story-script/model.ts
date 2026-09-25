@@ -23,7 +23,9 @@ export interface SceneDoc {
   /** The `.ink` file, from the repository root. */
   readonly file: string;
   readonly day: number;
-  readonly when: 'morning' | 'night';
+  readonly when: 'morning' | 'desk' | 'night';
+  /** At the desk: once this many souls have been sent (docs/tech-spec.md §46). */
+  readonly at?: number;
   readonly draft: boolean;
   /** Ink's own count, as the writing budget uses. */
   readonly words: number;
@@ -53,6 +55,8 @@ export interface DayDoc {
   /** The day's decree, as the morning shows it. */
   readonly decree: string;
   readonly morning?: SceneDoc;
+  /** Scenes at the desk, between the souls, in the order they come (docs/tech-spec.md §46). */
+  readonly desk?: readonly SceneDoc[];
   readonly night?: SceneDoc;
   readonly souls: readonly SoulDoc[];
 }
@@ -142,7 +146,7 @@ export function buildModel(build: {
   const byId = new Map(build.scenes.map((s) => [s.id, s]));
   const scripted = new Map((content.scripted ?? []).map((c) => [c.id, c]));
 
-  const sceneDoc = (id: string | undefined, day: number, when: 'morning' | 'night'): SceneDoc | undefined => {
+  const sceneDoc = (id: string | undefined, day: number, when: SceneDoc['when'], at?: number): SceneDoc | undefined => {
     if (!id) return undefined;
     const compiled = byId.get(id);
     if (!compiled) throw new Error(`Day ${day} plays ${id}, which this build doesn't have`);
@@ -161,6 +165,7 @@ export function buildModel(build: {
       file,
       day,
       when,
+      ...(at !== undefined ? { at } : {}),
       draft: parsed.draft,
       words: compiled.words,
       hash: fnv1a32(source).toString(36),
@@ -171,9 +176,12 @@ export function buildModel(build: {
   };
 
   const days: DayDoc[] = content.days
-    .filter((d) => d.scenes || (d.queue.scripted ?? []).length > 0)
+    .filter((d) => d.scenes || (d.queue.scripted ?? []).length > 0 || (d.queue.visits ?? []).length > 0)
     .map((d) => {
       const morning = sceneDoc(d.scenes?.morning, d.day, 'morning');
+      const desk = [...(d.queue.visits ?? [])]
+        .sort((a, b) => a.at - b.at)
+        .flatMap((v) => sceneDoc(v.scene, d.day, 'desk', v.at) ?? []);
       const night = sceneDoc(d.scenes?.night, d.day, 'night');
       const souls = (d.queue.scripted ?? []).map(({ case: id }): SoulDoc => {
         const c = scripted.get(id);
@@ -192,6 +200,7 @@ export function buildModel(build: {
         day: d.day,
         decree: t(d.decree),
         ...(morning ? { morning } : {}),
+        ...(desk.length > 0 ? { desk } : {}),
         ...(night ? { night } : {}),
         souls,
       };
@@ -213,10 +222,10 @@ export function buildModel(build: {
     if (!list.some(same)) list.push(m);
     map.set(flag, list);
   };
-  const dayName = (s: SceneDoc) => `Day ${s.day}, ${s.when}`;
+  const dayName = (s: SceneDoc) => `Day ${s.day}, ${s.when === 'desk' ? 'at the desk' : s.when}`;
 
   for (const d of days) {
-    for (const s of [d.morning, d.night]) {
+    for (const s of [d.morning, ...(d.desk ?? []), d.night]) {
       if (!s) continue;
       // The options open at each depth, so a setter can say which choice it follows.
       const path: string[] = [];
@@ -292,7 +301,9 @@ export function buildModel(build: {
     .sort()
     .map((name) => ({ name, setBy: set.get(name) ?? [], readBy: read.get(name) ?? [] }));
 
-  const scenes = days.flatMap((d) => [d.morning, d.night].filter((s): s is SceneDoc => s !== undefined));
+  const scenes = days.flatMap((d) =>
+    [d.morning, ...(d.desk ?? []), d.night].filter((s): s is SceneDoc => s !== undefined),
+  );
   const souls = days.flatMap((d) => d.souls);
   const version = fnv1a32([...scenes.map((s) => s.hash), ...souls.flatMap((s) => s.lines)].join('|')).toString(36);
   return {

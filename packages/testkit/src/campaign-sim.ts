@@ -10,6 +10,7 @@ import {
   type DayLedger,
   type Destination,
   defaultBills,
+  deskVisit,
   earnedAt,
   economyOf,
   FACTIONS,
@@ -148,7 +149,18 @@ function playStory(
   which: 'morning' | 'night',
   policy: StoryPolicy,
 ): RunState {
-  const id = content.days.find((d) => d.day === run.day)?.scenes?.[which];
+  return playScene(run, content, ctx, scenes, content.days.find((d) => d.day === run.day)?.scenes?.[which], policy);
+}
+
+/** Plays a scene the way the policy wants (the first best path on a tie), unless it's been played. */
+function playScene(
+  run: RunState,
+  content: Content,
+  ctx: DayCtx,
+  scenes: SceneTable,
+  id: string | undefined,
+  policy: StoryPolicy,
+): RunState {
   const json = id ? scenes[id] : undefined;
   if (!id || !json || run.scenes.includes(id)) return run;
   let best: ScenePath | undefined;
@@ -356,6 +368,9 @@ export function simulateRun(
       run = stepRun(run, a, { content, ctx }).state;
       if (a.t === 'beginShift') initial = run.shift ?? undefined;
       else if (a.t === 'shift') log.push(a.action);
+      // Whoever comes to the desk when their turn comes (docs/tech-spec.md §46), as the policy would answer them.
+      const visit = options.scenes ? deskVisit(run, content) : null;
+      if (visit && options.scenes) run = playScene(run, content, ctx, options.scenes, visit.scene, policy);
     }
     if (initial && defs.length > 0) note({ at: 'shift', mode: 'campaign', facts: shiftFacts(initial, log, ctx) });
     run = stepRun(run, { t: 'endAudit' }, { content, ctx }).state;

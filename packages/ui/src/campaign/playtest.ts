@@ -276,8 +276,12 @@ function ranks(p: PlaytestInput): string[] {
 /** Every scene played, with the options picked in it, read back by playing it again as the journal does. */
 function choices(p: PlaytestInput): string[] {
   const lines = (p.save.journal ?? []).map((e) => {
-    const when = p.content.days.find((d) => d.day === e.day)?.scenes;
-    const label = when?.morning === e.scene ? 'morning' : when?.night === e.scene ? 'night' : e.scene;
+    const day = p.content.days.find((d) => d.day === e.day);
+    const when = day?.scenes;
+    // A scene at the desk (docs/tech-spec.md §46) is played between the day's souls.
+    const desk = (day?.queue.visits ?? []).some((v) => v.scene === e.scene);
+    const label =
+      when?.morning === e.scene ? 'morning' : when?.night === e.scene ? 'night' : desk ? 'at the desk' : e.scene;
     const json = p.scenes[e.scene];
     let picked: string[] | null = null;
     try {

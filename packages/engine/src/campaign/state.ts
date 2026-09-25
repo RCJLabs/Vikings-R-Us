@@ -1,4 +1,11 @@
-import { type Destination, FACTIONS, type Faction, type RequestDef, type StatePred } from '../content/types';
+import {
+  type Destination,
+  type Effect,
+  FACTIONS,
+  type Faction,
+  type RequestDef,
+  type StatePred,
+} from '../content/types';
 import type { CaseSpec } from '../gen/types';
 import type { Assists, ShiftState } from '../shift/shift';
 
@@ -191,6 +198,11 @@ export interface RunState {
   readonly ledger: readonly DayLedger[];
   /** Scenes whose effects were applied today; each applies once. */
   readonly scenes: readonly string[];
+  /**
+   * What the scenes played at the desk today will do (docs/tech-spec.md §46): kept for the audit, since standing
+   * doesn't move during a shift (the gate's favours are the day's).
+   */
+  readonly pending?: readonly Effect[];
   /** Rings gained or lost to story effects today, for the night's accounts. */
   readonly storyRings: number;
   /** Standing moved by the story since the last audit; the next audit files it in its ledger. */

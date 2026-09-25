@@ -415,6 +415,11 @@ export interface DaySpec {
     readonly script?: readonly { readonly id: string; readonly dest: Destination }[];
     /** Campaign only: story souls added to the generated queue, each at its position (0-based). */
     readonly scripted?: readonly { readonly case: string; readonly at: number }[];
+    /**
+     * Campaign only: scenes played at the desk (docs/tech-spec.md §46), each once `at` souls have been sent, with
+     * the sun held, when `when` holds as its turn comes. Their effects land at the audit.
+     */
+    readonly visits?: readonly DeskVisit[];
     readonly archetypes: readonly { readonly id: string; readonly w: number }[];
     /** Percent [min, max] share of the queue per destination. */
     readonly mix: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
@@ -424,6 +429,13 @@ export interface DaySpec {
   readonly lesson?: Lesson;
   /** Campaign only: a decree a raven brings at noon, changing the day's rules for the souls after it. */
   readonly noon?: NoonDecree;
+}
+
+/** Someone at the desk: an Ink scene between souls (docs/tech-spec.md §46). */
+export interface DeskVisit {
+  readonly scene: string;
+  readonly at: number;
+  readonly when?: StatePred;
 }
 
 /**

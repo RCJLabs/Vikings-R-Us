@@ -815,6 +815,8 @@ function lintScripted(content: Content, strings: Readonly<Record<string, string>
     if (spec?.queue.scripted) problems.push('The Daily and the primer have no story souls.');
   }
   for (const d of content.days) {
+    // Who comes to the desk, and when (docs/tech-spec.md §46): only what the run can read.
+    for (const v of d.queue.visits ?? []) if (v.when) walk(v.when, `day ${d.day}'s visit ${v.scene}`);
     for (const slot of d.queue.scripted ?? []) {
       const def = defs.get(slot.case);
       if (!def) {

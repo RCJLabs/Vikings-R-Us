@@ -173,6 +173,39 @@ describe('story souls in a target', { timeout: 30_000 }, () => {
     expect(error(noonWith((n) => ({ ...n, at: 99 })))).toMatch(/noon must come before the end of the shortest line/);
   });
 
+  it('rejects a desk visit that can’t be played (docs/tech-spec.md §46)', () => {
+    const visitsWith = (change: (visits: NonNullable<DaySpec['queue']['visits']>) => DaySpec['queue']['visits']) =>
+      packsWith((p) => {
+        const campaign = p.get('campaign');
+        if (!campaign) throw new Error('no campaign pack');
+        campaign.content.days = campaign.content.days.map((d) =>
+          d.queue.visits ? { ...d, queue: { ...d.queue, visits: change(d.queue.visits) } } : d,
+        );
+      });
+    const error = (packs: Packs) => {
+      try {
+        build(packs);
+      } catch (e) {
+        return (e as Error).message;
+      }
+      return '';
+    };
+    expect(error(visitsWith((v) => v))).toBe('');
+    const bad = error(
+      visitsWith((v) => [
+        ...v,
+        { scene: 'scene.nobody', at: 1 },
+        { scene: v[0]?.scene ?? '', at: 99, when: { state: 'flags.x', gte: 1 } },
+        { scene: v[0]?.scene ?? '', at: 2, when: { state: 'mood.odin', gte: 1 } },
+      ]),
+    );
+    expect(bad).toMatch(/plays missing scene "scene.nobody" \(at the desk, after 1 souls\)/);
+    expect(bad).toMatch(/plays scene\.d18\.desk past the end of its shortest line/);
+    expect(bad).toMatch(/visit scene\.d18\.desk reads unknown run state "mood.odin"/);
+    // A scene only the desk played is still a scene some day plays.
+    expect(bad).not.toMatch(/no day plays scene\.d18\.desk/);
+  });
+
   it('rejects unknown facts, missing lines, unreserved names, unknown words and unplaced or unknown souls', () => {
     const packs = packsWith((p) => {
       const t = thorvald(p);
