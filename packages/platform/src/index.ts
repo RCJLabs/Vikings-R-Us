@@ -13,7 +13,8 @@ export interface Platform {
   share(text: string, url?: string): Promise<ShareResult>;
   /** Where a shared result should point players, if this build has a public page. */
   shareUrl(): string | undefined;
-  openStore(): Promise<KeyValueStore>;
+  /** Opens the build's store: the shared one, or one of its own by `name` (docs/tech-spec.md §38). */
+  openStore(name?: string): Promise<KeyValueStore>;
   /**
    * Calls `ready` when a new version is downloaded and waiting (PWA only).
    * Returns a function that installs it and reloads; the UI only offers that

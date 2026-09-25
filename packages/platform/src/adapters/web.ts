@@ -8,7 +8,7 @@ export const platform: Platform = {
   kind: 'web',
   share: shareWithFallback,
   shareUrl: () => new URL(import.meta.env.BASE_URL, location.origin).href,
-  openStore: () => openStore(),
+  openStore: (name) => openStore(name),
   watchForUpdate: (ready) => registerSW({ onNeedRefresh: ready }),
   unlockAchievement: noAchievements,
 };

@@ -212,6 +212,20 @@ describe('a campaign run', () => {
     expect(waived).toMatchObject({ fines: 0, wrong: fined?.wrong, assists });
   });
 
+  it('files each soul sent wrong with the rule that decided it, and none on a day judged rightly', () => {
+    const { afterShift } = playDay(demo, newRun(demo, 'mistakes'), { wrong: () => true });
+    const ledger = afterShift.ledger.at(-1);
+    const verdicts = afterShift.shift?.verdicts ?? [];
+    expect(ledger?.mistakes).toHaveLength(ledger?.wrong ?? -1);
+    expect(ledger?.mistakes).toEqual(
+      verdicts
+        .filter((v) => v.stamped !== null && !v.correct)
+        .map((v) => ({ rule: v.rule, expected: v.expected, stamped: v.stamped })),
+    );
+    const right = playDay(demo, newRun(demo, 'mistakes')).afterShift.ledger.at(-1);
+    expect(right?.mistakes).toBeUndefined();
+  });
+
   it('leaves standing alone when every soul goes where it belongs', () => {
     const { afterShift } = playDay(demo, newRun(demo, 'stand'));
     expect(afterShift.ledger.at(-1)?.correct).toBeGreaterThan(0);

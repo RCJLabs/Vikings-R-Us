@@ -282,16 +282,26 @@ export const storageReady = signal(false);
 let store: KeyValueStore | null = null;
 
 /*
+ * Where this build keeps things in the browser. Builds share one place unless their target names its own (the
+ * playtest build, docs/tech-spec.md §38): then its localStorage keys and its database carry that name.
+ */
+const own = manifest.storage;
+/** This build's localStorage key for `name`. */
+export const localKey = (name: string): string => (own ? `cots.${own}.${name}` : `cots.${name}`);
+/** This build's IndexedDB database, when not the shared one. */
+const ownDb = own ? `chooser-of-the-slain.${own}` : undefined;
+
+/*
  * Daily progress and results are also mirrored to localStorage, which writes
  * synchronously. An IndexedDB write still in flight is lost if the page
  * unloads, and losing a just-sent soul or a finished result would let the
  * Daily be played again.
  */
 const MIRROR = {
-  progress: 'cots.daily-progress',
-  record: 'cots.daily',
-  settings: 'cots.settings',
-  endless: 'cots.endless-progress',
+  progress: localKey('daily-progress'),
+  record: localKey('daily'),
+  settings: localKey('settings'),
+  endless: localKey('endless-progress'),
 } as const;
 
 export function mirror(key: string, value: unknown): void {
@@ -414,7 +424,7 @@ export const kvStore = (): KeyValueStore | null => store;
 
 export async function initStorage(): Promise<void> {
   try {
-    store = await platform.openStore();
+    store = await platform.openStore(ownDb);
   } catch {
     store = memoryStore();
   }

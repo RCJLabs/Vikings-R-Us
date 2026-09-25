@@ -11,7 +11,7 @@ export const platform: Platform = {
   kind: 'itch',
   share: shareWithFallback,
   shareUrl: () => undefined,
-  openStore: () => openStore(),
+  openStore: (name) => openStore(name),
   watchForUpdate: noUpdates,
   unlockAchievement: noAchievements,
 };

@@ -17,6 +17,7 @@ import {
   endlessProgress,
   keepStorage,
   kvStore,
+  localKey,
   mirror,
   readMirrorRaw,
   saveDailyProgress,
@@ -40,7 +41,7 @@ import {
 export const SLOT_COUNT = 3;
 
 const slotKey = (i: number) => `campaign.${i}`;
-const mirrorKey = (i: number) => `cots.campaign.${i}`;
+const mirrorKey = (i: number) => localKey(`campaign.${i}`);
 
 /** What a slot held that this build couldn't read, as found in each copy. */
 export interface Unreadable {

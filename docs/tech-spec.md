@@ -1959,6 +1959,70 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - **Other store assets.** Steam's capsules and library art aren't made here; they're commissioned (docs/capsule-brief.md). The trailer is still to be edited, from these clips.
 - **Fragility.** The moments follow the UI's test ids, so a UI change can break one; CI's dry run catches it. The frame-stepping relies on Playwright's clock and Chromium's animation API, so a browser update could shift frames slightly.
 
+## 38. After M7: a playtest build for invited testers (phase 8)
+
+**Why.** Testers could only play the demo unless they built the game from source, and the campaign's economy had only been tuned against bots. How to set up the page and invite people: [`playtest.md`](playtest.md).
+
+**The target.** `web-playtest` is the full edition (every pack) with the itch adapter, relative paths, no service worker and no Case Lab. Two new target fields reach the build through the content manifest:
+- **`playtest`:** the title screen says it's a playtest build and names it. Each readable save slot gets a Playtest report button. `dev-full` has the flag too, so the report can be tried locally.
+- **`storage`:** the build's own name for what it keeps in a browser, or null to share the other builds' place.
+  - Only `web-playtest` has one, `playtest`. Its localStorage keys are `cots.playtest.*` instead of `cots.*`, and its IndexedDB database is `chooser-of-the-slain.playtest`.
+  - `localKey` in `store.ts` builds every key: settings, the Daily's and Endless's mirrors, the save slots, the art style. The platform's `openStore(name)` takes the database's name.
+  - Every other build keeps its names, so no existing save moves.
+  - Why: the demo shows a save it can't read as unreadable and offers to clear it, and itch probably serves every HTML5 game from one origin (Known limits).
+- **The build label:** target · commit · content hash, e.g. `web-playtest · 3f2a9c1 · content ca5b2592`. `VITE_BUILD` sets the commit (the playtest workflow passes the short SHA). A local build says `local`.
+
+**The engine: mistakes itemised.** The audit now files each soul sent wrong in the day's ledger, as `mistakes`. Each entry has:
+- the rule that decided where the soul belonged;
+- the destination expected and the one stamped;
+- any procedures skipped (nails left uncut).
+
+The field is absent on a day with none, and in saves from before this build, which keep only the count. No verdict, pay or Daily changes, and the pinned Daily checksums hold.
+
+**The report** (`packages/ui/src/campaign/playtest.ts`, pure). It's Markdown, made from the save and the run it resumes to:
+- **Header:**
+  - the build, slot and seed, and whether it's Story Mode or the slice;
+  - the day, phase and rings, and any nights in debt;
+  - the family;
+  - standing with the powers met so far, by the names they go by that day, so the stranger stays the stranger until Day 12;
+  - upgrades bought, and the ending.
+- **Days:** one row per finished day: souls right, wrong and unjudged; pay, bonus, fines, bills, shop, story and Draupnir; the rings after the night; and any assists. Signs are ASCII, so a script can read the table. A day whose night hasn't come has its night cells empty.
+- **Mistakes:** one line per soul: the stamp, where it belonged, the rule's text as that day's rulebook words it, and any steps skipped. For an old save, the day's count.
+- **Choices:** each journal entry is played again through its scene with the choices made (`playScene` with `journalEnv`), and the lines marked chosen are listed. If a scene has changed since and replay fails, the option numbers are listed instead.
+
+**The UI** (`playtest-ui.tsx`)
+- A dialog with the report, *Open the playtest form*, *Copy the report* and *Close*. Escape closes it, and so does B on a controller, as on every dialog.
+- The form link fills in `.github/ISSUE_TEMPLATE/campaign-playtest.yml`: the report, and the title `Campaign playtest: Day N` (plus ", an ending" for a finished run).
+- A link over 8,000 characters opens the empty form instead, with a note to paste the report.
+
+**The deploy** (`.github/workflows/deploy-playtest.yml`)
+- Run by hand only.
+- Needs `BUTLER_API_KEY` and the variable `ITCH_PLAYTEST_TARGET`, and skips cleanly without them. It fails if that project is the demo's (`ITCH_TARGET`).
+- Builds with the commit in `VITE_BUILD`, runs the leak check (the full build's canary must be there) and itch's limits, then pushes with butler, with the short SHA as the version.
+- The build is 14 files and 828 KB.
+
+**Tests**
+- **Engine:** the audit files each soul sent wrong with the rule that decided it, and none on a day judged rightly.
+- **Report (4 unit tests):**
+  - a row per day with pay, bills and rings;
+  - each mistake's destinations and rule;
+  - an old save's count;
+  - choices read back from a morning scene.
+- **e2e on the real `web-playtest` build** (served on port 4176; phone and desktop):
+  - the title note;
+  - a slot the demo left at `cots.campaign.0` is ignored, and the build's own keys and database are used;
+  - one day played with a soul sent wrong: the report's row, the mistake and its rule, both choices as the journal shows them, the form link's fields, Copy (the clipboard holds the report), Escape, and Close.
+- **A negative control, run once by hand:** built with `storage: null`, the storage test fails.
+- **CI** builds and leak-checks the new target with the rest.
+
+**Known limits** (more in `playtest.md`)
+- **The shared origin is unverified.** itch.io is blocked here, so that itch serves every HTML5 game from one origin comes from memory and forum reports. If it doesn't, the separate storage costs nothing.
+- **A password and a secret link can be passed on,** and the public repo means anyone can build the whole game anyway.
+- **Choices from rewritten scenes** show as option numbers.
+- **Only the campaign has a report.** The Daily already has its share text, soul reports and opt-in telemetry.
+- **The form needs a GitHub account,** and issues on a public repo are public. Copy the report is the way round both.
+- **The labels don't exist yet.** The forms' labels (`playtest`, `campaign`, and the alpha forms' `alpha` and `soul-report`) aren't in the repository, and GitHub skips a label that doesn't exist.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
@@ -1966,3 +2030,4 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - Steamworks libraries: [steamworks.js](https://github.com/ceifa/steamworks.js/) · [steamworks-ffi-node](https://github.com/ArtyProf/steamworks-ffi-node) · [steam-electron-build (Deck switches)](https://github.com/alexanderthurn/steam-electron-build)
 - Capacitor: [Announcing Capacitor 8](https://ionic.io/blog/announcing-capacitor-8) · [8.4 SystemBars](https://capawesome.io/blog/whats-new-in-capacitor-8-4-0/)
 - [itch.io HTML5 file limits](https://itch.io/t/893409/zipped-html5-game-number-of-files-limit)
+- itch.io access (for §38): [access control](https://itch.io/docs/creators/access-control) · [limited releases](https://itch.io/docs/creators/limited-releases) · [download keys](https://itch.io/docs/creators/download-keys) · [restricted links to an HTML5 game](https://itch.io/t/471212/how-to-distribute-restricted-links-to-an-html5-game) · [download keys and restricted HTML games](https://itch.io/t/4199266/do-download-keys-not-work-for-restricted-html-games)
