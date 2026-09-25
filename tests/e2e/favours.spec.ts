@@ -2,6 +2,7 @@ import {
   type CaseSpec,
   type Destination,
   ENGINE_MAJOR,
+  type Faction,
   type RunSave,
   type RunState,
   runContext,
@@ -14,8 +15,9 @@ import { FULL } from './urls';
 
 /*
  * The gods' favour (docs/tech-spec.md §43) in the full game: a save on Day 5's morning, made in Node with every
- * earlier soul judged rightly, and every god's standing then set at its favour's mark. The day is played with a
- * liar questioned and three souls sent wrong, so there's a fine for the clerk to halve.
+ * earlier soul judged rightly, and every god's standing then set at its first favour's mark, but Odin's and the
+ * clerk's at their second, so theirs add up. The day is played with a liar questioned and three souls sent wrong,
+ * so there's a fine for the clerk to waive.
  */
 
 test.use({ baseURL: FULL });
@@ -23,10 +25,15 @@ test.use({ baseURL: FULL });
 const content = loadContent('dev-full');
 const favours = content.campaign?.favours ?? [];
 
+const marks = (god: Faction) => favours.filter((f) => f.faction === god).map((f) => f.at);
+const SECOND: readonly Faction[] = ['odin', 'clerk'];
+
 function withStanding(base: RunSave): RunSave {
   const morning = base.mornings[base.mornings.length - 1] as RunState;
   const standing = { ...morning.standing };
-  for (const f of favours) standing[f.faction] = f.at;
+  for (const f of favours) {
+    standing[f.faction] = SECOND.includes(f.faction) ? Math.max(...marks(f.faction)) : Math.min(...marks(f.faction));
+  }
   return { ...base, mornings: [...base.mornings.slice(0, -1), { ...morning, standing }] };
 }
 
@@ -76,18 +83,20 @@ test("the gods' favour: granted at the gate, spent at the desk, the audit and th
   while ((await page.getByTestId('scene-done').count()) === 0) await page.getByTestId('scene-choice').first().click();
   await page.getByTestId('scene-done').click();
 
-  // Every favour today, and Odin's minute is in the day's sun.
+  // Every favour today, and Odin's two minutes are in the day's sun.
   await expect(page.getByTestId('favour-today')).toHaveText([
     "Odin's favour today: the sun holds a minute longer at the gate.",
+    "Odin's favour today: the sun holds another minute.",
     "Freyja's favour today: your first question of the day costs no sun.",
-    "Hel's favour today: the sick at home hold out a night longer without medicine.",
+    "Hel's favour today: no one at home falls sick by chance, and the sick hold out a night longer without medicine.",
     "The clerk's favour today: your fines are halved.",
+    "The clerk's favour today: the rest of your fines are waived.",
   ]);
-  await expect(page.getByText(`The sun sets in ${clock(sunS + 60)}.`)).toBeVisible();
+  await expect(page.getByText(`The sun sets in ${clock(sunS + 120)}.`)).toBeVisible();
   // The guide says what each god grants, at what standing, and whose are yours.
   await page.getByTestId('favours').locator('summary').click();
   await expect(page.getByTestId('favour')).toHaveCount(favours.length);
-  await expect(page.getByTestId('favour').first()).toContainText('Odin, at standing 4 (now +4)');
+  await expect(page.getByTestId('favour').first()).toContainText('Odin, at standing 4 (now +8)');
   await expect(page.getByTestId('favour').first()).toContainText('Yours today.');
 
   await page.getByTestId('to-gate').click();
@@ -117,14 +126,15 @@ test("the gods' favour: granted at the gate, spent at the desk, the audit and th
     } else await stampAndSend(page, c.expect.dest);
   }
 
-  // The clerk's: the fine for the third mistake, halved (rounding down).
+  // The clerk's two: the fine for the third mistake, halved and the rest waived, and the audit says why there's none.
   await expect(page.getByTestId('audit-title')).toHaveText('Day 5: the audit');
-  const economy = runContext(content, save.mornings[save.mornings.length - 1] as RunState).spec.economy;
-  const fine = Math.floor((economy?.fines[0] ?? 0) / 2);
-  await expect(page.getByTestId('ledger').locator('tr', { hasText: 'Fines' }).locator('td').nth(1)).toHaveText(
-    `-${fine}`,
-  );
-  await expect(page.getByTestId('favour-fines')).toHaveText("The clerk's favour today: your fines are halved.");
+  await expect(
+    page.getByTestId('ledger').locator('tr', { hasText: 'Fines for 1 more mistake' }).locator('td').nth(1),
+  ).toHaveText('0');
+  await expect(page.getByTestId('favour-fines')).toHaveText([
+    "The clerk's favour today: your fines are halved.",
+    "The clerk's favour today: the rest of your fines are waived.",
+  ]);
 
   // Hel's holds for the night, whatever the day's mistakes did to her standing.
   await page.getByTestId('go-home').click();
@@ -134,6 +144,14 @@ test("the gods' favour: granted at the gate, spent at the desk, the audit and th
     await page.getByTestId('scene-done').click();
   }
   await expect(page.getByTestId('favour-tonight')).toHaveText(
-    "Hel's favour tonight: the sick at home hold out a night longer without medicine.",
+    "Hel's favour tonight: no one at home falls sick by chance, and the sick hold out a night longer without medicine.",
   );
+  // Without firewood tonight, no one well at home can fall sick by chance: the bills fall, and no odds are given.
+  const after = async () =>
+    Number((await page.getByTestId('after-bills').innerText()).match(/-?\d+/)?.[0] ?? Number.NaN);
+  const paid = await after();
+  await page.getByTestId('bill-hearth').uncheck();
+  const hearth = runContext(content, save.mornings[save.mornings.length - 1] as RunState).spec.economy?.costs.hearth;
+  expect(await after()).toBe(paid + (hearth ?? Number.NaN));
+  await expect(page.getByTestId('outlook-risk')).toHaveCount(0);
 });

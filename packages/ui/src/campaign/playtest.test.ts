@@ -2,6 +2,7 @@ import {
   type CaseSpec,
   type Destination,
   ENGINE_MAJOR,
+  type Faction,
   type RunAction,
   type RunSave,
   type RunState,
@@ -208,27 +209,37 @@ describe('the playtest report', () => {
     expect(report(played('playtest-ask-none', 1, right))).toContain('### Requests\n\nNone yet.');
   });
 
-  it('lists the gods’ favours each day held, as the gate granted them', () => {
-    const base = scenarioSave(content, 'playtest-favour', 5, ENGINE_MAJOR);
-    const morning = base.mornings[base.mornings.length - 1] as RunState;
-    // Freyja's standing at her favour's mark on Day 5's morning.
-    const at = content.campaign?.favours?.find((f) => f.id === 'fav.freyja')?.at ?? 4;
-    let run: RunState = { ...morning, standing: { ...morning.standing, freyja: at } };
-    let save: RunSave = { ...base, mornings: [...base.mornings.slice(0, -1), run] };
-    const apply = (action: RunAction) => {
-      const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
-      const next = stepRun(run, action, env).state;
-      save = recordAction(save, run, action, next);
-      run = next;
+  it('lists the gods’ favours each day held, as the gate granted them, and the fines they spared', () => {
+    const mark = (id: string) => content.campaign?.favours?.find((f) => f.id === id)?.at ?? 4;
+    /** Day 5 played from a morning with `god`'s standing at `at`, every soul stamped by `stamp`. */
+    const favoured = (god: Faction, at: number, stamp: Stamp) => {
+      const base = scenarioSave(content, 'playtest-favour', 5, ENGINE_MAJOR);
+      const morning = base.mornings[base.mornings.length - 1] as RunState;
+      let run: RunState = { ...morning, standing: { ...morning.standing, [god]: at } };
+      let save: RunSave = { ...base, mornings: [...base.mornings.slice(0, -1), run] };
+      const apply = (action: RunAction) => {
+        const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
+        const next = stepRun(run, action, env).state;
+        save = recordAction(save, run, action, next);
+        run = next;
+      };
+      apply({ t: 'beginShift', at: 0 });
+      const stamps = stampsFor(runContext(content, run));
+      let t = 0;
+      for (const c of run.shift?.cases ?? []) {
+        t += 1000;
+        apply({ t: 'shift', action: { t: 'stamp', dest: stamp(c, stamps), at: t } });
+        apply({ t: 'shift', action: { t: 'send', at: t } });
+      }
+      return { save, eased: run.ledger.at(-1)?.eased };
     };
-    apply({ t: 'beginShift', at: 0 });
-    let at2 = 0;
-    for (const c of run.shift?.cases ?? []) {
-      at2 += 1000;
-      apply({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at: at2 } });
-      apply({ t: 'shift', action: { t: 'send', at: at2 } });
-    }
-    expect(report(save)).toContain("### Favours\n\n- Day 5: faction.freyja's favour (favour.freyja).");
+    const freyja = favoured('freyja', mark('fav.freyja'), right);
+    expect(report(freyja.save)).toContain("### Favours\n\n- Day 5: faction.freyja's favour (favour.freyja).");
+    const clerk = favoured('clerk', mark('fav.clerk'), wrong);
+    expect(clerk.eased).toBeGreaterThan(0);
+    expect(report(clerk.save)).toContain(
+      `### Favours\n\n- Day 5: faction.clerk's favour (favour.clerk); ${clerk.eased} rings of fines spared.`,
+    );
     expect(report(played('playtest-favour-none', 1, right))).toContain('### Favours\n\nNone yet.');
   });
 

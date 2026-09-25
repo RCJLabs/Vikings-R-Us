@@ -83,8 +83,8 @@ Checked each night in this order. The first that holds ends the run. Faction end
 | 200 | Rebirth (true ending) | Day 20: the truth learned (`truth` 3+), the family hidden in Hoddmímir's wood, a strong host (260+), someone at home |
 | 300 | Smuggled Home | Day 20: a place on the ferry (story), 100+ rings for the fare, someone left to smuggle |
 | 400 | The Transfer | Day 20: the clerk's contract signed, clerk standing 4+ |
-| 500 | Hel's Steward | Day 20: Hel leads the factions, standing 3+ |
-| 510 | Freyja's Own | Day 20: Freyja leads, standing 3+ |
+| 500 | Hel's Steward | Day 20: Hel leads the factions, standing 8+ |
+| 510 | Freyja's Own | Day 20: Freyja leads, standing 8+ |
 | 520 | Chooser Eternal | Day 20: Odin leads |
 | 990 | The Wolf Wins | Day 20: the host is too weak (240 or less) |
 | 1000 | The Last Stand | Day 20, otherwise |
@@ -95,7 +95,8 @@ Checked each night in this order. The first that holds ends the run. Faction end
 | Ending | Reached by (12 seeds each) |
 |---|---|
 | Naglfar, Rebirth, Smuggled Home | 12 of 12, expert or competent |
-| Hel's Steward, Freyja's Own, Chooser Eternal | 12 of 12 expert; competent 2, 8 and 3 of 12 |
+| Hel's Steward, Freyja's Own | 12 of 12 expert who also does her requests (2 and 0 who don't); competent 5 and 10 of 12 (tech-spec §42) |
+| Chooser Eternal | 12 of 12 expert; 3 of 12 competent |
 | The Transfer | 11 of 12 expert; 3 of 12 competent |
 | The Wolf Wins | novices who survive; 4 of 12 competent saboteurs |
 | The Last Stand | most plain players |

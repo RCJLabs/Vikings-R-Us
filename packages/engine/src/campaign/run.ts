@@ -228,17 +228,29 @@ export function favoursFor(run: RunState, content: Content): FavourDef[] {
 }
 
 /**
- * Family care tonight: the campaign's, and the nights more that a god's favour gives the sick. The favours are
- * the day's, as its audit filed them; before then, those the gate will grant.
+ * Family care tonight: the campaign's, with what a god's favour gives the sick (nights more to hold out) and the
+ * well (less chance of falling sick). The favours are the day's, as its audit filed them; before then, those the
+ * gate will grant.
  */
 export function careFor(run: RunState, content: Content): CampaignDef['care'] {
   const campaign = campaignOf(content);
   const today = run.ledger[run.ledger.length - 1];
   const ids = today?.day === run.day ? (today.favours ?? []) : favoursFor(run, content).map((f) => f.id);
-  const extra = (campaign.favours ?? [])
-    .filter((f) => ids.includes(f.id))
-    .reduce((n, f) => n + ('sickNights' in f.effect ? f.effect.sickNights : 0), 0);
-  return extra > 0 ? { ...campaign.care, sickNights: campaign.care.sickNights + extra } : campaign.care;
+  let extra = 0;
+  let chancePct = 100;
+  for (const f of campaign.favours ?? []) {
+    const e = f.effect;
+    if (!ids.includes(f.id) || !('sickNights' in e)) continue;
+    extra += e.sickNights;
+    chancePct = Math.min(chancePct, e.sickChancePct ?? 100);
+  }
+  if (extra === 0 && chancePct === 100) return campaign.care;
+  const { sickNights, sickChance } = campaign.care;
+  return {
+    ...campaign.care,
+    sickNights: sickNights + extra,
+    sickChance: Math.floor((sickChance * chancePct) / 100),
+  };
 }
 
 /** The upgrades on sale tonight. */
@@ -633,6 +645,7 @@ function audit(
   const fined = !run.story && !assists?.noFines;
   // A god's favour can lighten each fine (docs/tech-spec.md §43).
   const finePct = shift.config.mods?.finePct ?? 100;
+  let eased = 0;
   const mistakes: DayMistake[] = [];
   // What each verdict cost, for an appeal to give back.
   const costs = new Map<number, { fine: number; standing: Partial<Record<Faction, number>>; worthy: boolean }>();
@@ -656,8 +669,10 @@ function audit(
         ...(v.skipped && v.skipped.length > 0 ? { skipped: v.skipped } : {}),
       });
       if (fined && wrong > economy.warnings) {
-        const i = Math.min(wrong - economy.warnings - 1, economy.fines.length - 1);
-        fines += Math.floor(((economy.fines[i] ?? 0) * finePct) / 100);
+        const fine = economy.fines[Math.min(wrong - economy.warnings - 1, economy.fines.length - 1)] ?? 0;
+        const charged = Math.floor((fine * finePct) / 100);
+        fines += charged;
+        eased += fine - charged;
       }
     }
     // Only mistakes move standing: a god isn't angered (or flattered) by a soul sent where it belongs.
@@ -690,6 +705,7 @@ function audit(
     pay,
     bonus,
     fines,
+    ...(eased > 0 ? { eased } : {}),
     standing,
     ...(assists ? { assists } : {}),
     ...(mistakes.length > 0 ? { mistakes } : {}),

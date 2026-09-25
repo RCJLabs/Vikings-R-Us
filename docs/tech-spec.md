@@ -2181,7 +2181,7 @@ Appeals add depth and a second look; they don't fix the economy's missing middle
 The brainstorm's version, and what changed:
 - **It added yesterday's leftovers to tomorrow's queue.** A slow day would make the next one longer, a snowball that steepens the novices' cliff. Here they take the places of the day's last new souls instead, so the line is no longer. Leaving a soul costs a wage, exactly as before.
 - **It didn't say whose rules judge them.** A soul made for one day often can't be judged fairly by the next: it lacks the new day's kinds of evidence. Measured over 40 seeds, only 47% of Day 1's souls could be judged by Day 2's rules; 36% of Day 4's by Day 5's; none of Day 7's by Day 8's (the nails); 57% of Day 16's by Day 17's. Here each soul is seen afresh (below), and 100% of 9,555 pass.
-- **It charged Hel once per soul.** Endings need standing of 3 or 4, so any occasionally slow player would lose Hel's ending. Here only a crowded gate costs anything.
+- **It charged Hel once per soul.** Endings need standing of 4 to 8, so any occasionally slow player would lose Hel's ending. Here only a crowded gate costs anything.
 - **It let the living die into Hel's hall.** Hel's legion counts double in the host at Ragnarök, so that would be a fine-free way to grow it. Here the living lost in the night go to no hall.
 - **It promised the order of the line would matter.** That needs a way to choose who comes to the desk next: a big change on both layouts, and to what the player knows before judging. It isn't built; see the limits.
 
@@ -2319,7 +2319,22 @@ The brainstorm's version, and what changed:
 | 2 | 12 / 12 | 12 / 12 | 10 / 11 | 2 / 7 |
 | Every one asked (about 3) | 12 / 12 | 12 / 12 | 11 / 11 | 3 / 9 |
 
-So for an expert, a single favour of Freyja's or Hel's mostly decides the ending, whatever the reward. The choice is now made openly rather than by accident, but it's cheap. Raising those endings' thresholds would make them take a run's commitment: standing 8, for example, takes about two favours with the current rows and rewards. That changes the story's paths, and would put Hel's ending out of a competent player's reach without the story's help, so it's for you to decide.
+So at standing 3, for an expert, a single favour of Freyja's or Hel's mostly decided the ending, whatever the reward. The choice was made openly rather than by accident, but it was cheap.
+
+**Raised to 8.** Both endings now need standing 8 and the lead. 8 is the lowest mark at which the god's story alone falls short: at 7, an expert devoted to Hel in the story still reaches her ending in 8 runs of 12 without a request. Measured over 12 runs a policy (payAll, the god's own story policy, the first N of her requests done):
+
+| Favours done | Expert: Freyja's ending | Expert: Hel's | Competent: Freyja's | Competent: Hel's |
+|---|---|---|---|---|
+| None (the story alone) | 0 of 12 | 2 | 1 | 0 |
+| 1 | 12 | 11 | 5 | 2 |
+| 2 | 12 | 12 | 9 | 3 |
+| Every one asked (about 3) | 12 | 12 | 10 | 5 |
+| Every one asked, plain story | 12 | 11 | 9 | 3 |
+
+- **For an expert,** the story and one favour now bring the ending, as do the requests alone.
+- **The cost: Hel's ending is now a hard one for a competent player.** It takes 5 of 12 even with her story and every request, against 9 at standing 3. Her souls are many, and each one judged wrong costs her a point (the rows above).
+- **Novices** reach neither ending at any mark from 4 up.
+- The reach test's Freyja and Hel bots now do their god's requests too.
 
 **Tests**
 - **Engine (5):**
@@ -2349,28 +2364,37 @@ So for an expert, a single favour of Freyja's or Hel's mostly decides the ending
 
 The brainstorm's version, and what changed:
 - **Kept:** Odin gives more sun, Freyja a free question a day, Hel milder sickness at home, the clerk halved fines. Like the upgrades, favours give time, information or money, never what decides a soul.
-- **"Milder sickness"** is made concrete: the sick hold out a night longer without medicine. It buys time to afford medicine without changing who falls sick.
-- **It set no standing to reach.** At 4, favours come to players who court a god, and rarely by accident (below).
+- **"Milder sickness"** is made concrete: no one at home falls sick by chance (from a night's unpaid bill), and the sick hold out a night longer without medicine. Nights in a row without firewood or food still make them sick. The chance part was added after the first measurements (below): the extra night alone changed nothing the sim could see.
+- **It set no standing to reach.** The first favours come at 4, or at 3 for the two that ease hardship (sickness and fines), so they come to players who court a god, and rarely by accident (below). A second, stronger favour comes at 8.
 - **Loki gets none.** The brainstorm names four gods, and the stranger isn't named until Day 12. A favour of his would be the place for the Naglfar plot to pay out during a run, if you want one.
 
-**The rule** (`favoursFor` in `campaign/run.ts`): at the gate each morning, every god whose standing is at a favour's `at` or more grants it for the day and its night.
+**The rule** (`favoursFor` in `campaign/run.ts`): at the gate each morning, every god whose standing is at a favour's `at` or more grants it for the day and its night. A god's favours add up: sun and free questions are summed, and of the fine and sickness percentages the lowest holds.
 - **Settled at the gate.** Standing doesn't move during a shift, so the audit files the same favours the gate granted (`favours` in the day's ledger).
 - **The night keeps them.** Mistakes that cost a god standing at the audit don't take back that night's favour. The next morning decides again.
 
 **Where each acts**
 - **Odin's sun:** `shiftMods` adds it to the day's sun, as the sundial does.
 - **Freyja's question:** the shift counts the free questions asked (`mods.freeQuestions`, `freeAsked`), so the day's first question costs no sun. Without the favour no count is kept, and nothing else about a shift changes.
-- **The clerk's fines:** the audit charges `finePct` of each fine, rounding down. An appeal's own fine is untouched.
-- **Hel's night:** `careFor` gives the night its extra night for the sick. The night screen's outlook, and the family's "needs medicine within N nights", count with it.
+- **The clerk's fines:** the audit charges `finePct` of each fine, rounding down, and files the rings spared (`eased` in the day's ledger). An appeal's own fine is untouched.
+- **Hel's night:** `careFor` gives the night its extra nights for the sick, and scales the chance of falling sick from an unpaid bill by `sickChancePct` (0: none). The night screen's outlook (the odds it gives, and the family's "needs medicine within N nights") counts with both.
 
 **The screens**
 - **The morning** names today's favours in the day's card: those that do anything, since Story Mode has no sun and no fines, and the no-fines assist leaves nothing to halve. A guide below lists every favour, the standing it takes, the standing now, and which are yours today.
 - **The desk** labels the free question "Question (free today)".
-- **The audit** notes the clerk's favour under the fines.
+- **The audit** notes the clerk's favours under the fines. When they waive the fines, the fines row stays, at 0, so the mistake it's for isn't lost from the accounts.
 - **The night** notes Hel's.
-- **The playtest report** lists each day's favours.
+- **The playtest report** lists each day's favours, and the rings of fines they spared.
 
-**Numbers.** In the campaign pack, every favour takes standing 4: Odin +60 s of sun, Freyja 1 free question, Hel +1 night, the clerk 50% of each fine. First guesses.
+**Numbers** (the campaign pack; first guesses):
+
+| God | First favour | Second, at 8 |
+|---|---|---|
+| Odin | at 4: +60 s of sun | +60 s more |
+| Freyja | at 4: the day's first question free | the second too |
+| Hel | at 3: no one falls sick by chance, and the sick hold out a night longer | another night |
+| The clerk | at 3: fines halved | the rest waived |
+
+These began as one favour each, all at 4 (the measurements just below). The revision after them follows.
 
 How often each is held (bots, 12 runs, plain story, payAll; the share of mornings from Day 2 with the god at 4 or more):
 
@@ -2390,23 +2414,40 @@ What they change (the same bots, with the favours and without them):
 
 So the favours are small, and in the sim mostly invisible. Whether players feel them is for the playtest to show.
 
+**Revised after these measurements:** the clerk's and Hel's marks lowered to 3, Hel's favour widened to chance sickness, and a second favour for each god at 8, the mark of Freyja's and Hel's endings (§42). Measured again (12 runs a policy, payAll unless named; "courting" is the god's own story policy and every request of theirs, the transfer policy for the clerk). The share of mornings from Day 2 at each mark:
+
+| God (marks) | Expert, plain | Expert, courting | Competent, courting | Novice, courting |
+|---|---|---|---|---|
+| Odin (4, 8) | 4%, 0% | 60%, 41% | 26%, 10% | 0%, 0% |
+| Freyja (4, 8) | 0%, 0% | 73%, 30% | 64%, 21% | 21%, 0% |
+| Hel (3, 8) | 25%, 0% | 66%, 37% | 37%, 12% | 0%, 0% |
+| The clerk (3, 8) | 0%, 0% | 43%, 19% | 40%, 12% | 21%, 3% |
+
+- **The second favours never come by accident,** and to a courting expert on a fifth to two fifths of mornings.
+- **Hel's at 3 comes to a plain expert on a quarter of mornings** (a fifth at 4). Experts pay their bills, so it's worth little to them.
+- **The clerk's at 3 comes to novices who don't court him** on 13% of mornings (5% at 4). Their fines over a run fall from 294 to 285 rings: still small.
+- **Hel's widened favour is the first the sim shows.** Bots on the frugal policy go without firewood every other night. With her requests done (plain story), an expert holds it on 55% of mornings and pays 61 rings for medicine over a run, against 176 without it; competent, 30% and 113. Without her requests, experts still hold it on 15% of mornings (131 rings). The extra night alone changed nothing, since bots always buy medicine.
+- **The second favours are unmeasured.** Odin's matters only to a player slower than the sun (bots at 25 s a soul never are). Freyja's needs a bot that questions, Hel's second night a bot that skips medicine, and the clerk's comes to few novices (3% of a courting novice's mornings).
+
 **Tests**
-- **Engine (4):**
+- **Engine (6):**
   - a favour is granted at its mark and not below; Odin's sun is in the day's shift and its ledger;
   - the clerk's halves each fine, rounding down;
   - Hel's holds for the night even after the audit costs her standing, and the night's outlook agrees;
+  - Hel's spares the well any chance of falling sick (the outlook's odds, and 12 seeded nights), though a second night without firewood still makes them sick;
+  - a god's favours add up at the second mark: a second minute, question and night, and the fines waived, with the rings spared filed;
   - Freyja's makes the first question free and the next one cost its price, and no count is kept without it.
 - **Compiler (1):** favours compile; missing words and a favour named twice are refused.
-- **Report (1).**
-- **e2e on the full game** (phone and desktop): a save on Day 5's morning with every god at its mark. It checks:
-  - the morning's favours, the guide and the day's sun;
+- **Report (1):** the favours each day held, and the fines they spared.
+- **e2e on the full game** (phone and desktop): a save on Day 5's morning with every god at its first mark, and Odin and the clerk at their second. It checks:
+  - the morning's favours, the guide and the day's sun (two minutes more);
   - the free question at the desk;
-  - the halved fine and its note at the audit;
-  - Hel's favour at night.
+  - the waived fine, its row at 0, and both of the clerk's notes at the audit;
+  - Hel's favour at night, and no odds of falling sick with the firewood unpaid.
 
 **Known limits**
-- **The favours are small** (above). Odin's is the only one the sim shows; the marks and values are content.
-- **One mark per god.** The list takes several favours per god, so tiers are possible; none are set.
+- **The favours are small** (above). Odin's and Hel's are the ones the sim shows; the marks and values are content.
+- **The second favours are guesses** (above): none of them is measured.
 - **Loki has none** (above).
 - **The words are drafts.**
 - **The Daily and Endless are untouched,** and the demo has no favours.

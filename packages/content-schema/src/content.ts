@@ -530,7 +530,7 @@ export const CampaignPartSchema = z.strictObject({
           z.strictObject({ sunS: Int.min(1) }),
           z.strictObject({ freeQuestions: Int.min(1) }),
           z.strictObject({ finePct: Percent }),
-          z.strictObject({ sickNights: Int.min(1) }),
+          z.strictObject({ sickNights: Int.min(1), sickChancePct: Percent.optional() }),
         ]),
         text: Key,
       }),

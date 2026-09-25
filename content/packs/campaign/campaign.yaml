@@ -16,9 +16,9 @@ standing:
 # The gods' requests (docs/tech-spec.md §42): on some mornings a god asks, openly, for souls that belong to
 # another. Doing it in full earns the reward, on top of the rows above; each soul is still sent wrong (no
 # wage, a citation, a fine past the day's warnings). Declining costs nothing. Freyja and Hel both want Odin's
-# warriors, so they can be rivals for them. The rows do most of the moving: an expert bot that does a single
-# favour of Freyja's comes to her ending in 9 runs of 12 even with no reward (2 of 12 doing none), 10 of 12
-# with +1 (docs/tech-spec.md §42). First guesses; `pnpm sim campaign --serve <god>` measures them.
+# warriors, so they can be rivals for them. The rows do most of the moving: a favour of Freyja's moves her 3
+# (2 souls and the reward), which with her ending at 8 is what a bot devoted to her in the story still lacks
+# (docs/tech-spec.md §42). First guesses; `pnpm sim campaign --serve <god>` measures them.
 requests:
   from: 4
   chance: 50
@@ -29,14 +29,20 @@ requests:
     - { id: req.hel, god: hel, from: VALHALLA, to: HEL, n: 2, reward: { hel: 1 }, since: 5, text: request.hel }
     - { id: req.clerk, god: clerk, from: HEL, to: TRANSFER, n: 2, reward: { clerk: 1 }, since: 10, text: request.clerk }
 # Favour (docs/tech-spec.md §43): at the gate each morning, every god whose standing is at a favour's mark grants
-# it for the day and its night. Like the upgrades, favours give time, information or money, never what decides a
-# soul. At 4, bots that court a god (its requests, or the story) hold its favour on about half their mornings
-# from the second week; bots that don't, hardly ever. First guesses.
+# it for the day and its night, and a god's favours add up. Like the upgrades, favours give time, information or
+# money, never what decides a soul. The first come at 4, or at 3 for the two that ease hardship (sickness and
+# fines); bots that court a god (its story and every request) hold them on a quarter to three quarters of their
+# mornings, and those that don't, on up to a quarter (Hel's, for experts). The second come at 8, Freyja's and
+# Hel's endings' mark: a fifth to two fifths of a courting expert's mornings, and never by accident. First guesses.
 favours:
   - { id: fav.odin, faction: odin, at: 4, effect: { sunS: 60 }, text: favour.odin }
+  - { id: fav.odin.more, faction: odin, at: 8, effect: { sunS: 60 }, text: favour.odin.more }
   - { id: fav.freyja, faction: freyja, at: 4, effect: { freeQuestions: 1 }, text: favour.freyja }
-  - { id: fav.hel, faction: hel, at: 4, effect: { sickNights: 1 }, text: favour.hel }
-  - { id: fav.clerk, faction: clerk, at: 4, effect: { finePct: 50 }, text: favour.clerk }
+  - { id: fav.freyja.more, faction: freyja, at: 8, effect: { freeQuestions: 1 }, text: favour.freyja.more }
+  - { id: fav.hel, faction: hel, at: 3, effect: { sickNights: 1, sickChancePct: 0 }, text: favour.hel }
+  - { id: fav.hel.more, faction: hel, at: 8, effect: { sickNights: 1 }, text: favour.hel.more }
+  - { id: fav.clerk, faction: clerk, at: 3, effect: { finePct: 50 }, text: favour.clerk }
+  - { id: fav.clerk.more, faction: clerk, at: 8, effect: { finePct: 0 }, text: favour.clerk.more }
 # Promotion (docs/tech-spec.md §44): two clean days in a row (every soul judged rightly, none left at dusk)
 # bring the next rank's offer the next morning. A rank brings souls more each day (after the day's own), fewer
 # mistakes forgiven before the fines, a higher wage and a tithe to Odin each night. Declining costs nothing, and
@@ -96,14 +102,16 @@ endings:
     when: { all: [{ state: day, gte: 20 }, { state: flags.clerk_contract, gte: 1 }, { state: standing.clerk, gte: 4 }] }
     title: ending.transfer.title
     text: ending.transfer.text
+  # Freyja's and Hel's endings take a run's courting (docs/tech-spec.md §42): at 8, a bot devoted to either in
+  # the story comes short without her requests (0 and 2 runs of 12, expert), and reaches it with one (12 and 11).
   - id: ending.hel
     order: 500
-    when: { all: [{ state: day, gte: 20 }, { state: lead.hel, gte: 1 }, { state: standing.hel, gte: 3 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: lead.hel, gte: 1 }, { state: standing.hel, gte: 8 }] }
     title: ending.hel.title
     text: ending.hel.text
   - id: ending.freyja
     order: 510
-    when: { all: [{ state: day, gte: 20 }, { state: lead.freyja, gte: 1 }, { state: standing.freyja, gte: 3 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: lead.freyja, gte: 1 }, { state: standing.freyja, gte: 8 }] }
     title: ending.freyja.title
     text: ending.freyja.text
   - id: ending.odin
