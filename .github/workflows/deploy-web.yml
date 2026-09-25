@@ -1,6 +1,7 @@
 name: Deploy web demo
 
-# Publishes the free web demo (Days 1-3 + Daily Shift) to GitHub Pages.
+# Publishes the free web demo (Days 1-3 + Daily Shift) to GitHub Pages, and beside it, unlisted at /full/, the
+# whole game (the playtest build; docs/tech-spec.md §48).
 # Needs Settings -> Pages -> Source: "GitHub Actions".
 on:
   push:
@@ -35,10 +36,22 @@ jobs:
           VITE_COMMUNITY_URL: ${{ vars.COMMUNITY_URL }}
           VITE_STEAM_URL: ${{ vars.STEAM_URL }}
       - run: pnpm leak-check --targets web-demo
+      # The whole game, unlisted: its paths are relative and its saves are kept apart from the demo's. The commit
+      # goes in the build, so its title screen and its playtest reports say which build it is.
+      - run: VITE_BUILD="${GITHUB_SHA::7}" pnpm build:web-playtest
+        env:
+          VITE_TELEMETRY_URL: ${{ vars.TELEMETRY_URL }}
+          VITE_COMMUNITY_URL: ${{ vars.COMMUNITY_URL }}
+      - run: pnpm leak-check --targets web-playtest
+      - name: Put the site together (the demo, and the whole game at /full/; PAGES_FULL in targets.ts)
+        run: |
+          mkdir -p dist/pages
+          cp -R dist/web-demo/. dist/pages/
+          cp -R dist/web-playtest dist/pages/full
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/web-demo
+          path: dist/pages
 
   deploy:
     needs: build

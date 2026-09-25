@@ -1,6 +1,15 @@
 # Playtest builds: the whole game for invited testers
 
-The public builds stop at Day 3, and the campaign's economy has only been tuned against bots. The `web-playtest` build is the whole game, on its own restricted itch.io page, for the people you invite. Each save slot turns its run into a report for the playtest form. The technical side is in [`tech-spec.md`](tech-spec.md) §38.
+The public builds stop at Day 3, and the campaign's economy has only been tuned against bots. The `web-playtest` build is the whole game, on its own restricted itch.io page, for the people you invite. It's also on GitHub Pages, unlisted, beside the demo (below). Each save slot turns its run into a report for the playtest form. The technical side is in [`tech-spec.md`](tech-spec.md) §38 and §48.
+
+## On GitHub Pages, unlisted
+
+Since 25 September 2026, the Pages deploy carries the same build at `/full/`: **https://rcjlabs.github.io/Vikings-R-Us/full/**.
+- **Nothing links to it.** The demo doesn't mention it, and the page asks search engines not to list it (`noindex`). It isn't private, though: anyone with the link can play the whole campaign.
+- **It follows `main`.** Every merge redeploys it with the demo, and its title screen names the commit.
+- **Its saves are its own,** as on itch: nothing it keeps touches the demo's.
+- **A browser that has played the demo needs the demo's update once.** Until then the demo's offline copy answers `/full/` and shows the demo. Open the demo, tap **Update now** on its title screen, then open `/full/`. A private window works straight away.
+- **To take it down,** remove the three `web-playtest` steps from `.github/workflows/deploy-web.yml` and upload `dist/web-demo` again, as before.
 
 ## What testers get
 
@@ -62,6 +71,7 @@ I couldn't open itch.io from here, so check steps 1, 2 and 6 against the dashboa
 ## Known limits
 
 - **A link and a password can be passed on.** itch's restriction keeps out passers-by, not a tester who shares it. And the repository is public, so anyone can build the whole game from source anyway.
+- **The Pages copy has no password at all.** It's unlisted, which only works while nobody posts the link.
 - **Saves live in the tester's browser.** Any of these can lose a run, and its report with it:
   - a private window;
   - cleared site data;

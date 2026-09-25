@@ -2715,6 +2715,42 @@ Notes on the table:
 - **One bribe in the campaign.** Another is content: a story soul whose stamp pays rings.
 - **The words are drafts.**
 
+## 48. After M7: the whole game on GitHub Pages, unlisted
+
+**Why.** The owner wants to play the whole campaign in a browser now (25 September 2026). The playtest build's itch page (§38) was never set up, and the public web demo stops at Day 3. This is the owner's call: the build plan kept the campaign off every public URL, since it's the paid game.
+
+**What changed**
+- **The Pages deploy builds two targets.** `deploy-web.yml` builds `web-demo` and `web-playtest`, and runs the leak check on each:
+  - the demo must not contain the campaign;
+  - the playtest build must.
+
+  It then publishes the demo at the site's root, as before, and the playtest build beside it at `/full/` (`PAGES_FULL` in `targets.ts`): https://rcjlabs.github.io/Vikings-R-Us/full/.
+- **Why that build suits the subfolder:**
+  - its paths are relative, so it runs from any folder;
+  - it registers no service worker;
+  - its saves are its own (`cots.playtest.*`, database `chooser-of-the-slain.playtest`), so nothing it keeps touches the demo's.
+- **The demo's service worker leaves `/full/` alone.** It answers every page load in its scope (the whole site) with the demo's page. A `navigateFallbackDenylist` now excludes `/full/`. The demo's own builds are unchanged: the leak check still proves they carry no campaign.
+- **Unlisted, not private.**
+  - Nothing links to `/full/`.
+  - The playtest build asks search engines not to list it (`<meta name="robots" content="noindex, nofollow">`), on itch too.
+  - Anyone with the link can play the whole game.
+
+**A browser that played the demo before this change** has the old service worker, which answers `/full/` with the demo. After the deploy, the demo's title screen offers the update ("A new version is ready. Update now"); after that, `/full/` works. A private window works at once.
+
+**Checked** by serving the assembled site under `/Vikings-R-Us/`, in Chromium:
+- **A fresh browser:**
+  - the demo at the root;
+  - the whole game at `/full/`, with the demo's worker in control;
+  - the `noindex` tag present;
+  - a campaign starting at Day 1;
+  - only `cots.playtest.*` keys written.
+- **A browser with the old worker:**
+  - `/full/` shows the demo;
+  - the demo then offers the update;
+  - after it, `/full/` shows the whole game.
+
+**To take it down:** remove the `web-playtest` steps from `deploy-web.yml`, and upload `dist/web-demo` again.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

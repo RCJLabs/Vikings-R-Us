@@ -124,3 +124,9 @@ export function isTargetId(value: string): value is TargetId {
 
 /** Default GitHub Pages path for this repo; override with COTS_BASE (e.g. for a custom domain). */
 export const PAGES_BASE = '/Vikings-R-Us/';
+
+/**
+ * Where the Pages site carries the whole game (the playtest build), unlisted, beside the demo (docs/tech-spec.md
+ * §48). The Pages workflow copies it there; the demo's service worker leaves it alone.
+ */
+export const PAGES_FULL = 'full/';
