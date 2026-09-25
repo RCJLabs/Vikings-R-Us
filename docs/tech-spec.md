@@ -2593,6 +2593,53 @@ The brainstorm's version, and what changed:
 - **The bots don't feel it** (above).
 - **The words are drafts.**
 
+## 46. After M7: interruptions at the desk, part 2: a god at the desk (gameplay brainstorm, item 7)
+
+**Why.** The second of item 7's interruptions (§45): someone who isn't a soul stops at the desk mid-shift, and talks.
+
+The brainstorm's version, and what changed:
+- **"A god stops at your desk"** is kept, as an authored scene placed in the day's line like a story soul. It comes once a given number of souls have been sent, if its condition holds.
+- **The sun is held while they talk.** A scene is read at the player's pace, and a story beat shouldn't cost daylight. The hold is a pause the shift saves, and only the scene's end lifts it. The pause screen doesn't open, and the pause keys do nothing while the scene is up.
+- **What's said lands at the audit.** Standing doesn't move during a shift, because the day's favours are the gate's (§43). So the scene's effects wait for the audit, which files them with the day's story standing.
+
+**The rule** (`DeskVisit` in a day's queue; `deskVisit`; the `scene` action during a shift)
+- `queue.visits: [{ scene, at, when? }]`: the scene comes once `at` souls have been sent, if `when` holds then. Nothing a shift does changes the flags until the audit, so `when` reads the run as the morning left it.
+- `deskVisit(run, content)` says who is at the desk now. The UI and the sim both ask it.
+- **During a shift, a `scene` action** marks the scene played, so it won't come again, even after a reload. It keeps the scene's effects (`pending`). The audit applies them after the story souls' own and files them in the day's story standing. Outside a shift, a scene still acts at once.
+- **If the sun sets before the visit's turn, it doesn't come.** Day 18's comes after the third soul, so only a very slow day misses it.
+- **The sim's bots** answer whoever comes as their story policy would, by the choices' effects.
+
+**The screens**
+- **The desk:** the scene opens over it as a dialog named "Someone at the desk", in the story's own colours. The desk goes inert and blurred, as when paused, and the sun bar stops. Its choices say whom they moved, as other scenes' do.
+- **The journal** keeps it as "At the desk", and so does the playtest report.
+- **The story script** (`pnpm story:script`) shows it between the day's morning and its souls: "At the desk, after 3 souls".
+
+**Day 18** (a draft for your sign-off, `scene.d18.desk`)
+- **Who and when:** Odin, in a grey hood and a wide hat, after the third soul, on the day of Loki's last offer.
+- **What he knows:** the ship is nearly built, and whether any of its uncut nails came through the player's gate.
+- **With a deal with Loki:** the player admits it (Odin +1, `told_odin`) or denies it (Odin −2, `lied_to_odin`).
+- **Without one:** "Let him come." (Odin +1) or "Why tell me?".
+- **That night,** Loki knows which: `d18.night` reads both flags.
+
+**Tests**
+- **Engine (2):**
+  - the visit comes when its turn does, once, and only while its condition holds;
+  - what it does waits for the audit, which files it with the story's standing, while the day's favours stay as the gate set them (a scene at night still acts at once).
+- **Compiler (1):** a visit is refused if its scene doesn't exist, if it falls past the shortest line, or if its condition reads unknown run state. A scene that only the desk plays still counts as played.
+- **Report (1).**
+- **Story script:** it has every scene the build ships, the desk's included.
+- **Sim:** the bots answer the desk, and every ending is still reached.
+- **e2e on the full game** (phone and desktop), from a Day 18 save made in Node:
+  - no one comes until the third soul;
+  - then Odin, with an accessibility scan and no sideways scroll;
+  - the sun held, and P doing nothing;
+  - his words at the audit, in the story's column.
+- **Also fixed** before it shipped: in the paper dialog's colours the scene's lines failed contrast. The scan found it, and the dialog now has the story's dark ground.
+
+**Known limits**
+- **Only Day 18 has a visit.** More are content: a scene and a line in a day's queue.
+- **The words are drafts.**
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

@@ -4,6 +4,7 @@ import {
   type Destination,
   ENGINE_MAJOR,
   type Faction,
+  type JournalEntry,
   type RunAction,
   type RunSave,
   type RunState,
@@ -286,6 +287,23 @@ describe('the playtest report', () => {
       '### Rank\n\n- Day 4: offered rank.second; taken.\n- Days 4–5: worked as rank.second.\n- Day 5: stepped down from rank.second.',
     );
     expect(report(played('playtest-rank-none', 1, right))).toContain('### Rank\n\nNo promotion yet.');
+  });
+
+  it('names a scene played at the desk as such (docs/tech-spec.md §46)', () => {
+    const save = played('playtest-desk', 1, right);
+    const morning = save.mornings[0] as RunState;
+    const visit = content.days.flatMap((d) => (d.queue.visits ?? []).map((v) => ({ day: d.day, scene: v.scene })))[0];
+    if (!visit) throw new Error('no one comes to the desk in this build');
+    const entry: JournalEntry = {
+      ...visit,
+      choices: [0],
+      rings: morning.rings,
+      flags: {},
+      standing: morning.standing,
+      family: Object.fromEntries(morning.family.map((m) => [m.id, m.status])),
+    };
+    const text = report({ ...save, journal: [...(save.journal ?? []), entry] });
+    expect(text).toMatch(new RegExp(`- Day ${visit.day}, at the desk: \\S`));
   });
 
   it('reads back the options picked in each scene, as the journal does', () => {

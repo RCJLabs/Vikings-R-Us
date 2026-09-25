@@ -179,7 +179,7 @@ function sceneHtml(s: SceneDoc, w: Words): string {
   return `
 <section class="scene" id="${sceneAnchor(s.name)}" data-scene="${esc(s.name)}" data-hash="${esc(s.hash)}" data-day="${s.day}">
   <header class="scene-head">
-    <p class="scene-title"><span class="when">${s.when === 'morning' ? 'Morning' : 'Night'}</span>
+    <p class="scene-title"><span class="when">${s.when === 'morning' ? 'Morning' : s.when === 'desk' ? `At the desk, after ${s.at ?? 0} souls` : 'Night'}</span>
       <span class="status ${s.draft ? 'is-draft' : 'is-signed'}">${s.draft ? 'Draft' : 'Signed off'}</span>
       <span class="verdict-chip" data-chip hidden></span><span class="changed-chip" data-changed hidden>Changed since your review</span></p>
     <p class="scene-meta"><span>${nf.format(s.words)} words</span> <code class="file">${esc(s.file)}</code></p>
@@ -270,6 +270,7 @@ function dayHtml(d: DayDoc, w: Words): string {
   <h2 class="day-title" id="day-${d.day}-title">Day ${d.day}</h2>
   <blockquote class="decree"><span class="k">The decree</span> ${esc(d.decree)}</blockquote>
   ${d.morning ? sceneHtml(d.morning, w) : ''}
+  ${(d.desk ?? []).map((s) => sceneHtml(s, w)).join('')}
   ${souls}
   ${d.night ? sceneHtml(d.night, w) : ''}
 </section>`;

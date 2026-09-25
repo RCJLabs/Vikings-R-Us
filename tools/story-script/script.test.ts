@@ -18,7 +18,9 @@ import { renderScript } from './render';
 
 const built = buildTarget(TARGETS['dev-full'], loadPacks(resolve(import.meta.dirname, '../../content/packs')));
 const model = buildModel({ ...built, target: 'dev-full' });
-const scenes: SceneDoc[] = model.days.flatMap((d) => [d.morning, d.night].filter((s): s is SceneDoc => !!s));
+const scenes: SceneDoc[] = model.days.flatMap((d) =>
+  [d.morning, ...(d.desk ?? []), d.night].filter((s): s is SceneDoc => !!s),
+);
 
 const plain: Wording = {
   person: (id) => ({ brother: 'Ulf', sister: 'Asa', mother: 'Ragna' })[id] ?? id,
@@ -171,8 +173,9 @@ function envs(day: number): SceneEnv[] {
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 group('the script against the game', () => {
-  it('has all 40 scenes, each played on its day', () => {
-    expect(scenes.map((s) => s.name)).toHaveLength(40);
+  it('has every scene the build ships, each played on its day (at the desk too)', () => {
+    expect(scenes.map((s) => s.id).sort()).toEqual(built.scenes.map((s) => s.id).sort());
+    expect(scenes.filter((s) => s.when === 'desk').map((s) => s.name)).toEqual(['d18.desk']);
     expect(scenes.every((s) => s.id === `scene.${s.name}` && s.file.endsWith(`${s.name}.ink`))).toBe(true);
     expect(model.totals.words).toBe(scenes.reduce((n, s) => n + s.words, 0));
   });

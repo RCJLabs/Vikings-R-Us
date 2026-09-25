@@ -1,6 +1,7 @@
 import type {
   CampaignDef,
   Content,
+  DeskVisit,
   Destination,
   Economy,
   Effect,
@@ -494,6 +495,20 @@ export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
   }
   // Souls who waited through the night can push the day's own later: keep the decree's souls last.
   return noon ? [...cases.filter((c) => !c.noon), ...cases.filter((c) => c.noon)] : cases;
+}
+
+/**
+ * Who is at the desk now (docs/tech-spec.md §46): the day's visit whose turn it is (once its `at` souls have been
+ * sent), not yet played, and whose `when` holds. Null in any other phase, and between visits.
+ */
+export function deskVisit(run: RunState, content: Content): DeskVisit | null {
+  const shift = run.shift;
+  if (run.phase !== 'shift' || !shift || shift.phase !== 'shift') return null;
+  const visits = content.days.find((d) => d.day === run.day)?.queue.visits ?? [];
+  const found = visits.find(
+    (v) => v.at === shift.cursor && !run.scenes.includes(v.scene) && (v.when === undefined || evalState(v.when, run)),
+  );
+  return found ?? null;
 }
 
 /** The story threads still in play for the journal: each text key, with `{n}` when it counts something. */
@@ -1014,6 +1029,12 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
   if (action.t === 'scene') {
     if (run.scenes.includes(action.id)) return { state: run, events: [] };
     const events: RunEvent[] = [{ e: 'scene', id: action.id, effects: action.effects }];
+    // A scene at the desk (docs/tech-spec.md §46): its effects wait for the audit, so standing (and with it the
+    // day's favours) doesn't move during the shift.
+    if (run.phase === 'shift') {
+      const pending = [...(run.pending ?? []), ...action.effects];
+      return { state: { ...run, scenes: [...run.scenes, action.id], pending }, events };
+    }
     const r = applyEffects({ ...run, scenes: [...run.scenes, action.id] }, action.effects, events);
     return { state: r, events };
   }
@@ -1081,11 +1102,9 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       if (r.state.phase !== 'done') return { state: { ...run, shift: r.state }, events };
       const a = audit({ ...run, shift: r.state }, r.state, env);
       const news: RunEvent[] = [];
-      const withStory = applyEffects(
-        { ...a.run, flags: a.flags, phase: 'audit' },
-        storyEffects(r.state, env.content),
-        news,
-      );
+      // The story souls' stamps, and the scenes played at the desk (docs/tech-spec.md §46).
+      const { pending = [], ...audited } = { ...a.run, flags: a.flags, phase: 'audit' as const };
+      const withStory = applyEffects(audited, [...storyEffects(r.state, env.content), ...pending], news);
       // The audit files the story's standing since the last audit beside today's mistakes, so they add up.
       const ledger: DayLedger = { ...a.ledger, story: withStory.storyStanding ?? {} };
       events.push({ e: 'audited', ledger }, ...news);

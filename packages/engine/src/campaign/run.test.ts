@@ -16,6 +16,7 @@ import {
   careFor,
   debtLimit,
   defaultBills,
+  deskVisit,
   economyFor,
   endingFor,
   factionKey,
@@ -1540,6 +1541,98 @@ describe('a noon decree (docs/tech-spec.md §45)', () => {
       expect(c.noon).toBeUndefined();
       expect(c.expect).toEqual(judge(c.truth, tomorrow));
     }
+  });
+});
+
+describe('someone at the desk (docs/tech-spec.md §46)', () => {
+  const spec = full.days.find((d) => (d.queue.visits ?? []).length > 0);
+  const visit = spec?.queue.visits?.[0];
+  if (!spec || !visit) throw new Error('no one comes to the desk in this build');
+  /** The visit's day, its shift begun and `sent` souls judged rightly. */
+  const at = (sent: number, base: RunState = { ...newRun(full, 'desk'), day: spec.day }) => {
+    const ctx = runContext(full, base);
+    const queue = campaignQueue(base, { content: full, ctx });
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+    queue.slice(0, sent).forEach((c, i) => {
+      const t = (i + 1) * 1000;
+      for (const id of c.expect.procedures ?? []) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at: t } });
+      }
+      actions.push({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at: t } });
+      actions.push({ t: 'shift', action: { t: 'send', at: t } });
+    });
+    return { ...drive(full, base, actions), queue };
+  };
+
+  it('comes when its turn does, once, and only while its condition holds', () => {
+    expect(deskVisit({ ...newRun(full, 'desk'), day: spec.day }, full)).toBeNull();
+    expect(deskVisit(at(visit.at - 1).run, full)).toBeNull();
+    const due = at(visit.at);
+    expect(deskVisit(due.run, full)).toEqual(visit);
+    const seen = stepRun(due.run, { t: 'scene', id: visit.scene, effects: [] }, { content: full, ctx: due.ctx }).state;
+    expect(deskVisit(seen, full)).toBeNull();
+    // A visit that asks for something the run hasn't got doesn't come.
+    const picky: Content = {
+      ...full,
+      days: full.days.map((d) =>
+        d === spec
+          ? { ...d, queue: { ...d.queue, visits: [{ ...visit, when: { state: 'flags.never', gte: 1 } }] } }
+          : d,
+      ),
+    };
+    expect(deskVisit(due.run, picky)).toBeNull();
+    expect(deskVisit({ ...due.run, flags: { ...due.run.flags, never: 1 } }, picky)).not.toBeNull();
+  });
+
+  it('keeps what the visit does for the audit: standing and the day’s favours stay as the gate set them', () => {
+    const odin = campaignOf(full).favours?.find((f) => f.id === 'fav.odin');
+    if (!odin) throw new Error('no favour of Odin’s');
+    // Odin one short of his favour's mark at the gate; the visit would take him past it.
+    const base = { ...newRun(full, 'desk'), day: spec.day };
+    const gate = { ...base, standing: { ...base.standing, odin: odin.at - 1 } };
+    const due = at(visit.at, gate);
+    const effects: Effect[] = [
+      { standing: 'odin', by: 3 },
+      { flag: 'told_odin', set: 1 },
+    ];
+    const seen = stepRun(
+      due.run,
+      { t: 'scene', id: visit.scene, choices: [0], effects },
+      { content: full, ctx: due.ctx },
+    );
+    expect(seen.state.standing.odin).toBe(odin.at - 1);
+    expect(seen.state.flags.told_odin).toBeUndefined();
+    expect(seen.state.pending).toEqual(effects);
+    expect(seen.state.scenes).toContain(visit.scene);
+    // The rest of the day judged rightly: the audit brings the visit's effects in as the story's.
+    const rest: RunAction[] = due.queue.slice(visit.at).flatMap((c, i) => {
+      const t = (visit.at + i + 1) * 1000;
+      const tools = (c.expect.procedures ?? []).flatMap((id) => {
+        const tool = due.ctx.procedures.find((p) => p.id === id)?.tool;
+        return tool ? [{ t: 'shift' as const, action: { t: 'tool' as const, tool, at: t } }] : [];
+      });
+      return [
+        ...tools,
+        { t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at: t } },
+        { t: 'shift', action: { t: 'send', at: t } },
+      ];
+    });
+    const audited = drive(full, seen.state, rest).run;
+    const ledger = audited.ledger.at(-1);
+    expect(audited.phase).toBe('audit');
+    expect(audited.pending).toBeUndefined();
+    expect(audited.standing.odin).toBe(odin.at - 1 + 3);
+    expect(audited.flags.told_odin).toBe(1);
+    expect(ledger?.story?.odin).toBe(3);
+    expect(ledger?.favours ?? []).not.toContain('fav.odin');
+    // A scene outside the shift still acts at once.
+    const night = stepRun(
+      { ...audited, phase: 'night' },
+      { t: 'scene', id: 'scene.test', effects: [{ standing: 'odin', by: 1 }] },
+      { content: full, ctx: due.ctx },
+    ).state;
+    expect(night.standing.odin).toBe(audited.standing.odin + 1);
   });
 });
 

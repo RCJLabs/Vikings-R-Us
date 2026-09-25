@@ -21,6 +21,9 @@ params:
       - { id: whim.odin.ulfberht, text: whim.odin.ulfberht, is: { fact: blade, is: ulfberht } }
 queue:
   count: [14, 16]
+  # Odin at the desk (docs/tech-spec.md §46), once three souls have been sent: early, so a slow day still has him.
+  visits:
+    - { scene: scene.d18.desk, at: 3 }
   archetypes:
     - { id: arch.honest_warrior, w: 2 }
     - { id: arch.freyja_pick, w: 2 }

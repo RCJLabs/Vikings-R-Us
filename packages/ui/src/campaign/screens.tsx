@@ -12,6 +12,7 @@ import {
   DESTINATIONS,
   debtLimit,
   defaultBills,
+  deskVisit,
   type Effect,
   economyFor,
   economyOf,
@@ -43,7 +44,7 @@ import {
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
 import { effect, signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { AssistSettings, assistText, atSunSpeed } from '../assists';
 import { clockText, hasText, listText, t } from '../i18n';
 import { openReport } from '../report';
@@ -54,7 +55,7 @@ import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, useAutoFocus } from '../shift/Shift';
 import { campaignPlace, useStoryText } from '../sound/place';
-import { currentAssists, type Screen, session, settings, storageKept, toTitle } from '../store';
+import { act, currentAssists, type Screen, session, settings, storageKept, toTitle } from '../store';
 import { PlaytestButton, PlaytestDialog } from './playtest-ui';
 import {
   active,
@@ -541,7 +542,7 @@ function Leaves({ n, floor }: { n: number | null; floor: number }) {
  * top of the page, and each choice brings the lines it adds (the choice, then what follows) to the top of
  * the view; the first option, or Continue, takes the keyboard's focus without scrolling (§30).
  */
-function SceneView({ id, run }: { id: string; run: RunState }) {
+function SceneView({ id, run, onDone }: { id: string; run: RunState; onDone?: () => void }) {
   useStoryText();
   const [env] = useState(() => sceneEnv(run, id));
   const [choices, setChoices] = useState<number[]>([]);
@@ -599,6 +600,7 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
               dispatch({ t: 'scene', id, choices, effects: frame.effects });
               // What follows the scene (the day's orders, the night's bills, or the next scene) opens at the top.
               toTop();
+              onDone?.();
             }}
           >
             {t('ui.campaign.next')}
@@ -640,6 +642,34 @@ function SceneView({ id, run }: { id: string; run: RunState }) {
   );
 }
 
+// ---------- someone at the desk ----------
+
+/** The scene of whoever is at the desk now (docs/tech-spec.md §46), if this build ships it: read by the shift. */
+export function deskDue(): string | null {
+  const a = active.value;
+  const id = a ? deskVisit(a.run, gameContent)?.scene : undefined;
+  return id && scenes[id] ? id : null;
+}
+
+/**
+ * Someone at the desk (docs/tech-spec.md §46): their scene over the desk, with the sun held from when they come
+ * (a pause, which the shift saves) until the scene ends. Their words reach the run at the day's audit.
+ */
+export function DeskVisitDialog({ id }: { id: string }) {
+  useEffect(() => {
+    if (session.peek()?.state.clock.pausedAt === null) act({ t: 'pause' });
+  }, [id]);
+  const a = active.value;
+  if (!a) return null;
+  return (
+    <div class="overlay overlay--scene" data-testid="desk-visit">
+      <div class="dialog dialog--scene" role="dialog" aria-modal="true" aria-label={t('ui.desk.visit')}>
+        <SceneView id={id} run={a.run} onDone={() => act({ t: 'resume' })} />
+      </div>
+    </div>
+  );
+}
+
 // ---------- journal ----------
 
 /** Whether the journal is open over the morning, night or ending screen (which stays as it was underneath). */
@@ -656,9 +686,17 @@ function JournalButton() {
 /** A scene from the journal, played again with the choices made and the view it had then. */
 function JournalScene({ entry, seed }: { entry: JournalEntry; seed: string }) {
   const json = scenes[entry.scene];
-  const when = gameContent.days.find((d) => d.day === entry.day)?.scenes;
+  const day = gameContent.days.find((d) => d.day === entry.day);
+  const when = day?.scenes;
+  const desk = (day?.queue.visits ?? []).some((v) => v.scene === entry.scene);
   const label =
-    when?.morning === entry.scene ? 'ui.journal.morning' : when?.night === entry.scene ? 'ui.journal.night' : null;
+    when?.morning === entry.scene
+      ? 'ui.journal.morning'
+      : when?.night === entry.scene
+        ? 'ui.journal.night'
+        : desk
+          ? 'ui.journal.desk'
+          : null;
   let lines: readonly SceneLine[] | null = null;
   try {
     lines = json ? playScene(json, journalEnv(seed, entry), entry.choices).lines : null;
