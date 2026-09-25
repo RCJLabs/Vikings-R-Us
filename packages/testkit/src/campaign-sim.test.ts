@@ -1,4 +1,5 @@
 import { FACTIONS, reachableEndings } from '@cots/engine';
+import { playScene } from '@cots/story';
 import { describe, expect, it } from 'vitest';
 import {
   JUDGING,
@@ -129,5 +130,47 @@ describe('the endings', () => {
     // Endings with a condition, and the finale; the demo's and the slice's finales end other runs.
     const ids = reachableEndings(loadContent('dev-full')).map((e) => e.id);
     expect(new Set(REACH.map(([e]) => e))).toEqual(new Set(ids));
+  });
+});
+
+describe('a jarl’s bribe (docs/tech-spec.md §47)', () => {
+  it('is taken only by a bot that takes bribes: paid at the audit as a mistake, and the accounts add up', () => {
+    const content = loadContent('dev-full');
+    const paid = (bribes: boolean) =>
+      simulateRun(content, 'bribe-0', bot('expert'), 'payAll', { bribes }).ledger.flatMap((l) =>
+        (l.mistakes ?? []).filter((m) => (m.paid ?? 0) > 0).map((m) => ({ day: l.day, paid: m.paid })),
+      );
+    expect(paid(false)).toEqual([]);
+    const taken = paid(true);
+    expect(taken).toHaveLength(1);
+    expect(taken[0]?.paid).toBeGreaterThan(0);
+    expect(simulateRun(content, 'bribe-0', bot('expert'), 'payAll', { bribes: true }).ledgerOk).toBe(true);
+  }, 120_000);
+
+  it('is remembered: the night counts the rings, and Muninn remembers either answer', () => {
+    const scenes = loadScenes('dev-full');
+    const text = (id: string, day: number, flags: Record<string, number>) => {
+      const json = scenes[id];
+      if (!json) throw new Error(`no ${id}`);
+      const env = {
+        seed: 1,
+        day,
+        rings: 50,
+        flags,
+        standing: { odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 },
+        family: { mother: 'well', brother: 'well', sister: 'well' },
+      };
+      return playScene(json, env, [0, 0])
+        .lines.map((l) => l.text)
+        .join('\n');
+    };
+    expect(text('scene.d9.night', 9, { jarl_bribe: 1 })).toContain('the jarl');
+    expect(text('scene.d9.night', 9, { jarl_refused: 1 })).not.toContain('the jarl');
+    const took = text('scene.d13.night', 13, { jarl_bribe: 1 });
+    const refused = text('scene.d13.night', 13, { jarl_refused: 1 });
+    expect(took).toContain('I remember a jarl');
+    expect(refused).toContain('I remember a jarl');
+    expect(took).not.toBe(refused);
+    expect(text('scene.d13.night', 13, {})).not.toContain('jarl');
   });
 });

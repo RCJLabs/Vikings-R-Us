@@ -32,6 +32,7 @@ import {
   stampsFor,
   startSave,
   stepRun,
+  storyOffer,
 } from '@cots/engine';
 import { type ScenePath, sceneEnv, scenePaths } from '@cots/story';
 
@@ -190,6 +191,7 @@ function shiftActions(
   assists?: Assists,
   paceS = BOT_PACE_S,
   serve?: Faction,
+  bribes = false,
 ): RunAction[] {
   const beginShift: RunAction = { t: 'beginShift', at: 0, ...(assists ? { assists } : {}) };
   const begun = stepRun(run, beginShift, { content, ctx }).state;
@@ -217,13 +219,21 @@ function shiftActions(
     // A soul the bot knows belongs where a favour asks for souls from goes where the favour asks instead.
     const favour = right ? favours.find((f) => f.left > 0 && f.r.from === c.expect.dest) : undefined;
     if (favour) favour.left--;
-    const dest: Destination = favour ? favour.r.to : right ? c.expect.dest : (rng.pick(wrongs) ?? c.expect.dest);
+    // A bot that takes bribes takes what a story soul offers (docs/tech-spec.md §47), as a choice, not a slip.
+    const offer = bribes ? storyOffer(content, c) : null;
+    const dest: Destination = offer
+      ? offer.dest
+      : favour
+        ? favour.r.to
+        : right
+          ? c.expect.dest
+          : (rng.pick(wrongs) ?? c.expect.dest);
     // Judging a soul right includes what must be done to it first (from Day 8, clipping long nails),
     // unless the bot means to leave these nails for Naglfar.
     const procedures = c.expect.procedures ?? [];
     const leave = right && procedures.length > 0 && longNails > 0;
     if (leave) longNails--;
-    if (right && !leave && !favour) {
+    if (right && !leave && !favour && !offer) {
       for (const id of procedures) {
         const tool = ctx.procedures.find((p) => p.id === id)?.tool;
         if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
@@ -326,6 +336,8 @@ export interface SimOptions {
   readonly serveUpTo?: number;
   /** Whether the bot takes the ranks it's offered (docs/tech-spec.md §44); unanswered, offers lapse at the gate. */
   readonly promote?: boolean;
+  /** Whether the bot takes what story souls offer for a wrong stamp (docs/tech-spec.md §47); it never does unless told. */
+  readonly bribes?: boolean;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -364,7 +376,19 @@ export function simulateRun(
     const log: ShiftAction[] = [];
     const served = run.ledger.reduce((n, l) => n + (l.requests ?? []).filter((q) => q.met).length, 0);
     const serve = served < (options.serveUpTo ?? Number.POSITIVE_INFINITY) ? options.serve : undefined;
-    for (const a of shiftActions(run, content, ctx, judging, rng, longNails, options.assists, options.paceS, serve)) {
+    const actions = shiftActions(
+      run,
+      content,
+      ctx,
+      judging,
+      rng,
+      longNails,
+      options.assists,
+      options.paceS,
+      serve,
+      options.bribes,
+    );
+    for (const a of actions) {
       run = stepRun(run, a, { content, ctx }).state;
       if (a.t === 'beginShift') initial = run.shift ?? undefined;
       else if (a.t === 'shift') log.push(a.action);
@@ -462,6 +486,7 @@ export function simulateCampaign(
   paceS?: number,
   serve?: Faction,
   promote?: boolean,
+  bribes?: boolean,
 ): PolicyReport[] {
   const out: PolicyReport[] = [];
   const mean = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0) / Math.max(1, xs.length);
@@ -476,6 +501,7 @@ export function simulateCampaign(
             ...(paceS !== undefined ? { paceS } : {}),
             ...(serve ? { serve } : {}),
             ...(promote !== undefined ? { promote } : {}),
+            ...(bribes ? { bribes } : {}),
           }),
         );
         const ranks = campaignOf(content).promotion?.ranks.length ?? 0;

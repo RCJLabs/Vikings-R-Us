@@ -525,6 +525,25 @@ export function stampEffects(content: Content, c: CaseSpec, stamped: Destination
   return (def?.onStamp ?? []).filter((rule) => matches(rule.stamped, stamped)).flatMap((rule) => rule.effects);
 }
 
+/** The rings stamping a story soul `stamped` pays at the audit (docs/tech-spec.md §47); 0 for a generated soul. */
+export function stampRings(content: Content, c: CaseSpec, stamped: Destination): number {
+  return stampEffects(content, c, stamped).reduce((n, e) => n + ('rings' in e ? e.rings : 0), 0);
+}
+
+/**
+ * A story soul's offer (docs/tech-spec.md §47): rings for a stamp other than where it belongs, the most it pays
+ * if it names several. The desk shows it while the soul is there, and bots that take bribes take it.
+ */
+export function storyOffer(content: Content, c: CaseSpec): { dest: Destination; rings: number } | null {
+  let best: { dest: Destination; rings: number } | null = null;
+  for (const dest of DESTINATIONS) {
+    if (dest === c.expect.dest) continue;
+    const rings = stampRings(content, c, dest);
+    if (rings > 0 && (!best || rings > best.rings)) best = { dest, rings };
+  }
+  return best;
+}
+
 /** The story consequences of how today's story souls were stamped. */
 function storyEffects(shift: ShiftState, content: Content): Effect[] {
   const out: Effect[] = [];
@@ -682,12 +701,14 @@ function audit(
       if (v.caught > 0) bonus += economy.docBonus;
     } else {
       wrong++;
+      const paid = c ? stampRings(env.content, c, v.stamped) : 0;
       mistakes.push({
         rule: v.rule,
         expected: v.expected,
         stamped: v.stamped,
         ...(v.skipped && v.skipped.length > 0 ? { skipped: v.skipped } : {}),
         ...(c?.noon ? { noon: true as const } : {}),
+        ...(paid > 0 ? { paid } : {}),
       });
       if (fined && wrong > economy.warnings) {
         const fine = economy.fines[Math.min(wrong - economy.warnings - 1, economy.fines.length - 1)] ?? 0;

@@ -36,6 +36,7 @@ import {
   shiftScore,
   shopFor,
   stampEffects,
+  stampRings,
   standingFx,
   standingLead,
   threadsInPlay,
@@ -1241,6 +1242,12 @@ function Audit() {
   const forgiven = Math.min(ledger.wrong, waived ? ledger.wrong : economy.warnings);
   const assisted = assistText(ledger.assists);
   const score = shiftScore(shift);
+  // What story souls paid for their stamps (docs/tech-spec.md §47), already in the purse with the story's effects.
+  const paid = shift.verdicts.flatMap((v) => {
+    const c = shift.cases[v.index];
+    const rings = c && v.stamped !== null ? stampRings(gameContent, c, v.stamped) : 0;
+    return c && rings !== 0 ? [{ id: c.id, name: `${c.evidence.look.name} ${c.evidence.look.patronym}`, rings }] : [];
+  });
   return (
     <main class="screen screen--audit">
       <h1 data-testid="audit-title">{t('ui.audit.title', { n: a.run.day })}</h1>
@@ -1282,6 +1289,12 @@ function Audit() {
               <td class="num">{signed(ledger.appeal.rings)}</td>
             </tr>
           ) : null}
+          {paid.map((p) => (
+            <tr key={p.id} data-testid="audit-paid">
+              <td>{t('ui.audit.paid', { name: p.name })}</td>
+              <td class="num">{signed(p.rings)}</td>
+            </tr>
+          ))}
           <tr class="ledger__total">
             <td>{t('ui.campaign.purseLabel')}</td>
             <td class="num" data-testid="audit-rings">

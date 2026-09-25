@@ -18,6 +18,8 @@ params:
 queue:
   count: [12, 14]
   scripted:
+    # Jarl Asgaut jumps the queue (docs/tech-spec.md §47): first, ahead of everyone, even souls who waited the night.
+    - { case: case.jarl, at: 0 }
     - { case: case.thorvald9, at: 3 }
   archetypes:
     - { id: arch.honest_warrior, w: 3 }

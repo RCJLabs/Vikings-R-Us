@@ -1,5 +1,6 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
+EXTERNAL flag(name)
 You are almost asleep when something taps on the shutter: three taps, a pause, then a fourth, as if it has lost count.
 It's Muninn. He hops in, settles on the end of your cot and looks at you for a long time.
 "I remember you," he says. "I think." # speaker: muninn
@@ -8,6 +9,13 @@ It's Muninn. He hops in, settles on the end of your cot and looks at you for a l
 "And still he sends you out to choose. Every hero you stamp through is for a battle he knows he loses." # speaker: muninn
 The raven shakes himself, and a feather comes loose and drifts down onto your blanket.
 "I came to tell you something else. It was important. I've forgotten it." # speaker: muninn
+// The jarl at the desk on Day 9 (docs/tech-spec.md §47): Memory keeps it when he's lost the rest.
+{
+- flag("jarl_bribe"):
+  "I remember a jarl, though. Thirty rings on your table, and a stamp for Valhalla. Odd, what stays." # speaker: muninn
+- flag("jarl_refused"):
+  "I remember a jarl, though. He offered you thirty rings, and you sent him to Hel anyway. Odd, what stays." # speaker: muninn
+}
 * ["Try. What else did she tell him?"]
   # fx: flag truth +1
   Muninn closes his eyes. For so long that you think he's gone to sleep.

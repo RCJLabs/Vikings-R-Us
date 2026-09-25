@@ -30,8 +30,11 @@ import {
   reachableEndings,
   shiftMods,
   stampEffects,
+  stampRings,
+  standingFx,
   stateMarks,
   stepRun,
+  storyOffer,
   threadsInPlay,
 } from './run';
 import { type RunSave, recordAction, replayDay, resumeSave, runContext, startSave } from './save';
@@ -1633,6 +1636,93 @@ describe('someone at the desk (docs/tech-spec.md §46)', () => {
       { content: full, ctx: due.ctx },
     ).state;
     expect(night.standing.odin).toBe(audited.standing.odin + 1);
+  });
+});
+
+describe('a jarl’s bribe (docs/tech-spec.md §47)', () => {
+  const def = full.scripted?.find((d) => d.onStamp?.some((r) => r.effects.some((e) => 'rings' in e && e.rings > 0)));
+  const spec = full.days.find((d) => (d.queue.scripted ?? []).some((s) => s.case === def?.id));
+  if (!def || !spec) throw new Error('no story soul in this build offers rings');
+  const morning = (): RunState => ({ ...newRun(full, 'jarl'), day: spec.day });
+  /** The day's shift, every other soul judged rightly and the one who offers stamped `stamped`, to its audit. */
+  const judged = (stamped: Destination, base: RunState = morning()) => {
+    const ctx = runContext(full, base);
+    const queue = campaignQueue(base, { content: full, ctx });
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+    queue.forEach((c, i) => {
+      const t = (i + 1) * 1000;
+      const offered = c.script === def.id;
+      for (const id of offered ? [] : (c.expect.procedures ?? [])) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at: t } });
+      }
+      actions.push({ t: 'shift', action: { t: 'stamp', dest: offered ? stamped : c.expect.dest, at: t } });
+      actions.push({ t: 'shift', action: { t: 'send', at: t } });
+    });
+    return { ...drive(full, base, actions), queue };
+  };
+
+  it('jumps the line: first on its day, ahead even of the souls who waited through the night', () => {
+    const base = morning();
+    const ctx = runContext(full, base);
+    const queue = campaignQueue(base, { content: full, ctx });
+    expect(queue[0]?.script).toBe(def.id);
+    // A soul left at dusk the night before still comes after him.
+    const other = campaignQueue({ ...morning(), seed: 'jarl-other' }, { content: full, ctx }).find((c) => !c.script);
+    if (!other) throw new Error('no generated soul');
+    const waited = campaignQueue({ ...base, waiting: [other] }, { content: full, ctx });
+    expect(waited[0]?.script).toBe(def.id);
+    expect(waited.findIndex((c) => c.id === other.id)).toBeGreaterThan(0);
+  });
+
+  it('says what it offers, for a stamp where it doesn’t belong; other souls offer nothing', () => {
+    const base = morning();
+    const queue = campaignQueue(base, { content: full, ctx: runContext(full, base) });
+    const jarl = queue.find((c) => c.script === def.id);
+    if (!jarl) throw new Error('no jarl in the line');
+    const offer = storyOffer(full, jarl);
+    expect(offer).not.toBeNull();
+    expect(offer?.dest).not.toBe(jarl.expect.dest);
+    expect(stampRings(full, jarl, offer?.dest ?? 'HEL')).toBe(offer?.rings);
+    expect(stampRings(full, jarl, jarl.expect.dest)).toBe(0);
+    for (const c of queue.filter((x) => x.script !== def.id)) expect(storyOffer(full, c)).toBeNull();
+  });
+
+  it('pays at the audit if taken, and the stamp is a mistake all the same; refused, it pays nothing', () => {
+    const base = morning();
+    const jarl = campaignQueue(base, { content: full, ctx: runContext(full, base) }).find((c) => c.script === def.id);
+    const offer = jarl ? storyOffer(full, jarl) : null;
+    if (!jarl || !offer) throw new Error('no offer');
+    const economy = economyFor(base, { content: full, ctx: runContext(full, base) });
+
+    const refused = judged(jarl.expect.dest);
+    const r = refused.run;
+    const rl = r.ledger.at(-1);
+    expect(r.phase).toBe('audit');
+    expect(rl?.wrong).toBe(0);
+    expect(r.rings).toBe(base.rings + (rl?.pay ?? 0) + (rl?.bonus ?? 0));
+    expect(r.flags.jarl_refused).toBe(1);
+    expect(r.flags.jarl_bribe).toBeUndefined();
+
+    const taken = judged(offer.dest);
+    const t = taken.run;
+    const tl = t.ledger.at(-1);
+    // A wrong stamp: no wage for him, a citation (forgiven, the day's first), filed as paid for.
+    expect(tl?.wrong).toBe(1);
+    expect(tl?.pay).toBe((rl?.pay ?? 0) - economy.wage);
+    expect(tl?.mistakes).toEqual([expect.objectContaining({ stamped: offer.dest, paid: offer.rings })]);
+    // His rings reach the purse at the audit, as the story's; Hel was owed him, and he sits on Odin's benches.
+    expect(t.rings).toBe(base.rings + (tl?.pay ?? 0) + (tl?.bonus ?? 0) - (tl?.fines ?? 0) + offer.rings);
+    expect(t.storyRings).toBe(r.storyRings + offer.rings);
+    expect(t.flags.jarl_bribe).toBe(1);
+    expect(t.flags.jarl_refused).toBeUndefined();
+    expect(Object.keys(tl?.standing ?? {}).length).toBeGreaterThan(0);
+    // Standing moves as for any soul sent there wrongly, and the rings are all the story adds.
+    expect(tl?.standing).toEqual(standingFx(campaignOf(full), jarl.expect.dest, offer.dest));
+    expect(tl?.story).toEqual({});
+    expect(t.einherjar.unworthy).toBe(r.einherjar.unworthy + 1);
+    // A story soul never appeals.
+    expect(t.appeal?.case.script).toBeUndefined();
   });
 });
 

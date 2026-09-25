@@ -45,6 +45,8 @@ export interface DayMistake {
   readonly skipped?: readonly string[];
   /** The soul came after the day's noon decree, and was judged under it (docs/tech-spec.md §45). */
   readonly noon?: true;
+  /** Rings a story soul paid for this stamp (docs/tech-spec.md §47): a bribe taken, not a slip. */
+  readonly paid?: number;
 }
 
 /**
