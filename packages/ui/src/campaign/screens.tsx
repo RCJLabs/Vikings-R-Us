@@ -1,10 +1,12 @@
 import { gameContent, loadScenes, manifest } from 'virtual:content';
 import {
+  type AppealHeard,
   type Bills,
   billForecast,
   billTotal,
   type Content,
   campaignOf,
+  createDayContext,
   type DayLedger,
   DESTINATIONS,
   debtLimit,
@@ -54,8 +56,10 @@ import {
   dispatch,
   emptySlot,
   endAudit,
+  hearAppeal,
   lastNight,
   leaveCampaign,
+  letAppealStand,
   loadSlots,
   newCampaign,
   openSlot,
@@ -846,6 +850,7 @@ function Morning() {
         <SceneView key={scene} id={scene} run={run} />
       ) : (
         <>
+          <AppealCard run={run} />
           <section class="card">
             <Decree ctx={ctx} />
             <RulebookChanges day={run.day} />
@@ -880,6 +885,64 @@ function Morning() {
       </div>
       {journalOpen.value ? <JournalView /> : null}
     </main>
+  );
+}
+
+// ---------- appeals ----------
+
+/**
+ * The morning's appeal (docs/tech-spec.md §40): who asks to be judged again, what hangs on it, and hearing
+ * it at the desk or letting the verdict stand; once decided, how it went.
+ */
+function AppealCard({ run }: { run: RunState }) {
+  const appeal = run.appeal;
+  const def = campaignOf(gameContent).appeals;
+  if (appeal && def) {
+    const look = appeal.case.evidence.look;
+    return (
+      <section class="card appeal" data-testid="appeal">
+        <h2>{t('ui.appeal.title')}</h2>
+        <p>
+          {t('ui.appeal.body', {
+            name: `${look.name} ${look.patronym}`,
+            dest: t(`dest.${appeal.stamped}`),
+            n: appeal.day,
+          })}
+        </p>
+        <p class="appeal__plea">{t(`ui.appeal.plea.${appeal.stamped}`)}</p>
+        <p class="muted">{t('ui.appeal.terms', { n: appeal.day, bonus: def.bonus, fine: def.fine })}</p>
+        <div class="row">
+          <button type="button" class="btn btn--primary" data-testid="appeal-hear" onClick={hearAppeal}>
+            {t('ui.appeal.hear')}
+          </button>
+          <button type="button" class="btn" data-testid="appeal-stand" onClick={letAppealStand}>
+            {t('ui.appeal.stand')}
+          </button>
+        </div>
+      </section>
+    );
+  }
+  return run.appealHeard ? <AppealResult heard={run.appealHeard} seed={run.seed} /> : null;
+}
+
+function AppealResult({ heard, seed }: { heard: AppealHeard; seed: string }) {
+  const dest = (d: AppealHeard['to']) => (d ? t(`dest.${d}`) : '');
+  const rule = createDayContext(gameContent, heard.day, seed).rules.find((r) => r.id === heard.rule);
+  const text =
+    heard.outcome === 'righted'
+      ? t('ui.appeal.righted', { name: heard.name, dest: dest(heard.to), rings: heard.rings })
+      : heard.outcome === 'upheld'
+        ? t('ui.appeal.upheld', { name: heard.name, dest: dest(heard.expected), rings: heard.rings })
+        : heard.outcome === 'wrong'
+          ? t('ui.appeal.wrong', { name: heard.name, dest: dest(heard.expected), rings: -heard.rings })
+          : t('ui.appeal.stood', { name: heard.name });
+  return (
+    <section class="card appeal" data-testid="appeal-result" role="status">
+      <p>{text}</p>
+      {heard.outcome === 'wrong' && rule ? (
+        <p class="muted">{t('ui.appeal.rule', { rule: t(ruleText(rule, heard.day)) })}</p>
+      ) : null}
+    </section>
   );
 }
 
@@ -930,6 +993,12 @@ function Audit() {
             <tr>
               <td>{t('ui.audit.fines', { n: ledger.wrong - forgiven })}</td>
               <td class="num">{signed(-ledger.fines)}</td>
+            </tr>
+          ) : null}
+          {ledger.appeal && ledger.appeal.rings !== 0 ? (
+            <tr data-testid="audit-appeal">
+              <td>{t('ui.audit.appeal', { n: ledger.appeal.day, name: ledger.appeal.name })}</td>
+              <td class="num">{signed(ledger.appeal.rings)}</td>
             </tr>
           ) : null}
           <tr class="ledger__total">
@@ -1000,6 +1069,9 @@ function Audit() {
 function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
   const rows = factionsMet(run);
   if (rows.length === 0) return null;
+  // The morning's appeal moved standing too, when it righted a mistake or made one: its own column, so they add up.
+  const appeal = ledger.appeal?.standing ?? {};
+  const appealed = Object.keys(appeal).length > 0;
   return (
     <>
       <table class="ledger" data-testid="standing">
@@ -1007,6 +1079,7 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
           <tr>
             <th>{t('ui.audit.standing')}</th>
             <th class="num">{t('ui.audit.mistakes')}</th>
+            {appealed ? <th class="num">{t('ui.audit.appealColumn')}</th> : null}
             <th class="num">{t('ui.audit.story')}</th>
             <th class="num">{t('ui.audit.now')}</th>
           </tr>
@@ -1016,6 +1089,7 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
             <tr key={f}>
               <td>{factionName(f, run.day)}</td>
               <td class="num">{signed(ledger.standing[f] ?? 0)}</td>
+              {appealed ? <td class="num">{signed(appeal[f] ?? 0)}</td> : null}
               <td class="num">{signed(ledger.story?.[f] ?? 0)}</td>
               <td class="num">{signed(run.standing[f])}</td>
             </tr>

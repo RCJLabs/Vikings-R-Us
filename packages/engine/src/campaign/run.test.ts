@@ -1,7 +1,7 @@
 import { loadContent } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
-import type { Content, Destination, Effect, ScriptedCaseDef } from '../content/types';
+import type { AppealsDef, Content, Destination, Effect, ScriptedCaseDef } from '../content/types';
 import { generateDay } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
 import { createDayContext, type DayCtx } from '../logic/context';
@@ -855,5 +855,151 @@ describe('the vertical slice', () => {
     const loki = afterShift.shift?.cases.find((c) => c.script === 'case.loki12');
     expect(loki?.expect.dest).toBe('DETAIN');
     expect(night.flags).toMatchObject({ loki_judged: 1, loki_detained: 1 });
+  });
+});
+
+describe('appeals', () => {
+  /** The demo with appeals that come for certain after a mistake (or as asked), from Day 1. */
+  const appealing = (content: Content, appeals: Partial<AppealsDef> = {}): Content => ({
+    ...content,
+    campaign: {
+      ...campaignOf(content),
+      appeals: { from: 1, afterMistake: 100, otherwise: 0, chancers: 0, bonus: 3, fine: 5, ...appeals },
+    },
+  });
+  const hear = (content: Content, run: RunState, stamped: Destination | null) =>
+    stepRun(run, { t: 'appeal', stamped }, { content, ctx: runContext(content, run) });
+
+  it('brings the next morning a soul sent to the wrong place, as it stood, with what the mistake cost', () => {
+    const content = appealing(demo);
+    const { afterShift, run } = playDay(content, newRun(content, 'appeal-cost'), { wrong: () => true });
+    const appeal = run.appeal;
+    expect(run.phase).toBe('morning');
+    expect(appeal).toBeDefined();
+    if (!appeal) return;
+    expect(appeal.day).toBe(1);
+    const verdicts = afterShift.shift?.verdicts ?? [];
+    const v = verdicts.find((x) => afterShift.shift?.cases[x.index]?.id === appeal.case.id);
+    expect(v?.stamped).toBe(appeal.stamped);
+    expect(appeal.stamped).not.toBe(appeal.case.expect.dest);
+    // Its fine is the one its place among the day's mistakes drew: the first few are only warnings.
+    const economy = content.days[0]?.economy;
+    const k = verdicts.filter((x) => x.stamped !== null && !x.correct).indexOf(v) + 1;
+    const warnings = economy?.warnings ?? 0;
+    const fines = economy?.fines ?? [];
+    expect(appeal.fine).toBe(k > warnings ? (fines[Math.min(k - warnings - 1, fines.length - 1)] ?? 0) : 0);
+  });
+
+  it('rights a mistake: its fine comes back, the standing it moved is undone, and the soul changes hall', () => {
+    const content = appealing(demo);
+    // A day of mistakes, and the appeal that comes after it with a fine to give back.
+    const found = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6']
+      .map((seed) => playDay(content, newRun(content, `appeal-right-${seed}`), { wrong: () => true }).run)
+      .find((r) => (r.appeal?.fine ?? 0) > 0 && Object.keys(r.appeal?.standing ?? {}).length > 0);
+    expect(found).toBeDefined();
+    if (!found?.appeal) return;
+    const appeal = found.appeal;
+    const right = appeal.case.expect.dest;
+    const { state, events } = hear(content, found, right);
+    expect(state.appeal).toBeUndefined();
+    expect(state.appealHeard).toMatchObject({
+      outcome: 'righted',
+      from: appeal.stamped,
+      to: right,
+      rings: appeal.fine,
+    });
+    expect(events).toContainEqual({ e: 'appealed', heard: state.appealHeard });
+    expect(state.rings).toBe(found.rings + appeal.fine);
+    for (const [f, n] of Object.entries(appeal.standing)) {
+      expect(state.standing[f as keyof RunState['standing']]).toBe(
+        found.standing[f as keyof RunState['standing']] - (n ?? 0),
+      );
+    }
+    expect(state.sent?.[right] ?? 0).toBe((found.sent?.[right] ?? 0) + 1);
+    expect(state.sent?.[appeal.stamped] ?? 0).toBe((found.sent?.[appeal.stamped] ?? 0) - 1);
+  });
+
+  it('rewards turning down a soul judged rightly, fines deciding wrongly, and lets a verdict stand for nothing', () => {
+    // No mistakes, so the only appeals are from souls judged rightly, trying their luck.
+    const content = appealing(demo, { afterMistake: 0, otherwise: 100 });
+    const run = ['c1', 'c2', 'c3', 'c4']
+      .map((seed) => playDay(content, newRun(content, `appeal-chancer-${seed}`)).run)
+      .find((r) => r.appeal !== undefined);
+    expect(run?.appeal).toBeDefined();
+    if (!run?.appeal) return;
+    const { stamped, case: c } = run.appeal;
+    expect(stamped).toBe(c.expect.dest);
+    expect(['HEL', 'RAN', 'TRANSFER']).toContain(stamped);
+
+    const upheld = hear(content, run, stamped).state;
+    expect(upheld.appealHeard).toMatchObject({ outcome: 'upheld', rings: 3 });
+    expect(upheld.rings).toBe(run.rings + 3);
+
+    const other: Destination = stamped === 'HEL' ? 'VALHALLA' : 'HEL';
+    const wrong = hear(content, run, other).state;
+    expect(wrong.appealHeard).toMatchObject({ outcome: 'wrong', to: other, rings: -5 });
+    expect(wrong.rings).toBe(run.rings - 5);
+    expect(wrong.sent?.[other] ?? 0).toBe((run.sent?.[other] ?? 0) + 1);
+
+    const stood = hear(content, run, null).state;
+    expect(stood.appealHeard).toMatchObject({ outcome: 'letStand', to: null, rings: 0 });
+    expect(stood.rings).toBe(run.rings);
+    expect(stood.standing).toEqual(run.standing);
+    // Heard once: a second hearing is refused.
+    expect(hear(content, stood, stamped).events).toContainEqual({ e: 'rejected', reason: 'no appeal to hear' });
+  });
+
+  it('lapses when the gate opens unheard, and each day files its appeal in its ledger', () => {
+    const content = appealing(demo);
+    const day1 = playDay(content, newRun(content, 'appeal-lapse'), { wrong: () => true }).run;
+    expect(day1.appeal).toBeDefined();
+    const day2 = playDay(content, day1);
+    expect(day2.afterShift.appeal).toBeUndefined();
+    expect(day2.afterShift.appealHeard).toBeUndefined();
+    expect(day2.afterShift.ledger.at(-1)?.appeal).toMatchObject({ day: 1, outcome: 'letStand' });
+    // Heard, and filed the same way.
+    const heard = hear(content, day1, day1.appeal?.case.expect.dest ?? 'HEL').state;
+    const filed = playDay(content, heard).afterShift.ledger.at(-1)?.appeal;
+    expect(filed).toMatchObject({ day: 1, outcome: 'righted' });
+  });
+
+  it('comes the same way to the same run, never from a story soul, and not after the last day', () => {
+    const content = appealing(demo);
+    const a = playDay(content, newRun(content, 'appeal-same'), { wrong: () => true }).run.appeal;
+    const b = playDay(content, newRun(content, 'appeal-same'), { wrong: () => true }).run.appeal;
+    expect(a?.case.id).toBe(b?.case.id);
+    // The last day's mistakes have no morning to be heard in.
+    const last = appealing(demo, { from: 1 });
+    const end = { ...newRun(last, 'appeal-last'), day: campaignOf(last).lastDay };
+    const { afterShift } = playDay(last, end, { wrong: () => true });
+    expect(afterShift.appeal).toBeUndefined();
+    // Nor does a build without appeals bring any.
+    const none = { ...demo, campaign: { ...campaignOf(demo), appeals: undefined } };
+    expect(playDay(none, newRun(none, 'appeal-none'), { wrong: () => true }).run.appeal).toBeUndefined();
+    // Story souls never appeal: on the slice's Day 12, Loki's story soul is judged wrong, yet no appeal is his.
+    const slice = appealing(full, { from: 1 });
+    const late = newRun(slice, 'appeal-story', { slice: 'fromJump' });
+    const played = playDay(slice, late, { wrong: () => true });
+    expect(played.run.appeal?.case.script).toBeUndefined();
+  });
+
+  it('replays the same from a save', () => {
+    const content = appealing(demo);
+    const { run } = playDay(content, newRun(content, 'appeal-save'), { wrong: () => true });
+    let save = startSave(content, 'appeal-save', 1);
+    let at = save.mornings[0] as RunState;
+    const actions: RunAction[] = [
+      ...shiftActions(at, content, { wrong: () => true }),
+      { t: 'endAudit' },
+      { t: 'endNight' },
+      { t: 'appeal', stamped: run.appeal?.case.expect.dest ?? 'HEL' },
+    ];
+    for (const action of actions) {
+      const next = stepRun(at, action, { content, ctx: runContext(content, at) }).state;
+      save = recordAction(save, at, action, next);
+      at = next;
+    }
+    expect(at.appealHeard?.outcome).toBe('righted');
+    expect(resumeSave(save, content, 1).run).toEqual(at);
   });
 });

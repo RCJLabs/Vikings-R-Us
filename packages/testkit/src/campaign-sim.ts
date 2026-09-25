@@ -5,6 +5,7 @@ import {
   billTotal,
   type Content,
   campaignOf,
+  createDayContext,
   type DayCtx,
   type DayLedger,
   type Destination,
@@ -209,6 +210,23 @@ function shiftActions(
   return actions;
 }
 
+/**
+ * The morning's appeal, if one came: the bot hears every one (an upper bound on what appeals move) and judges
+ * the soul again as well as it judges at the gate, on the rules of the day it was judged.
+ */
+function hearAppeal(run: RunState, content: Content, ctx: DayCtx, judging: Judging, seed: string): RunState {
+  const appeal = run.appeal;
+  if (!appeal) return run;
+  // A stream of its own, so the shifts play out as they would without appeals.
+  const rng = new Rng(`${seed}|appeal|${run.day}`);
+  const right = rng.chance(Math.round(judging.accuracy * 1000), 1000);
+  const wrongs = stampsFor(createDayContext(content, appeal.day, run.seed)).filter(
+    (d) => d !== appeal.case.expect.dest,
+  );
+  const stamped: Destination = right ? appeal.case.expect.dest : (rng.pick(wrongs) ?? appeal.case.expect.dest);
+  return stepRun(run, { t: 'appeal', stamped }, { content, ctx }).state;
+}
+
 function nightActions(run: RunState, content: Content, ctx: DayCtx, strategy: NightStrategy): RunAction[] {
   const actions: RunAction[] = [];
   const economy = economyOf({ content, ctx });
@@ -268,6 +286,8 @@ export interface SimOptions {
   readonly assists?: Assists;
   /** Achievements to check as the run goes, as the game checks them: each shift as it ends, the run each day. */
   readonly achievements?: readonly AchievementDef[];
+  /** Whether the bot hears the morning's appeals (docs/tech-spec.md §40); it does unless told not to. */
+  readonly appeals?: boolean;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -295,6 +315,8 @@ export function simulateRun(
     const ctx = runContext(content, run);
     const start = run.rings;
     if (options.scenes) run = playStory(run, content, ctx, options.scenes, 'morning', policy);
+    if (options.appeals !== false)
+      run = hearAppeal(run, content, ctx, judging, `sim|${seed}|${judging.name}|${strategy}`);
     const nails = policy.longNails;
     const longNails = nails && (!nails.deal || (run.flags.loki_deal ?? 0) > 0) ? nails.perDay : 0;
     let initial: ShiftState | undefined;
@@ -313,7 +335,9 @@ export function simulateRun(
     const n = l?.night;
     if (!l || !n) ledgerOk = false;
     else {
-      const delta = l.pay + l.bonus - l.fines - n.hearth - n.food - n.medicine - n.upgrades + n.draupnir + n.story;
+      const appeal = l.appeal?.rings ?? 0;
+      const delta =
+        appeal + l.pay + l.bonus - l.fines - n.hearth - n.food - n.medicine - n.upgrades + n.draupnir + n.story;
       if (start + delta !== n.rings) ledgerOk = false;
       storyRings += n.story;
     }

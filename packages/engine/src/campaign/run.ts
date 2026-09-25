@@ -28,6 +28,8 @@ import {
   type Verdict,
 } from '../shift/shift';
 import {
+  type Appeal,
+  type AppealHeard,
   type Bills,
   type DayLedger,
   type DayMistake,
@@ -62,7 +64,12 @@ export type RunAction =
       readonly choices?: readonly number[];
       readonly effects: readonly Effect[];
     }
-  | { readonly t: 'endNight' };
+  | { readonly t: 'endNight' }
+  /**
+   * The morning's appeal heard: the soul stamped again at the desk, on the rules of the day it was judged
+   * (docs/tech-spec.md §40), or null to let the verdict stand.
+   */
+  | { readonly t: 'appeal'; readonly stamped: Destination | null };
 
 export type RunEvent =
   | { readonly e: 'shift'; readonly event: ShiftEvent }
@@ -73,6 +80,7 @@ export type RunEvent =
   | { readonly e: 'draupnir'; readonly rings: number }
   | { readonly e: 'dayBegins'; readonly day: number }
   | { readonly e: 'ended'; readonly ending: string }
+  | { readonly e: 'appealed'; readonly heard: AppealHeard }
   | { readonly e: 'rejected'; readonly reason: string };
 
 export interface RunEnv {
@@ -220,6 +228,122 @@ export function defaultBills(run: RunState): Bills {
 
 const matches = (want: Destination | '*', got: Destination) => want === '*' || want === got;
 
+/** What sending a soul that belonged in `expected` to `stamped` does to standing: nothing when it's right. */
+function standingFx(
+  campaign: CampaignDef,
+  expected: Destination,
+  stamped: Destination,
+): Partial<Record<Faction, number>> {
+  if (stamped === expected) return {};
+  const rule = campaign.standing.find((r) => matches(r.expected, expected) && matches(r.stamped, stamped));
+  return { ...rule?.fx };
+}
+
+/** Destinations a soul judged rightly might still argue with. */
+const GRUDGES: ReadonlySet<Destination> = new Set(['HEL', 'RAN', 'TRANSFER']);
+
+/**
+ * The soul, if any, that asks tomorrow morning to be judged again (docs/tech-spec.md §40): most likely one of
+ * today's souls sent to the wrong place; sometimes one judged rightly into a hall it resents, trying its luck.
+ * Story souls have their own consequences and never appeal. Drawn from its own stream of the run's seed, so
+ * the same run always brings the same appeals.
+ */
+function chooseAppeal(
+  run: RunState,
+  shift: ShiftState,
+  campaign: CampaignDef,
+  costs: ReadonlyMap<number, { fine: number; standing: Partial<Record<Faction, number>>; worthy: boolean }>,
+  fined: boolean,
+): Appeal | undefined {
+  const def = campaign.appeals;
+  if (!def || run.day < def.from || run.day >= campaign.lastDay) return undefined;
+  const story = (v: Verdict) => shift.cases[v.index]?.script !== undefined;
+  const judged = shift.verdicts.filter((v) => v.stamped !== null && !story(v));
+  const wronged = judged.filter((v) => v.stamped !== v.expected);
+  const chancers = judged.filter((v) => v.correct && GRUDGES.has(v.expected));
+  if (wronged.length + chancers.length === 0) return undefined;
+  const rng = new Rng(`${run.seed}|appeal|${run.day}`);
+  if (!rng.chance(wronged.length > 0 ? def.afterMistake : def.otherwise, 100)) return undefined;
+  const pool =
+    wronged.length === 0
+      ? chancers
+      : chancers.length === 0
+        ? wronged
+        : rng.chance(def.chancers, 100)
+          ? chancers
+          : wronged;
+  const v = pool[rng.int(0, pool.length - 1)];
+  const c = v ? shift.cases[v.index] : undefined;
+  if (!v || !c || v.stamped === null) return undefined;
+  const cost = costs.get(v.index);
+  return {
+    day: run.day,
+    case: c,
+    stamped: v.stamped,
+    worthy: cost?.worthy ?? false,
+    fined,
+    fine: cost?.fine ?? 0,
+    standing: cost?.standing ?? {},
+  };
+}
+
+/** Moves a soul from one hall to another in the run's counts (Ragnarök's host is made of them). */
+function moveSoul(run: RunState, appeal: Appeal, to: Destination): Pick<RunState, 'sent' | 'einherjar'> {
+  const sent: Partial<Record<Destination, number>> = { ...run.sent };
+  sent[appeal.stamped] = Math.max(0, (sent[appeal.stamped] ?? 0) - 1);
+  sent[to] = (sent[to] ?? 0) + 1;
+  const einherjar = { ...run.einherjar };
+  const kind = appeal.worthy ? 'worthy' : 'unworthy';
+  if (appeal.stamped === 'VALHALLA') einherjar[kind] = Math.max(0, einherjar[kind] - 1);
+  if (to === 'VALHALLA') einherjar[kind] += 1;
+  return { sent, einherjar };
+}
+
+/**
+ * The appeal decided (docs/tech-spec.md §40). Righted: its fine comes back and the standing it moved is
+ * undone. Upheld with good reason: a small bonus. Decided wrongly: a fine, and the gods mind where the soul
+ * went. Left to stand: nothing changes. The soul goes wherever it was last stamped.
+ */
+function hearAppeal(run: RunState, appeal: Appeal, stamped: Destination | null, campaign: CampaignDef): RunState {
+  const def = campaign.appeals;
+  const c = appeal.case;
+  const expected = c.expect.dest;
+  const base = {
+    day: appeal.day,
+    name: c.evidence.look.name,
+    from: appeal.stamped,
+    to: stamped,
+    expected,
+    rule: c.expect.rule,
+  };
+  if (stamped === null || !def) {
+    const heard: AppealHeard = { ...base, to: null, outcome: 'letStand', rings: 0, standing: {} };
+    const { appeal: _, ...rest } = run;
+    return { ...rest, appealHeard: heard };
+  }
+  const wasRight = appeal.stamped === expected;
+  const nowRight = stamped === expected;
+  const outcome: AppealHeard['outcome'] = nowRight ? (wasRight ? 'upheld' : 'righted') : 'wrong';
+  const rings = outcome === 'righted' ? appeal.fine : outcome === 'upheld' ? def.bonus : appeal.fined ? -def.fine : 0;
+  // What the verdict moved goes, and what the new one moves comes: righting a mistake undoes it exactly.
+  const standing: Partial<Record<Faction, number>> = {};
+  const add = (fx: Partial<Record<Faction, number>>, sign: number) => {
+    for (const [f, n] of Object.entries(fx)) {
+      const next = (standing[f as Faction] ?? 0) + sign * (n ?? 0);
+      if (next === 0) delete standing[f as Faction];
+      else standing[f as Faction] = next;
+    }
+  };
+  add(appeal.standing, -1);
+  add(standingFx(campaign, expected, stamped), 1);
+  const nextStanding = { ...run.standing };
+  for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
+  const moved = stamped === appeal.stamped ? {} : moveSoul(run, appeal, stamped);
+  const heard: AppealHeard = { ...base, outcome, rings, standing };
+  const { appeal: _, ...rest } = run;
+  return { ...rest, ...moved, rings: run.rings + rings, standing: nextStanding, appealHeard: heard };
+}
+
 /**
  * Today's queue: the generated souls, with the day's story souls placed among
  * them. Generated souls are the same with or without the story souls, which
@@ -284,12 +408,15 @@ function audit(
   const assists = shift.config.assists;
   const fined = !run.story && !assists?.noFines;
   const mistakes: DayMistake[] = [];
+  // What each verdict cost, for an appeal to give back.
+  const costs = new Map<number, { fine: number; standing: Partial<Record<Faction, number>>; worthy: boolean }>();
   shift.verdicts.forEach((v: Verdict) => {
     const c = shift.cases[v.index];
     if (v.stamped === null) {
       unjudged++;
       return;
     }
+    const finesBefore = fines;
     if (v.correct) {
       correct++;
       pay += economy.wage;
@@ -313,10 +440,12 @@ function audit(
       : campaign.standing.find((r) => matches(r.expected, v.expected) && matches(r.stamped, v.stamped as Destination));
     for (const [f, n] of Object.entries(rule?.fx ?? {}))
       standing[f as Faction] = (standing[f as Faction] ?? 0) + (n ?? 0);
+    const worthy = c ? eval2({ ref: campaign.worthy }, c.truth, env.ctx) : false;
     if (v.stamped === 'VALHALLA' && c) {
-      if (eval2({ ref: campaign.worthy }, c.truth, env.ctx)) einherjar.worthy++;
+      if (worthy) einherjar.worthy++;
       else einherjar.unworthy++;
     }
+    costs.set(v.index, { fine: fines - finesBefore, standing: { ...rule?.fx }, worthy });
     sent[v.stamped] = (sent[v.stamped] ?? 0) + 1;
     // Every soul sent on with a procedure skipped (so far only nails left uncut) builds Naglfar.
     naglfar += v.skipped?.length ?? 0;
@@ -332,18 +461,22 @@ function audit(
     standing,
     ...(assists ? { assists } : {}),
     ...(mistakes.length > 0 ? { mistakes } : {}),
+    ...(run.appealHeard ? { appeal: run.appealHeard } : {}),
   };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
+  const appeal = chooseAppeal(run, shift, campaign, costs, fined);
+  const { appealHeard: _, appeal: __, ...rest } = run;
   return {
     run: {
-      ...run,
+      ...rest,
       rings: run.rings + pay + bonus - fines,
       standing: nextStanding,
       einherjar,
       sent,
       naglfar,
       ledger: [...run.ledger, ledger],
+      ...(appeal ? { appeal } : {}),
     },
     ledger,
     flags,
@@ -602,24 +735,32 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
     return { state: r, events };
   }
 
+  if (action.t === 'appeal') {
+    if (run.phase !== 'morning' || !run.appeal) return reject(run, 'no appeal to hear');
+    const heard = hearAppeal(run, run.appeal, action.stamped, campaignOf(env.content));
+    return { state: heard, events: heard.appealHeard ? [{ e: 'appealed', heard: heard.appealHeard }] : [] };
+  }
+
   switch (action.t) {
     case 'beginShift': {
       if (run.phase !== 'morning') return reject(run, 'the shift starts in the morning');
+      // An appeal not heard by the time the gate opens lapses: the verdict stands.
+      const today = run.appeal ? hearAppeal(run, run.appeal, null, campaignOf(env.content)) : run;
       const config = {
         mode: 'campaign' as const,
-        seed: run.seed,
-        day: run.day,
-        ...(run.story ? { untimed: true } : {}),
-        mods: shiftMods(run, env.content),
+        seed: today.seed,
+        day: today.day,
+        ...(today.story ? { untimed: true } : {}),
+        mods: shiftMods(today, env.content),
       };
-      const { state } = startShift(env.content, config, env.queue ?? campaignQueue(run, env));
+      const { state } = startShift(env.content, config, env.queue ?? campaignQueue(today, env));
       const begun = stepShift(
         state,
         { t: 'begin', at: action.at, ...(action.assists ? { assists: action.assists } : {}) },
         env.ctx,
       );
       return {
-        state: { ...run, phase: 'shift', shift: begun.state },
+        state: { ...today, phase: 'shift', shift: begun.state },
         events: begun.events.map((event) => ({ e: 'shift', event })),
       };
     }

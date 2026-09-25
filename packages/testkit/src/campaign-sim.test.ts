@@ -36,7 +36,7 @@ describe('the campaign economy', () => {
 
 // docs/build-plan.md §10: bots must reach every ending. Each ending names a player who should reach
 // it; the first of a few seeds that does is enough.
-const REACH: readonly [ending: string, judging: string, night: NightStrategy, story: string][] = [
+const REACH: readonly [ending: string, judging: string, night: NightStrategy, story: string, appeals?: boolean][] = [
   ['ending.demoted', 'careless', 'payAll', 'plain'],
   ['ending.alone', 'novice', 'neglect', 'plain'],
   ['ending.naglfar', 'expert', 'payAll', 'naglfar'],
@@ -46,7 +46,8 @@ const REACH: readonly [ending: string, judging: string, night: NightStrategy, st
   ['ending.hel', 'expert', 'payAll', 'hel'],
   ['ending.freyja', 'expert', 'payAll', 'freyja'],
   ['ending.odin', 'expert', 'payAll', 'odin'],
-  ['ending.wolf', 'novice', 'frugal', 'plain'],
+  // A weak host: a novice who lets the appeals stand (righting mistakes sends souls where they belong).
+  ['ending.wolf', 'novice', 'frugal', 'plain', false],
   ['ending.lastStand', 'competent', 'payAll', 'plain'],
 ];
 
@@ -57,13 +58,14 @@ describe('the endings', () => {
     const achievements = content.achievements ?? [];
     const missed: string[] = [];
     const earned = new Set<string>();
-    for (const [ending, judging, night, story] of REACH) {
+    for (const [ending, judging, night, story, appeals] of REACH) {
       const seen: string[] = [];
       for (let i = 0; i < 6 && !seen.includes(ending); i++) {
         const r = simulateRun(content, `reach${i}`, bot(judging), night, {
           story: storyPolicy(story),
           scenes,
           achievements,
+          ...(appeals === false ? { appeals } : {}),
         });
         seen.push(r.ending ?? 'none');
         for (const id of r.achievements) earned.add(id);

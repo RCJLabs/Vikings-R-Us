@@ -12,6 +12,10 @@ family:
 draupnir: { nights: [9, 18], rings: 8 }
 debtFloor: -30
 care: { needNights: 2, sickChance: 30, sickNights: 2 }
+# Appeals (docs/tech-spec.md §40): the morning after a day, one soul from it may ask to be judged again, on
+# that day's rules. Mostly souls sent to the wrong place; now and then one judged rightly tries its luck.
+# First guesses for `pnpm sim campaign` to tune.
+appeals: { from: 1, afterMistake: 70, otherwise: 25, chancers: 25, bonus: 3, fine: 5 }
 worthy: pred.worthy
 # The stranger at night is Loki, but nobody says so until Skögul does on Day 12's morning: until then
 # the accounts, and the notes after a choice, call him the stranger.

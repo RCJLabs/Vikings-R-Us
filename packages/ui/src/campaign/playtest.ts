@@ -1,4 +1,5 @@
 import {
+  type AppealHeard,
   type Assists,
   type Content,
   campaignOf,
@@ -167,6 +168,26 @@ function mistakes(p: PlaytestInput): string[] {
   return ['### Mistakes', '', ...(lines.length > 0 ? lines : ['None.'])];
 }
 
+/** Each appeal heard (docs/tech-spec.md §40): whose, what was decided, and what it came to. */
+function appeals(p: PlaytestInput): string[] {
+  const { t } = p;
+  const line = (when: string, a: AppealHeard) => {
+    const what =
+      a.outcome === 'righted'
+        ? `righted, to ${t(`dest.${a.to}`)}`
+        : a.outcome === 'upheld'
+          ? 'turned down rightly'
+          : a.outcome === 'wrong'
+            ? `decided wrongly (${t(`dest.${a.to}`)}; it belonged in ${t(`dest.${a.expected}`)})`
+            : 'left to stand';
+    return `- ${when}: ${a.name}, judged on Day ${a.day} and sent to ${t(`dest.${a.from}`)}: ${what}, ${signed(a.rings)} rings.`;
+  };
+  const lines = p.run.ledger.flatMap((l) => (l.appeal ? [line(`Day ${l.day}`, l.appeal)] : []));
+  // Heard this morning, and not yet filed by the day's audit.
+  if (p.run.appealHeard) lines.push(line(`Day ${p.run.day}, this morning`, p.run.appealHeard));
+  return ['### Appeals', '', ...(lines.length > 0 ? lines : ['None.'])];
+}
+
 /** Every scene played, with the options picked in it, read back by playing it again as the journal does. */
 function choices(p: PlaytestInput): string[] {
   const lines = (p.save.journal ?? []).map((e) => {
@@ -198,7 +219,9 @@ function choices(p: PlaytestInput): string[] {
 
 /** The report, as Markdown: it reads as plain text in the form, and as tables and lists once posted. */
 export function playtestReport(p: PlaytestInput): string {
-  return [...header(p), '', ...days(p.run.ledger), '', ...mistakes(p), '', ...choices(p), ''].join('\n');
+  return [...header(p), '', ...days(p.run.ledger), '', ...mistakes(p), '', ...appeals(p), '', ...choices(p), ''].join(
+    '\n',
+  );
 }
 
 export const playtestTitle = (run: RunState): string =>
