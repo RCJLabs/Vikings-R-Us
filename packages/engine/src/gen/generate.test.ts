@@ -86,7 +86,9 @@ describe('fairness contract (F1–F8)', () => {
   ] as const)('on partial evidence the solver agrees with the oracle: seed %s, day %i', neverMoreCertain);
 });
 
-describe('determinism', () => {
+// These generate whole days (the story's people check, every day of the campaign for twelve seeds), and a
+// random seed can make a run slower: seconds on a busy CI runner, not vitest's 5 s.
+describe('determinism', { timeout: 30_000 }, () => {
   test.prop([seedArb, dayArb], { numRuns: 40 })('a day is a pure function of (seed, day)', (seed, day) => {
     const a = generateDay(seed, createDayContext(content, day, seed));
     const b = generateDay(seed, createDayContext(content, day, seed));
@@ -163,7 +165,8 @@ describe('determinism', () => {
   });
 });
 
-describe('metamorphic', () => {
+// Whole days, twice a run, as the determinism checks.
+describe('metamorphic', { timeout: 30_000 }, () => {
   test.prop([seedArb, dayArb, seedArb], { numRuns: 40 })(
     'changing only the cosmetic look never changes the judgment',
     (seed, day, lookSeed) => {

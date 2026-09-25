@@ -71,7 +71,8 @@ describe('Endless', () => {
   });
 });
 
-describe('Endless twists', () => {
+// These generate souls on every day a twist can come to: seconds on a busy CI runner.
+describe('Endless twists', { timeout: 30_000 }, () => {
   const rounds = (n: number) => Array.from({ length: n }, (_, r) => r);
 
   it('come to rounds that bring nothing new: days without a teaching soul, and every round past the last day', () => {

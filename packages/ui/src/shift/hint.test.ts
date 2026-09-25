@@ -11,7 +11,8 @@ const full = loadContent('dev-full');
 const packs = resolve(import.meta.dirname, '../../../../content/packs');
 const core: Record<string, string> = JSON.parse(readFileSync(resolve(packs, 'core/strings/en.json'), 'utf8'));
 
-describe('Skögul’s hint', () => {
+// This generates souls on every day of the campaign: seconds on a busy CI runner.
+describe('Skögul’s hint', { timeout: 30_000 }, () => {
   it('has a line and a highlight for every piece of deciding evidence, Days 1-20', () => {
     const targets = new Set<string>();
     for (const { day } of full.days) {
