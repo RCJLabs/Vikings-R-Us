@@ -1808,7 +1808,7 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
   - a citation's accessible description is its reason, and an answer's is its lines;
   - there's one live region, outside every screen, and it holds the last verdict when the summary opens;
   - under a fake clock, "A minute of sun left." comes at five minutes into a six-minute Daily, and dusk after it.
-- The scan waits for animations to finish, so a notice fading in isn't measured at half opacity.
+- The walks run with the device's reduced motion, which the game honours by stilling every animation. Without it, main's first CI run caught an achievement notice mid-fade, at about 30% opacity, and failed it on contrast.
 
 **Known limits**
 - **What axe can't check.** Automated checks find only some problems. Nobody has played the game with a screen reader yet, and someone who uses one should. In particular:
