@@ -9,6 +9,7 @@ import { Briefing, EndlessOver, Summary, Title } from './screens';
 import { toTop } from './scroll';
 import { onShiftKey } from './shift/keys';
 import { ShiftScreen, ToastView } from './shift/Shift';
+import { startSound } from './sound/driver';
 import { initStorage, screen, settings, startClock } from './store';
 
 // A reload reopens the game at the top, not where the page was scrolled (docs/tech-spec.md §30). Set as this
@@ -21,6 +22,7 @@ export function App() {
     void initStorage();
     initArt();
     const stopVolume = effect(() => setVolume(settings.value.sound));
+    const stopSound = startSound();
     window.addEventListener('pointerdown', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
     startClock();
@@ -28,6 +30,7 @@ export function App() {
     const stopGamepad = startGamepad();
     return () => {
       stopVolume();
+      stopSound();
       stopGamepad();
       window.removeEventListener('keydown', onShiftKey);
       window.removeEventListener('pointerdown', unlockAudio);

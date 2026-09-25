@@ -1,0 +1,29 @@
+# The campaign's own music: Ragnarök's gate and the endings (docs/sound-brief.md). Files in
+# assets/campaign/sound/; only the full game has them.
+beds:
+  - id: ragnarok
+    about: Day 20's gate, the surge before the last battle. Tension stem as for the gate.
+    music: ragnarok
+    tension: ragnarok-tension
+    ambience: ragnarok-storm
+  - id: ending-glory
+    about: A god's host carries the day (Odin's, Freyja's). Plays once.
+    music: { file: ending-glory, loop: false }
+  - id: ending-dark
+    about: Hel's hall, Naglfar sailing, the wolf, the last stand. Plays once.
+    music: { file: ending-dark, loop: false }
+  - id: ending-home
+    about: The family's endings (smuggled home, the transfer, rebirth). Plays once.
+    music: { file: ending-home, loop: false }
+days:
+  - { day: 20, beds: { gate: ragnarok } }
+endings:
+  - { ending: ending.odin, bed: ending-glory }
+  - { ending: ending.freyja, bed: ending-glory }
+  - { ending: ending.hel, bed: ending-dark }
+  - { ending: ending.naglfar, bed: ending-dark }
+  - { ending: ending.wolf, bed: ending-dark }
+  - { ending: ending.lastStand, bed: ending-dark }
+  - { ending: ending.smuggled, bed: ending-home }
+  - { ending: ending.transfer, bed: ending-home }
+  - { ending: ending.rebirth, bed: ending-home }

@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { PACK_IDS } from './targets';
 
 export * from './content';
+export * from './sound';
+export * from './sound-names';
 export * from './targets';
 
 export const PackIdSchema = z.enum(PACK_IDS);

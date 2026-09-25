@@ -13,6 +13,8 @@ declare module 'virtual:content' {
     readonly contentHash: string;
   };
   export const strings: Readonly<Record<string, string>>;
+  /** The music, ambience and cue files this build ships: only those that exist (docs/tech-spec.md §39). */
+  export const sound: import('./sound/types').SoundBook;
   export const gameContent: import('@cots/engine').Content;
   /** Core + daily packs only, so a Daily plays the same in every build. */
   export const dailyContent: import('@cots/engine').Content | null;

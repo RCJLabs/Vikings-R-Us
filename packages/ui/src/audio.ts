@@ -1,26 +1,31 @@
 import type { ShiftEvent } from '@cots/engine';
 
 /**
- * Placeholder sound (M5). Every effect is synthesised with Web Audio, so
- * there are no files to load or license; the audio pass after the art
- * decision replaces the recipes, and the events that trigger them stay.
- * Sound is best-effort: no AudioContext, a blocked one or a failed node
- * just means silence.
+ * The game's sound effects, and the audio context everything plays through
+ * (docs/tech-spec.md §39). Every effect has a recipe synthesised with Web
+ * Audio, a placeholder until recorded cues are named for it (sound.yaml): the
+ * events that trigger them stay. Music and ambience (sound/beds.ts) play into
+ * the same output. Sound is best-effort: no AudioContext, a blocked one or a
+ * failed node just means silence.
  */
 
-export type Sound =
-  | 'stamp'
-  | 'send'
-  | 'flip'
-  | 'inspect'
-  | 'feather'
-  | 'tool'
-  | 'found'
-  | 'miss'
-  | 'answer'
-  | 'citation'
-  | 'dusk'
-  | 'coins';
+/** The cues (content-schema's SOUND_CUES keeps the same list, for sound.yaml). */
+export const SOUNDS = [
+  'stamp',
+  'send',
+  'flip',
+  'inspect',
+  'feather',
+  'tool',
+  'found',
+  'miss',
+  'answer',
+  'citation',
+  'dusk',
+  'coins',
+] as const;
+
+export type Sound = (typeof SOUNDS)[number];
 
 /** Which sound a shift event makes, if any. */
 export function soundFor(e: ShiftEvent): Sound | null {
@@ -183,6 +188,10 @@ const RECIPES: Readonly<Record<Sound, (c: Ctx, out: AudioNode, t: number) => voi
 let context: Ctx | null = null;
 let master: GainNode | null = null;
 let volume = 0.6;
+/** Held by a pause; hidden with the page. Either keeps the context suspended, and so does volume 0. */
+let held = false;
+let hidden = false;
+const onRunning = new Set<() => void>();
 
 type AudioCtor = new () => Ctx;
 
@@ -193,10 +202,22 @@ function audio(): Ctx | null {
   const Ctor = g.AudioContext ?? g.webkitAudioContext;
   if (!Ctor) return null;
   try {
-    context = new Ctor();
-    master = context.createGain();
-    master.gain.value = volume;
-    master.connect(context.destination);
+    const c = new Ctor();
+    const m = c.createGain();
+    m.gain.value = volume;
+    m.connect(c.destination);
+    c.onstatechange = () => {
+      if (c.state === 'running') for (const fn of onRunning) fn();
+    };
+    context = c;
+    master = m;
+    // Loops keep playing in a hidden tab unless stopped; effects never mind.
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        hidden = document.visibilityState === 'hidden';
+        settle();
+      });
+    }
   } catch {
     context = null;
     master = null;
@@ -204,29 +225,65 @@ function audio(): Ctx | null {
   return context;
 }
 
+/** Suspends the context while paused, hidden or at volume 0, and resumes it otherwise. */
+function settle(): void {
+  if (!context) return;
+  const quiet = held || hidden || volume <= 0;
+  if (quiet === (context.state !== 'running')) return;
+  void (quiet ? context.suspend() : context.resume()).catch(() => undefined);
+}
+
 /** 0 is silent (and creates no audio at all); 1 is full. */
 export function setVolume(v: number): void {
   volume = Math.max(0, Math.min(1, v));
   if (master) master.gain.value = volume;
+  settle();
 }
 
-/** Browsers start audio only after a tap or key press: call this from one. */
+/** Browsers start audio only after a tap or key press: call this from one. A tap on the pause stays silent. */
 export function unlockAudio(): void {
   const c = audio();
-  if (c?.state === 'suspended') void c.resume().catch(() => undefined);
+  if (c?.state === 'suspended' && !held && !hidden) void c.resume().catch(() => undefined);
 }
 
-/** Silence while the game is paused or hidden. */
-export function holdAudio(held: boolean): void {
-  if (!context) return;
-  void (held ? context.suspend() : context.resume()).catch(() => undefined);
+/** Silence while the game is paused. */
+export function holdAudio(hold: boolean): void {
+  held = hold;
+  settle();
+}
+
+/** The running context and the output everything plays into, or null while there's no sound. */
+export function soundOut(): { readonly ctx: Ctx; readonly out: AudioNode } | null {
+  return context && master && context.state === 'running' ? { ctx: context, out: master } : null;
+}
+
+/** Calls `fn` whenever sound starts running (after the first tap, back from a pause); returns a way to stop. */
+export function whenSoundRuns(fn: () => void): () => void {
+  onRunning.add(fn);
+  return () => onRunning.delete(fn);
+}
+
+/** Recorded cues, where there are files for them: a decoded variant to play, or null for the recipe. */
+export type CueSource = (sound: Sound) => AudioBuffer | null;
+let cueSource: CueSource | null = null;
+
+export function setCueSource(source: CueSource | null): void {
+  cueSource = source;
 }
 
 export function play(sound: Sound): void {
   const c = audio();
   if (!c || !master || c.state !== 'running') return;
   try {
-    RECIPES[sound](c, master, c.currentTime);
+    const recorded = cueSource?.(sound);
+    if (recorded) {
+      const src = c.createBufferSource();
+      src.buffer = recorded;
+      src.connect(master);
+      src.start();
+    } else {
+      RECIPES[sound](c, master, c.currentTime);
+    }
   } catch {
     // Best-effort: a sound that can't play is skipped.
   }

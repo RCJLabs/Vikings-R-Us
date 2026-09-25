@@ -16,6 +16,7 @@ import { SavesSettings } from './saves-ui';
 import { skippedText } from './shift/evidence';
 import { Decree, RulesPanel } from './shift/Rules';
 import { modeTitle, ReportDialog, useAutoFocus } from './shift/Shift';
+import { hasBeds } from './sound/driver';
 import {
   applyUpdate,
   begin,
@@ -245,6 +246,34 @@ function SettingsCard() {
           onInput={(e) => set({ sound: Number((e.target as HTMLInputElement).value) })}
         />
       </label>
+      {hasBeds.value ? (
+        <>
+          <label>
+            {t('ui.settings.music')}{' '}
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={s.music}
+              data-testid="setting-music"
+              onInput={(e) => set({ music: Number((e.target as HTMLInputElement).value) })}
+            />
+          </label>
+          <label>
+            {t('ui.settings.ambience')}{' '}
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={s.ambience}
+              data-testid="setting-ambience"
+              onInput={(e) => set({ ambience: Number((e.target as HTMLInputElement).value) })}
+            />
+          </label>
+        </>
+      ) : null}
       <label>
         <input
           type="checkbox"

@@ -1,0 +1,40 @@
+# The game's music and ambience, by place, and the files its cues can use (docs/sound-brief.md has the
+# brief for each). Every name is a file in assets/core/sound/: <name>.ogg (Opus) and <name>.m4a (AAC).
+# A name whose files aren't there yet is silent, and a cue without files keeps its synthesised placeholder,
+# so nothing plays until the real sound arrives.
+beds:
+  - id: title
+    about: The title screen and the menus.
+    music: title
+  - id: gate
+    about: A shift at the gate. The tension stem matches the music's length and tempo; it rises as the sun sinks.
+    music: gate
+    tension: gate-tension
+    ambience: gate-wind
+  - id: morning
+    about: The morning's decree and story scene.
+    music: morning
+    ambience: dawn
+  - id: tally
+    about: What a day came to (the audit, a Daily's or Endless's results).
+    music: tally
+  - id: night
+    about: Home at night, the bills and the letters.
+    music: night
+    ambience: hearth
+  - id: ending
+    about: An ending with no music of its own (the end of the demo, of the slice). Plays once.
+    music: { file: ending, loop: false }
+cues:
+  stamp: [stamp-1, stamp-2, stamp-3]
+  send: [send-1, send-2]
+  flip: [flip]
+  inspect: [inspect]
+  feather: [feather]
+  tool: [tool]
+  found: [found]
+  miss: [miss]
+  answer: [answer]
+  citation: [citation]
+  dusk: [dusk]
+  coins: [coins]

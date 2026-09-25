@@ -33,7 +33,7 @@ import {
   withEffects,
 } from '@cots/engine';
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
-import { signal } from '@preact/signals';
+import { effect, signal } from '@preact/signals';
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { AssistSettings, assistText, atSunSpeed } from '../assists';
 import { clockText, hasText, listText, t } from '../i18n';
@@ -44,6 +44,7 @@ import { toTop, toTopOf } from '../scroll';
 import { skippedText } from '../shift/evidence';
 import { Decree } from '../shift/Rules';
 import { ReportDialog, useAutoFocus } from '../shift/Shift';
+import { campaignPlace, useStoryText } from '../sound/place';
 import { currentAssists, type Screen, session, settings, storageKept, toTitle } from '../store';
 import { PlaytestButton, PlaytestDialog } from './playtest-ui';
 import {
@@ -75,6 +76,12 @@ import {
 
 /** Compiled Ink scenes, loaded with the campaign. */
 let scenes: Readonly<Record<string, object>> = {};
+
+// The run's day and ending, for the sound, which chooses Day 20's gate and each ending's music by them.
+effect(() => {
+  const run = active.value?.run;
+  campaignPlace.value = run ? { day: run.day, ending: run.ending ?? null } : null;
+});
 
 export async function enterCampaign(): Promise<void> {
   [scenes] = await Promise.all([loadScenes(), loadSlots()]);
@@ -522,6 +529,7 @@ function Leaves({ n, floor }: { n: number | null; floor: number }) {
  * the view; the first option, or Continue, takes the keyboard's focus without scrolling (§30).
  */
 function SceneView({ id, run }: { id: string; run: RunState }) {
+  useStoryText();
   const [env] = useState(() => sceneEnv(run, id));
   const [choices, setChoices] = useState<number[]>([]);
   const json = scenes[id];
@@ -1301,6 +1309,7 @@ function Night() {
 // ---------- ending ----------
 
 function Ending() {
+  useStoryText();
   const a = active.value;
   const focus = useAutoFocus<HTMLHeadingElement>();
   if (!a) return null;

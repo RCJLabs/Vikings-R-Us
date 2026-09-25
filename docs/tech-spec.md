@@ -2023,6 +2023,87 @@ The field is absent on a day with none, and in saves from before this build, whi
 - **The form needs a GitHub account,** and issues on a public repo are public. Copy the report is the way round both.
 - **The labels don't exist yet.** The forms' labels (`playtest`, `campaign`, and the alpha forms' `alpha` and `soul-report`) aren't in the repository, and GitHub skips a label that doesn't exist.
 
+## 39. After M7: music, ambience and sound cues (phase 9)
+
+**Why.** There was no music or ambience, and the effects were synthesised placeholders. This builds the system and lists every file it needs. Every build stays silent (apart from the placeholder effects) until real sound arrives: placeholder loops would be worse than silence. The commissioning brief is [`sound-brief.md`](sound-brief.md).
+
+**The content** (`content/packs/<pack>/sound.yaml`)
+- **Beds:** each has an id and a line saying what it's for. Its layers are `music`, `tension` and `ambience`, each a file name, or `{ file, loop: false }` for a piece that plays once.
+- **Day overrides:** a day can give some places a bed of its own (Day 20's gate is `ragnarok`).
+- **Ending overrides:** an ending can have its own music.
+- **Cues:** a cue can name recorded variants.
+- **Where things are:**
+  - core has a bed for each place, and the cue files;
+  - the demo adds its lost ending's music;
+  - the campaign adds Ragnarök's gate and three ending moods.
+- **Files:** `assets/<pack>/sound/<name>.ogg` (Opus) and `.m4a` (AAC).
+
+**The compiler** (`packages/content-compiler/src/sound.ts`)
+- **Scope:** it reads only the target's packs, so a demo never names the campaign's music.
+- **What's left out:** any layer, cue variant, day or ending bed without files, so a place falls back to its own bed, a cue to its placeholder, or silence.
+- **Errors:**
+  - a bed defined twice, or one a day or ending names that doesn't exist;
+  - an ending that doesn't exist;
+  - a pack with sound that leaves a place without a bed.
+- **Output:** it writes `generated/<target>/sound.ts`, with each file as `new URL(<path>, import.meta.url)`, so Vite copies only the named files into the build, hashed. The compile line reports the count, e.g. `sound 0 of 26 files` for the demo and `0 of 32` for the full game. None exist yet.
+- **Outside the content hash:** sound doesn't change the content hash, so the Daily's checks are unaffected.
+
+**The mix** (`packages/ui/src/sound/mix.ts`, pure)
+- **The bed:** the screen gives a place:
+  - title, save slots and briefings → title;
+  - shift → gate;
+  - results, Endless's end and the audit → tally;
+  - then morning, night and ending.
+
+  The place's bed is the ending's own on the ending screen, else the day's own (campaign only), else the place's.
+- **Tension:** `smoothstep((sunUsed − 0.5) / 0.5)`, from the share of sun used. It's 0 without a sun (Story Mode, untimed practice, Endless). The calm music is scaled by `1 − 0.35·tension`.
+- **Ducking:** story text on screen (a scene or an ending) scales music by 0.4 and ambience by 0.55.
+- **The player's volumes:** new `music` (0.7) and `ambience` (0.8) settings scale each part. The existing `sound` setting is the master volume.
+
+**The player** (`packages/ui/src/sound/beds.ts`)
+- **Changing bed:** a new bed fades in over 1.2 s while the old one fades out. Levels then ease toward the mix (0.25 s).
+- **Loading:** each layer loads the first format the browser says it can play (`canPlayType`), falling back to the next if decoding fails.
+- **In step:** layers are decoded whole and started on the same sample, so a stem and its music stay in step.
+- **Memory:** four decoded files are kept for coming back to.
+- **Recorded cues** are decoded once sound first runs, then played in turn. Until then, or without files, the recipe plays.
+
+**The context** (`audio.ts`)
+- **Suspended while:** a shift is paused, the page is hidden, or the volume is 0.
+- **Leaving from the pause** lets it go. Before, a gesture happened to resume it.
+- **Still starts on the first tap or key,** as browsers require. A tap before the game is listening starts nothing, and the next one does.
+
+**The driver** (`packages/ui/src/sound/driver.ts`)
+- **Inputs:** the screen, the shift's sun (read at each tick only while a shift runs), the campaign's day and ending, story text on screen, and the settings.
+- **Where the campaign's details come from:** its lazily loaded screens publish its day and ending (`sound/place.ts`). `useStoryText()` marks scenes and the ending.
+- **When the day counts:** only on the campaign's own screens and a campaign shift, so a Daily after Day 20 still plays the gate.
+- **The volume settings** appear only in a build that has beds.
+
+**Sketches** (dev-full only, `?sound=sketch`)
+- **What:** procedural drones, a heartbeat pulse, wind and a hearth, 8-second loops fitted to whole cycles, with noise cross-faded at the seam. They let the system be heard and tested.
+- **Kept out of other builds:** the module is imported behind `import.meta.env.MODE === 'dev-full'`, which other builds drop. So does the test handle `__cotsSound` (the mix, and each layer's level, target and state).
+
+**Tests**
+- **Unit:**
+  - the mix: beds by place, day and ending; tension silent then rising, never falling; ducking; volumes; the lists matching the schema's names;
+  - the compiler: files found by format, missing names left out, silent overrides dropped, bad references refused, the generated URLs, and campaign beds only in full targets.
+- **e2e, dev-full with sketches, phone and desktop:**
+  - title → gate on a practice shift, with all three layers;
+  - tension up and the calm music down after five minutes of sun;
+  - a pause holds sound, and leaving releases it back to the title bed;
+  - the music volume setting;
+  - music and ambience ducked under the morning scene, and restored after it;
+  - no beds and no music setting without sketches;
+  - none of it on the web demo.
+
+  Run 4 times over, they held.
+
+**Known limits**
+- **No real sound yet.** Levels need calibrating when files land: the defaults were chosen without them.
+- **Loops are decoded whole.** It keeps them gapless and in step, and costs memory (23 MB a stereo minute). Pieces that play once are decoded whole too; if endings grow long, stream them instead.
+- **Stem lengths aren't checked.** The compiler can't see audio lengths. A stem of a different length from its music drifts, which the brief's acceptance test covers.
+- **Offline, the PWA plays no music.** Its precache leaves audio out, so the web demo fetches each bed when first heard. Add runtime caching for sound when files exist.
+- **No captions,** as §35 said, because nothing new is carried by sound: the tension follows the sun on screen, and ducking follows text on screen.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
@@ -2031,3 +2112,4 @@ The field is absent on a day with none, and in saves from before this build, whi
 - Capacitor: [Announcing Capacitor 8](https://ionic.io/blog/announcing-capacitor-8) · [8.4 SystemBars](https://capawesome.io/blog/whats-new-in-capacitor-8-4-0/)
 - [itch.io HTML5 file limits](https://itch.io/t/893409/zipped-html5-game-number-of-files-limit)
 - itch.io access (for §38): [access control](https://itch.io/docs/creators/access-control) · [limited releases](https://itch.io/docs/creators/limited-releases) · [download keys](https://itch.io/docs/creators/download-keys) · [restricted links to an HTML5 game](https://itch.io/t/471212/how-to-distribute-restricted-links-to-an-html5-game) · [download keys and restricted HTML games](https://itch.io/t/4199266/do-download-keys-not-work-for-restricted-html-games)
+- Sound (for §39): [ASWG-R001 loudness](http://gameaudiopodcast.com/ASWG-R001.pdf) · [Opus recommended settings](https://wiki.xiph.org/Opus_Recommended_Settings) · [Safari and Ogg Opus](https://bugs.webkit.org/show_bug.cgi?id=238546) · [gaps in AAC loops](https://github.com/Selftend/selftend/issues/2437) · [streamer-safe game music](https://www.dl-sounds.com/streamer-safe-game-music/)
