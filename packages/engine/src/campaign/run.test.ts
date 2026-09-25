@@ -16,6 +16,7 @@ import {
   careFor,
   debtLimit,
   defaultBills,
+  economyFor,
   endingFor,
   factionKey,
   favoursFor,
@@ -528,10 +529,13 @@ describe('planning the night', () => {
   it('forecasts the coming nights’ bills, as many as the run has left', () => {
     const run: RunState = { ...newRun(full, 'fc'), day: 6 };
     expect(billForecast(run, full)).toEqual([
-      { day: 7, hearth: 11, food: 18, medicine: 12, draupnir: 0 },
-      { day: 8, hearth: 12, food: 18, medicine: 13, draupnir: 0 },
-      { day: 9, hearth: 14, food: 21, medicine: 14, draupnir: 8 },
+      { day: 7, hearth: 11, food: 18, medicine: 12, draupnir: 0, tithe: 0 },
+      { day: 8, hearth: 12, food: 18, medicine: 13, draupnir: 0, tithe: 0 },
+      { day: 9, hearth: 14, food: 21, medicine: 14, draupnir: 8, tithe: 0 },
     ]);
+    // A rank held owes Odin's tithe each night (docs/tech-spec.md §44).
+    const tithe = campaignOf(full).promotion?.ranks[0]?.tithe ?? 0;
+    expect(billForecast({ ...run, rank: 1 }, full).map((b) => b.tithe)).toEqual([tithe, tithe, tithe]);
     // Food is for those at home now.
     const two = run.family.map((m, i) => (i === 0 ? { ...m, status: 'gone' as const, gone: 'died' as const } : m));
     expect(billForecast({ ...run, family: two }, full)[0]?.food).toBe(12);
@@ -1356,5 +1360,122 @@ describe('the gods’ favour (docs/tech-spec.md §43)', () => {
     const without = playDay(full, plain, { wrong: helsOwn(plain), bills: { medicine: [] } });
     expect(careFor(without.afterShift, full).sickNights).toBe(care.sickNights);
     expect(without.run.family[0]?.status).toBe('gone');
+  });
+});
+
+describe('promotion (docs/tech-spec.md §44)', () => {
+  const def = campaignOf(full).promotion;
+  const rank = (n: number) => {
+    const r = def?.ranks[n - 1];
+    if (!r) throw new Error(`no rank ${n}`);
+    return r;
+  };
+  /** Clean days up to the morning of `day`: every soul judged rightly, none left at dusk. */
+  const cleanTo = (day: number, seed = 'promotion'): RunState => {
+    let run = newRun(full, seed);
+    while (run.day < day) run = playDay(full, run).run;
+    return run;
+  };
+  const answer = (run: RunState, accept: boolean) => drive(full, run, [{ t: 'promotion', accept }]).run;
+
+  it('offers the next rank the morning after enough clean days, and again after as many more if declined', () => {
+    expect(def).toBeDefined();
+    if (!def) return;
+    // Days 1-3 clean: the first morning an offer can come.
+    const first = cleanTo(def.from);
+    expect(first.offer).toBe(1);
+    expect(cleanTo(def.from - 1).offer).toBeUndefined();
+    // Declining costs nothing, and the count starts again.
+    const declined = answer(first, false);
+    expect(declined).toMatchObject({ day: def.from, rings: first.rings, standing: first.standing });
+    expect(declined.rank).toBeUndefined();
+    let run = playDay(full, declined).run;
+    expect(run.offer).toBeUndefined();
+    for (let i = 1; i < def.cleanDays; i++) run = playDay(full, run).run;
+    expect(run.offer).toBe(1);
+    // The day it was declined, its audit files the answer.
+    expect(playDay(full, declined).afterShift.ledger.at(-1)?.offer).toEqual({ rank: 1, taken: false });
+    // A day with a mistake starts the count again.
+    const spoiled = playDay(full, declined, { wrong: (i) => i === 0 }).run;
+    expect(spoiled.clean).toBe(0);
+  });
+
+  it('brings a longer line, a higher wage, fewer mistakes forgiven and Odin’s tithe', () => {
+    const offered = cleanTo(def?.from ?? 4);
+    const plain = answer(offered, false);
+    const taken = answer(offered, true);
+    const second = rank(1);
+    expect(taken.rank).toBe(1);
+    const line = (r: RunState) => drive(full, r, [{ t: 'beginShift', at: 0 }]).run.shift?.cases ?? [];
+    const base = line(plain);
+    const more = line(taken);
+    // The day's own souls, the same, then the rank's.
+    expect(more.length).toBe(base.length + second.souls);
+    expect(more.slice(0, base.length).map((c) => c.id)).toEqual(base.map((c) => c.id));
+    const names = more.map((c) => `${c.evidence.look.name} ${c.evidence.look.patronym}`);
+    expect(new Set(names).size).toBe(names.length);
+    // Every soul judged rightly: the wage is the rank's.
+    const env = { content: full, ctx: runContext(full, taken) };
+    const economy = economyFor(taken, env);
+    expect(economy.wage).toBe(economyFor(plain, env).wage + second.wage);
+    expect(economy.warnings).toBe(Math.max(0, economyFor(plain, env).warnings + second.warnings));
+    const day = playDay(full, taken);
+    const ledger = day.afterShift.ledger.at(-1);
+    expect(ledger).toMatchObject({ rank: 1, offer: { rank: 1, taken: true }, correct: more.length });
+    expect(ledger?.pay).toBe(more.length * economy.wage);
+    // Odin's tithe at night, in the accounts.
+    expect(day.run.ledger.at(-1)?.night?.tithe).toBe(second.tithe);
+    const n = day.run.ledger.at(-1)?.night;
+    if (!ledger || !n) throw new Error('no night');
+    expect(n.rings).toBe(
+      day.afterShift.rings - n.hearth - n.food - n.medicine - (n.tithe ?? 0) - n.upgrades + n.draupnir,
+    );
+    // With mistakes, the fines start one sooner.
+    const two = (i: number) => i < 2;
+    const finedPlain = playDay(full, plain, { wrong: two }).afterShift.ledger.at(-1)?.fines ?? 0;
+    const finedRank = playDay(full, taken, { wrong: two }).afterShift.ledger.at(-1)?.fines ?? 0;
+    expect(finedPlain).toBe(0);
+    expect(finedRank).toBeGreaterThan(0);
+  });
+
+  it('lets a rank be stepped down from at night, from the next day: the day worked at it still pays its tithe', () => {
+    const taken = answer(cleanTo(def?.from ?? 4), true);
+    const shift = drive(full, taken, shiftActions(taken, full)).run;
+    const night = drive(full, shift, [{ t: 'endAudit' }, { t: 'stepDown' }]).run;
+    expect(night.rank).toBeUndefined();
+    expect(night.clean).toBe(0);
+    expect(night.ledger.at(-1)?.steppedDown).toBe(1);
+    // Stepping down can't dodge the tithe for a day worked at the rank.
+    const slept = drive(full, night, [{ t: 'endNight' }]).run;
+    expect(slept.ledger.at(-1)?.night?.tithe).toBe(rank(1).tithe);
+    // The next day is worked at no rank, and its night has no tithe.
+    const next = playDay(full, slept).run;
+    expect(next.ledger.at(-1)?.rank).toBeUndefined();
+    expect(next.ledger.at(-1)?.night?.tithe).toBeUndefined();
+    // Nothing to step down from, and not by day.
+    expect(stepRun(slept, { t: 'stepDown' }, { content: full, ctx: runContext(full, slept) }).events[0]).toMatchObject({
+      e: 'rejected',
+    });
+  });
+
+  it('never offers in Story Mode, past the last rank, or for the last day; an offer unanswered at the gate lapses', () => {
+    const story = { ...newRun(full, 'promotion-story'), story: true };
+    let run: RunState = story;
+    while (run.day < (def?.from ?? 4) + 1) run = playDay(full, run).run;
+    expect(run.offer).toBeUndefined();
+    // At the last rank, clean days bring nothing more.
+    const top = { ...cleanTo(def?.from ?? 4), offer: undefined, rank: def?.ranks.length ?? 2 };
+    let high: RunState = top;
+    for (let i = 0; i < (def?.cleanDays ?? 2) + 1; i++) high = playDay(full, high).run;
+    expect(high.offer).toBeUndefined();
+    // Unanswered at the gate: declined, and filed so.
+    const offered = cleanTo(def?.from ?? 4);
+    const lapsed = playDay(full, offered).afterShift;
+    expect(lapsed.rank).toBeUndefined();
+    expect(lapsed.ledger.at(-1)?.offer).toEqual({ rank: 1, taken: false });
+    // The day before the last never brings an offer for it.
+    const lastDay = campaignOf(full).lastDay;
+    const late = { ...cleanTo(def?.from ?? 4), day: lastDay - 1, clean: (def?.cleanDays ?? 2) - 1 };
+    expect(playDay(full, late).afterShift.offer).toBeUndefined();
   });
 });

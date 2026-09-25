@@ -311,6 +311,8 @@ export interface SimOptions {
   readonly serve?: Faction;
   /** At most this many of them over the run (every one it can, unless given). */
   readonly serveUpTo?: number;
+  /** Whether the bot takes the ranks it's offered (docs/tech-spec.md §44); unanswered, offers lapse at the gate. */
+  readonly promote?: boolean;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -340,6 +342,9 @@ export function simulateRun(
     if (options.scenes) run = playStory(run, content, ctx, options.scenes, 'morning', policy);
     if (options.appeals !== false)
       run = hearAppeal(run, content, ctx, judging, `sim|${seed}|${judging.name}|${strategy}`);
+    if (options.promote !== undefined && run.offer) {
+      run = stepRun(run, { t: 'promotion', accept: options.promote }, { content, ctx }).state;
+    }
     const nails = policy.longNails;
     const longNails = nails && (!nails.deal || (run.flags.loki_deal ?? 0) > 0) ? nails.perDay : 0;
     let initial: ShiftState | undefined;
@@ -362,7 +367,17 @@ export function simulateRun(
     else {
       const appeal = l.appeal?.rings ?? 0;
       const delta =
-        appeal + l.pay + l.bonus - l.fines - n.hearth - n.food - n.medicine - n.upgrades + n.draupnir + n.story;
+        appeal +
+        l.pay +
+        l.bonus -
+        l.fines -
+        n.hearth -
+        n.food -
+        n.medicine -
+        (n.tithe ?? 0) -
+        n.upgrades +
+        n.draupnir +
+        n.story;
       if (start + delta !== n.rings) ledgerOk = false;
       storyRings += n.story;
     }
@@ -414,6 +429,8 @@ export interface PolicyReport {
   /** Requests the gods made over a run, and those done in full (means). */
   readonly meanAsked: number;
   readonly meanMet: number;
+  /** Days worked at each rank over a run (means; the first is the first rank). */
+  readonly meanRankDays: readonly number[];
   readonly endings: Record<string, number>;
   readonly ledgerErrors: number;
 }
@@ -428,6 +445,7 @@ export function simulateCampaign(
   assists?: Assists,
   paceS?: number,
   serve?: Faction,
+  promote?: boolean,
 ): PolicyReport[] {
   const out: PolicyReport[] = [];
   const mean = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0) / Math.max(1, xs.length);
@@ -441,8 +459,10 @@ export function simulateCampaign(
             ...(assists ? { assists } : {}),
             ...(paceS !== undefined ? { paceS } : {}),
             ...(serve ? { serve } : {}),
+            ...(promote !== undefined ? { promote } : {}),
           }),
         );
+        const ranks = campaignOf(content).promotion?.ranks.length ?? 0;
         const endings: Record<string, number> = {};
         for (const r of results) endings[r.ending ?? 'none'] = (endings[r.ending ?? 'none'] ?? 0) + 1;
         out.push({
@@ -466,6 +486,9 @@ export function simulateCampaign(
           meanAsked: mean(results.map((r) => r.ledger.reduce((n, l) => n + (l.requests?.length ?? 0), 0))),
           meanMet: mean(
             results.map((r) => r.ledger.reduce((n, l) => n + (l.requests ?? []).filter((q) => q.met).length, 0)),
+          ),
+          meanRankDays: Array.from({ length: ranks }, (_, k) =>
+            mean(results.map((r) => r.ledger.filter((l) => l.rank === k + 1).length)),
           ),
           endings,
           ledgerErrors: results.filter((r) => !r.ledgerOk).length,

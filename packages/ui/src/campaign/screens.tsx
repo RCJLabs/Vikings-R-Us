@@ -13,6 +13,7 @@ import {
   debtLimit,
   defaultBills,
   type Effect,
+  economyFor,
   economyOf,
   type Faction,
   type FavourDef,
@@ -26,6 +27,7 @@ import {
   nightOutlook,
   type RunEvent,
   type RunState,
+  rankOf,
   reachableEndings,
   replayableDays,
   ruleText,
@@ -56,6 +58,7 @@ import { currentAssists, type Screen, session, settings, storageKept, toTitle } 
 import { PlaytestButton, PlaytestDialog } from './playtest-ui';
 import {
   active,
+  answerPromotion,
   branchFrom,
   deleteSlot,
   dispatch,
@@ -73,6 +76,7 @@ import {
   type SlotRecord,
   sleep,
   slots,
+  stepDown,
   toGate,
   unreadable,
 } from './run-store';
@@ -835,13 +839,14 @@ function Morning() {
   const assists = currentAssists(!run.story, run.story);
   const assisted = assistText(assists);
   const bills = billTotal(run, economyOf({ content: gameContent, ctx }), defaultBills(run));
-  const tonight = bills.hearth + bills.food + bills.medicine;
+  const tonight = bills.hearth + bills.food + bills.medicine + (rankOf(run, gameContent)?.tithe ?? 0);
   return (
     <main class="screen screen--morning">
       <h1 data-testid="morning-title">{t('ui.campaign.day', { n: run.day })}</h1>
       <p class="muted">
         {t('ui.campaign.purse', { n: run.rings })}
         {run.story ? ` · ${t('ui.campaign.story')}` : ''}
+        <RankName run={run} />
       </p>
       <StandingStrip run={run} />
       <DebtBanner run={run} />
@@ -856,6 +861,7 @@ function Morning() {
       ) : (
         <>
           <AppealCard run={run} />
+          <PromotionCard run={run} />
           <RequestCards run={run} fined={!run.story && !assists.noFines} />
           <section class="card">
             <Decree ctx={ctx} />
@@ -894,6 +900,73 @@ function Morning() {
       </div>
       {journalOpen.value ? <JournalView /> : null}
     </main>
+  );
+}
+
+// ---------- promotion ----------
+
+/** The rank held (docs/tech-spec.md §44), after the purse. */
+function RankName({ run }: { run: RunState }) {
+  const rank = rankOf(run, gameContent);
+  return rank ? <span data-testid="rank"> · {t(rank.name)}</span> : null;
+}
+
+/** The morning's offer of a rank: what it brings and what it costs, to take or not. */
+function PromotionCard({ run }: { run: RunState }) {
+  const def = campaignOf(gameContent).promotion;
+  const rank = run.offer ? def?.ranks[run.offer - 1] : undefined;
+  if (!def || !rank) return null;
+  return (
+    <section class="card promotion" data-testid="promotion">
+      <h2>{t('ui.promotion.title', { rank: t(rank.name) })}</h2>
+      <p class="promotion__words">{t(rank.text)}</p>
+      <p class="muted">
+        {t('ui.promotion.terms', {
+          days: def.cleanDays,
+          souls: rank.souls,
+          warnings: -rank.warnings,
+          wage: rank.wage,
+          tithe: rank.tithe,
+        })}
+      </p>
+      <div class="row">
+        <button
+          type="button"
+          class="btn btn--primary"
+          data-testid="promotion-take"
+          onClick={() => answerPromotion(true)}
+        >
+          {t('ui.promotion.take')}
+        </button>
+        <button type="button" class="btn" data-testid="promotion-decline" onClick={() => answerPromotion(false)}>
+          {t('ui.promotion.decline')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** At night, the rank held and its tithe, and the way back down a rank. */
+function RankCard({ run }: { run: RunState }) {
+  const ranks = campaignOf(gameContent).promotion?.ranks ?? [];
+  const rank = rankOf(run, gameContent);
+  const today = run.ledger[run.ledger.length - 1];
+  const stepped = today?.day === run.day ? today.steppedDown : undefined;
+  const from = stepped ? ranks[stepped - 1] : undefined;
+  if (!rank && !from) return null;
+  const below = run.rank && run.rank > 1 ? ranks[run.rank - 2] : undefined;
+  return (
+    <section class="card" data-testid="rank-card">
+      {from ? <p data-testid="stepped-down">{t('ui.rank.stepped', { rank: t(from.name) })}</p> : null}
+      {rank ? (
+        <>
+          <p>{t('ui.rank.held', { rank: t(rank.name), tithe: rank.tithe })}</p>
+          <button type="button" class="btn" data-testid="step-down" onClick={stepDown}>
+            {below ? t('ui.rank.stepDownTo', { rank: t(below.name) }) : t('ui.rank.stepDown')}
+          </button>
+        </>
+      ) : null}
+    </section>
   );
 }
 
@@ -1125,7 +1198,7 @@ function Audit() {
   const ledger = a.run.ledger[a.run.ledger.length - 1];
   const shift = a.run.shift;
   if (!ledger || !shift) return null;
-  const economy = economyOf({ content: gameContent, ctx: a.ctx });
+  const economy = economyFor(a.run, { content: gameContent, ctx: a.ctx });
   const waived = a.run.story || ledger.assists?.noFines === true;
   const forgiven = Math.min(ledger.wrong, waived ? ledger.wrong : economy.warnings);
   const assisted = assistText(ledger.assists);
@@ -1440,6 +1513,12 @@ function NightsAhead({ run }: { run: RunState }) {
           ))}
         </tbody>
       </table>
+      {/* The same each night while the rank is held (docs/tech-spec.md §44). */}
+      {(ahead[0]?.tithe ?? 0) > 0 ? (
+        <p class="muted" data-testid="ahead-tithe">
+          {t('ui.night.aheadTithe', { n: ahead[0]?.tithe ?? 0 })}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -1447,7 +1526,7 @@ function NightsAhead({ run }: { run: RunState }) {
 function BillsCard({ run, outlook }: { run: RunState; outlook: NightOutlook }) {
   const a = active.value;
   if (!a) return null;
-  const economy = economyOf({ content: gameContent, ctx: a.ctx });
+  const economy = economyFor(a.run, { content: gameContent, ctx: a.ctx });
   const bills = run.bills ?? defaultBills(run);
   const set = (next: Bills) => dispatch({ t: 'bills', bills: next });
   const home = run.family.filter((m) => m.status !== 'gone');
@@ -1490,6 +1569,7 @@ function BillsCard({ run, outlook }: { run: RunState; outlook: NightOutlook }) {
           {t('ui.night.medicine', { name: familyName(gameContent, m.id), cost: economy.costs.medicine })}
         </label>
       ))}
+      {outlook.tithe > 0 ? <p data-testid="tithe">{t('ui.night.tithe', { n: outlook.tithe })}</p> : null}
       <Outlook run={run} outlook={outlook} bills={bills} />
       {outlook.draupnir > 0 ? (
         <p data-testid="draupnir-tonight">{t('ui.night.draupnir', { n: outlook.draupnir })}</p>
@@ -1602,6 +1682,7 @@ function Night() {
             <FavoursTonight run={run} />
           </section>
           <BillsCard run={run} outlook={outlook} />
+          <RankCard run={run} />
           <ShopCard run={run} />
           <SleepRow key={outlook.ends?.why ?? 'none'} ends={outlook.ends} />
         </>

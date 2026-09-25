@@ -139,6 +139,12 @@ export interface DayLedger {
   readonly requests?: readonly RequestSettled[];
   /** The gods' favours the gate granted for the day and its night (docs/tech-spec.md §43), by id. */
   readonly favours?: readonly string[];
+  /** The rank the day was worked at (docs/tech-spec.md §44), when there was one. */
+  readonly rank?: number;
+  /** The morning's promotion, offered and taken or not. */
+  readonly offer?: { readonly rank: number; readonly taken: boolean };
+  /** The rank stepped down from that night. */
+  readonly steppedDown?: number;
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;
@@ -148,6 +154,8 @@ export interface DayLedger {
     readonly draupnir: number;
     /** Rings gained or lost to story effects today (scenes and story souls). */
     readonly story: number;
+    /** Odin's tithe for a rank held (docs/tech-spec.md §44). */
+    readonly tithe?: number;
     readonly rings: number;
   };
 }
@@ -206,6 +214,14 @@ export interface RunState {
    * and brings the next day's. Absent when none.
    */
   readonly requests?: readonly DayRequest[];
+  /** The rank held (docs/tech-spec.md §44): 1 for the first of the campaign's ranks, and so on. Absent: none. */
+  readonly rank?: number;
+  /** Clean days in a row (every soul judged rightly, none left at dusk) since the last offer. */
+  readonly clean?: number;
+  /** The rank offered this morning, until it's taken or declined (or the gate opens). */
+  readonly offer?: number;
+  /** This morning's answer to it, until the day's audit files it. */
+  readonly answered?: { readonly rank: number; readonly taken: boolean };
 }
 
 /** The host at Ragnarök, part by part: the counts behind ragnarokStrength. */

@@ -2411,6 +2411,80 @@ So the favours are small, and in the sim mostly invisible. Whether players feel 
 - **The words are drafts.**
 - **The Daily and Endless are untouched,** and the demo has no favours.
 
+## 44. After M7: promotion (gameplay brainstorm, item 1)
+
+**Why.** One difficulty curve serves everyone: novices meet a cliff, and anyone who judges well cruises, with money that stops mattering. Promotion lets a strong player choose more pressure, inside the story.
+
+The brainstorm's version, and what changed:
+- **"After strong days"** is made concrete: two clean days in a row, meaning every soul judged rightly and none left at dusk.
+- **"A promotion"** is two ranks: Chooser, Second Grade, and after clean days at it, Chooser, First Grade.
+- **"A longer queue"** is souls added after the day's own, with the same sun.
+- **"Fewer free citations, higher pay and a nightly tithe to Odin"** are kept. The first guesses at pay and tithe (+2 and +3 rings a soul; tithes of 6 and 14) made experts far richer than before, 1,753 rings at the end of a run against 764, the opposite of the aim. They're now +1 and +2 rings a soul, and tithes of 20 and 45.
+- **"Declining costs nothing"** is kept, and a rank can be stepped down from at night, which the brainstorm didn't have. A player who overreaches isn't trapped into debt.
+
+**The offer** (`promote` in `campaign/run.ts`, at each audit)
+- **Counting:** clean days in a row are counted (`clean`). When they reach `cleanDays`, the next morning offers the next rank (`offer`) and the count starts again.
+- **When:** from `promotion.from` (Day 4), never for the last day, and never in Story Mode, which has no sun and no fines to be promoted into.
+- **Answered in the morning** (`{ t: 'promotion', accept }`). An offer still unanswered when the gate opens lapses, and is filed as declined.
+- **Filed:** the day's audit files the answer (`offer`) and the day's rank (`rank`) in the ledger.
+
+**A rank's day** (`rankOf`, `economyFor`)
+- **The line:** the rank's `souls` come after the day's own (`extraSouls`). Each is made as the day's souls are, at the places after them, bound for a destination drawn from the day's mix on a stream of its own. So the day's own line is the same at any rank, and the requests and the line at dusk, which count on it, are untouched. One who would share a name with a soul already in the line is passed over.
+- **The economy:** the wage rises by the rank's `wage`, and the citations forgiven before the fines fall by its `warnings` (never below none). The audit and the audit screen both use this rank-adjusted economy.
+- **The sun doesn't grow.** The extra souls come in the same daylight, which is where most of a rank's pressure lies for a person, if not for a bot.
+
+**The night**
+- **The tithe:** Odin's `tithe` is owed for the rank the day was worked at (`titheTonight`). The night's upkeep, its outlook, the ledger's night record (`night.tithe`) and the forecast of the nights ahead all count it.
+- **Stepping down** (`{ t: 'stepDown' }`, at night) takes the rank below, or none, from the next day, and starts the clean count again. Tonight's tithe is still owed, so a rank can't be taken for a day's pay and dropped before its tithe.
+
+**The screens**
+- **The morning** shows the offer: what the rank brings, what it costs, and that declining costs nothing. The rank held follows the purse, and tonight's bills include the tithe.
+- **The audit** pays the rank's wage and forgives its citations.
+- **The night** lists the tithe among the bills, with a card to step down; the nights ahead note the tithe.
+- **The playtest report** lists each offer and what was made of it, the days worked at each rank, and any step down.
+
+**Numbers.** The campaign pack's first guesses: `from 4, cleanDays 2`.
+
+| Rank | Souls more a day | Citations forgiven | Wage | Tithe a night |
+|---|---|---|---|---|
+| Chooser, Second Grade | 2 | 1 fewer | +1 a soul | 20 |
+| Chooser, First Grade | 4 | 2 fewer (none) | +2 a soul | 45 |
+
+The sim (`pnpm sim campaign --promote`, 12 runs per policy, plain story; bots take every offer):
+
+| Bots, payAll | Declining | Taking promotions | Days at Second / First Grade |
+|---|---|---|---|
+| Expert: rings at the end | 764 | 1,039 | 3.6 / 12.5 |
+| Expert: the host at Ragnarök | 330 | 398 | |
+| Competent: rings at the end | 451 | 451 | 4.8 / 0.6 |
+
+- **Frugal and upgrades-first bots** show the same shape: experts +281 to +289 rings and +66 host; competent bots within 14 rings of declining.
+- **Novices and careless bots** are never offered one.
+- **At 45 s a soul,** promoted experts leave 3.8–7.7 souls at dusk over a run, against none at their own rank.
+
+So for a bot a rank is money and a stronger host for the flawless, and a wash for the competent. What a person will mostly feel is the same sun over more souls, with fewer mistakes forgiven: the pressure the brainstorm asked for, which the sim can't show.
+
+**Tests**
+- **Engine (4):**
+  - the offer after clean days, again after as many more when declined, and the count restarting after a mistake;
+  - a rank's longer line (the day's own souls unchanged, no repeated names), wage, fewer citations forgiven and tithe, with the night's accounts adding up;
+  - stepping down, from the next day, with the tithe still owed for the day worked at the rank;
+  - no offers in Story Mode, past the last rank or for the last day, and an unanswered offer lapsing at the gate as declined.
+- **Compiler (1):** a rank's missing words, or a rank named twice, are refused.
+- **Report (1).**
+- **Sim:** accounts that add up with the tithe.
+- **e2e on the full game** (phone and desktop): a save on Day 4's morning with the offer. It's taken, the day is worked at the rank, and the rank is stepped down from at night. The test checks:
+  - the offer's terms;
+  - the rank after the purse, and tonight's bills with the tithe;
+  - the longer line and the rank's wage;
+  - the night's tithe, the nights ahead, and stepping down.
+
+**Known limits**
+- **Bots don't feel the squeeze.** At their pace the sun never runs short, so the sim shows the money and the host, not the difficulty. The playtest will say whether a rank is worth taking.
+- **The story doesn't know about ranks yet.** No scene mentions one, and no ending reads it: a place for the writing pass.
+- **Rank names and words are drafts.**
+- **The Daily and Endless are untouched,** and the demo never reaches Day 4.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
