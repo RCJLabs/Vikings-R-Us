@@ -16,6 +16,11 @@ care: { needNights: 2, sickChance: 30, sickNights: 2 }
 # that day's rules. Mostly souls sent to the wrong place; now and then one judged rightly tries its luck.
 # First guesses for `pnpm sim campaign` to tune.
 appeals: { from: 1, afterMistake: 70, otherwise: 25, chancers: 25, bonus: 3, fine: 5 }
+# The line at dusk (docs/tech-spec.md §41): souls still waiting come back first the next day, judged by its
+# rules. A crowded gate (three or more left) costs Hel's favour, once a night; each of the living left dies in
+# the night, and that costs Odin's. Bots slow enough to leave a soul or two now and then never crowd the
+# gate; one that runs short every day does four or five nights a run. First guesses.
+waiting: { from: 1, crowd: 3, night: { hel: -1 }, died: { odin: -1 } }
 worthy: pred.worthy
 # The stranger at night is Loki, but nobody says so until Skögul does on Day 12's morning: until then
 # the accounts, and the notes after a choice, call him the stranger.

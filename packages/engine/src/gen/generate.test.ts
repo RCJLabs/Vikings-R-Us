@@ -2,10 +2,12 @@ import { loadContent, loadDailyContent, oracleSolve } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
 import { createDayContext } from '../logic/context';
+import { judge } from '../logic/judge';
 import { solve } from '../logic/solver';
 import { questionResponse } from '../narrative/questions';
 import { Rng } from '../rng/rng';
-import { generateCaseAt, generateDay, tierKnobs } from './generate';
+import { dressForDay, generateCaseAt, generateDay, tierKnobs } from './generate';
+import { withLiars } from './lies';
 import type { CaseSpec, Field } from './types';
 import { validateCase } from './validate';
 
@@ -162,6 +164,37 @@ describe('determinism', { timeout: 30_000 }, () => {
     expect(spec?.queue.knobs.spreadLooks).toBeUndefined();
     expect(spec?.queue.knobs.spreadLines).toBeUndefined();
     expect(Object.keys(dailyContent.pools).filter((id) => id.startsWith('names.reserved'))).toEqual([]);
+  });
+});
+
+// A soul left in line at dusk comes back the next day seen afresh under its rules (docs/tech-spec.md §41):
+// on every day it could come to, including those that bring a new kind of evidence, it meets the contract.
+describe('the line at dusk', { timeout: 30_000 }, () => {
+  test.prop([seedArb], { numRuns: 3 })('every soul can wait for the next day, and is fair under its rules', (seed) => {
+    for (const d of content.days) {
+      if (!content.days.some((x) => x.day === d.day + 1)) continue;
+      const next = createDayContext(content, d.day + 1, seed);
+      for (const c of generateDay(seed, createDayContext(content, d.day, seed)).cases) {
+        const waited = dressForDay(c, next);
+        expect(waited, `${c.id} on day ${d.day + 1}`).not.toBeNull();
+        if (!waited) continue;
+        expect(waited.id).toBe(c.id);
+        expect(waited.evidence.look).toEqual(c.evidence.look);
+        expect(waited.truth).toEqual(withLiars(c.truth, waited.lies, next));
+        expect(waited.expect).toEqual(judge(waited.truth, next));
+        const knobs = tierKnobs('widenBand', next.spec.queue.knobs);
+        const v = validateCase(
+          waited.evidence,
+          waited.truth,
+          waited.lies,
+          waited.expect,
+          waited.meta.decisive,
+          next,
+          knobs,
+        );
+        expect(v.ok, `${c.id} on day ${d.day + 1}`).toBe(true);
+      }
+    }
   });
 });
 

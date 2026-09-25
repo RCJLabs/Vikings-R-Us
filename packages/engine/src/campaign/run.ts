@@ -11,10 +11,10 @@ import type {
   UpgradeDef,
 } from '../content/types';
 import { FACTIONS } from '../content/types';
-import { generateDay } from '../gen/generate';
+import { dressForDay, generateDay } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
 import type { CaseSpec } from '../gen/types';
-import type { DayCtx } from '../logic/context';
+import { createDayContext, type DayCtx } from '../logic/context';
 import { eval2 } from '../logic/pred';
 import { Rng } from '../rng/rng';
 import {
@@ -33,8 +33,10 @@ import {
   type Bills,
   type DayLedger,
   type DayMistake,
+  type DayWaiting,
   evalState,
   type FamilyMember,
+  type LineSoul,
   type RunState,
   stateValue,
 } from './state';
@@ -347,10 +349,23 @@ function hearAppeal(run: RunState, appeal: Appeal, stamped: Destination | null, 
 /**
  * Today's queue: the generated souls, with the day's story souls placed among
  * them. Generated souls are the same with or without the story souls, which
- * only appear when their `when` holds as the shift begins.
+ * only appear when their `when` holds as the shift begins. Souls who waited
+ * through the night (docs/tech-spec.md §41) come first, after the day's
+ * teaching soul, each in the place of one of today's: one who shares its name
+ * if there is one, so no two in the line do, else the last. The line is no
+ * longer for them.
  */
 export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
   const cases = generateDay(run.seed, env.ctx).cases.slice();
+  const waiting = run.waiting ?? [];
+  const teach = env.ctx.spec.queue.teachFirst;
+  const front = teach !== undefined && cases[0]?.archetype === teach ? 1 : 0;
+  for (const w of waiting) {
+    const same = cases.findIndex((c, i) => i >= front && c.evidence.look.name === w.evidence.look.name);
+    const drop = same >= 0 ? same : cases.length - 1;
+    if (drop >= front) cases.splice(drop, 1);
+  }
+  cases.splice(front, 0, ...waiting);
   const slots = [...(env.ctx.spec.queue.scripted ?? [])].sort((a, b) => a.at - b.at);
   for (const slot of slots) {
     const def = env.content.scripted?.find((d) => d.id === slot.case);
@@ -384,6 +399,51 @@ function storyEffects(shift: ShiftState, content: Content): Effect[] {
     if (c && v.stamped !== null) out.push(...stampEffects(content, c, v.stamped));
   }
   return out;
+}
+
+/**
+ * The line at dusk (docs/tech-spec.md §41): the souls still waiting when the sun set. Those who can wait come
+ * back first the next day, seen afresh under its rules; the living can't, and die in the night. Only when the
+ * next day follows on (not across a slice's jump, nor after the last day), and never story souls, whose
+ * stories go on without them.
+ */
+function waitingLine(
+  run: RunState,
+  shift: ShiftState,
+  env: RunEnv,
+): { waiting: DayWaiting; carried: CaseSpec[] } | null {
+  const campaign = campaignOf(env.content);
+  const def = campaign.waiting;
+  if (!def || run.day < def.from || dayAfter(run, campaign, run.day) !== run.day + 1) return null;
+  const left = shift.verdicts.flatMap((v) => {
+    const c = shift.cases[v.index];
+    return v.stamped === null && c && c.script === undefined ? [c] : [];
+  });
+  if (left.length === 0) return null;
+  const tomorrow = createDayContext(env.content, run.day + 1, run.seed);
+  const soul = (c: CaseSpec): LineSoul => ({ id: c.id, name: `${c.evidence.look.name} ${c.evidence.look.patronym}` });
+  const carried: CaseSpec[] = [];
+  const died: LineSoul[] = [];
+  const gone: LineSoul[] = [];
+  for (const c of left) {
+    if (c.expect.dest === 'RETURN') {
+      died.push(soul(c));
+      continue;
+    }
+    const dressed = dressForDay(c, tomorrow);
+    if (dressed) carried.push(dressed);
+    else gone.push(soul(c));
+  }
+  const standing: Partial<Record<Faction, number>> = {};
+  const add = (fx: Readonly<Partial<Record<Faction, number>>>) => {
+    for (const [f, n] of Object.entries(fx)) standing[f as Faction] = (standing[f as Faction] ?? 0) + (n ?? 0);
+  };
+  if (left.length >= def.crowd) add(def.night);
+  for (const _ of died) add(def.died);
+  return {
+    waiting: { carried: carried.map(soul), died, ...(gone.length > 0 ? { gone } : {}), standing },
+    carried,
+  };
 }
 
 /** Pay, fines, standing and einherjar for a finished shift. */
@@ -450,6 +510,8 @@ function audit(
     // Every soul sent on with a procedure skipped (so far only nails left uncut) builds Naglfar.
     naglfar += v.skipped?.length ?? 0;
   });
+  // The souls still in line at dusk: tomorrow's first, or (the living) lost in the night.
+  const line = waitingLine(run, shift, env);
   const ledger: DayLedger = {
     day: run.day,
     correct,
@@ -462,11 +524,13 @@ function audit(
     ...(assists ? { assists } : {}),
     ...(mistakes.length > 0 ? { mistakes } : {}),
     ...(run.appealHeard ? { appeal: run.appealHeard } : {}),
+    ...(line ? { waiting: line.waiting } : {}),
   };
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
+  for (const [f, n] of Object.entries(line?.waiting.standing ?? {})) nextStanding[f as Faction] += n ?? 0;
   const appeal = chooseAppeal(run, shift, campaign, costs, fined);
-  const { appealHeard: _, appeal: __, ...rest } = run;
+  const { appealHeard: _, appeal: __, waiting: ___, ...rest } = run;
   return {
     run: {
       ...rest,
@@ -477,6 +541,7 @@ function audit(
       naglfar,
       ledger: [...run.ledger, ledger],
       ...(appeal ? { appeal } : {}),
+      ...(line && line.carried.length > 0 ? { waiting: line.carried } : {}),
     },
     ledger,
     flags,
@@ -759,8 +824,10 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         { t: 'begin', at: action.at, ...(action.assists ? { assists: action.assists } : {}) },
         env.ctx,
       );
+      // The souls who waited through the night are in today's line now.
+      const { waiting: _, ...opened } = today;
       return {
-        state: { ...today, phase: 'shift', shift: begun.state },
+        state: { ...opened, phase: 'shift', shift: begun.state },
         events: begun.events.map((event) => ({ e: 'shift', event })),
       };
     }

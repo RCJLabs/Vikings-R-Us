@@ -6,6 +6,7 @@ import {
   createDayContext,
   type DayLedger,
   type DayMistake,
+  type Faction,
   factionKey,
   factionsMet,
   type RunSave,
@@ -188,6 +189,26 @@ function appeals(p: PlaytestInput): string[] {
   return ['### Appeals', '', ...(lines.length > 0 ? lines : ['None.'])];
 }
 
+/** Each night the sun set on the line (docs/tech-spec.md §41): who waited, who died in the night, and the cost. */
+function line(p: PlaytestInput): string[] {
+  const names = (souls: readonly { readonly name: string }[]) => souls.map((s) => s.name).join(', ');
+  const lines = p.run.ledger.flatMap((l) => {
+    const w = l.waiting;
+    if (!w) return [];
+    const parts = [
+      ...(w.carried.length > 0 ? [`${names(w.carried)} waited for Day ${l.day + 1}`] : []),
+      ...(w.died.length > 0 ? [`${names(w.died)} died in the night`] : []),
+      ...((w.gone?.length ?? 0) > 0 ? [`${names(w.gone ?? [])} could not wait`] : []),
+    ];
+    const cost = Object.entries(w.standing)
+      .filter(([, n]) => n !== 0)
+      .map(([f, n]) => `${p.t(factionKey(p.content, f as Faction, l.day))} ${signed(n ?? 0)}`)
+      .join(', ');
+    return [`- Day ${l.day}: ${parts.join('; ')}.${cost ? ` Standing: ${cost}.` : ''}`];
+  });
+  return ['### The line at dusk', '', ...(lines.length > 0 ? lines : ['Nobody was left in line.'])];
+}
+
 /** Every scene played, with the options picked in it, read back by playing it again as the journal does. */
 function choices(p: PlaytestInput): string[] {
   const lines = (p.save.journal ?? []).map((e) => {
@@ -219,9 +240,20 @@ function choices(p: PlaytestInput): string[] {
 
 /** The report, as Markdown: it reads as plain text in the form, and as tables and lists once posted. */
 export function playtestReport(p: PlaytestInput): string {
-  return [...header(p), '', ...days(p.run.ledger), '', ...mistakes(p), '', ...appeals(p), '', ...choices(p), ''].join(
-    '\n',
-  );
+  return [
+    ...header(p),
+    '',
+    ...days(p.run.ledger),
+    '',
+    ...mistakes(p),
+    '',
+    ...appeals(p),
+    '',
+    ...line(p),
+    '',
+    ...choices(p),
+    '',
+  ].join('\n');
 }
 
 export const playtestTitle = (run: RunState): string =>
