@@ -21,6 +21,7 @@
     "build:all": "pnpm build:web-demo && pnpm build:web-itch && pnpm build:electron-demo && pnpm build:electron-full && pnpm build:android-full && pnpm build:dev-full",
     "preview:web-demo": "vite preview --config apps/web/vite.config.ts --mode web-demo --port 4173 --strictPort",
     "preview:dev-full": "vite preview --config apps/web/vite.config.ts --mode dev-full --port 4174 --strictPort",
+    "preview:electron-full": "vite preview --config apps/web/vite.config.ts --mode electron-full --port 4175 --strictPort",
     "leak-check": "tsx tools/leak-check/cli.ts",
     "lint": "biome check . && tsx tools/lint-boundaries/cli.ts",
     "format": "biome format --write .",
@@ -32,6 +33,8 @@
     "art:sheet": "tsx tools/art-sheet/cli.ts",
     "story:script": "tsx tools/story-script/cli.ts script",
     "story:approve": "tsx tools/story-script/cli.ts approve",
+    "store:capture": "rm -rf dist/store && playwright test -c tools/store-capture/playwright.config.ts && tsx tools/store-capture/finish.ts",
+    "store:check": "rm -rf dist/store-check && STORE_CHECK=1 playwright test -c tools/store-capture/playwright.config.ts && STORE_CHECK=1 tsx tools/store-capture/finish.ts",
     "golden:update": "UPDATE_GOLDEN=1 vitest run tests/golden"
   },
   "pnpm": {
@@ -54,7 +57,10 @@
     "@preact/preset-vite": "2.10.6",
     "@preact/signals": "2.11.2",
     "@types/node": "22.20.4",
+    "@types/pngjs": "6.0.5",
     "fast-check": "4.10.2",
+    "gifenc": "1.0.3",
+    "pngjs": "7.0.0",
     "preact": "10.29.8",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
