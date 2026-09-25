@@ -177,6 +177,8 @@
   "ui.back": "Back",
   "ui.build": "{target} · {edition} · {packs}",
   "ui.keys": "Keys: F turn over · T feather{registry, select, yes { · G registry} other {}} · C compare · Q question · H hint · 1-{n} stamps · Enter send · R rules · Esc pause",
+  "ui.pad.keys": "Controller: d-pad or left stick moves · A choose · B back · X compare · Y turn over · LT hint · RT stamps · LB RB papers · View rules · Menu pause · right stick scrolls",
+  "ui.pad.papers": "papers",
   "ui.briefing.daily": "Daily Shift #{n}",
   "ui.briefing.archive": "Daily Shift #{n} ({date}, from the archive)",
   "ui.briefing.preview": "Daily preview",

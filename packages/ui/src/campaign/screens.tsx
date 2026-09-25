@@ -374,7 +374,7 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
           >
             {t('ui.campaign.deleteYes')}
           </button>
-          <button type="button" class="btn btn--small" onClick={() => setConfirm(false)}>
+          <button type="button" class="btn btn--small" data-back onClick={() => setConfirm(false)}>
             {t('ui.campaign.cancel')}
           </button>
         </div>
@@ -435,7 +435,7 @@ function UnreadableSlot({ i }: { i: number }) {
           >
             {t('ui.campaign.deleteYes')}
           </button>
-          <button type="button" class="btn btn--small" onClick={() => setConfirm(false)}>
+          <button type="button" class="btn btn--small" data-back onClick={() => setConfirm(false)}>
             {t('ui.campaign.cancel')}
           </button>
         </div>
@@ -467,7 +467,7 @@ function SlotsScreen() {
       )}
       <EndingsGallery />
       <div class="row">
-        <button type="button" class="btn" data-testid="campaign-back" onClick={toTitle}>
+        <button type="button" class="btn" data-testid="campaign-back" data-back onClick={toTitle}>
           {t('ui.back')}
         </button>
       </div>
@@ -683,7 +683,7 @@ function JournalView() {
       <div class="journal__page">
         <div class="journal__head">
           <h2 id="journal-title">{t('ui.journal')}</h2>
-          <button type="button" class="btn" ref={focus} data-testid="journal-close" onClick={close}>
+          <button type="button" class="btn" ref={focus} data-testid="journal-close" data-back onClick={close}>
             {t('ui.journal.close')}
           </button>
         </div>
@@ -1205,7 +1205,7 @@ function SleepRow({ ends }: { ends: NightOutlook['ends'] }) {
         <button type="button" class="btn btn--danger" data-testid="sleep-anyway" onClick={sleep}>
           {t('ui.night.sleepAnyway')}
         </button>
-        <button type="button" class="btn" data-testid="sleep-cancel" onClick={() => setConfirm(false)}>
+        <button type="button" class="btn" data-testid="sleep-cancel" data-back onClick={() => setConfirm(false)}>
           {t('ui.night.notYet')}
         </button>
       </div>

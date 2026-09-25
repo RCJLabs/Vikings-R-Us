@@ -20,6 +20,7 @@ import { effect } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { art, usePixelFrame } from '../art';
+import { padInUse } from '../gamepad';
 import { clockText, listText, t } from '../i18n';
 import { openReport, reportFor, reportTitle, reportUrl, type SoulReport } from '../report';
 import { toTop } from '../scroll';
@@ -124,7 +125,13 @@ function SunBar({ s }: { s: Session }) {
           {t('ui.endless.strikes', { n: s.mode.strikes, max: ENDLESS_STRIKES })}
         </span>
       ) : null}
-      <button type="button" class="btn btn--quiet" onClick={() => act({ t: 'pause' })} data-testid="pause">
+      <button
+        type="button"
+        class="btn btn--quiet"
+        onClick={() => act({ t: 'pause' })}
+        data-testid="pause"
+        data-pad="Menu"
+      >
         {t('ui.pause')}
       </button>
     </header>
@@ -193,7 +200,13 @@ function BodyStage({ s, c }: { s: Session; c: CaseSpec }) {
       </div>
       <div class="stage__tools">
         {tools.has('flip') ? (
-          <button type="button" class="btn btn--tool" data-testid="flip" onClick={() => act({ t: 'flip' })}>
+          <button
+            type="button"
+            class="btn btn--tool"
+            data-testid="flip"
+            data-pad="Y"
+            onClick={() => act({ t: 'flip' })}
+          >
             {t(soul.view === 'front' ? 'ui.flip.toBack' : 'ui.flip.toFront')} <kbd>F</kbd>
           </button>
         ) : null}
@@ -385,7 +398,7 @@ function CompareBar() {
   return (
     <div class="comparebar" role="status">
       <span>{t('ui.compare.hint')}</span>
-      <button type="button" class="btn btn--small" onClick={toggleCompare}>
+      <button type="button" class="btn btn--small" data-back onClick={toggleCompare}>
         {t('ui.compare.cancel')}
       </button>
     </div>
@@ -430,7 +443,7 @@ function SendButton({ s }: { s: Session }) {
         act({ t: 'send' });
       }}
     >
-      {t(hold && coarse ? 'ui.send.hold' : 'ui.send')} <kbd>Enter</kbd>
+      {t(hold && coarse && !padInUse.value ? 'ui.send.hold' : 'ui.send')} <kbd>Enter</kbd>
     </button>
   );
 }
@@ -440,6 +453,9 @@ function StampRack({ s }: { s: Session }) {
   return (
     <fieldset class="stamps">
       <legend class="sr-only">{t('ui.stamp.choose')}</legend>
+      <span class="pad" aria-hidden="true">
+        RT
+      </span>
       {stampsFor(s.ctx).map((d, i) => (
         <button
           key={d}
@@ -466,6 +482,7 @@ function HintButton({ s }: { s: Session }) {
       type="button"
       class="btn"
       data-testid="hint"
+      data-pad="LT"
       disabled={none}
       title={none ? t('ui.hint.none') : t('ui.hint.label', { s: PENALTY.hint / 1000 })}
       aria-label={t('ui.hint.label', { s: PENALTY.hint / 1000 })}
@@ -479,11 +496,24 @@ function HintButton({ s }: { s: Session }) {
 function ActionBar({ s }: { s: Session }) {
   return (
     <nav class="actionbar">
-      <button type="button" class="btn" aria-pressed={comparing.value} data-testid="compare" onClick={toggleCompare}>
+      <button
+        type="button"
+        class="btn"
+        aria-pressed={comparing.value}
+        data-testid="compare"
+        data-pad="X"
+        onClick={toggleCompare}
+      >
         {t('ui.compare')} <kbd>C</kbd>
       </button>
       <HintButton s={s} />
-      <button type="button" class="btn btn--primary" data-testid="judge" onClick={() => (stampSheet.value = true)}>
+      <button
+        type="button"
+        class="btn btn--primary"
+        data-testid="judge"
+        data-pad="RT"
+        onClick={() => (stampSheet.value = true)}
+      >
         {t('ui.judge')}
       </button>
     </nav>
@@ -496,7 +526,7 @@ function StampSheet({ s }: { s: Session }) {
     <div class="sheet" role="dialog" aria-label={t('ui.stamp.choose')}>
       <div class="sheet__head">
         <h2>{t('ui.stamp.choose')}</h2>
-        <button type="button" class="btn btn--quiet" onClick={() => (stampSheet.value = false)}>
+        <button type="button" class="btn btn--quiet" data-back onClick={() => (stampSheet.value = false)}>
           {t('ui.back')}
         </button>
       </div>
@@ -529,10 +559,12 @@ function DeskPaper({ p, spot, rank }: { p: PaperDef; spot?: PaperSpot; rank?: nu
     ? { left: `${spot.x * 100}%`, top: `${spot.y * 100}%`, width: `${spot.w * 100}%`, zIndex: 3 + (rank ?? 0) }
     : undefined;
   return (
-    <div class={cls} style={style}>
+    // A controller's LB and RB move from paper to paper, and into one with nothing in it to press (gamepad.ts).
+    <div class={cls} style={style} data-panel="" tabIndex={-1}>
       <h2
         class="paper__title"
         title={t('ui.desk.move')}
+        data-pad={p.id === 'rules' ? 'View' : undefined}
         onPointerDown={(e) => grab(e, p.id)}
         onDblClick={() => place(p.id, null)}
       >
@@ -585,7 +617,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
     return (
       <div class={`desk${arriving ? ' is-arriving' : ''}`}>
         {rules ? <DeskPaper p={rules} /> : null}
-        <section class="desk__center">
+        <section class="desk__center" data-panel="">
           <BodyStage s={s} c={c} />
           <Clues s={s} c={c} />
         </section>
@@ -596,12 +628,17 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
               <DeskPaper key={p.id} p={p} />
             ))}
         </section>
-        <section class="desk__bottom">
+        <section class="desk__bottom" data-panel="">
+          <span class="pad-legend" aria-hidden="true">
+            <span class="pad">LB</span>
+            <span class="pad">RB</span> {t('ui.pad.papers')}
+          </span>
           <button
             type="button"
             class="btn"
             aria-pressed={comparing.value}
             data-testid="compare"
+            data-pad="X"
             onClick={toggleCompare}
           >
             {t('ui.compare')} <kbd>C</kbd>
@@ -636,6 +673,9 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
       <BodyStage s={s} c={c} />
       <Clues s={s} c={c} />
       <div class="tabs" role="tablist">
+        <span class="pad" aria-hidden="true">
+          LB
+        </span>
         {tabs.map(([id, label]) => (
           <button
             key={id}
@@ -645,11 +685,15 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
             aria-selected={tab === id}
             aria-controls="drawer-panel"
             data-tab={id}
+            data-pad={id === 'rules' ? 'View' : undefined}
             onClick={() => (drawerTab.value = id)}
           >
             {t(label)}
           </button>
         ))}
+        <span class="pad" aria-hidden="true">
+          RB
+        </span>
       </div>
       {/*
        * Keyed by tab, so each tab opens at its top rather than where the last one was scrolled to. It can take
@@ -707,6 +751,7 @@ function PauseOverlay() {
             type="button"
             class="btn btn--primary"
             data-testid="resume"
+            data-back
             ref={focus}
             onClick={() => act({ t: 'resume' })}
           >
@@ -756,6 +801,7 @@ function AnswerBox({ a }: { a: { readonly name: string; readonly lines: readonly
           type="button"
           class="btn btn--primary"
           data-testid="answer-close"
+          data-back
           ref={focus}
           onClick={() => (answer.value = null)}
         >
@@ -809,6 +855,7 @@ function CitationBox({ s, v }: { s: Session; v: Verdict }) {
             type="button"
             class="btn btn--primary"
             data-testid="citation-close"
+            data-back
             ref={focus}
             onClick={() => (citation.value = null)}
           >
@@ -871,6 +918,7 @@ function ReportBox({ r }: { r: SoulReport }) {
             type="button"
             class="btn btn--quiet"
             data-testid="report-close"
+            data-back
             ref={focus}
             onClick={() => (reportFor.value = null)}
           >
