@@ -1,6 +1,8 @@
 import type { ShiftEvent } from '@cots/engine';
 import { afterEach, describe, expect, it } from 'vitest';
-import { play, setVolume, soundFor, unlockAudio } from './audio';
+// The content's list of cues (sound.yaml names files for them), from the package that checks sound.yaml.
+import { SOUND_CUES } from '../../content-schema/src/sound-names';
+import { play, SOUNDS, setVolume, soundFor, unlockAudio } from './audio';
 
 describe('placeholder sound', () => {
   it('gives the shift events their sounds, and leaves the rest silent', () => {
@@ -13,6 +15,10 @@ describe('placeholder sound', () => {
     expect(soundFor(e({ e: 'dusk' }))).toBe('dusk');
     expect(soundFor(e({ e: 'begun' }))).toBeNull();
     expect(soundFor(e({ e: 'rejected', reason: 'x' }))).toBeNull();
+  });
+
+  it('has the cues that sound.yaml can name files for', () => {
+    expect([...SOUNDS]).toEqual([...SOUND_CUES]);
   });
 
   it('stays silent, without errors, where there is no audio', () => {

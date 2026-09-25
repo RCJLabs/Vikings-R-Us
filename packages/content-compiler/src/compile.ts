@@ -6,6 +6,8 @@ import {
   type PackId,
   type PackManifest,
   PackManifestSchema,
+  type SoundPack,
+  SoundPackSchema,
   type StringTable,
   StringTableSchema,
   type TargetDef,
@@ -17,6 +19,7 @@ import { z } from 'zod';
 import { ContentError } from './errors';
 import { idsOf, lintContent, loadPackContent, mergeContent, type PackContent } from './gameplay';
 import { type CompiledScene, lintScenes, loadScenes } from './scenes';
+import { compileSound, soundModule } from './sound';
 
 export { ContentError };
 
@@ -26,7 +29,11 @@ export interface LoadedPack {
   content: PackContent;
   /** Compiled Ink scenes (`scenes/*.ink`). */
   scenes: CompiledScene[];
+  /** Its music, ambience and cue files (`sound.yaml`), if it has any. */
+  sound: SoundPack | null;
   dir: string;
+  /** `assets/<pack>`: where its files are (the sound's in `sound/`). */
+  assetsDir: string;
 }
 
 export type Packs = ReadonlyMap<PackId, LoadedPack>;
@@ -55,7 +62,10 @@ function parseWith<T>(schema: z.ZodType<T>, value: unknown, file: string): T {
 }
 
 /** Loads every pack under `packsDir` (one folder per pack, named after its id). */
-export function loadPacks(packsDir: string): Map<PackId, LoadedPack> {
+export function loadPacks(
+  packsDir: string,
+  assetsRoot = join(packsDir, '..', '..', 'assets'),
+): Map<PackId, LoadedPack> {
   const packs = new Map<PackId, LoadedPack>();
   for (const entry of readdirSync(packsDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
@@ -72,7 +82,10 @@ export function loadPacks(packsDir: string): Map<PackId, LoadedPack> {
     checkMessages(strings, stringsFile);
     const content = loadPackContent(dir, readYaml, parseWith);
     const scenes = loadScenes(dir);
-    packs.set(manifest.id, { manifest, strings, content, scenes, dir });
+    const soundFile = join(dir, 'sound.yaml');
+    const sound = existsSync(soundFile) ? parseWith(SoundPackSchema, readYaml(soundFile) ?? {}, soundFile) : null;
+    const assetsDir = join(assetsRoot, manifest.id);
+    packs.set(manifest.id, { manifest, strings, content, scenes, sound, dir, assetsDir });
   }
   validatePacks(packs);
   return packs;
@@ -188,6 +201,8 @@ export interface CompileResult {
   drafts: number;
   /** Rough word count of the target's scenes, for the writing budget. */
   sceneWords: number;
+  /** Sound files the target's packs name, and how many are here (the rest are silent). */
+  soundFiles: { named: number; present: number };
 }
 
 /** Writes `<outRoot>/<targetId>/` with only the packs that target is allowed to ship. */
@@ -215,6 +230,19 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
     problems.push(...lintContent(daily, own).map((p) => `Daily content: ${p}`));
   }
   if (problems.length > 0) throw new ContentError(`Target "${targetId}":\n${problems.join('\n')}`);
+  const sound = (() => {
+    const endings = new Set((content.campaign?.endings ?? []).map((e) => e.id));
+    const own = target.packs.map((id) => packs.get(id) as LoadedPack);
+    try {
+      return compileSound(
+        own.map((p) => ({ id: p.manifest.id, sound: p.sound, assetsDir: p.assetsDir })),
+        endings,
+      );
+    } catch (e) {
+      if (e instanceof ContentError) throw new ContentError(`Target "${targetId}":\n${e.message}`);
+      throw e;
+    }
+  })();
 
   const outDir = join(outRoot, targetId);
   rmSync(outDir, { recursive: true, force: true });
@@ -246,6 +274,7 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
     contentHash,
   };
   writeFileSync(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  writeFileSync(join(outDir, 'sound.ts'), soundModule(sound, outDir, targetId));
 
   const imports = target.packs.map((id, i) => `import strings${i} from './strings.${id}.en.json';`);
   const spread = target.packs.map((_, i) => `...strings${i}`).join(', ');
@@ -266,6 +295,8 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
       'export const dailyContent = daily as unknown as Content | null;',
       '/** Checksums every Daily should have, for the runtime guard. */',
       'export const dailyChecks = dailyChecksData as DailyChecks | null;',
+      '/** The music, ambience and cue files this target ships (docs/tech-spec.md §39). */',
+      "export { sound } from './sound';",
       '/** Compiled Ink scenes by id (day specs name them in `scenes`), loaded on first use. */',
       "export const loadScenes = (): Promise<Readonly<Record<string, object>>> => import('./scenes.json').then((m) => m.default);",
       `export const strings: Readonly<Record<string, string>> = { ${spread} };`,
@@ -281,6 +312,7 @@ export function compileTarget(targetId: string, target: TargetDef, packs: Packs,
     scenes: scenes.length,
     drafts: scenes.filter((sc) => sc.draft).length,
     sceneWords: scenes.reduce((n, sc) => n + sc.words, 0),
+    soundFiles: { named: sound.named, present: sound.named - sound.missing.length },
   };
 }
 

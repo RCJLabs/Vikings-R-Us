@@ -1,0 +1,9 @@
+# Music for the endings the demo can reach besides its own end (docs/sound-brief.md). Files in
+# assets/demo/sound/.
+beds:
+  - id: ending-lost
+    about: Demoted, or a house left empty. Plays once.
+    music: { file: ending-lost, loop: false }
+endings:
+  - { ending: ending.demoted, bed: ending-lost }
+  - { ending: ending.alone, bed: ending-lost }

@@ -25,7 +25,8 @@ try {
     const result = compileTarget(id, TARGETS[id], packs, outRoot);
     const drafts = result.drafts > 0 ? `, ${result.drafts} draft` : '';
     const story = result.scenes > 0 ? `; ${result.scenes} scenes${drafts}, ~${result.sceneWords} words` : '';
-    console.log(`content: ${id} <- ${result.packs.join(', ')} (hash ${result.contentHash}${story})`);
+    const sound = `; sound ${result.soundFiles.present} of ${result.soundFiles.named} files`;
+    console.log(`content: ${id} <- ${result.packs.join(', ')} (hash ${result.contentHash}${story}${sound})`);
   }
 } catch (error) {
   if (error instanceof ContentError) {

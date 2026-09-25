@@ -79,8 +79,11 @@ export interface Settings {
   /** Whether the one-time telemetry question has been answered. */
   readonly telemetryAsked: boolean;
   readonly primerDone: boolean;
-  /** Sound volume, 0 (off) to 1. */
+  /** Sound volume, 0 (off) to 1: everything. */
   readonly sound: number;
+  /** Music and ambience, 0 to 1, within that (docs/tech-spec.md §39); offered only in a build that has them. */
+  readonly music: number;
+  readonly ambience: number;
   /** Endless: the most souls judged rightly in one run on this device. */
   readonly endlessBest: number;
   /** The latest day's Endless run finished here (today's, once it's played). */
@@ -112,6 +115,8 @@ export const DEFAULT_SETTINGS: Settings = {
   telemetryAsked: false,
   primerDone: false,
   sound: 0.6,
+  music: 0.7,
+  ambience: 0.8,
   endlessBest: 0,
   endlessToday: null,
   endingsSeen: [],

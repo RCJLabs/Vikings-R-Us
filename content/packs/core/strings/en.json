@@ -429,6 +429,8 @@
   "ui.campaign.start.fromJump": "Vertical slice from Day {day}",
   "ui.campaign.slice": "Slice",
   "ui.settings.sound": "Sound",
+  "ui.settings.music": "Music",
+  "ui.settings.ambience": "Ambience",
   "ui.journal": "Journal",
   "ui.journal.close": "Close",
   "ui.journal.threads": "Still in play",
