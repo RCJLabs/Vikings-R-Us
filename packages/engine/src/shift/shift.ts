@@ -3,7 +3,7 @@ import { DESTINATIONS } from '../content/types';
 import { generateDay } from '../gen/generate';
 import type { CaseSpec, Field } from '../gen/types';
 import { revealsOf } from '../gen/validate';
-import { createDayContext, type DayCtx } from '../logic/context';
+import { createDayContext, type DayCtx, soulCtx } from '../logic/context';
 import { isPerceivable, solve } from '../logic/solver';
 import { type QuestionResponse, questionResponse } from '../narrative/questions';
 import { fnv1a32 } from '../rng/hash';
@@ -241,9 +241,10 @@ export function currentCase(state: ShiftState): CaseSpec | undefined {
 export function inspectable(state: ShiftState, ctx: DayCtx): Field[] {
   const c = currentCase(state);
   if (!c) return [];
+  const cx = soulCtx(ctx, c);
   return c.evidence.fields.filter(
     (f) =>
-      isPerceivable(f, ctx) &&
+      isPerceivable(f, cx) &&
       (f.view !== 'back' || state.soul.flipped) &&
       (f.tool === undefined || state.soul.tools.includes(f.tool)),
   );
@@ -259,7 +260,7 @@ export function ruledOut(state: ShiftState, ctx: DayCtx): string[] {
   if (!c) return [];
   const seen = c.evidence.fields.filter((f) => state.soul.seen.includes(f.id));
   const reveals = new Map([...revealsOf(c.lies)].filter(([lie]) => state.soul.questioned.includes(lie)));
-  return solve(seen, ctx, { reveals, certainOnly: true })
+  return solve(seen, soulCtx(ctx, c), { reveals, certainOnly: true })
     .rules.filter((r) => r.result === 'F')
     .map((r) => r.rule);
 }
@@ -348,7 +349,7 @@ function checkSun(state: ShiftState, at: number): { state: ShiftState; events: S
 export function stepShift(
   state: ShiftState,
   action: ShiftAction,
-  ctx: DayCtx,
+  day: DayCtx,
 ): { state: ShiftState; events: ShiftEvent[] } {
   if (action.t === 'begin') {
     if (state.phase !== 'briefing') return reject(state, 'the shift has already begun');
@@ -389,6 +390,8 @@ export function stepShift(
   const s = sun.state;
   const c = s.cases[s.cursor];
   if (!c) return sun;
+  // The rules the soul at the desk is judged by: after a noon decree, the decree's (docs/tech-spec.md §45).
+  const ctx = soulCtx(day, c);
   const withSun = (r: { state: ShiftState; events: ShiftEvent[] }) => ({
     state: r.state,
     events: [...sun.events, ...r.events],

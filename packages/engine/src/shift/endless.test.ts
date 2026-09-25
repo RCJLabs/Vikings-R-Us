@@ -27,6 +27,20 @@ describe('Endless', () => {
     expect([0, 1, 2, 3, 9].map((r) => endlessDay(demo, r))).toEqual([1, 2, 3, 3, 3]);
   });
 
+  it('never brings a day’s noon decree: a round is the start of its day', () => {
+    const noonDays = full.days.filter((d) => d.noon).map((d) => d.day);
+    expect(noonDays.length).toBeGreaterThan(0);
+    const rounds = Array.from({ length: full.days.length + 2 }, (_, r) => r).filter((r) =>
+      noonDays.includes(endlessDay(full, r)),
+    );
+    expect(rounds.length).toBeGreaterThan(0);
+    for (const r of rounds) {
+      expect(endlessSpec(full, 'e', r).noon).toBeUndefined();
+      expect(endlessContext(full, 'e', r).noon).toBeUndefined();
+      expect(endlessRound(full, 'e', r).cases.some((c) => c.noon)).toBe(false);
+    }
+  });
+
   it('plays the start of each round’s own queue, so a day’s new rule comes first', () => {
     for (const round of [0, 7, 11, 19, 25]) {
       const r = endlessRound(full, 'e', round);

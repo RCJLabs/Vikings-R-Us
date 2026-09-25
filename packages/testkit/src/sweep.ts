@@ -8,6 +8,8 @@ import {
   planDay,
   revealsOf,
   solve,
+  soulCtx,
+  teachFor,
 } from '@cots/engine';
 
 export interface SweepOptions {
@@ -89,7 +91,8 @@ export function sweep(opts: SweepOptions): SweepReport {
       const plan = planDay(seed, ctx);
       const counts: Partial<Record<Destination, number>> = {};
       plan.targets.forEach((target, i) => {
-        const gen = () => generateCase(seed, ctx, i, target, i === 0 && plan.teach ? { teach: plan.teach } : {});
+        const teach = teachFor(plan, i);
+        const gen = () => generateCase(seed, ctx, i, target, teach ? { teach } : {});
         const t0 = now();
         const g = gen();
         let ms = now() - t0;
@@ -117,9 +120,11 @@ export function sweep(opts: SweepOptions): SweepReport {
         destinations[c.expect.dest] = (destinations[c.expect.dest] ?? 0) + 1;
         counts[c.expect.dest] = (counts[c.expect.dest] ?? 0) + 1;
 
-        const ideal = solve(c.evidence.fields, ctx, { reveals: revealsOf(c.lies) }).judgment;
+        // Each soul read under the rules it's judged by (after a noon decree, the decree's).
+        const cx = soulCtx(ctx, c);
+        const ideal = solve(c.evidence.fields, cx, { reveals: revealsOf(c.lies) }).judgment;
         if (ideal.kind === 'determined' && ideal.dest === c.expect.dest) idealOk++;
-        const trusting = solve(c.evidence.fields, ctx, { trustTestimony: true }).judgment;
+        const trusting = solve(c.evidence.fields, cx, { trustTestimony: true }).judgment;
         byDay.total++;
         if (trusting.kind === 'determined' && trusting.dest === c.expect.dest) {
           trustOk++;

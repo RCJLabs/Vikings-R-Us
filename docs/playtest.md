@@ -9,7 +9,7 @@ The public builds stop at Day 3, and the campaign's economy has only been tuned 
 - **A Playtest report button on each save slot.** It opens the report, which covers:
   - the run so far: the day, the rings, the family, and standing with the powers met;
   - one row per day: the souls judged rightly and wrongly, pay, bonus, fines, bills, shop, story, Draupnir, and the rings after the night;
-  - every soul sent wrong: the stamp, where it belonged, and the rule that decided it;
+  - every soul sent wrong: the stamp, where it belonged, the rule that decided it, and whether it came after a noon decree;
   - every appeal heard, and how it went;
   - each night the sun set on the line: who waited for the next day, who died in the night, and what it cost;
   - each god's request: what was asked, how many souls were sent as asked, and whether it was done;

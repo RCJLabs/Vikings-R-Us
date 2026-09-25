@@ -1,4 +1,4 @@
-import { createDayContext, type Field, generateDay, Rng } from '@cots/engine';
+import { createDayContext, type Field, generateDay, Rng, soulCtx } from '@cots/engine';
 import { describe, expect, it } from 'vitest';
 import { loadContent } from './content';
 import { oracleSolve } from './oracle';
@@ -44,9 +44,10 @@ describe('the oracle', () => {
         const ctx = createDayContext(content, day, seed);
         const rng = new Rng(`${seed}|variants`);
         for (const c of generateDay(seed, ctx).cases) {
+          const cx = soulCtx(ctx, c);
           for (const fields of variants(c.evidence.fields, rng)) {
-            const want = oracleSolveReference(fields, ctx);
-            expect(oracleSolve(fields, ctx), `day ${day} ${seed} ${c.evidence.look.name}`).toEqual(want);
+            const want = oracleSolveReference(fields, cx);
+            expect(oracleSolve(fields, cx), `day ${day} ${seed} ${c.evidence.look.name}`).toEqual(want);
             compared++;
             if (want.kind === 'undetermined') undetermined++;
           }

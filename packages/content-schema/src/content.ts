@@ -366,6 +366,15 @@ export const DaySpecSchema: z.ZodType<DaySpec> = z.strictObject({
     knobs: KnobsSchema,
   }),
   lesson: LessonSchema.optional(),
+  noon: z
+    .strictObject({
+      at: Int.min(1),
+      notice: Int.min(1),
+      redraw: z.array(z.string()).min(1),
+      text: Key,
+      teach: Id.optional(),
+    })
+    .optional(),
 });
 
 // ---- Campaign (campaign.yaml) ----

@@ -1,5 +1,6 @@
 import {
   type CaseSpec,
+  type DayLedger,
   type Destination,
   ENGINE_MAJOR,
   type Faction,
@@ -107,6 +108,20 @@ describe('the playtest report', () => {
     const m = filed[0];
     expect(lines[0]).toContain(`stamped dest.${m?.stamped} for a soul that belonged in dest.${m?.expected}`);
     expect(lines[0]).toMatch(/The rule: “rule\./);
+  });
+
+  it('says when a soul sent wrong came after a noon decree', () => {
+    const save = played('playtest-wrong', 1, wrong);
+    const first = (l: DayLedger): DayLedger => ({
+      ...l,
+      mistakes: (l.mistakes ?? []).map((x, i) => (i === 0 ? { ...x, noon: true as const } : x)),
+    });
+    const noon: RunSave = { ...save, mornings: save.mornings.map((m) => ({ ...m, ledger: m.ledger.map(first) })) };
+    const lines = report(noon)
+      .split('\n')
+      .filter((l) => l.startsWith('- Day 1: stamped'));
+    expect(lines[0]).toMatch(/ After the noon decree\.$/);
+    expect(lines.slice(1).filter((l) => l.includes('noon'))).toEqual([]);
   });
 
   it('counts the mistakes of a day filed before they were itemised', () => {

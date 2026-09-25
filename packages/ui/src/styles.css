@@ -1444,6 +1444,18 @@ select {
   text-align: center;
 }
 
+/* A noon decree's raven (docs/tech-spec.md §45): news that changes the rules, so it stands out like an appeal. */
+.shift__noon {
+  padding: 0.4rem 0.75rem;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--accent);
+  text-align: center;
+}
+
+.shift__noon p {
+  margin: 0;
+}
+
 .coach {
   display: flex;
   flex-wrap: wrap;

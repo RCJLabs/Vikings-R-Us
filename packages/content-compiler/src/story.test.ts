@@ -147,6 +147,32 @@ describe('story souls in a target', { timeout: 30_000 }, () => {
     );
   });
 
+  it('rejects a noon decree that can’t work (docs/tech-spec.md §45)', () => {
+    const noonWith = (change: (noon: NonNullable<DaySpec['noon']>) => DaySpec['noon']) =>
+      packsWith((p) => {
+        const campaign = p.get('campaign');
+        if (!campaign) throw new Error('no campaign pack');
+        campaign.content.days = campaign.content.days.map((d) => (d.noon ? { ...d, noon: change(d.noon) } : d));
+      });
+    const error = (packs: Packs) => {
+      try {
+        build(packs);
+      } catch (e) {
+        return (e as Error).message;
+      }
+      return '';
+    };
+    expect(error(noonWith((n) => n))).toBe('');
+    const bad = error(
+      noonWith((n) => ({ ...n, notice: n.at, redraw: ['nope'], teach: 'arch.nobody', text: 'noon.missing' })),
+    );
+    expect(bad).toMatch(/noon raven must come after the first soul/);
+    expect(bad).toMatch(/noon draws "nope" again, which has no other choice to draw/);
+    expect(bad).toMatch(/noon teaches with "arch.nobody", which isn't in its queue/);
+    expect(bad).toMatch(/noon decree uses missing string "noon.missing"/);
+    expect(error(noonWith((n) => ({ ...n, at: 99 })))).toMatch(/noon must come before the end of the shortest line/);
+  });
+
   it('rejects unknown facts, missing lines, unreserved names, unknown words and unplaced or unknown souls', () => {
     const packs = packsWith((p) => {
       const t = thorvald(p);

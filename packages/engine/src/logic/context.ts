@@ -14,6 +14,7 @@ import type {
   ToolId,
   Value,
 } from '../content/types';
+import type { CaseSpec } from '../gen/types';
 import { Rng } from '../rng/rng';
 
 export interface ActiveFact {
@@ -56,6 +57,25 @@ export interface DayCtx extends PredCtx {
   readonly archetypes: ReadonlyMap<string, ArchetypeDef>;
   readonly queueArchetypes: readonly { readonly def: ArchetypeDef; readonly w: number }[];
   readonly destinations: ReadonlySet<Destination>;
+  /** The day's noon decree, when it has one: the day as the decree leaves it, for the souls after it. */
+  readonly noon?: NoonCtx;
+}
+
+/** A noon decree in force (docs/tech-spec.md §45). */
+export interface NoonCtx {
+  /** The first of the day's own souls (by its place in the generated line) made and judged under the decree. */
+  readonly at: number;
+  /** How many souls before the first of them the raven comes. */
+  readonly notice: number;
+  /** The raven's words (a string key). */
+  readonly text: string;
+  /** The day under the decree: the same day, with its `redraw` params drawn again (and no noon of its own). */
+  readonly ctx: DayCtx;
+}
+
+/** The rules a soul is judged by: the noon decree's for one made under it (docs/tech-spec.md §45), else the day's. */
+export function soulCtx(ctx: DayCtx, c: CaseSpec | undefined): DayCtx {
+  return c?.noon && ctx.noon ? ctx.noon.ctx : ctx;
 }
 
 export function activeValues(def: FactDef, day: number): Value[] {
@@ -86,7 +106,20 @@ export function createDayContext(
 ): DayCtx {
   const found = spec ?? content.days.find((d) => d.day === day);
   if (!found) throw new Error(`No day spec for day ${day}`);
-  return buildContext(content, day, runSeed, found, choose);
+  const ctx = buildContext(content, day, runSeed, found, choose);
+  const noon = found.noon;
+  if (!noon) return ctx;
+  // The afternoon keeps the morning's choices but for the params the decree draws again, never to the same one.
+  const afternoon: Record<string, string> = {};
+  for (const [name, choice] of Object.entries(ctx.paramChoices)) afternoon[name] = choice.id;
+  for (const name of noon.redraw) {
+    const pool = (found.params?.[name]?.pool ?? []).filter((c) => c.id !== ctx.paramChoices[name]?.id);
+    // The compiler refuses a param with nothing else to draw; a build without it keeps the morning's.
+    if (pool.length > 0)
+      afternoon[name] = new Rng(`${content.genVersion}|${runSeed}|${day}|noon|${name}`).pick(pool).id;
+  }
+  const later = buildContext(content, day, runSeed, found, afternoon);
+  return { ...ctx, noon: { at: noon.at, notice: noon.notice, text: noon.text, ctx: later } };
 }
 
 function buildContext(

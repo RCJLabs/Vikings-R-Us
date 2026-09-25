@@ -13,6 +13,7 @@ import {
   questionCostMs,
   ruledOut,
   ruleText,
+  soulCtx,
   stampsFor,
   sunLeft,
   type Verdict,
@@ -562,9 +563,18 @@ function DeskPaper({ p, spot, rank }: { p: PaperDef; spot?: PaperSpot; rank?: nu
   const style = spot
     ? { left: `${spot.x * 100}%`, top: `${spot.y * 100}%`, width: `${spot.w * 100}%`, zIndex: 3 + (rank ?? 0) }
     : undefined;
+  // The rulebook has nothing in it to press, so when it's long enough to scroll it takes the keyboard's focus
+  // itself, as a named region; the soul's papers have their evidence to press.
+  const rules = p.id === 'rules';
   return (
     // A controller's LB and RB move from paper to paper, and into one with nothing in it to press (gamepad.ts).
-    <div class={cls} style={style} data-panel="" tabIndex={-1}>
+    <div
+      class={cls}
+      style={style}
+      data-panel=""
+      tabIndex={rules ? 0 : -1}
+      {...(rules ? { role: 'region', 'aria-label': t(p.title) } : {})}
+    >
       <h2
         class="paper__title"
         title={t('ui.desk.move')}
@@ -600,7 +610,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
       {
         id: 'rules',
         title: 'ui.tab.rules',
-        body: <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />,
+        body: <RulesPanel ctx={soulCtx(s.ctx, c)} state={s.state} out={trackerOut(s)} />,
         soul: false,
       },
       { id: 'words', title: 'ui.tab.words', body: <Words s={s} c={c} />, soul: true },
@@ -724,7 +734,7 @@ function SoulDesk({ s, c, layout }: { s: Session; c: CaseSpec; layout: 'desk' | 
           <>
             {/* The tab says it's the rules; this says so to a screen reader's list of headings too. */}
             <h2 class="sr-only">{t('ui.tab.rules')}</h2>
-            <RulesPanel ctx={s.ctx} state={s.state} out={trackerOut(s)} />
+            <RulesPanel ctx={soulCtx(s.ctx, c)} state={s.state} out={trackerOut(s)} />
           </>
         )}
       </div>
@@ -979,6 +989,42 @@ function CoachBar({ s, lesson }: { s: Session; lesson: Lesson | null }) {
   );
 }
 
+/**
+ * A noon decree (docs/tech-spec.md §45): from `notice` souls before it holds, the raven's news on the desk with the
+ * new choices, and once it holds, a line to say what changed at noon. The rulebook shows the rules of the soul at
+ * the desk throughout.
+ */
+function NoonNote({ s }: { s: Session }) {
+  const noon = s.ctx.noon;
+  if (!noon) return null;
+  const first = s.state.cases.findIndex((x) => x.noon);
+  const shown = first >= 0 && s.state.cursor >= first - noon.notice;
+  // The new choices in their own words ("Freyja claims the red-haired today.").
+  const news = (s.ctx.spec.noon?.redraw ?? []).flatMap((name) => {
+    const p = noon.ctx.paramChoices[name];
+    return p ? [t(p.text)] : [];
+  });
+  // A live region from the start of the shift, so the raven's news is read out when it comes.
+  return (
+    <div class="shift__noon-region" role="status" aria-live="polite">
+      {!shown ? null : s.state.cursor < first ? (
+        <div class="shift__noon" data-testid="noon-raven">
+          <p>{t(noon.text)}</p>
+          {news.map((line) => (
+            <p key={line} class="decree__whim">
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p class="shift__request" data-testid="noon-since">
+          {t('ui.noon.since', { news: news.join(' ') })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function ToastView() {
   const msg = toast.value;
   return (
@@ -1049,6 +1095,7 @@ export function ShiftScreen() {
               </p>
             ))
           : null}
+        <NoonNote s={s} />
         {/* A soul the sun set on yesterday, back first today and judged by today's rules (docs/tech-spec.md §41). */}
         {s.mode.kind === 'campaign' && c && c.day < s.ctx.day ? (
           <p class="shift__appeal" data-testid="waited-banner">

@@ -209,7 +209,9 @@ export function dressCase(
  * read, a registry entry once there's a registry), so it meets the same contract as the day's own souls. Null if
  * no dressing passes, which the sweeps haven't seen. Not for story souls, whose lines are their own.
  */
-export function dressForDay(c: CaseSpec, ctx: DayCtx): CaseSpec | null {
+export function dressForDay(soul: CaseSpec, ctx: DayCtx): CaseSpec | null {
+  // Seen afresh under the day's own rules: a noon decree of the day before is over.
+  const { noon: _noon, ...c } = soul;
   const arch = ctx.archetypes.get(c.archetype);
   if (!arch) return null;
   const planned: PlannedLie[] = c.lies.map(({ field: _, ...lie }) => lie);
@@ -265,6 +267,11 @@ export function generateCase(
   target: Destination,
   opts: GenerateOptions = {},
 ): Generated {
+  // A noon decree (docs/tech-spec.md §45): souls from its place in the line on are made, and judged, under it.
+  if (ctx.noon && procIndex >= ctx.noon.at) {
+    const g = generateCase(runSeed, ctx.noon.ctx, procIndex, target, opts);
+    return { ...g, case: { ...g.case, noon: true } };
+  }
   const attempts: GenAttempt[] = [];
   for (const tier of TIERS) {
     for (let a = 0; a < tier.n; a++) {
@@ -312,6 +319,8 @@ export interface DayPlan {
   readonly count: number;
   readonly targets: readonly Destination[];
   readonly teach?: string;
+  /** The soul at a noon decree's place, and the archetype it's made from to show the change (docs/tech-spec.md §45). */
+  readonly noonTeach?: { readonly at: number; readonly archetype: string };
   /** Scripted days: the archetype for each slot. */
   readonly script?: readonly string[];
   /** Problems the day-level checks could not fix (logged, not fatal). */
@@ -382,12 +391,39 @@ export function planDay(runSeed: string, ctx: DayCtx): DayPlan {
       targets = t;
     } else if (j < 0) softFails.push(`the teaching archetype ${teachFirst} has no slot today`);
   }
-  return { count: n, targets, ...(teachFirst ? { teach: teachFirst } : {}), softFails };
+  // A noon decree's first soul is made to show the change: from a slot after noon if one fits, else from the
+  // morning's (never the day's teaching soul), so the day's mix stays as drawn.
+  const noon = ctx.noon;
+  const noonTeach = ctx.spec.noon?.teach;
+  let noonPlan: DayPlan['noonTeach'];
+  if (noon && noonTeach && noon.at < targets.length) {
+    const reach = reachOf(noon.ctx).get(noonTeach);
+    let j = targets.findIndex((d, i) => i >= noon.at && reach?.has(d));
+    if (j < 0) j = targets.findIndex((d, i) => i < noon.at && (i > 0 || !teachFirst) && reach?.has(d));
+    if (j >= 0 && j !== noon.at) {
+      const t = targets.slice();
+      const at = t[noon.at] as Destination;
+      t[noon.at] = t[j] as Destination;
+      t[j] = at;
+      targets = t;
+    }
+    if (j < 0) softFails.push(`the noon decree's teaching archetype ${noonTeach} has no slot after noon`);
+    else noonPlan = { at: noon.at, archetype: noonTeach };
+  }
+  return {
+    count: n,
+    targets,
+    ...(teachFirst ? { teach: teachFirst } : {}),
+    ...(noonPlan ? { noonTeach: noonPlan } : {}),
+    softFails,
+  };
 }
 
-/** The archetype a slot is meant to teach, if any: the script's, or the day's first-soul teacher. */
-function teachFor(plan: DayPlan, procIndex: number): string | undefined {
-  return plan.script?.[procIndex] ?? (procIndex === 0 ? plan.teach : undefined);
+/** The archetype a slot is meant to teach, if any: the script's, the day's first-soul teacher, or noon's. */
+export function teachFor(plan: DayPlan, procIndex: number): string | undefined {
+  if (plan.script) return plan.script[procIndex];
+  if (procIndex === 0) return plan.teach;
+  return procIndex === plan.noonTeach?.at ? plan.noonTeach.archetype : undefined;
 }
 
 /** The case at position `procIndex` of the day, exactly as generateDay would produce it. */

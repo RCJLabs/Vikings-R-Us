@@ -2,6 +2,10 @@
 day: 19
 sunS: 950
 decree: decree.d19
+# At noon a raven brings word that Freyja has changed her mind (docs/tech-spec.md §45): from the day's ninth soul
+# her whim is drawn again, never to the same one, and that soul is one of hers under it. The raven comes two souls
+# earlier ("the soul after next").
+noon: { at: 8, notice: 2, redraw: [freyjaWhim], text: decree.d19.noon, teach: arch.freyja_pick }
 scenes: { morning: scene.d19.morning, night: scene.d19.night }
 economy:
   wage: 8
