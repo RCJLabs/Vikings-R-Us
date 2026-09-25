@@ -149,7 +149,12 @@ function openShift(a: Active): void {
   if (!shift) return;
   const history = shiftHistory(a);
   const s: Session = {
-    mode: { kind: 'campaign', day: a.run.day, story: a.run.story },
+    mode: {
+      kind: 'campaign',
+      day: a.run.day,
+      story: a.run.story,
+      ...(a.run.requests ? { requests: a.run.requests } : {}),
+    },
     content: gameContent,
     ctx: a.ctx,
     initial: history?.initial ?? shift,

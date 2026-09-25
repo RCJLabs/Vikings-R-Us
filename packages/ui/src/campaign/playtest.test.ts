@@ -13,7 +13,7 @@ import {
   stepRun,
 } from '@cots/engine';
 import { playScene, sceneEnv } from '@cots/story';
-import { loadContent, loadScenes } from '@cots/testkit';
+import { loadContent, loadScenes, scenarioSave } from '@cots/testkit';
 import { describe, expect, it } from 'vitest';
 import { playtestReport } from './playtest';
 
@@ -165,6 +165,47 @@ describe('the playtest report', () => {
     expect(report(played('playtest-line-none', 1, right))).toContain(
       '### The line at dusk\n\nNobody was left in line.',
     );
+  });
+
+  it('tells of each god’s request: what was asked, how many were sent as asked, and the reward', () => {
+    // A morning with a request, and a day that does as it asks (every other soul sent where it belongs).
+    const found = Array.from({ length: 12 }, (_, i) =>
+      scenarioSave(content, `playtest-ask-${i}`, 5, ENGINE_MAJOR),
+    ).find((s) => (resumeSave(s, content, ENGINE_MAJOR).run.requests?.length ?? 0) > 0);
+    expect(found).toBeDefined();
+    if (!found) return;
+    let save = found;
+    let run = resumeSave(save, content, ENGINE_MAJOR).run;
+    const [asked, rival] = run.requests ?? [];
+    if (!asked) return;
+    const apply = (action: RunAction) => {
+      const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
+      const next = stepRun(run, action, env).state;
+      save = recordAction(save, run, action, next);
+      run = next;
+    };
+    apply({ t: 'beginShift', at: 0 });
+    let favours = 0;
+    let at = 0;
+    for (const c of run.shift?.cases ?? []) {
+      const favour = c.expect.dest === asked.from && favours < asked.n;
+      if (favour) favours++;
+      at += 1000;
+      apply({ t: 'shift', action: { t: 'stamp', dest: favour ? asked.to : c.expect.dest, at } });
+      apply({ t: 'shift', action: { t: 'send', at } });
+    }
+    expect(favours).toBe(asked.n);
+    const god = (f: string) => `faction.${f}`;
+    const text = report(save);
+    expect(text).toContain(
+      `- Day 5: ${god(asked.god)} asked for ${asked.n} from dest.${asked.from} sent to dest.${asked.to}; ${asked.n} sent as asked: done (${god(asked.god)} +1).`,
+    );
+    // A rival asks for the same souls sent elsewhere: doing one god's favour leaves the other's undone.
+    if (rival)
+      expect(text).toContain(
+        `- Day 5: ${god(rival.god)} asked for ${rival.n} from dest.${rival.from} sent to dest.${rival.to}; 0 sent as asked: not done.`,
+      );
+    expect(report(played('playtest-ask-none', 1, right))).toContain('### Requests\n\nNone yet.');
   });
 
   it('reads back the options picked in each scene, as the journal does', () => {

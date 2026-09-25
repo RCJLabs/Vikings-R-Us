@@ -176,10 +176,13 @@ function shiftActions(
   longNails: number,
   assists?: Assists,
   paceS = BOT_PACE_S,
+  serve?: Faction,
 ): RunAction[] {
   const beginShift: RunAction = { t: 'beginShift', at: 0, ...(assists ? { assists } : {}) };
   const begun = stepRun(run, beginShift, { content, ctx }).state;
   const cases = begun.shift?.cases ?? [];
+  // The favours the bot means to do today (docs/tech-spec.md §42), and how many souls each still wants.
+  const favours = (begun.requests ?? []).filter((r) => r.god === serve).map((r) => ({ r, left: r.n }));
   const stamps = stampsFor(ctx);
   const actions: RunAction[] = [beginShift];
   let at = 0;
@@ -198,13 +201,16 @@ function shiftActions(
       }
     }
     const wrongs = stamps.filter((d) => d !== c.expect.dest);
-    const dest: Destination = right ? c.expect.dest : (rng.pick(wrongs) ?? c.expect.dest);
+    // A soul the bot knows belongs where a favour asks for souls from goes where the favour asks instead.
+    const favour = right ? favours.find((f) => f.left > 0 && f.r.from === c.expect.dest) : undefined;
+    if (favour) favour.left--;
+    const dest: Destination = favour ? favour.r.to : right ? c.expect.dest : (rng.pick(wrongs) ?? c.expect.dest);
     // Judging a soul right includes what must be done to it first (from Day 8, clipping long nails),
     // unless the bot means to leave these nails for Naglfar.
     const procedures = c.expect.procedures ?? [];
     const leave = right && procedures.length > 0 && longNails > 0;
     if (leave) longNails--;
-    if (right && !leave) {
+    if (right && !leave && !favour) {
       for (const id of procedures) {
         const tool = ctx.procedures.find((p) => p.id === id)?.tool;
         if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
@@ -301,6 +307,10 @@ export interface SimOptions {
    * sun sets on the line (docs/tech-spec.md §41).
    */
   readonly paceS?: number;
+  /** A god whose requests the bot does, in full when it can (docs/tech-spec.md §42); it ignores them otherwise. */
+  readonly serve?: Faction;
+  /** At most this many of them over the run (every one it can, unless given). */
+  readonly serveUpTo?: number;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -334,7 +344,9 @@ export function simulateRun(
     const longNails = nails && (!nails.deal || (run.flags.loki_deal ?? 0) > 0) ? nails.perDay : 0;
     let initial: ShiftState | undefined;
     const log: ShiftAction[] = [];
-    for (const a of shiftActions(run, content, ctx, judging, rng, longNails, options.assists, options.paceS)) {
+    const served = run.ledger.reduce((n, l) => n + (l.requests ?? []).filter((q) => q.met).length, 0);
+    const serve = served < (options.serveUpTo ?? Number.POSITIVE_INFINITY) ? options.serve : undefined;
+    for (const a of shiftActions(run, content, ctx, judging, rng, longNails, options.assists, options.paceS, serve)) {
       run = stepRun(run, a, { content, ctx }).state;
       if (a.t === 'beginShift') initial = run.shift ?? undefined;
       else if (a.t === 'shift') log.push(a.action);
@@ -399,6 +411,9 @@ export interface PolicyReport {
   /** Souls left in line at dusk over a run, and the living among them who died waiting (means). */
   readonly meanLeft: number;
   readonly meanDied: number;
+  /** Requests the gods made over a run, and those done in full (means). */
+  readonly meanAsked: number;
+  readonly meanMet: number;
   readonly endings: Record<string, number>;
   readonly ledgerErrors: number;
 }
@@ -412,6 +427,7 @@ export function simulateCampaign(
   scenes?: SceneTable,
   assists?: Assists,
   paceS?: number,
+  serve?: Faction,
 ): PolicyReport[] {
   const out: PolicyReport[] = [];
   const mean = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0) / Math.max(1, xs.length);
@@ -424,6 +440,7 @@ export function simulateCampaign(
             ...(scenes ? { scenes } : {}),
             ...(assists ? { assists } : {}),
             ...(paceS !== undefined ? { paceS } : {}),
+            ...(serve ? { serve } : {}),
           }),
         );
         const endings: Record<string, number> = {};
@@ -446,6 +463,10 @@ export function simulateCampaign(
           ) as Record<Faction, number>,
           meanLeft: mean(results.map((r) => r.leftAtDusk)),
           meanDied: mean(results.map((r) => r.diedWaiting)),
+          meanAsked: mean(results.map((r) => r.ledger.reduce((n, l) => n + (l.requests?.length ?? 0), 0))),
+          meanMet: mean(
+            results.map((r) => r.ledger.reduce((n, l) => n + (l.requests ?? []).filter((q) => q.met).length, 0)),
+          ),
           endings,
           ledgerErrors: results.filter((r) => !r.ledgerOk).length,
         });

@@ -501,6 +501,28 @@ export const CampaignPartSchema = z.strictObject({
       died: z.partialRecord(FactionSchema, Int),
     })
     .optional(),
+  requests: z
+    .strictObject({
+      from: Day,
+      chance: Percent,
+      rivals: Percent,
+      list: z
+        .array(
+          z.strictObject({
+            id: Id,
+            god: FactionSchema,
+            from: DestinationSchema,
+            to: DestinationSchema,
+            n: Int.min(1),
+            reward: z.partialRecord(FactionSchema, Int),
+            since: Day,
+            until: Day.optional(),
+            text: Key,
+          }),
+        )
+        .min(1),
+    })
+    .optional(),
 });
 export type CampaignPart = z.infer<typeof CampaignPartSchema>;
 
