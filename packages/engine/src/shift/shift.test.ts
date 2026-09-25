@@ -11,6 +11,7 @@ import { Rng } from '../rng/rng';
 import {
   assistNotes,
   DUSK_GRACE_MS,
+  freeQuestion,
   inspectable,
   nextHint,
   PENALTY,
@@ -277,6 +278,26 @@ describe('compare and question', () => {
     expect(r.state.recentQ).toEqual([answer.response.template]);
     expect(sunElapsed(r.state, 0)).toBe(sunElapsed(flagged, 0) + PENALTY.question);
     expect(stepShift(r.state, { t: 'question', lie: cmp.a, at: 0 }, ctx).events[0]).toMatchObject({ e: 'rejected' });
+  });
+
+  it('a god’s favour makes the day’s first questions cost no sun (docs/tech-spec.md §43); the next ones cost their price', () => {
+    const { s, ctx, cmp } = liar();
+    const favoured: ShiftState = { ...s, config: { ...s.config, mods: { ...s.config.mods, freeQuestions: 1 } } };
+    expect(freeQuestion(favoured)).toBe(true);
+    const flagged = stepShift(favoured, cmp, ctx).state;
+    const r = stepShift(flagged, { t: 'question', lie: cmp.a, at: 0 }, ctx);
+    expect(r.events[0]).toMatchObject({ e: 'answer', lie: cmp.a, penaltyMs: 0 });
+    expect(sunElapsed(r.state, 0)).toBe(sunElapsed(flagged, 0));
+    expect(freeQuestion(r.state)).toBe(false);
+    // Asked again (as a second liar would be), it costs what questions cost.
+    const again = { ...r.state, soul: { ...r.state.soul, questioned: [] } };
+    expect(stepShift(again, { t: 'question', lie: cmp.a, at: 0 }, ctx).events[0]).toMatchObject({
+      e: 'answer',
+      penaltyMs: PENALTY.question,
+    });
+    // Without the favour no count is kept, so nothing else about a shift changes.
+    const plain = stepShift(stepShift(s, cmp, ctx).state, { t: 'question', lie: cmp.a, at: 0 }, ctx).state;
+    expect(plain.freeAsked).toBeUndefined();
   });
 });
 

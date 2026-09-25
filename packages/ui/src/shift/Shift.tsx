@@ -6,6 +6,7 @@ import {
   ENDLESS_STRIKES,
   type Field,
   factionKey,
+  freeQuestion,
   type Lesson,
   nextHint,
   PENALTY,
@@ -278,7 +279,8 @@ function Evidence({ s, c, f, variant }: { s: Session; c: CaseSpec; f: Field; var
           data-testid="question"
           onClick={() => act({ t: 'question', lie: f.id })}
         >
-          {t('ui.question', { s: questionCostMs(s.state) / 1000 })}
+          {/* The day's first questions can be free: a god's favour (docs/tech-spec.md §43). */}
+          {freeQuestion(s.state) ? t('ui.questionFree') : t('ui.question', { s: questionCostMs(s.state) / 1000 })}
         </button>
       ) : null}
     </span>

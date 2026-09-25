@@ -208,6 +208,30 @@ describe('the playtest report', () => {
     expect(report(played('playtest-ask-none', 1, right))).toContain('### Requests\n\nNone yet.');
   });
 
+  it('lists the gods’ favours each day held, as the gate granted them', () => {
+    const base = scenarioSave(content, 'playtest-favour', 5, ENGINE_MAJOR);
+    const morning = base.mornings[base.mornings.length - 1] as RunState;
+    // Freyja's standing at her favour's mark on Day 5's morning.
+    const at = content.campaign?.favours?.find((f) => f.id === 'fav.freyja')?.at ?? 4;
+    let run: RunState = { ...morning, standing: { ...morning.standing, freyja: at } };
+    let save: RunSave = { ...base, mornings: [...base.mornings.slice(0, -1), run] };
+    const apply = (action: RunAction) => {
+      const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
+      const next = stepRun(run, action, env).state;
+      save = recordAction(save, run, action, next);
+      run = next;
+    };
+    apply({ t: 'beginShift', at: 0 });
+    let at2 = 0;
+    for (const c of run.shift?.cases ?? []) {
+      at2 += 1000;
+      apply({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at: at2 } });
+      apply({ t: 'shift', action: { t: 'send', at: at2 } });
+    }
+    expect(report(save)).toContain("### Favours\n\n- Day 5: faction.freyja's favour (favour.freyja).");
+    expect(report(played('playtest-favour-none', 1, right))).toContain('### Favours\n\nNone yet.');
+  });
+
   it('reads back the options picked in each scene, as the journal does', () => {
     const save = played('playtest-story', 1, right, true);
     const entry = save.journal?.[0];

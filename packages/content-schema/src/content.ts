@@ -501,6 +501,22 @@ export const CampaignPartSchema = z.strictObject({
       died: z.partialRecord(FactionSchema, Int),
     })
     .optional(),
+  favours: z
+    .array(
+      z.strictObject({
+        id: Id,
+        faction: FactionSchema,
+        at: Int.min(1),
+        effect: z.union([
+          z.strictObject({ sunS: Int.min(1) }),
+          z.strictObject({ freeQuestions: Int.min(1) }),
+          z.strictObject({ finePct: Percent }),
+          z.strictObject({ sickNights: Int.min(1) }),
+        ]),
+        text: Key,
+      }),
+    )
+    .optional(),
   requests: z
     .strictObject({
       from: Day,

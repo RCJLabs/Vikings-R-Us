@@ -21,6 +21,10 @@ export interface ShiftMods {
   readonly questionS?: number;
   /** Extra sun for the whole shift. */
   readonly sunS?: number;
+  /** Questions that cost no sun: the day's first ones (a god's favour, docs/tech-spec.md §43). */
+  readonly freeQuestions?: number;
+  /** Percent of each fine the day's audit charges (a god's favour). */
+  readonly finePct?: number;
 }
 
 /**
@@ -124,6 +128,8 @@ export interface ShiftState {
   readonly endedBy: 'queue' | 'dusk' | null;
   /** Question templates used lately, so answers don't repeat (last 20). */
   readonly recentQ: readonly string[];
+  /** Questions asked for free so far (`mods.freeQuestions`); absent before the first. */
+  readonly freeAsked?: number;
 }
 
 export type ShiftAction =
@@ -288,6 +294,10 @@ export function questionCostMs(state: ShiftState): number {
   return s === undefined ? PENALTY.question : s * 1000;
 }
 
+/** Whether the next question is one of the day's free ones (a god's favour, docs/tech-spec.md §43). */
+export const freeQuestion = (state: ShiftState): boolean =>
+  (state.freeAsked ?? 0) < (state.config.mods?.freeQuestions ?? 0);
+
 function reject(state: ShiftState, reason: string): { state: ShiftState; events: ShiftEvent[] } {
   return { state, events: [{ e: 'rejected', reason }] };
 }
@@ -445,9 +455,11 @@ export function stepShift(
       const response = questionResponse(c, action.lie, ctx.content, s.recentQ);
       if (!response) return withSun(reject(s, 'this soul has nothing to say'));
       const recentQ = [...s.recentQ, response.template].slice(-20);
-      const cost = questionCostMs(s);
+      const free = freeQuestion(s);
+      const cost = free ? 0 : questionCostMs(s);
+      const asked = { ...s, recentQ, soul: { ...s.soul, questioned: [...s.soul.questioned, action.lie] } };
       return withSun({
-        state: penalize({ ...s, recentQ, soul: { ...s.soul, questioned: [...s.soul.questioned, action.lie] } }, cost),
+        state: penalize(free ? { ...asked, freeAsked: (s.freeAsked ?? 0) + 1 } : asked, cost),
         events: [{ e: 'answer', lie: action.lie, response, penaltyMs: cost }],
       });
     }

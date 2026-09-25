@@ -13,10 +13,12 @@ import {
   billForecast,
   campaignOf,
   campaignQueue,
+  careFor,
   debtLimit,
   defaultBills,
   endingFor,
   factionKey,
+  favoursFor,
   hostMarks,
   newRun,
   nightOutlook,
@@ -1277,5 +1279,82 @@ describe('the gods’ requests', () => {
     // The demo's last day has no next morning to ask for.
     const demoLast = morningOf(demo, 'ask-demo', 3);
     expect(serveDay(demo, demoLast, () => undefined).requests).toBeUndefined();
+  });
+});
+
+describe('the gods’ favour (docs/tech-spec.md §43)', () => {
+  const favour = (id: string) => {
+    const f = campaignOf(full).favours?.find((x) => x.id === id);
+    if (!f) throw new Error(`no favour ${id}`);
+    return f;
+  };
+  /** The morning of Day 5, every earlier soul judged rightly, with standing set as given. */
+  const courted = (standing: Partial<RunState['standing']>): RunState => {
+    let run = newRun(full, 'favour');
+    while (run.day < 5) run = playDay(full, run).run;
+    return { ...run, standing: { ...run.standing, ...standing } };
+  };
+
+  it('is granted at the gate while a god’s standing is at its mark, and not below it', () => {
+    const odin = favour('fav.odin');
+    const at = courted({ odin: odin.at });
+    const below = courted({ odin: odin.at - 1 });
+    expect(favoursFor(at, full).map((f) => f.id)).toContain('fav.odin');
+    expect(favoursFor(below, full).map((f) => f.id)).not.toContain('fav.odin');
+    // Odin's is sun: the day's shift is longer by it, and its audit files the favour.
+    const sunMs = (r: RunState) => drive(full, r, [{ t: 'beginShift', at: 0 }]).run.shift?.sunMs ?? 0;
+    expect(sunMs(at) - sunMs(below)).toBe(('sunS' in odin.effect ? odin.effect.sunS : 0) * 1000);
+    expect(shiftMods(at, full).sunS).toBe((shiftMods(below, full).sunS ?? 0) + 60);
+    expect(playDay(full, at).afterShift.ledger.at(-1)?.favours).toContain('fav.odin');
+    expect(playDay(full, below).afterShift.ledger.at(-1)?.favours ?? []).not.toContain('fav.odin');
+  });
+
+  it('halves each of the day’s fines with the clerk’s, rounding down', () => {
+    const clerk = favour('fav.clerk');
+    const pct = 'finePct' in clerk.effect ? clerk.effect.finePct : 100;
+    const everyone = () => true;
+    const plain = playDay(full, courted({}), { wrong: everyone }).afterShift.ledger.at(-1);
+    const eased = playDay(full, courted({ clerk: clerk.at }), { wrong: everyone }).afterShift.ledger.at(-1);
+    const economy = runContext(full, courted({})).spec.economy;
+    if (!plain || !eased || !economy) throw new Error('no audit');
+    const fines = Array.from({ length: plain.wrong - economy.warnings }, (_, k) => {
+      return economy.fines[Math.min(k, economy.fines.length - 1)] ?? 0;
+    });
+    expect(plain.fines).toBe(fines.reduce((a, b) => a + b, 0));
+    expect(eased.fines).toBe(fines.reduce((a, b) => a + Math.floor((b * pct) / 100), 0));
+    expect(eased.fines).toBeLessThan(plain.fines);
+  });
+
+  it('keeps the sick a night longer with Hel’s, granted at the gate for the night even if the audit then costs her favour', () => {
+    const hel = favour('fav.hel');
+    const care = campaignOf(full).care;
+    // Someone at home sick, a night from being lost without medicine.
+    const sick = (r: RunState): RunState => ({
+      ...r,
+      family: r.family.map((m, i) => (i === 0 ? { ...m, status: 'sick', sickNights: care.sickNights - 1 } : m)),
+    });
+    // Each soul who belongs to Hel sent elsewhere: her standing falls at the audit.
+    const helsOwn = (run: RunState) => {
+      const queue = campaignQueue(run, { content: full, ctx: runContext(full, run) });
+      return (i: number) => queue[i]?.expect.dest === 'HEL';
+    };
+    const favoured = sick(courted({ hel: hel.at }));
+    const plain = sick(courted({}));
+    const day = playDay(full, favoured, { wrong: helsOwn(favoured), bills: { medicine: [] } });
+    expect(day.afterShift.standing.hel).toBeLessThan(hel.at);
+    expect(day.afterShift.ledger.at(-1)?.favours).toContain('fav.hel');
+    // The night screen reckons with it, and so does the night.
+    expect(careFor(day.afterShift, full).sickNights).toBe(care.sickNights + 1);
+    expect(
+      nightOutlook(
+        day.afterShift,
+        { content: full, ctx: runContext(full, day.afterShift) },
+        { ...defaultBills(day.afterShift), medicine: [] },
+      ).members[0]?.change,
+    ).toBeUndefined();
+    expect(day.run.family[0]?.status).toBe('sick');
+    const without = playDay(full, plain, { wrong: helsOwn(plain), bills: { medicine: [] } });
+    expect(careFor(without.afterShift, full).sickNights).toBe(care.sickNights);
+    expect(without.run.family[0]?.status).toBe('gone');
   });
 });

@@ -598,7 +598,33 @@ export interface CampaignDef {
   readonly waiting?: WaitingDef;
   /** The gods' requests (docs/tech-spec.md §42); none without it. */
   readonly requests?: RequestsDef;
+  /** What each god grants while their standing is high enough (docs/tech-spec.md §43); none without it. */
+  readonly favours?: readonly FavourDef[];
 }
+
+/**
+ * A god's favour: at the gate each morning, while the god's standing is `at` or more, it holds for the day and
+ * its night. Like the upgrades, it gives time, information or money, never what decides a soul.
+ */
+export interface FavourDef {
+  readonly id: string;
+  readonly faction: Faction;
+  /** The standing it takes. */
+  readonly at: number;
+  readonly effect: FavourEffect;
+  /** What it does, in the god's terms (a string key). */
+  readonly text: string;
+}
+
+export type FavourEffect =
+  /** Extra sun for the day, in seconds. */
+  | { readonly sunS: number }
+  /** Questions a day that cost no sun: the first ones asked. */
+  | { readonly freeQuestions: number }
+  /** Percent of each fine the audit charges. */
+  | { readonly finePct: number }
+  /** Nights more a sick member holds out without medicine before they're lost. */
+  | { readonly sickNights: number };
 
 /**
  * The gods' requests: some mornings a god asks, openly, for a favour: souls that belong to another god, sent

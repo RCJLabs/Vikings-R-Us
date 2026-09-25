@@ -28,6 +28,15 @@ requests:
     - { id: req.odin, god: odin, from: FOLKVANGR, to: VALHALLA, n: 1, reward: { odin: 1 }, since: 4, text: request.odin }
     - { id: req.hel, god: hel, from: VALHALLA, to: HEL, n: 2, reward: { hel: 1 }, since: 5, text: request.hel }
     - { id: req.clerk, god: clerk, from: HEL, to: TRANSFER, n: 2, reward: { clerk: 1 }, since: 10, text: request.clerk }
+# Favour (docs/tech-spec.md §43): at the gate each morning, every god whose standing is at a favour's mark grants
+# it for the day and its night. Like the upgrades, favours give time, information or money, never what decides a
+# soul. At 4, bots that court a god (its requests, or the story) hold its favour on about half their mornings
+# from the second week; bots that don't, hardly ever. First guesses.
+favours:
+  - { id: fav.odin, faction: odin, at: 4, effect: { sunS: 60 }, text: favour.odin }
+  - { id: fav.freyja, faction: freyja, at: 4, effect: { freeQuestions: 1 }, text: favour.freyja }
+  - { id: fav.hel, faction: hel, at: 4, effect: { sickNights: 1 }, text: favour.hel }
+  - { id: fav.clerk, faction: clerk, at: 4, effect: { finePct: 50 }, text: favour.clerk }
 # Speed only (docs/build-plan.md §1): cheaper tools and questions, more sun.
 shop:
   - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }

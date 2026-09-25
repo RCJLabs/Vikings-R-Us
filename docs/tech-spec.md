@@ -2343,6 +2343,74 @@ So for an expert, a single favour of Freyja's or Hel's mostly decides the ending
 - **The gods' words are drafts,** like the rest of the story.
 - **The Daily and Endless are untouched,** and the demo ends before Day 4.
 
+## 43. After M7: the gods' favour (gameplay brainstorm, item 3)
+
+**Why.** Standing did nothing until the ending. Now each god gives something while you're in their favour, so a run's allegiance shows long before Day 20.
+
+The brainstorm's version, and what changed:
+- **Kept:** Odin gives more sun, Freyja a free question a day, Hel milder sickness at home, the clerk halved fines. Like the upgrades, favours give time, information or money, never what decides a soul.
+- **"Milder sickness"** is made concrete: the sick hold out a night longer without medicine. It buys time to afford medicine without changing who falls sick.
+- **It set no standing to reach.** At 4, favours come to players who court a god, and rarely by accident (below).
+- **Loki gets none.** The brainstorm names four gods, and the stranger isn't named until Day 12. A favour of his would be the place for the Naglfar plot to pay out during a run, if you want one.
+
+**The rule** (`favoursFor` in `campaign/run.ts`): at the gate each morning, every god whose standing is at a favour's `at` or more grants it for the day and its night.
+- **Settled at the gate.** Standing doesn't move during a shift, so the audit files the same favours the gate granted (`favours` in the day's ledger).
+- **The night keeps them.** Mistakes that cost a god standing at the audit don't take back that night's favour. The next morning decides again.
+
+**Where each acts**
+- **Odin's sun:** `shiftMods` adds it to the day's sun, as the sundial does.
+- **Freyja's question:** the shift counts the free questions asked (`mods.freeQuestions`, `freeAsked`), so the day's first question costs no sun. Without the favour no count is kept, and nothing else about a shift changes.
+- **The clerk's fines:** the audit charges `finePct` of each fine, rounding down. An appeal's own fine is untouched.
+- **Hel's night:** `careFor` gives the night its extra night for the sick. The night screen's outlook, and the family's "needs medicine within N nights", count with it.
+
+**The screens**
+- **The morning** names today's favours in the day's card: those that do anything, since Story Mode has no sun and no fines, and the no-fines assist leaves nothing to halve. A guide below lists every favour, the standing it takes, the standing now, and which are yours today.
+- **The desk** labels the free question "Question (free today)".
+- **The audit** notes the clerk's favour under the fines.
+- **The night** notes Hel's.
+- **The playtest report** lists each day's favours.
+
+**Numbers.** In the campaign pack, every favour takes standing 4: Odin +60 s of sun, Freyja 1 free question, Hel +1 night, the clerk 50% of each fine. First guesses.
+
+How often each is held (bots, 12 runs, plain story, payAll; the share of mornings from Day 2 with the god at 4 or more):
+
+| Player | Serving nobody | Serving that god |
+|---|---|---|
+| Expert | Odin 3%, Freyja 4%, Hel 12%, the clerk 0% | Odin 23%, Freyja 68%, Hel 49%, the clerk 23% |
+| Competent | Freyja 3%, the clerk 1%, the others 0% | Freyja 58%, Hel 27%, the clerk 14%, Odin 0% |
+| Novice | the clerk 11%, the others 0% | Freyja 25%, the clerk 20%, Hel 7%, Odin 0% |
+
+At 3, experts would hold Freyja's or Hel's on about a fifth of mornings without trying (22% and 20%).
+
+What they change (the same bots, with the favours and without them):
+- **Odin's:** an expert who courts him at 70 s a soul holds it on 5 of 20 days, and leaves 31.6 souls at dusk over a run against 34.8. At 55 s: 2.7 against 2.9.
+- **The clerk's:** novices hold it on under 2 of 16 days, so their fines barely move (332 against 345 rings a run for one who courts him).
+- **Hel's:** never shows. Bots that skip bills lose everyone by Day 4, before anyone can reach her mark; bots that pay lose no one either way.
+- **Freyja's:** bots never question, so the sim can't show it.
+
+So the favours are small, and in the sim mostly invisible. Whether players feel them is for the playtest to show.
+
+**Tests**
+- **Engine (4):**
+  - a favour is granted at its mark and not below; Odin's sun is in the day's shift and its ledger;
+  - the clerk's halves each fine, rounding down;
+  - Hel's holds for the night even after the audit costs her standing, and the night's outlook agrees;
+  - Freyja's makes the first question free and the next one cost its price, and no count is kept without it.
+- **Compiler (1):** favours compile; missing words and a favour named twice are refused.
+- **Report (1).**
+- **e2e on the full game** (phone and desktop): a save on Day 5's morning with every god at its mark. It checks:
+  - the morning's favours, the guide and the day's sun;
+  - the free question at the desk;
+  - the halved fine and its note at the audit;
+  - Hel's favour at night.
+
+**Known limits**
+- **The favours are small** (above). Odin's is the only one the sim shows; the marks and values are content.
+- **One mark per god.** The list takes several favours per god, so tiers are possible; none are set.
+- **Loki has none** (above).
+- **The words are drafts.**
+- **The Daily and Endless are untouched,** and the demo has no favours.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)
