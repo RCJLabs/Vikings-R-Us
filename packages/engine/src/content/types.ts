@@ -594,6 +594,23 @@ export interface CampaignDef {
   readonly threads?: readonly ThreadDef[];
   /** Souls asking to be judged again the next morning (docs/tech-spec.md §40); none without it. */
   readonly appeals?: AppealsDef;
+  /** Souls still in line at dusk wait for the next day (docs/tech-spec.md §41); without it they're gone. */
+  readonly waiting?: WaitingDef;
+}
+
+/**
+ * The line at dusk: souls still waiting come back first the next day, seen afresh under its rules, in the
+ * places of that day's last new souls. The living among them can't wait: they die in the night.
+ */
+export interface WaitingDef {
+  /** The first day whose line waits for the next. */
+  readonly from: number;
+  /** How many left in line at dusk (the living too) make a crowded gate, which costs `night`. */
+  readonly crowd: number;
+  /** What a night with a crowded gate costs (once, however many more). */
+  readonly night: Readonly<Partial<Record<Faction, number>>>;
+  /** What each of the living who dies waiting costs. */
+  readonly died: Readonly<Partial<Record<Faction, number>>>;
 }
 
 /**

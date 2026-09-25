@@ -75,6 +75,24 @@ export interface AppealHeard {
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
 }
 
+/** A soul in the line at dusk, as the audit names it. */
+export interface LineSoul {
+  readonly id: string;
+  readonly name: string;
+}
+
+/**
+ * The souls still in line when the sun set (docs/tech-spec.md §41): those who wait for the next day, the living
+ * who die in the night, and what the night's wait cost.
+ */
+export interface DayWaiting {
+  readonly carried: readonly LineSoul[];
+  readonly died: readonly LineSoul[];
+  /** Any the next day's rules couldn't show fairly (never seen so far): they're gone, as before there was a line. */
+  readonly gone?: readonly LineSoul[];
+  readonly standing: Readonly<Partial<Record<Faction, number>>>;
+}
+
 /** One day's accounts, shown at the audit and the night. */
 export interface DayLedger {
   readonly day: number;
@@ -97,6 +115,8 @@ export interface DayLedger {
   readonly mistakes?: readonly DayMistake[];
   /** The appeal heard that morning, if one came. */
   readonly appeal?: AppealHeard;
+  /** The line at dusk, when souls were left in it and there's a next day for them. */
+  readonly waiting?: DayWaiting;
   /** Filled in at the end of the night. */
   readonly night?: {
     readonly hearth: number;
@@ -154,6 +174,11 @@ export interface RunState {
   readonly appeal?: Appeal;
   /** How this morning's appeal went, until the day's audit files it in its ledger. */
   readonly appealHeard?: AppealHeard;
+  /**
+   * Souls who waited at the gate through the night (docs/tech-spec.md §41), already dressed for today's rules:
+   * first in today's line. Absent when none.
+   */
+  readonly waiting?: readonly CaseSpec[];
 }
 
 /** The host at Ragnarök, part by part: the counts behind ragnarokStrength. */
@@ -210,7 +235,10 @@ export function factionsMet(run: RunState): Faction[] {
     (f) =>
       run.standing[f] !== 0 ||
       moved(run.storyStanding, f) ||
-      run.ledger.some((l) => moved(l.standing, f) || moved(l.story, f)),
+      run.ledger.some(
+        (l) =>
+          moved(l.standing, f) || moved(l.story, f) || moved(l.appeal?.standing, f) || moved(l.waiting?.standing, f),
+      ),
   );
 }
 

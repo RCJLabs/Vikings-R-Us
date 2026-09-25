@@ -203,6 +203,37 @@ export function dressCase(
   };
 }
 
+/**
+ * A soul who waited at the gate through the night (docs/tech-spec.md §41), seen afresh under `ctx`'s rules: the
+ * same truth, lies and look, judged by the new day's rules and dressed with its evidence (the signs its rules
+ * read, a registry entry once there's a registry), so it meets the same contract as the day's own souls. Null if
+ * no dressing passes, which the sweeps haven't seen. Not for story souls, whose lines are their own.
+ */
+export function dressForDay(c: CaseSpec, ctx: DayCtx): CaseSpec | null {
+  const arch = ctx.archetypes.get(c.archetype);
+  if (!arch) return null;
+  const planned: PlannedLie[] = c.lies.map(({ field: _, ...lie }) => lie);
+  const truth = withLiars(c.truth, planned, ctx);
+  const expected = judge(truth, ctx);
+  for (const tier of ['strict', 'widenBand'] as const) {
+    const knobs = tierKnobs(tier, ctx.spec.queue.knobs);
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const rng = new Rng(`${ctx.content.genVersion}|wait|${c.id}|${ctx.day}|${tier}|${attempt}`);
+      const dressed = dressCase(arch, truth, expected, planned, c.evidence.look, [], ctx, knobs, rng);
+      if ('code' in dressed) continue;
+      return {
+        ...c,
+        truth,
+        lies: dressed.lies,
+        evidence: dressed.evidence,
+        expect: expected,
+        meta: { ...c.meta, ...dressed.meta },
+      };
+    }
+  }
+  return null;
+}
+
 /** Scripted lines join the soul's testimony after its generated lines. */
 function withLines(evidence: Evidence, lines: readonly string[]): Evidence {
   const said = evidence.fields.filter((f) => f.item === 'testimony').length;

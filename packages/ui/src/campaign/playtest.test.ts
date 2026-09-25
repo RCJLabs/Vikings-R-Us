@@ -139,6 +139,34 @@ describe('the playtest report', () => {
     expect(report(played('playtest-appeal-none', 1, right))).toContain('### Appeals\n\nNone.');
   });
 
+  it('tells of each night the sun set on the line: who waited for the next day, and what it cost', () => {
+    let save = startSave(content, 'playtest-line', ENGINE_MAJOR);
+    let run = save.mornings[0] as RunState;
+    const apply = (action: RunAction) => {
+      const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
+      const next = stepRun(run, action, env).state;
+      save = recordAction(save, run, action, next);
+      run = next;
+    };
+    apply({ t: 'beginShift', at: 0 });
+    const cases = run.shift?.cases ?? [];
+    const sunMs = run.shift?.sunMs ?? 0;
+    for (const [i, c] of cases.slice(0, 2).entries()) {
+      apply({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at: (i + 1) * 1000 } });
+      apply({ t: 'shift', action: { t: 'send', at: (i + 1) * 1000 } });
+    }
+    // Dusk, and its grace, with the rest still in line: a crowded gate.
+    apply({ t: 'shift', action: { t: 'tick', at: sunMs + 61_000 } });
+    const left = cases.slice(2).map((c) => `${c.evidence.look.name} ${c.evidence.look.patronym}`);
+    expect(left.length).toBeGreaterThanOrEqual(3);
+    expect(report(save)).toContain(
+      `### The line at dusk\n\n- Day 1: ${left.join(', ')} waited for Day 2. Standing: faction.hel -1.`,
+    );
+    expect(report(played('playtest-line-none', 1, right))).toContain(
+      '### The line at dusk\n\nNobody was left in line.',
+    );
+  });
+
   it('reads back the options picked in each scene, as the journal does', () => {
     const save = played('playtest-story', 1, right, true);
     const entry = save.journal?.[0];

@@ -2149,7 +2149,7 @@ Moving a soul keeps the Ragnarök host true: the counts of souls sent, and the w
 
 **Numbers.** These are first guesses in `content/packs/demo/campaign.yaml`: `from 1, afterMistake 70, otherwise 25, chancers 25, bonus 3, fine 5`. The sim (12 runs per policy) has bots hear every appeal and judge it with their accuracy at the gate:
 - experts end about 12 rings up, and competent bots about 6;
-- novices are demoted as often as before.
+- novices are demoted about as often as before: the novice who pays every bill in 12 of 12 runs, up from 11 of 12, one run's difference at 12 seeds.
 
 Appeals add depth and a second look; they don't fix the economy's missing middle. Bots understate them, since a person with no sun should judge better than at the gate.
 
@@ -2173,6 +2173,85 @@ Appeals add depth and a second look; they don't fix the economy's missing middle
 - **Memory is a real edge.** A player who remembers yesterday's citations knows which appeals have merit. That's part of the game. Chancers keep an appeal from being proof, but they don't make it a mystery.
 - **Rewards stay small** (3 and 5 rings) until playtests say otherwise.
 - **The Daily is untouched.** It has no appeals.
+
+## 41. After M7: the line at dusk (gameplay brainstorm, item 4)
+
+**Why.** Souls still in line when the sun set used to vanish, costing only their wage. Now the queue remembers them.
+
+The brainstorm's version, and what changed:
+- **It added yesterday's leftovers to tomorrow's queue.** A slow day would make the next one longer, a snowball that steepens the novices' cliff. Here they take the places of the day's last new souls instead, so the line is no longer. Leaving a soul costs a wage, exactly as before.
+- **It didn't say whose rules judge them.** A soul made for one day often can't be judged fairly by the next: it lacks the new day's kinds of evidence. Measured over 40 seeds, only 47% of Day 1's souls could be judged by Day 2's rules; 36% of Day 4's by Day 5's; none of Day 7's by Day 8's (the nails); 57% of Day 16's by Day 17's. Here each soul is seen afresh (below), and 100% of 9,555 pass.
+- **It charged Hel once per soul.** Endings need standing of 3 or 4, so any occasionally slow player would lose Hel's ending. Here only a crowded gate costs anything.
+- **It let the living die into Hel's hall.** Hel's legion counts double in the host at Ragnarök, so that would be a fine-free way to grow it. Here the living lost in the night go to no hall.
+- **It promised the order of the line would matter.** That needs a way to choose who comes to the desk next: a big change on both layouts, and to what the player knows before judging. It isn't built; see the limits.
+
+**At the audit** (`waitingLine` in `campaign/run.ts`)
+- **Which souls:** those still in line when the sun set.
+- **When:** from `waiting.from`, only when the next day follows on. Not after the last day, and not across a vertical slice's jump.
+- **Story souls never wait.** Their stories go on without them.
+- **The living** (those who should go back) **die in the night.** Each costs `waiting.died` (Odin −1 in the demo), and they go to no hall.
+- **Everyone else waits for the next day,** seen afresh under its rules. `dressForDay` in `gen/generate.ts` does this:
+  - it keeps the soul's truth, lies and look;
+  - it recomputes whether the soul counts as a liar (from Day 16) and judges it by the next day's rules;
+  - it dresses it with that day's evidence (the signs its rules read, a registry entry once there's a registry), under the same F1–F8 contract as the day's own souls.
+
+  A soul no dressing passes would be gone, as before there was a line. It has never happened.
+- **A crowded gate** (`waiting.crowd` or more left, three in the demo) costs `waiting.night` (Hel −1) once for the night.
+
+**The next morning** (`campaignQueue`)
+- **Place in line:** the souls who waited come first, after the day's teaching soul, so a slow player never loses the day's lesson.
+- **Room:** each takes the place of one of the day's new souls: one who shares its name if there is one, so no two in the line do, else the last.
+- **Clearing:** once the gate opens, they're in the day's line and no longer in the run's `waiting`.
+- **Replays:** the morning's save keeps them, so replaying the day brings them back in the same places.
+- **The day they came:** a waiting soul keeps its original `day`, which is how the desk knows it waited. Nothing else reads a case's day.
+
+**Records**
+- **The audit:**
+  - names what became of each soul left: it waits at the gate for tomorrow, or it was still breathing at dusk and dies in the night;
+  - gives the line's standing a column of its own, "The line", so the accounts still add up.
+- **The morning** lists who waited, and says they're first in line today, under today's rules.
+- **The desk** marks a soul who waited: "Waited at the gate since Day 1. Today's rules decide."
+- **The playtest report** lists each night's line.
+- **The ledger** keeps it as `waiting`, with the souls by id and name, and the cost.
+
+**Numbers.** The demo campaign's settings are `from 1, crowd 3, night { hel: -1 }, died { odin: -1 }`: first guesses.
+- **Re-dressing** takes 1–3 ms a soul. Under the next day's rules the right destination changes for 4–19% of souls, up to 102 of 529 after Day 14 fills Hel's hall.
+- **The sim** (`pnpm sim campaign --pace N`, 12 runs per policy):
+  - it now gives bots a pace in seconds of sun per soul, 25 unless told;
+  - each day allows about 46–63 s per soul.
+
+| Pace | Souls left over a run | Nights with 3 or more | Living lost | Standing |
+|---|---|---|---|---|
+| 25 s | 0 | 0 | 0 | baseline |
+| 55 s | 2–6, on Days 3, 5, 6 and 9 | 0 | 0.1–0.2 | Hel and Hel endings within noise of baseline |
+| 70 s | 24–47 | 4–5 | 1.4–3.3 | Hel about 5–9 lower, no Hel endings; Odin 1.5–3 lower |
+
+The counts are for bots that last the run. Careless bots are demoted early, so they leave fewer.
+
+- **Bots with the speed upgrades** leave about half as many (2.3–2.9 against 5.2–6.1 at 55 s): the first time the sim shows those upgrades earning their keep.
+- **Rings** move only by the wages of souls never judged, as before the line.
+- **A quirk that predates the line:** novices are demoted slightly less when slow, since fewer souls judged means fewer fines. The line makes leaving souls a little costlier.
+
+**Tests**
+- **Engine (5):**
+  - the souls left wait, dressed and judged by the next day's rules, after its teaching soul, in the places of its last souls, with no repeated names;
+  - the living die: no hall, their own cost, and story souls don't wait;
+  - a soul or two costs nothing;
+  - no line without the setting, before `from`, on the last day, or when everyone is judged;
+  - a saved morning brings the same line, and standing adds up across every audit column.
+- **Generator:** every soul of every day can wait for the next, and passes its contract there.
+- **Sim:** a slow bot's line waits, and its accounts and standing add up.
+- **Report (1).**
+- **e2e on the web demo** (phone and desktop): Playwright's clock runs the sun down with four souls in line. Then:
+  - the audit's notes and Hel −1 in the line's column;
+  - Day 2's morning note;
+  - the teaching soul first, then the souls who waited, with the desk's banner.
+
+**Known limits**
+- **Nobody chooses the order.** The line is still first come, first judged, so the living's urgency is a reason to keep pace, not a choice to make. Letting the player call a soul forward is the follow-up, if playtests want it.
+- **A waiting soul's words are said afresh the next day.** Its truth, lies and look are the same, but a player who read its testimony at dusk will find it put differently.
+- **The costs are small on purpose,** and so are the thresholds that decide endings. The bots' pace is a guess; the playtest build will say how often real players leave souls.
+- **Story Mode has no dusk,** so no line. **The Daily is untouched.**
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

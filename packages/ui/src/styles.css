@@ -1392,7 +1392,10 @@ select {
 }
 
 /* The primer's coach bar and the things it points at */
-/* An appeal at the desk says so, and what the soul was stamped (docs/tech-spec.md §40). */
+/*
+ * An appeal at the desk says so, and what the soul was stamped (docs/tech-spec.md §40); so does a soul who
+ * waited through the night (§41).
+ */
 .shift__appeal {
   margin: 0;
   padding: 0.4rem 0.75rem;

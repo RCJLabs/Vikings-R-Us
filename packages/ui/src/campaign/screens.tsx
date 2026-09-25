@@ -854,6 +854,7 @@ function Morning() {
           <section class="card">
             <Decree ctx={ctx} />
             <RulebookChanges day={run.day} />
+            <WaitingNote run={run} />
             <p class="briefing__queue">
               {run.story
                 ? t('ui.campaign.untimed')
@@ -886,6 +887,27 @@ function Morning() {
       {journalOpen.value ? <JournalView /> : null}
     </main>
   );
+}
+
+// ---------- the line ----------
+
+/** The souls who waited at the gate through the night (docs/tech-spec.md §41): first in today's line. */
+function WaitingNote({ run }: { run: RunState }) {
+  const waiting = run.waiting ?? [];
+  if (waiting.length === 0) return null;
+  const names = listText(waiting.map((c) => `${c.evidence.look.name} ${c.evidence.look.patronym}`));
+  return (
+    <p class="morning__line" data-testid="waiting">
+      {t('ui.line.morning', { count: waiting.length, names })}
+    </p>
+  );
+}
+
+/** What became of a soul the sun set on: it waits for tomorrow, dies in the night, or simply went unjudged. */
+function leftNote(ledger: DayLedger, id: string | undefined): string {
+  if (id !== undefined && ledger.waiting?.carried.some((s) => s.id === id)) return t('ui.audit.waits');
+  if (id !== undefined && ledger.waiting?.died.some((s) => s.id === id)) return t('ui.audit.diedWaiting');
+  return t('ui.summary.unjudged');
 }
 
 // ---------- appeals ----------
@@ -1019,7 +1041,10 @@ function Audit() {
               <span aria-hidden="true">{v.stamped === null ? '⬛' : v.correct ? '🟩' : '🟥'}</span>{' '}
               {t('ui.summary.row', { name, dest: t(`dest.${v.expected}`) })}
               {v.stamped === null ? (
-                <span class="muted"> ({t('ui.summary.unjudged')})</span>
+                <span class="muted" data-testid="left-note">
+                  {' '}
+                  ({leftNote(ledger, c?.id)})
+                </span>
               ) : v.correct ? null : v.stamped === v.expected ? (
                 <span class="muted">
                   {' '}
@@ -1072,6 +1097,9 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
   // The morning's appeal moved standing too, when it righted a mistake or made one: its own column, so they add up.
   const appeal = ledger.appeal?.standing ?? {};
   const appealed = Object.keys(appeal).length > 0;
+  // So did the line at dusk (docs/tech-spec.md §41): a crowded gate, and the living lost in the night.
+  const line = ledger.waiting?.standing ?? {};
+  const waited = Object.keys(line).length > 0;
   return (
     <>
       <table class="ledger" data-testid="standing">
@@ -1080,6 +1108,7 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
             <th>{t('ui.audit.standing')}</th>
             <th class="num">{t('ui.audit.mistakes')}</th>
             {appealed ? <th class="num">{t('ui.audit.appealColumn')}</th> : null}
+            {waited ? <th class="num">{t('ui.audit.lineColumn')}</th> : null}
             <th class="num">{t('ui.audit.story')}</th>
             <th class="num">{t('ui.audit.now')}</th>
           </tr>
@@ -1090,6 +1119,7 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
               <td>{factionName(f, run.day)}</td>
               <td class="num">{signed(ledger.standing[f] ?? 0)}</td>
               {appealed ? <td class="num">{signed(appeal[f] ?? 0)}</td> : null}
+              {waited ? <td class="num">{signed(line[f] ?? 0)}</td> : null}
               <td class="num">{signed(ledger.story?.[f] ?? 0)}</td>
               <td class="num">{signed(run.standing[f])}</td>
             </tr>
@@ -1097,6 +1127,7 @@ function StandingTable({ run, ledger }: { run: RunState; ledger: DayLedger }) {
         </tbody>
       </table>
       <p class="muted ledger__note">{t('ui.audit.standingNote')}</p>
+      {waited ? <p class="muted ledger__note">{t('ui.audit.lineNote')}</p> : null}
     </>
   );
 }

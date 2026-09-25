@@ -1033,6 +1033,12 @@ export function ShiftScreen() {
             {modeTitle(s)}
           </p>
         ) : null}
+        {/* A soul the sun set on yesterday, back first today and judged by today's rules (docs/tech-spec.md §41). */}
+        {s.mode.kind === 'campaign' && c && c.day < s.ctx.day ? (
+          <p class="shift__appeal" data-testid="waited-banner">
+            {t('ui.line.waited', { n: c.day })}
+          </p>
+        ) : null}
         <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>

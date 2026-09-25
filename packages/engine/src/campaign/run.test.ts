@@ -1,10 +1,13 @@
 import { loadContent } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
-import type { AppealsDef, Content, Destination, Effect, ScriptedCaseDef } from '../content/types';
-import { generateDay } from '../gen/generate';
+import type { AppealsDef, CampaignDef, Content, Destination, Effect, ScriptedCaseDef } from '../content/types';
+import { generateDay, tierKnobs } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
+import { validateCase } from '../gen/validate';
 import { createDayContext, type DayCtx } from '../logic/context';
+import { judge } from '../logic/judge';
+import { DUSK_GRACE_MS } from '../shift/shift';
 import {
   billForecast,
   campaignOf,
@@ -1002,5 +1005,142 @@ describe('appeals', () => {
     }
     expect(at.appealHeard?.outcome).toBe('righted');
     expect(resumeSave(save, content, 1).run).toEqual(at);
+  });
+});
+
+describe('the line at dusk', () => {
+  /** A day where the sun sets on the line: the first `judged` souls judged right, the rest left waiting. */
+  function leaveAtDusk(content: Content, run: RunState, judged: number) {
+    const ctx = runContext(content, run);
+    const started = stepRun(run, { t: 'beginShift', at: 0 }, { content, ctx }).state;
+    const cases = started.shift?.cases ?? [];
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+    cases.slice(0, judged).forEach((c, i) => {
+      const at = (i + 1) * 1000;
+      for (const id of c.expect.procedures ?? []) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
+      }
+      actions.push(
+        { t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at } },
+        { t: 'shift', action: { t: 'send', at } },
+      );
+    });
+    actions.push({ t: 'shift', action: { t: 'tick', at: (started.shift?.sunMs ?? 0) + DUSK_GRACE_MS + 1 } });
+    const shift = drive(content, run, actions);
+    const end = drive(content, shift.run, [{ t: 'endAudit' }, { t: 'endNight' }]);
+    return { afterShift: shift.run, run: end.run, cases };
+  }
+  const envOf = (content: Content, run: RunState): RunEnv => ({ content, ctx: runContext(content, run) });
+  const withWaiting = (content: Content, waiting: Partial<NonNullable<CampaignDef['waiting']>> | null): Content => {
+    const { waiting: _, ...campaign } = campaignOf(content);
+    return {
+      ...content,
+      campaign: waiting
+        ? { ...campaign, waiting: { from: 1, crowd: 3, night: { hel: -1 }, died: { odin: -1 }, ...waiting } }
+        : campaign,
+    };
+  };
+
+  it('keeps the souls left at dusk for the next day: first after its teaching soul, judged by its rules, in the places of its last new souls', () => {
+    const { afterShift, run, cases } = leaveAtDusk(demo, newRun(demo, 'line-1'), 2);
+    const ledger = afterShift.ledger.at(-1);
+    const left = cases.slice(2);
+    expect(ledger?.unjudged).toBe(left.length);
+    expect(ledger?.waiting?.carried.map((s) => s.id)).toEqual(left.map((c) => c.id));
+    expect(ledger?.waiting?.died).toEqual([]);
+    // A crowded gate (three or more left) costs Hel once, however many more there are.
+    expect(left.length).toBeGreaterThanOrEqual(3);
+    expect(ledger?.waiting?.standing).toEqual({ hel: -1 });
+    expect(afterShift.standing.hel).toBe(-1);
+
+    expect(run.day).toBe(2);
+    const waiting = run.waiting ?? [];
+    expect(waiting.map((c) => c.id)).toEqual(left.map((c) => c.id));
+    const env = envOf(demo, run);
+    for (const c of waiting) {
+      // Seen afresh under Day 2's rules: judged by them, and meeting the contract under them.
+      expect(c.day).toBe(1);
+      expect(c.expect).toEqual(judge(c.truth, env.ctx));
+      const knobs = tierKnobs('widenBand', env.ctx.spec.queue.knobs);
+      expect(validateCase(c.evidence, c.truth, c.lies, c.expect, c.meta.decisive, env.ctx, knobs).ok).toBe(true);
+    }
+    const queue = campaignQueue(run, env);
+    const plain = campaignQueue({ ...run, waiting: undefined }, env);
+    expect(queue).toHaveLength(plain.length);
+    expect(queue[0]?.archetype).toBe(env.ctx.spec.queue.teachFirst);
+    expect(queue.slice(1, 1 + waiting.length).map((c) => c.id)).toEqual(waiting.map((c) => c.id));
+    const names = queue.map((c) => c.evidence.look.name);
+    expect(new Set(names).size).toBe(names.length);
+
+    // Once the gate opens they're in the day's line, and no longer waiting.
+    const opened = stepRun(run, { t: 'beginShift', at: 0 }, env).state;
+    expect(opened.waiting).toBeUndefined();
+    expect(opened.shift?.cases.slice(1, 1 + waiting.length).map((c) => c.id)).toEqual(waiting.map((c) => c.id));
+  });
+
+  it('loses the living left at dusk in the night: they never wait, and each costs its own standing', () => {
+    let run = newRun(full, 'line-living');
+    for (let d = 1; d < 3; d++) run = playDay(full, run).run;
+    // Day 3 teaches the feather with a soul who isn't dead yet; nobody is judged before dusk.
+    const { afterShift, run: next, cases } = leaveAtDusk(full, run, 0);
+    const living = cases.filter((c) => c.expect.dest === 'RETURN' && !c.script);
+    expect(living.length).toBeGreaterThan(0);
+    const ledger = afterShift.ledger.at(-1);
+    expect(ledger?.waiting?.died.map((s) => s.id)).toEqual(living.map((c) => c.id));
+    const died = living.length;
+    expect(ledger?.waiting?.standing).toEqual({ hel: -1, odin: -died });
+    // No hall takes them: letting the living die doesn't feed Hel's legion.
+    expect(afterShift.sent?.HEL ?? 0).toBe(run.sent?.HEL ?? 0);
+    const waitingIds = (next.waiting ?? []).map((c) => c.id);
+    for (const c of living) expect(waitingIds).not.toContain(c.id);
+    // Story souls' stories go on without them: Thorvald doesn't wait either.
+    const story = cases.filter((c) => c.script !== undefined);
+    expect(story.length).toBeGreaterThan(0);
+    for (const c of story) expect(waitingIds).not.toContain(c.id);
+    expect(waitingIds).toHaveLength(cases.length - living.length - story.length);
+  });
+
+  it('costs nothing for a soul or two left waiting: only a crowded gate troubles Hel', () => {
+    const { afterShift, cases } = leaveAtDusk(demo, newRun(demo, 'line-few'), 4);
+    const ledger = afterShift.ledger.at(-1);
+    expect(ledger?.waiting?.carried).toHaveLength(cases.length - 4);
+    expect(cases.length - 4).toBeLessThan(3);
+    expect(ledger?.waiting?.standing).toEqual({});
+    expect(afterShift.standing.hel).toBe(0);
+  });
+
+  it('keeps no line without the setting, before its first day, after the last day, or when every soul is judged', () => {
+    const none = leaveAtDusk(withWaiting(demo, null), newRun(demo, 'line-none'), 2);
+    expect(none.afterShift.ledger.at(-1)?.waiting).toBeUndefined();
+    expect(none.run.waiting).toBeUndefined();
+    const late = leaveAtDusk(withWaiting(demo, { from: 2 }), newRun(demo, 'line-late'), 2);
+    expect(late.run.waiting).toBeUndefined();
+    expect(late.afterShift.standing.hel).toBe(0);
+    const judged = playDay(demo, newRun(demo, 'line-all'));
+    expect(judged.afterShift.ledger.at(-1)?.waiting).toBeUndefined();
+    // The demo's last day has no next day for them.
+    let run = newRun(demo, 'line-last');
+    for (let d = 1; d < 3; d++) run = playDay(demo, run).run;
+    const last = leaveAtDusk(demo, run, 1);
+    expect(last.afterShift.ledger.at(-1)?.waiting).toBeUndefined();
+    expect(last.afterShift.waiting).toBeUndefined();
+  });
+
+  it('brings the same souls to the same places from a saved morning, and its accounts add up', () => {
+    const { run } = leaveAtDusk(demo, newRun(demo, 'line-save'), 1);
+    const env = envOf(demo, run);
+    const saved: RunState = JSON.parse(JSON.stringify(run));
+    expect(campaignQueue(saved, env)).toEqual(campaignQueue(run, env));
+    // Standing now is every audit's columns added up: mistakes, story, the appeal and the line.
+    const next = playDay(demo, run).afterShift;
+    for (const f of ['odin', 'freyja', 'hel', 'loki', 'clerk'] as const) {
+      const sum = next.ledger.reduce(
+        (n, l) =>
+          n + (l.standing[f] ?? 0) + (l.story?.[f] ?? 0) + (l.appeal?.standing[f] ?? 0) + (l.waiting?.standing[f] ?? 0),
+        0,
+      );
+      expect(next.standing[f], f).toBe(sum);
+    }
   });
 });

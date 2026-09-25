@@ -1,4 +1,4 @@
-import { reachableEndings } from '@cots/engine';
+import { FACTIONS, reachableEndings } from '@cots/engine';
 import { describe, expect, it } from 'vitest';
 import { JUDGING, type Judging, type NightStrategy, simulateCampaign, simulateRun, storyPolicy } from './campaign-sim';
 import { loadContent, loadScenes } from './content';
@@ -31,6 +31,29 @@ describe('the campaign economy', () => {
   it('never demotes a novice during the demo’s three days', () => {
     const [r] = simulateCampaign(loadContent('web-demo'), 60, [bot('novice')], ['payAll']);
     expect(r?.demoted ?? 1).toBeLessThanOrEqual(1);
+  }, 120_000);
+
+  it('lets the sun set on a slow bot’s line (docs/tech-spec.md §41): the souls wait, and the accounts still add up', () => {
+    const content = loadContent('dev-full');
+    for (const seed of ['slow-0', 'slow-1']) {
+      const r = simulateRun(content, seed, bot('competent'), 'payAll', { paceS: 70 });
+      expect(r.ledgerOk).toBe(true);
+      expect(r.leftAtDusk).toBeGreaterThan(0);
+      expect(r.ledger.some((l) => (l.waiting?.carried.length ?? 0) > 0)).toBe(true);
+      // Standing is every audit's columns added up (no scenes here, so nothing waits to be filed).
+      for (const f of FACTIONS) {
+        const sum = r.ledger.reduce(
+          (n, l) =>
+            n +
+            (l.standing[f] ?? 0) +
+            (l.story?.[f] ?? 0) +
+            (l.appeal?.standing[f] ?? 0) +
+            (l.waiting?.standing[f] ?? 0),
+          0,
+        );
+        expect(r.standing[f], `${seed} ${f}`).toBe(sum);
+      }
+    }
   }, 120_000);
 });
 

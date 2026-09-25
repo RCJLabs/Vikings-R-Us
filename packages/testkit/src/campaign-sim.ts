@@ -164,6 +164,9 @@ function playStory(
   return stepRun(run, action, { content, ctx }).state;
 }
 
+/** The sun a bot spends on each soul unless told otherwise: under every day's sun per soul, so none is left. */
+export const BOT_PACE_S = 25;
+
 function shiftActions(
   run: RunState,
   content: Content,
@@ -172,6 +175,7 @@ function shiftActions(
   rng: Rng,
   longNails: number,
   assists?: Assists,
+  paceS = BOT_PACE_S,
 ): RunAction[] {
   const beginShift: RunAction = { t: 'beginShift', at: 0, ...(assists ? { assists } : {}) };
   const begun = stepRun(run, beginShift, { content, ctx }).state;
@@ -179,8 +183,9 @@ function shiftActions(
   const stamps = stampsFor(ctx);
   const actions: RunAction[] = [beginShift];
   let at = 0;
+  // A soul whose turn comes after dusk and its grace is never judged: the shift ends first, with it in line.
   for (const c of cases) {
-    at += 25_000;
+    at += paceS * 1000;
     const right = rng.chance(Math.round(judging.accuracy * 1000), 1000);
     if (right && c.lies.length > 0 && rng.chance(Math.round(judging.catches * 1000), 1000)) {
       const x = solve(c.evidence.fields, ctx).contradictions[0];
@@ -274,6 +279,9 @@ export interface RunResult {
   readonly standing: Readonly<Record<Faction, number>>;
   /** Every day's accounts. */
   readonly ledger: readonly DayLedger[];
+  /** Souls the sun set on in line (docs/tech-spec.md §41), and the living among them, lost in the night. */
+  readonly leftAtDusk: number;
+  readonly diedWaiting: number;
   /** The achievements the run earned, of those asked for (SimOptions.achievements). */
   readonly achievements: readonly string[];
 }
@@ -288,6 +296,11 @@ export interface SimOptions {
   readonly achievements?: readonly AchievementDef[];
   /** Whether the bot hears the morning's appeals (docs/tech-spec.md §40); it does unless told not to. */
   readonly appeals?: boolean;
+  /**
+   * Seconds of sun the bot spends on each soul (BOT_PACE_S unless given). Slower than a day's sun per soul, the
+   * sun sets on the line (docs/tech-spec.md §41).
+   */
+  readonly paceS?: number;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -321,7 +334,7 @@ export function simulateRun(
     const longNails = nails && (!nails.deal || (run.flags.loki_deal ?? 0) > 0) ? nails.perDay : 0;
     let initial: ShiftState | undefined;
     const log: ShiftAction[] = [];
-    for (const a of shiftActions(run, content, ctx, judging, rng, longNails, options.assists)) {
+    for (const a of shiftActions(run, content, ctx, judging, rng, longNails, options.assists, options.paceS)) {
       run = stepRun(run, a, { content, ctx }).state;
       if (a.t === 'beginShift') initial = run.shift ?? undefined;
       else if (a.t === 'shift') log.push(a.action);
@@ -360,6 +373,11 @@ export function simulateRun(
     naglfar: run.naglfar ?? 0,
     standing: run.standing,
     ledger: run.ledger,
+    leftAtDusk: run.ledger.reduce(
+      (n, l) => n + (l.waiting ? l.waiting.carried.length + l.waiting.died.length + (l.waiting.gone?.length ?? 0) : 0),
+      0,
+    ),
+    diedWaiting: run.ledger.reduce((n, l) => n + (l.waiting?.died.length ?? 0), 0),
     achievements: earned,
   };
 }
@@ -378,6 +396,9 @@ export interface PolicyReport {
   readonly meanStoryRings: number;
   readonly meanNaglfar: number;
   readonly meanStanding: Readonly<Record<Faction, number>>;
+  /** Souls left in line at dusk over a run, and the living among them who died waiting (means). */
+  readonly meanLeft: number;
+  readonly meanDied: number;
   readonly endings: Record<string, number>;
   readonly ledgerErrors: number;
 }
@@ -390,6 +411,7 @@ export function simulateCampaign(
   stories: readonly StoryPolicy[] = [PLAIN],
   scenes?: SceneTable,
   assists?: Assists,
+  paceS?: number,
 ): PolicyReport[] {
   const out: PolicyReport[] = [];
   const mean = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0) / Math.max(1, xs.length);
@@ -401,6 +423,7 @@ export function simulateCampaign(
             story,
             ...(scenes ? { scenes } : {}),
             ...(assists ? { assists } : {}),
+            ...(paceS !== undefined ? { paceS } : {}),
           }),
         );
         const endings: Record<string, number> = {};
@@ -421,6 +444,8 @@ export function simulateCampaign(
           meanStanding: Object.fromEntries(
             FACTIONS.map((f) => [f, mean(results.map((r) => r.standing[f] ?? 0))]),
           ) as Record<Faction, number>,
+          meanLeft: mean(results.map((r) => r.leftAtDusk)),
+          meanDied: mean(results.map((r) => r.diedWaiting)),
           endings,
           ledgerErrors: results.filter((r) => !r.ledgerOk).length,
         });
