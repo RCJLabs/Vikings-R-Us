@@ -1,6 +1,14 @@
 import { FACTIONS, reachableEndings } from '@cots/engine';
 import { describe, expect, it } from 'vitest';
-import { JUDGING, type Judging, type NightStrategy, simulateCampaign, simulateRun, storyPolicy } from './campaign-sim';
+import {
+  JUDGING,
+  type Judging,
+  type NightStrategy,
+  type SimOptions,
+  simulateCampaign,
+  simulateRun,
+  storyPolicy,
+} from './campaign-sim';
 import { loadContent, loadScenes } from './content';
 
 const bot = (name: string): Judging => {
@@ -61,18 +69,25 @@ describe('the campaign economy', () => {
 
 // docs/build-plan.md §10: bots must reach every ending. Each ending names a player who should reach
 // it; the first of a few seeds that does is enough.
-const REACH: readonly [ending: string, judging: string, night: NightStrategy, story: string, appeals?: boolean][] = [
+const REACH: readonly [
+  ending: string,
+  judging: string,
+  night: NightStrategy,
+  story: string,
+  options?: Pick<SimOptions, 'appeals' | 'serve'>,
+][] = [
   ['ending.demoted', 'careless', 'payAll', 'plain'],
   ['ending.alone', 'novice', 'neglect', 'plain'],
   ['ending.naglfar', 'expert', 'payAll', 'naglfar'],
   ['ending.rebirth', 'expert', 'payAll', 'rebirth'],
   ['ending.smuggled', 'competent', 'payAll', 'ferry'],
   ['ending.transfer', 'expert', 'payAll', 'transfer'],
-  ['ending.hel', 'expert', 'payAll', 'hel'],
-  ['ending.freyja', 'expert', 'payAll', 'freyja'],
+  // Freyja's and Hel's endings take the story and their requests too (docs/tech-spec.md §42).
+  ['ending.hel', 'expert', 'payAll', 'hel', { serve: 'hel' }],
+  ['ending.freyja', 'expert', 'payAll', 'freyja', { serve: 'freyja' }],
   ['ending.odin', 'expert', 'payAll', 'odin'],
   // A weak host: a novice who lets the appeals stand (righting mistakes sends souls where they belong).
-  ['ending.wolf', 'novice', 'frugal', 'plain', false],
+  ['ending.wolf', 'novice', 'frugal', 'plain', { appeals: false }],
   ['ending.lastStand', 'competent', 'payAll', 'plain'],
 ];
 
@@ -83,14 +98,14 @@ describe('the endings', () => {
     const achievements = content.achievements ?? [];
     const missed: string[] = [];
     const earned = new Set<string>();
-    for (const [ending, judging, night, story, appeals] of REACH) {
+    for (const [ending, judging, night, story, options] of REACH) {
       const seen: string[] = [];
       for (let i = 0; i < 6 && !seen.includes(ending); i++) {
         const r = simulateRun(content, `reach${i}`, bot(judging), night, {
           story: storyPolicy(story),
           scenes,
           achievements,
-          ...(appeals === false ? { appeals } : {}),
+          ...options,
         });
         seen.push(r.ending ?? 'none');
         for (const id of r.achievements) earned.add(id);

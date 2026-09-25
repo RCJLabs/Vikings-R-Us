@@ -1015,9 +1015,9 @@ function FavourGuide({ run }: { run: RunState }) {
   );
 }
 
-/** At the audit, the favour that lightened the day's fines, when there were fines to lighten. */
+/** At the audit, the favours that lightened the day's fines (or waived them), when there were fines to lighten. */
 function FinesEased({ ledger, day }: { ledger: DayLedger; day: number }) {
-  if (ledger.fines === 0) return null;
+  if (ledger.fines === 0 && !ledger.eased) return null;
   const eased = (campaignOf(gameContent).favours ?? []).filter(
     (f) => (ledger.favours ?? []).includes(f.id) && 'finePct' in f.effect,
   );
@@ -1232,7 +1232,7 @@ function Audit() {
               <td class="num">0</td>
             </tr>
           ) : null}
-          {ledger.fines > 0 ? (
+          {ledger.fines > 0 || (ledger.eased ?? 0) > 0 ? (
             <tr>
               <td>{t('ui.audit.fines', { n: ledger.wrong - forgiven })}</td>
               <td class="num">{signed(-ledger.fines)}</td>

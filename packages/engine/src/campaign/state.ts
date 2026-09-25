@@ -120,6 +120,8 @@ export interface DayLedger {
   readonly pay: number;
   readonly bonus: number;
   readonly fines: number;
+  /** Rings of the day's fines a god's favour spared (docs/tech-spec.md §43), when it spared any. */
+  readonly eased?: number;
   /** Standing moved by today's mistakes at the gate (right stamps never move it). */
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
   /**

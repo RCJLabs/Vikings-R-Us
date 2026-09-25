@@ -1,7 +1,7 @@
 import { loadContent } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
-import type { AppealsDef, CampaignDef, Content, Destination, Effect, ScriptedCaseDef } from '../content/types';
+import type { AppealsDef, CampaignDef, Content, Destination, Effect, Faction, ScriptedCaseDef } from '../content/types';
 import { generateDay, tierKnobs } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
 import type { CaseSpec } from '../gen/types';
@@ -1360,6 +1360,56 @@ describe('the gods’ favour (docs/tech-spec.md §43)', () => {
     const without = playDay(full, plain, { wrong: helsOwn(plain), bills: { medicine: [] } });
     expect(careFor(without.afterShift, full).sickNights).toBe(care.sickNights);
     expect(without.run.family[0]?.status).toBe('gone');
+  });
+
+  it('spares the well any chance of falling sick with Hel’s, though nights without a bill paid still make them sick', () => {
+    const hel = favour('fav.hel');
+    const care = campaignOf(full).care;
+    const outlook = (r: RunState, bills: Partial<ReturnType<typeof defaultBills>>) =>
+      nightOutlook(r, { content: full, ctx: runContext(full, r) }, { ...defaultBills(r), ...bills });
+    const favoured = courted({ hel: hel.at });
+    const plain = courted({ hel: hel.at - 1 });
+    // One cold night: a chance of falling sick without her favour, none with it.
+    expect(careFor(favoured, full).sickChance).toBe(0);
+    expect(Math.max(...outlook(plain, { hearth: false }).members.map((n) => n.risk))).toBe(care.sickChance);
+    expect(outlook(favoured, { hearth: false }).members.map((n) => n.risk)).toEqual(favoured.family.map(() => 0));
+    // A second cold night makes them sick all the same.
+    const chilled = { ...favoured, family: favoured.family.map((m) => ({ ...m, cold: care.needNights - 1 })) };
+    expect(outlook(chilled, { hearth: false }).members.map((n) => n.change)).toEqual(chilled.family.map(() => 'sick'));
+    // And the night itself agrees: over many seeds, no one falls sick by chance with her favour.
+    for (let i = 0; i < 12; i++) {
+      const run = { ...favoured, seed: `chance${i}` };
+      const night = playDay(full, run, { bills: { hearth: false } }).run;
+      expect(night.family.every((m) => m.status === 'well')).toBe(true);
+    }
+  });
+
+  it('adds up a god’s favours: at the second mark, a second minute, question and night, and the fines waived', () => {
+    const second = (god: Faction) => {
+      const fs = (campaignOf(full).favours ?? []).filter((f) => f.faction === god).map((f) => f.at);
+      return Math.max(...fs);
+    };
+    const first = courted({ odin: favour('fav.odin').at, freyja: favour('fav.freyja').at });
+    const both = courted({ odin: second('odin'), freyja: second('freyja'), hel: second('hel') });
+    expect(favoursFor(both, full).map((f) => f.id)).toEqual(
+      expect.arrayContaining(['fav.odin', 'fav.odin.more', 'fav.freyja', 'fav.freyja.more', 'fav.hel', 'fav.hel.more']),
+    );
+    expect((shiftMods(both, full).sunS ?? 0) - (shiftMods(first, full).sunS ?? 0)).toBe(60);
+    expect(shiftMods(first, full).freeQuestions).toBe(1);
+    expect(shiftMods(both, full).freeQuestions).toBe(2);
+    expect(careFor(both, full).sickNights).toBe(campaignOf(full).care.sickNights + 2);
+    // The clerk's second waives what his first halves; the audit files the rings spared.
+    const audit = (standing: Partial<RunState['standing']>) =>
+      playDay(full, courted(standing), { wrong: () => true }).afterShift.ledger.at(-1);
+    const halved = audit({ clerk: favour('fav.clerk').at });
+    const waived = audit({ clerk: second('clerk') });
+    const plain = audit({});
+    if (!halved || !waived || !plain) throw new Error('no audit');
+    expect(plain.fines).toBeGreaterThan(0);
+    expect(plain.eased).toBeUndefined();
+    expect((halved.eased ?? 0) + halved.fines).toBe(plain.fines);
+    expect(waived.fines).toBe(0);
+    expect(waived.eased).toBe(plain.fines);
   });
 });
 

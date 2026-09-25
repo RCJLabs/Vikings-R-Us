@@ -225,7 +225,7 @@ function requests(p: PlaytestInput): string[] {
   return ['### Requests', '', ...(lines.length > 0 ? lines : ['None yet.'])];
 }
 
-/** The gods' favours each day held (docs/tech-spec.md §43), as the gate granted them. */
+/** The gods' favours each day held (docs/tech-spec.md §43), as the gate granted them, and the fines they spared. */
 function favours(p: PlaytestInput): string[] {
   const defs = new Map((p.content.campaign?.favours ?? []).map((f) => [f.id, f]));
   const lines = p.run.ledger.flatMap((l) => {
@@ -233,7 +233,8 @@ function favours(p: PlaytestInput): string[] {
       const f = defs.get(id);
       return f ? [`${p.t(factionKey(p.content, f.faction, l.day))}'s favour (${p.t(f.text)})`] : [];
     });
-    return held.length > 0 ? [`- Day ${l.day}: ${held.join('; ')}.`] : [];
+    const spared = l.eased ? [`${l.eased} rings of fines spared`] : [];
+    return held.length > 0 ? [`- Day ${l.day}: ${[...held, ...spared].join('; ')}.`] : [];
   });
   return ['### Favours', '', ...(lines.length > 0 ? lines : ['None yet.'])];
 }
