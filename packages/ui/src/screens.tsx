@@ -353,6 +353,10 @@ export function Title() {
             registry: gameContent.tools.some((tool) => tool.id === 'registry') ? 'yes' : 'no',
           })}
         </span>
+        <span class="pad-only" data-testid="pad-keys">
+          <br />
+          {t('ui.pad.keys')}
+        </span>
       </footer>
       {manifest.lab ? <LabLoader /> : null}
     </main>
@@ -539,7 +543,7 @@ export function Briefing() {
         <button type="button" class="btn btn--primary btn--big" data-testid="begin" ref={focus} onClick={begin}>
           {t('ui.begin')}
         </button>
-        <button type="button" class="btn" onClick={toTitle}>
+        <button type="button" class="btn" data-back onClick={toTitle}>
           {t('ui.back')}
         </button>
       </div>
@@ -578,7 +582,7 @@ export function EndlessOver() {
         <button type="button" class="btn btn--primary" data-testid="endless-again" ref={focus} onClick={startEndless}>
           {t('ui.endless.free')}
         </button>
-        <button type="button" class="btn" data-testid="home" onClick={toTitle}>
+        <button type="button" class="btn" data-testid="home" data-back onClick={toTitle}>
           {t('ui.summary.home')}
         </button>
       </div>
@@ -692,7 +696,7 @@ export function Summary() {
       ) : null}
       {daily ? <TelemetryAsk /> : null}
       <div class="row">
-        <button type="button" class="btn" data-testid="home" onClick={toTitle}>
+        <button type="button" class="btn" data-testid="home" data-back onClick={toTitle}>
           {t('ui.summary.home')}
         </button>
         {feedback ? (

@@ -4,6 +4,7 @@ import { AchievementNote } from './achievements-ui';
 import { initArt } from './art';
 import { setVolume, unlockAudio } from './audio';
 import { campaignUi } from './campaign/lazy';
+import { startGamepad } from './gamepad';
 import { Briefing, EndlessOver, Summary, Title } from './screens';
 import { toTop } from './scroll';
 import { onShiftKey } from './shift/keys';
@@ -24,8 +25,10 @@ export function App() {
     window.addEventListener('keydown', unlockAudio);
     startClock();
     window.addEventListener('keydown', onShiftKey);
+    const stopGamepad = startGamepad();
     return () => {
       stopVolume();
+      stopGamepad();
       window.removeEventListener('keydown', onShiftKey);
       window.removeEventListener('pointerdown', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);

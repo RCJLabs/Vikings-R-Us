@@ -686,7 +686,7 @@ All inputs map to one `Command` union: `focus(dir)`, `activate`, `back`, `flip`,
   - Tab and arrows move focus; Enter/Space activate.
   - F flip, C compare, Q question, 1–7 stamps (once the writ is open), R rulebook.
   - `[` and `]` cycle papers; Esc goes back or pauses.
-- **Gamepad** (polled each frame, with edge detection):
+- **Gamepad** (polled each frame, with edge detection; built after M7 with some changes, §36):
   - A activate, B back, X compare, Y question.
   - LB/RB cycle panels; d-pad or stick moves focus; right stick moves the loupe.
   - Start pauses; View opens the rulebook.
@@ -1160,7 +1160,7 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 
 **Deferred and known limits**
 - Desk papers sit in a fixed grid. Dragging, "Tidy desk" and saved positions are deferred to the M5 UI pass.
-- No gamepad or focus graph yet (M6, with the Deck). Keyboard play uses native focus plus the keymap.
+- No gamepad or focus graph yet (M6, with the Deck). Keyboard play uses native focus plus the keymap. (Controller support came after M7: §36.)
 - Landscape phones get the drawer, not the side sheet from §6.3.
 - Blur-to-pause also fires when a desktop player clicks another window. That's intended.
 - A crash or reload refunds up to 5 s of sun (the heartbeat interval).
@@ -1818,6 +1818,81 @@ Fines are what sink a novice. In a scratch run of 30 seeds, cutting every bill b
 - **Desktop large text.** The desk layout was scanned at 100% only. It wasn't checked at 175%, on a desktop or on the Steam Deck's 1280×800.
 - **Sound.** There are no captions, because every sound has something visible with it (a stamp, a citation, a toast). If music or ambience carries meaning later (phase 9), it will need them.
 - **Target sizes on desktop.** The 44 px rule applies to touch screens. With a mouse, the small buttons stay 36 px and the dropdowns 33 px, above WCAG 2.2's 24 px AA minimum.
+
+## 36. After M7: controller support (phase 4)
+
+**Why.** Steam Deck Verified needs full controller support: every screen playable with the Deck's own controls, and on-screen prompts that match them. The game had no gamepad code; §6.4 planned it for M6.
+
+**The buttons** (the standard gamepad layout; `packages/ui/src/pad.ts` reads it, `gamepad.ts` acts on it):
+
+| Button | Does | Key |
+|---|---|---|
+| D-pad, left stick | Moves the focus to the nearest control that way. Held, it repeats after 400 ms, then every 120 ms | Tab |
+| A | Presses what has the focus. After a stamp, the focus goes to Send | Enter, Space |
+| B | Goes back. On the desk it's Esc: stop comparing, put the stamp sheet away, else pause. In a dialog, its close button. Elsewhere, the nearest open section or back button around the focus, so a confirmation's Cancel comes before the screen's Back | Esc |
+| X | Compare | C |
+| Y | Turn the soul over | F |
+| LT | Ask Skögul for a hint | H |
+| RT | Go to the stamps, at the one chosen (on a phone, it opens the judge sheet) | 1–9 |
+| LB, RB | The paper before or after. On a phone, the tabs; on the desk: the rules, the body and its signs, each of the soul's papers, the stamps, and round again | none |
+| View | The rules, with the focus on them | R |
+| Menu | Pause, and resume | P |
+| Right stick | Scrolls what has the focus, else the phone's open tab, else the page | wheel |
+
+- The buttons send the shift's own keys (`shift/keys.ts`), so the controller and the keyboard can't disagree.
+- Question, the feather, the registry and the later tools have no button of their own. They're buttons on the desk, reached with the d-pad and pressed with A; Question sits beside the contradiction it asks about.
+- §6.4 planned Y for Question. Y turns the soul over instead, since every soul from Day 2 needs turning over and only a caught liar can be questioned.
+- §6.4's focus graph (`useFocusable` in groups) wasn't built. The focus moves over the page's own controls, found when a button is pressed, and papers are marked `data-panel` for LB and RB. Nothing has to register, so a new screen works with no extra code.
+
+**How the focus moves** (`spatial.ts`):
+- **What it can stop at:** what a keyboard can focus, less what's disabled, hidden, inert or in a closed section. A scrolling panel with controls in it isn't a stop, its controls are; one with nothing to press (the rules) is.
+- **Which one:** from the focused control's box, the nearest box that way within 45°. Drifting sideways counts double, and the centres' offset breaks ties. The 45° limit came from play: right from the last stamp, with Send not yet ready, went to the pause button at the top of the screen. Now it stays put.
+- **Scrolling boxes:**
+  - A control in another scrolling box counts only as far as it shows, so the d-pad can't land on a line scrolled out of sight in another paper.
+  - Moving within a scrolling box scrolls it.
+  - A focused paper that scrolls (the rules) scrolls with the d-pad before the focus leaves it.
+  - With nothing further that way, the d-pad scrolls what it's in.
+- **Dialogs:** while a dialog or the stamp sheet is up, the focus stays in it. While a dialog is up, the desk's buttons wait; Menu still resumes a pause.
+- **Nothing focused:** A or the d-pad first only shows the focus. It goes near where it last was on this screen (asking a question takes its button away), else to the screen's main button.
+- **Lists and sliders:** A picks one up, and the d-pad changes it. A puts it down; B puts back what it was.
+
+**Prompts**
+- **Switching:** a button press or a stick sets `data-input="gamepad"` on the page. A real key or tap clears it (the key events the controller sends don't count).
+- **What changes while it's set:**
+  - The key hints hide, and each button shows its own: X on Compare, Y on Turn over, LT on Hint, RT on Judge and beside the stamps, Menu on Pause, View on the rules, LB and RB beside the tabs and the desk's papers, B on every back and close button.
+  - The title's line of keys becomes the controller's.
+  - The focus ring always shows. A browser shows it only after keys.
+  - On a touch screen, "Hold to send" reads "Send", because A sends at once.
+- **How they're drawn:** the prompts are CSS. `data-pad` or `data-back` on a button is drawn by `::after` with empty alt text, so a button's accessible name doesn't change.
+- **Lettering:** the letters are Xbox's, which are also the Deck's.
+
+**Tests**
+- **Unit:** `spatial.test.ts` (6) and `pad.test.ts` (8). They cover the 45° limit, the trigger threshold, the dead zones, merging pads, one press per push, and the repeat timing.
+- **End to end** (`tests/e2e/gamepad.spec.ts`). Before the page loads, its `navigator.getGamepads` is swapped for one that returns a standard pad. The test holds that pad's buttons down frame by frame. The cases:
+  - **On the Deck's 1280×800:**
+    - Daily #41 played start to finish with the controller alone: 8 of 8, then home with B.
+    - Right from the last stamp stays put until Send is ready.
+    - X and B compare; Y turns the soul over; LT gets a hint; Menu and B pause and resume; X waits while paused.
+    - View goes to the rules, and the d-pad and right stick scroll them. RB and LB go round the papers.
+    - The prompts show while the controller is in use, and the keys come back after a click or a key. Compare's accessible name stays "Compare".
+  - **On the phone:**
+    - LB and RB turn the tabs.
+    - RT brings up the stamps, and the focus stays in the sheet. B puts it away.
+    - A stamps and sends, and Send doesn't ask to be held.
+    - The right stick scrolls the title.
+  - **On both:** the text-size slider is picked up, moved, put down, and put back.
+  - **In the full game:** B leaves the campaign's slots, the d-pad reaches New run, and A plays the first scene to its end.
+
+**Known limits**
+- **No real controller or Deck has been tried.** The tests fake a standard pad in the browser.
+  - Established: the W3C Gamepad spec's standard mapping puts A, B, X and Y at buttons 0–3, the shoulders and triggers at 4–7, View and Menu at 8 and 9, and the d-pad at 12–15.
+  - Not checked: that Chromium, under Electron on the Deck and through Steam Input, reports the Deck's controls with that mapping. That's for M6, on a Deck.
+- **Sound.** A browser may not count a controller press as a gesture that lets sound start. If it doesn't, a web page with only a controller in use is silent until a key or a tap. The Steam build's window (M6) should allow sound without a gesture (Electron's `autoplayPolicy: 'no-user-gesture-required'`); the Electron shell is still a stub.
+- **Gestures.** For the same reason, a link pressed with A may be blocked as a pop-up, and choosing a backup file may not open the file chooser. In the Steam build, links should open in the system browser (M6). Restoring a backup is optional, and Steam's on-screen keyboard (Steam + X) can type into the paste box.
+- **Deck Verified checks more than input:** among them text size at 1280×800, the display resolution, and the on-screen keyboard for text entry. They're for M6, on a Deck.
+- **Other controllers.** PlayStation pads show the Xbox letters; Steam Input can present any pad as an Xbox one. Buttons can't be remapped in the game; Steam Input can do that too.
+- **Dragging.** Papers can't be dragged with a controller. They stay in place, as they do for the keyboard.
+- **The primer's wording.** It says "tap the hands" and "tap their claim, then the wound"; with a controller, that's A. Wording that follows the controller is a writing change, left for sign-off.
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

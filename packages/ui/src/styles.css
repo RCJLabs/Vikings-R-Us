@@ -105,6 +105,81 @@ kbd {
   }
 }
 
+/*
+ * A controller in use (docs/tech-spec.md §36): its button prompts take the keys' place, and the focus always
+ * shows (a browser shows it only after keys). A key or a tap puts the keys back. The prompts aren't read out:
+ * a button's name stays its own.
+ */
+.pad,
+.pad-only,
+.pad-legend {
+  display: none;
+}
+
+:root[data-input="gamepad"] kbd,
+:root[data-input="gamepad"] .title__keys {
+  display: none;
+}
+
+:root[data-input="gamepad"] .pad-only {
+  display: inline;
+}
+
+:root[data-input="gamepad"] .pad-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+:root[data-input="gamepad"] [data-pad]::after {
+  content: attr(data-pad) / "";
+}
+
+:root[data-input="gamepad"] [data-back]::after {
+  content: "B" / "";
+}
+
+:root[data-input="gamepad"] .pad,
+:root[data-input="gamepad"] [data-pad]::after,
+:root[data-input="gamepad"] [data-back]::after {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 1.7em;
+  height: 1.7em;
+  padding: 0 0.4em;
+  margin-left: 0.4em;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font:
+    700 0.72em / 1 system-ui,
+    sans-serif;
+  vertical-align: middle;
+}
+
+:root[data-input="gamepad"] .pad-legend .pad,
+:root[data-input="gamepad"] .tabs > .pad {
+  flex: none;
+  align-self: center;
+  margin: 0 0.3rem;
+}
+
+/* The stamp sheet came up with RT; it needn't say so. */
+:root[data-input="gamepad"] .sheet .pad {
+  display: none;
+}
+
+:root[data-input="gamepad"] :focus {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* A list or slider picked up with A: the d-pad changes it until A puts it down. */
+:root[data-input="gamepad"] [data-pad-editing] {
+  outline-style: dashed;
+  outline-color: var(--accent);
+}
+
 /* Buttons */
 .btn {
   font: inherit;
