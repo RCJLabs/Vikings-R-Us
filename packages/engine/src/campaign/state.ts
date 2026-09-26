@@ -248,6 +248,8 @@ export interface RunState {
    * before there were any.
    */
   readonly events?: readonly DayEventAt[];
+  /** The run's weave (docs/tech-spec.md §53), by id, when it was begun woven: its rules read in another order. */
+  readonly weave?: string;
   /** A soul asking to be judged again this morning (docs/tech-spec.md §40). */
   readonly appeal?: Appeal;
   /** How this morning's appeal went, until the day's audit files it in its ledger. */

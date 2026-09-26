@@ -36,6 +36,28 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm sim sweep --seeds 10000 --days ${{ matrix.days }} --prefix nightly
 
+  # Each weave (docs/tech-spec.md §53) from its first day: the days made as above, their souls seen under the weave's
+  # order. What's checked is what the weave changes: every soul dressed for it, and judged rightly by the careful bot.
+  woven:
+    name: generator woven (${{ matrix.weave }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { weave: weave.sea, days: '6-20' }
+          - { weave: weave.clerkLast, days: '10-20' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm sim sweep --seeds 2000 --days ${{ matrix.days }} --prefix nightly --weave ${{ matrix.weave }}
+
   daily:
     runs-on: ubuntu-latest
     timeout-minutes: 30

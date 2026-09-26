@@ -334,6 +334,13 @@ describe('the playtest report', () => {
     expect(report(save)).toContain('### Day events\n\n- Day 5: event.storm.');
   });
 
+  it('says a woven run is woven, and by which weave (docs/tech-spec.md §53)', () => {
+    const plain = played('playtest-plain', 1, right);
+    expect(report(plain)).not.toContain('woven:');
+    const woven: RunSave = { ...plain, mornings: plain.mornings.map((m) => ({ ...m, weave: 'weave.sea' })) };
+    expect(report(woven)).toContain('woven: weave.sea');
+  });
+
   it('tells of each promotion offered and what was made of it, and the days worked at each rank', () => {
     // Days 1-3 judged rightly: Day 4 brings the first offer.
     let save = scenarioSave(content, 'playtest-rank', 4, ENGINE_MAJOR);

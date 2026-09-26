@@ -1,7 +1,6 @@
 import type {
   CampaignDef,
   Content,
-  DayEventDef,
   DeskVisit,
   Destination,
   Economy,
@@ -32,7 +31,16 @@ import {
   stepShift,
   type Verdict,
 } from '../shift/shift';
-import { dayContext, daySpecFor, drawEvents, eventLine, eventOn } from './events';
+import {
+  dayContext,
+  daySpecFor,
+  drawEvents,
+  editLine,
+  eventOn,
+  type LineEdit,
+  lineEdits,
+  unwovenContext,
+} from './events';
 import { dayGrade } from './grade';
 import {
   type Appeal,
@@ -49,6 +57,7 @@ import {
   type RunState,
   stateValue,
 } from './state';
+import { drawWeave, underWeave } from './weave';
 
 /*
  * The campaign's day loop (docs/tech-spec.md §4):
@@ -123,6 +132,8 @@ export interface NewRunOptions {
   readonly oath?: boolean;
   /** The vertical slice: its first days, then the jump to its late day ('fromJump' starts on that day). */
   readonly slice?: 'play' | 'fromJump';
+  /** Begun woven (docs/tech-spec.md §53): the run draws a weave, its rules read in another order. */
+  readonly woven?: boolean;
 }
 
 export function newRun(content: Content, seed: string, opts: NewRunOptions = {}): RunState {
@@ -131,7 +142,12 @@ export function newRun(content: Content, seed: string, opts: NewRunOptions = {})
   if (opts.oath && opts.story) throw new Error('The oath and Story Mode are not played together');
   // The run's day events (docs/tech-spec.md §52), drawn as it begins and kept, so a replayed day has the same.
   const events = drawEvents(content, seed);
-  const run = { ...firstMorning(campaign, seed, content.genVersion, opts), ...(events.length > 0 ? { events } : {}) };
+  const weave = opts.woven ? drawWeave(content, seed) : undefined;
+  const run = {
+    ...firstMorning(campaign, seed, content.genVersion, opts),
+    ...(events.length > 0 ? { events } : {}),
+    ...(weave ? { weave: weave.id } : {}),
+  };
   return opts.slice === 'fromJump' && campaign.slice ? jump(run, campaign.slice) : run;
 }
 
@@ -455,16 +471,24 @@ function hearAppeal(run: RunState, appeal: Appeal, stamped: Destination | null, 
 }
 
 /**
- * A day's own souls (as its event leaves them), with those who waited through the night (docs/tech-spec.md §41)
+ * A day's own souls (as its event and weave leave them), with those who waited through the night (docs/tech-spec.md §41)
  * placed first, after the day's teaching soul, each in the place of one of the day's: one who shares its name if
  * there is one, so no two in the line do, else the last. The line is no longer for them.
  */
-function lineFor(seed: string, ctx: DayCtx, waiting: readonly CaseSpec[], event?: DayEventDef): CaseSpec[] {
-  const own = generateDay(seed, ctx).cases;
+function lineFor(
+  seed: string,
+  ctx: DayCtx,
+  waiting: readonly CaseSpec[],
+  edits: readonly LineEdit[],
+  plain?: DayCtx,
+): CaseSpec[] {
+  // Under a weave (docs/tech-spec.md §53), the day's own souls are made as in any run, then seen under its order.
+  const own = plain ? wovenOwn(seed, plain, ctx) : generateDay(seed, ctx).cases;
   const teach = ctx.spec.queue.teachFirst;
   const front = teach !== undefined && own[0]?.archetype === teach ? 1 : 0;
-  // The day's event (docs/tech-spec.md §52): some of the day's own souls don't come, and its own come among them.
-  const cases = event ? eventLine(seed, ctx, own, front, event) : own.slice();
+  // The day's event and the run's weave (docs/tech-spec.md §52, §53): some of the day's own souls don't come, and
+  // theirs come among the rest.
+  const cases = edits.reduce<CaseSpec[]>((line, edit) => editLine(seed, ctx, line, front, edit), own.slice());
   for (const w of waiting) {
     const same = cases.findIndex((c, i) => i >= front && c.evidence.look.name === w.evidence.look.name);
     const drop = same >= 0 ? same : cases.length - 1;
@@ -475,11 +499,21 @@ function lineFor(seed: string, ctx: DayCtx, waiting: readonly CaseSpec[], event?
 }
 
 /**
+ * The day's own souls, made under its own order (`plain`) and seen under the weave's (`ctx`). One no dressing fits
+ * (the sweeps haven't seen one) gives its place to a soul made under the weave, bound where it was.
+ */
+function wovenOwn(seed: string, plain: DayCtx, ctx: DayCtx): CaseSpec[] {
+  return generateDay(seed, plain).cases.map(
+    (c) => underWeave(c, ctx) ?? generateCase(seed, ctx, c.procIndex, c.expect.dest).case,
+  );
+}
+
+/**
  * The souls a rank adds to the day (docs/tech-spec.md §44), after its own: each made as the day's souls are, at
  * the places after them, bound for a destination drawn from the day's mix on a stream of its own, so the day's
  * own line is the same at any rank. One who'd share a name with a soul already in the line is passed over.
  */
-function extraSouls(seed: string, ctx: DayCtx, n: number, line: readonly CaseSpec[]): CaseSpec[] {
+function extraSouls(seed: string, ctx: DayCtx, n: number, line: readonly CaseSpec[], plain?: DayCtx): CaseSpec[] {
   if (n <= 0 || ctx.spec.queue.script) return [];
   const { mix } = ctx.spec.queue;
   const dests = DESTINATIONS.filter((d) => mix[d] !== undefined && ctx.destinations.has(d));
@@ -493,7 +527,10 @@ function extraSouls(seed: string, ctx: DayCtx, n: number, line: readonly CaseSpe
   const extra: CaseSpec[] = [];
   const first = planDay(seed, ctx).count;
   for (let i = first; extra.length < n && i < first + n * 4; i++) {
-    const c = generateCase(seed, ctx, i, weightedPick(dests, weights, rng)).case;
+    // Under a weave (docs/tech-spec.md §53), made as in any run and seen under its order.
+    const made = generateCase(seed, plain ?? ctx, i, weightedPick(dests, weights, rng)).case;
+    const c = plain ? underWeave(made, ctx) : made;
+    if (!c) continue;
     const name = `${c.evidence.look.name} ${c.evidence.look.patronym}`;
     if (names.has(name)) continue;
     names.add(name);
@@ -510,8 +547,9 @@ function extraSouls(seed: string, ctx: DayCtx, n: number, line: readonly CaseSpe
  * soul made under it comes after every soul made before it.
  */
 export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
-  const line = lineFor(run.seed, env.ctx, run.waiting ?? [], eventOn(run, env.content, run.day));
-  const cases = [...line, ...extraSouls(run.seed, env.ctx, rankOf(run, env.content)?.souls ?? 0, line)];
+  const plain = unwovenContext(env.content, run, run.day);
+  const line = lineFor(run.seed, env.ctx, run.waiting ?? [], lineEdits(run, env.content, run.day), plain);
+  const cases = [...line, ...extraSouls(run.seed, env.ctx, rankOf(run, env.content)?.souls ?? 0, line, plain)];
   const slots = [...(env.ctx.spec.queue.scripted ?? [])].sort((a, b) => a.at - b.at);
   const noon = env.ctx.noon;
   for (const slot of slots) {
@@ -652,7 +690,7 @@ function drawRequests(run: RunState, env: RunEnv, waiting: readonly CaseSpec[]):
   const rng = new Rng(`${run.seed}|requests|${day}`);
   if (!rng.chance(def.chance, 100)) return [];
   const ctx = dayContext(env.content, run, day);
-  const line = lineFor(run.seed, ctx, waiting, eventOn(run, env.content, day));
+  const line = lineFor(run.seed, ctx, waiting, lineEdits(run, env.content, day), unwovenContext(env.content, run, day));
   const held = (dest: Destination) => line.filter((c) => c.expect.dest === dest).length;
   const open = def.list.filter(
     (r) =>

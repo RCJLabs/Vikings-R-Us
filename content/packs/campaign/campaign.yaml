@@ -55,6 +55,31 @@ promotion:
   ranks:
     - { id: rank.second, name: rank.second, text: rank.second.text, souls: 2, warnings: -1, wage: 1, tithe: 20 }
     - { id: rank.first, name: rank.first, text: rank.first.text, souls: 4, warnings: -2, wage: 2, tithe: 45 }
+# The Norns' weave (docs/tech-spec.md §53): once a run has reached one of these endings on the device, a new run can
+# be begun woven. It draws one weave from its seed: the same rules, one of them read at another place in the Order
+# of Judgment, so where two rules both hold, the other decides. The morning of the first day it changes says so, and
+# the rulebook reads in its order. DRAFT text.
+weaving:
+  after: [ending.naglfar, ending.rebirth, ending.smuggled, ending.transfer, ending.hel, ending.freyja, ending.odin, ending.wolf, ending.lastStand]
+  # Each weave also brings two souls a day, from its first, that both of the rules it reorders claim, in place of two
+  # of the day's own: without them, it would decide one soul in thirty or fewer.
+  weaves:
+    # Rán's rule before the registry's and the clerk's: drowned outlaws (from Day 6) and the drowned baptized
+    # (from Day 10) are hers.
+    - id: weave.sea
+      name: weave.sea
+      text: weave.sea.text
+      order: { rule.ran: 150 }
+      souls: [{ kind: arch.baptized, to: [RAN], n: 2, since: 10 }]
+    # The clerk's rule after every hall's but Hel's: the baptized are his only when nothing else claims them, so a
+    # baptized warrior who fell well is Odin's or Freyja's, and one who drowned is Rán's (from Day 10).
+    - id: weave.clerkLast
+      name: weave.clerkLast
+      text: weave.clerkLast.text
+      order: { rule.transfer: 900 }
+      souls:
+        - { kind: arch.baptized, to: [VALHALLA, FOLKVANGR], n: 1 }
+        - { kind: arch.baptized, to: [RAN], n: 1 }
 # Day events (docs/tech-spec.md §52): each run draws three as it begins, from its seed, on three of Days 4-18,
 # never two days running (nor on a day with a noon decree). An event changes the day's line (the last of its own
 # souls don't come, and the event's come among the rest), its sun, and that night's bills and sickness; never the

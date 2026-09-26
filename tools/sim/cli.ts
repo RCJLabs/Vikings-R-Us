@@ -1,8 +1,8 @@
 /**
  * Generator sweeps and campaign simulations (docs/tech-spec.md §9-10).
- *   pnpm sim sweep [--seeds 200] [--days 1-11] [--prefix sweep] [--no-timing]   (default: every day with a spec)
+ *   pnpm sim sweep [--seeds 200] [--days 1-11] [--prefix sweep] [--no-timing] [--weave id]   (default: every day with a spec)
  *   pnpm sim sweep --daily [--seeds 200]      Dailies #1..#seeds
- *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all] [--no-fines] [--pace 25] [--serve freyja] [--promote] [--bribes]
+ *   pnpm sim campaign [--seeds 200] [--target dev-full|web-demo] [--story plain,ferry,…|all] [--no-fines] [--pace 25] [--serve freyja] [--promote] [--bribes] [--weave id]
  *     Bots play the target's scenes with each story policy (plain by default; see STORY_POLICIES);
  *     --no-fines plays every shift with that assist on; --pace sets the seconds of sun a bot spends on each
  *     soul (25 by default, when the sun never sets on the line), and adds the souls left at dusk; --serve has bots
@@ -42,6 +42,7 @@ if (cmd === 'campaign') {
   const serve = process.argv.includes('--serve') ? (arg('serve', 'freyja') as Faction) : undefined;
   const promote = process.argv.includes('--promote') ? true : undefined;
   const bribes = process.argv.includes('--bribes');
+  const weave = process.argv.includes('--weave') ? arg('weave', '') : undefined;
   const reports = simulateCampaign(
     loadContent(target),
     seeds,
@@ -54,9 +55,10 @@ if (cmd === 'campaign') {
     serve,
     promote,
     bribes,
+    weave,
   );
   console.log(
-    `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}${pace !== undefined ? `, ${pace}s a soul` : ''}${serve ? `, serving ${serve}` : ''}${promote ? ', taking promotions' : ''}${bribes ? ', taking bribes' : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
+    `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}${pace !== undefined ? `, ${pace}s a soul` : ''}${serve ? `, serving ${serve}` : ''}${promote ? ', taking promotions' : ''}${bribes ? ', taking bribes' : ''}${weave ? `, woven: ${weave}` : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
   );
   console.log(
     `judging    night          story      demoted  family lost  rings (mean / min)  upgrades   host${pace !== undefined ? '  left / died   Hel  Odin' : ''}${serve ? '  met/asked  Odin Freyja   Hel Clerk' : ''}${promote ? '  days at rank' : ''}  endings`,
@@ -108,7 +110,7 @@ if (cmd === 'campaign') {
 }
 if (cmd !== 'sweep') {
   console.error(
-    'Usage: pnpm sim sweep [--seeds N] [--days 1-11 | --daily] [--prefix P] [--no-timing] | pnpm sim campaign [--seeds N] [--story plain,…|all]',
+    'Usage: pnpm sim sweep [--seeds N] [--days 1-11 | --daily] [--prefix P] [--no-timing] [--weave id] | pnpm sim campaign [--seeds N] [--story plain,…|all] [--weave id]',
   );
   process.exit(2);
 }
@@ -122,9 +124,18 @@ const seeds = Number(arg('seeds', '200'));
 const timing = !process.argv.includes('--no-timing');
 const daily = process.argv.includes('--daily');
 
+// Under a weave's order (docs/tech-spec.md §53): the same days, their rules read as the weave reads them.
+const weaveId = process.argv.includes('--weave') ? arg('weave', '') : undefined;
+const full = loadContent('dev-full');
+const weave = full.campaign?.weaving?.weaves.find((w) => w.id === weaveId);
+if (weaveId && !weave) {
+  console.error(`sweep: no weave "${weaveId}"`);
+  process.exit(2);
+}
 const started = performance.now();
 const r = sweep({
-  content: daily ? loadDailyContent() : loadContent('dev-full'),
+  content: daily ? loadDailyContent() : full,
+  ...(weave ? { weave } : {}),
   days,
   daily,
   seeds,
@@ -134,13 +145,14 @@ const r = sweep({
 const pct = (a: number, b: number) => (b ? ((a * 100) / b).toFixed(1) : '0.0');
 
 console.log(
-  `sweep: ${daily ? `Dailies #1-#${seeds}` : `${seeds} seeds x days ${days.join(',')}`} = ${r.cases} souls in ${((performance.now() - started) / 1000).toFixed(1)}s`,
+  `sweep: ${daily ? `Dailies #1-#${seeds}` : `${seeds} seeds x days ${days.join(',')}`}${weave ? `, woven: ${weave.id}` : ''} = ${r.cases} souls in ${((performance.now() - started) / 1000).toFixed(1)}s`,
 );
 console.log(
   `attempts: mean ${r.attemptsMean.toFixed(2)}, p99 ${r.attemptsP99}; fallbacks ${r.fallbacks} (${pct(r.fallbacks, r.cases)}%)`,
 );
 console.log(`generation: mean ${r.genMsMean.toFixed(3)} ms, p99 ${r.genMsP99.toFixed(3)} ms`);
 console.log(`mix within spec: ${pct(r.mix.ok, r.mix.days)}% of days`);
+if (weave) console.log(`undressed under the weave: ${r.undressed} (${pct(r.undressed, r.cases)}%)`);
 console.log(
   `bots: ideal ${pct(r.ideal.correct, r.ideal.total)}%, trusting ${pct(r.trusting.correct, r.trusting.total)}% (max ${THRESHOLDS.maxTrustingPct}%)`,
 );

@@ -10,6 +10,9 @@ import {
   solve,
   soulCtx,
   teachFor,
+  underWeave,
+  type WeaveDef,
+  wovenContent,
 } from '@cots/engine';
 
 export interface SweepOptions {
@@ -21,6 +24,12 @@ export interface SweepOptions {
   readonly daily?: boolean;
   /** Clock for per-case timing (the engine itself never reads one). */
   readonly now?: () => number;
+  /**
+   * A weave (docs/tech-spec.md §53): each day made as usual, then each soul seen under the weave's order, as a woven
+   * run sees it. The bots and the destinations are the woven souls'; the generator's figures and the day's mix (its
+   * plan) are the souls as made.
+   */
+  readonly weave?: WeaveDef;
 }
 
 export interface SweepReport {
@@ -38,6 +47,8 @@ export interface SweepReport {
   readonly trustingByDay: Record<string, { correct: number; total: number }>;
   readonly rejects: Record<string, number>;
   readonly destinations: Record<string, number>;
+  /** Under a weave, souls no dressing fitted under its order (a woven run makes another in their place). */
+  readonly undressed: number;
 }
 
 const percentile = (xs: number[], p: number): number => {
@@ -61,10 +72,12 @@ export function sweep(opts: SweepOptions): SweepReport {
   let mixDays = 0;
   let idealOk = 0;
   let trustOk = 0;
+  let undressed = 0;
+  const woven = opts.weave ? wovenContent(opts.content, opts.weave) : undefined;
 
   const daily = opts.content.daily;
   if (opts.daily && !daily) throw new Error('This content has no Daily spec');
-  const runs: { label: string; make: (s: number) => { seed: string; ctx: DayCtx } }[] =
+  const runs: { label: string; make: (s: number) => { seed: string; ctx: DayCtx; seen?: DayCtx } }[] =
     opts.daily && daily
       ? [
           {
@@ -79,7 +92,8 @@ export function sweep(opts: SweepOptions): SweepReport {
           label: String(day),
           make: (s) => {
             const seed = `${opts.seedPrefix ?? 'sweep'}-${s}`;
-            return { seed, ctx: createDayContext(opts.content, day, seed) };
+            const ctx = createDayContext(opts.content, day, seed);
+            return { seed, ctx, ...(woven ? { seen: createDayContext(woven, day, seed) } : {}) };
           },
         }));
 
@@ -87,7 +101,7 @@ export function sweep(opts: SweepOptions): SweepReport {
     const byDay = { correct: 0, total: 0 };
     trustingByDay[label] = byDay;
     for (let s = 0; s < opts.seeds; s++) {
-      const { seed, ctx } = make(s);
+      const { seed, ctx, seen } = make(s);
       const plan = planDay(seed, ctx);
       const counts: Partial<Record<Destination, number>> = {};
       plan.targets.forEach((target, i) => {
@@ -116,12 +130,18 @@ export function sweep(opts: SweepOptions): SweepReport {
           perDayArchetype[key] = row;
           if (a.code !== 'ACCEPTED') rejects[a.code] = (rejects[a.code] ?? 0) + 1;
         }
-        const c = g.case;
+        // The day's mix is the generator's plan, so it's counted as made; a weave then moves some souls on purpose.
+        counts[g.case.expect.dest] = (counts[g.case.expect.dest] ?? 0) + 1;
+        // Under a weave, the soul as a woven run sees it: dressed for the weave's order.
+        const c = seen ? underWeave(g.case, seen) : g.case;
+        if (!c) {
+          undressed++;
+          return;
+        }
         destinations[c.expect.dest] = (destinations[c.expect.dest] ?? 0) + 1;
-        counts[c.expect.dest] = (counts[c.expect.dest] ?? 0) + 1;
 
         // Each soul read under the rules it's judged by (after a noon decree, the decree's).
-        const cx = soulCtx(ctx, c);
+        const cx = soulCtx(seen ?? ctx, c);
         const ideal = solve(c.evidence.fields, cx, { reveals: revealsOf(c.lies) }).judgment;
         if (ideal.kind === 'determined' && ideal.dest === c.expect.dest) idealOk++;
         const trusting = solve(c.evidence.fields, cx, { trustTestimony: true }).judgment;
@@ -152,8 +172,9 @@ export function sweep(opts: SweepOptions): SweepReport {
     genMsMean: meanOf(times),
     genMsP99: percentile(times, 99),
     mix: { ok: mixOk, days: mixDays },
-    ideal: { correct: idealOk, total: cases },
-    trusting: { correct: trustOk, total: cases },
+    ideal: { correct: idealOk, total: cases - undressed },
+    trusting: { correct: trustOk, total: cases - undressed },
+    undressed,
     trustingByDay,
     rejects,
     destinations,
@@ -187,11 +208,14 @@ export function checkThresholds(r: SweepReport, opts: { timing: boolean } = { ti
   if (r.attemptsP99 > THRESHOLDS.maxAttemptsP99) out.push(`p99 attempts ${r.attemptsP99}`);
   const fb = r.cases ? (r.fallbacks * 100) / r.cases : 0;
   if (fb > THRESHOLDS.maxFallbackPct) out.push(`fallback rate ${fb.toFixed(3)}%`);
+  // Under a weave (docs/tech-spec.md §53), a soul no dressing fits is held to the fallbacks' rate.
+  const undressed = r.cases ? (r.undressed * 100) / r.cases : 0;
+  if (undressed > THRESHOLDS.maxFallbackPct) out.push(`undressed under the weave ${undressed.toFixed(3)}%`);
   if (opts.timing && r.genMsP99 > THRESHOLDS.maxGenMsP99) out.push(`p99 generation ${r.genMsP99.toFixed(2)} ms`);
   const mix = r.mix.days ? (r.mix.ok * 100) / r.mix.days : 100;
   if (mix < THRESHOLDS.minMixPct) out.push(`destination mix within spec on only ${mix.toFixed(1)}% of days`);
   if (r.ideal.correct !== r.ideal.total) out.push(`ideal bot ${r.ideal.correct}/${r.ideal.total}`);
-  const trust = r.cases ? (r.trusting.correct * 100) / r.cases : 0;
+  const trust = r.trusting.total ? (r.trusting.correct * 100) / r.trusting.total : 0;
   if (trust > THRESHOLDS.maxTrustingPct) out.push(`trusting bot scores ${trust.toFixed(1)}%`);
   return out;
 }

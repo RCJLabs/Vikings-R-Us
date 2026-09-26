@@ -4,6 +4,7 @@ import type { CaseSpec } from '../gen/types';
 import { createDayContext, type DayCtx } from '../logic/context';
 import { Rng } from '../rng/rng';
 import type { DayEventAt, RunState } from './state';
+import { weaveOf, weaveSoulsOn, wovenContent } from './weave';
 
 /*
  * Day events (docs/tech-spec.md §52): a storm, a sickness, a battle, a feast. A run draws a few from its seed as it
@@ -83,29 +84,51 @@ export function eventLineChange(ev: DayEventDef, day: number): number {
   return eventSoulsOn(ev, day).reduce((n, s) => n + s.n, 0) - (ev.fewer ?? 0);
 }
 
-/** Where event souls start in the procedural index, past the day's own and any a rank adds. */
-const EVENT_INDEX = 64;
+/**
+ * A change to a day's line (docs/tech-spec.md §52, §53): the last `fewer` of the day's own souls don't come, and
+ * `souls` come among the rest.
+ */
+export interface LineEdit {
+  /** Whose it is (`event|<id>` or `weave|<id>`): its places are drawn on a stream of its own. */
+  readonly id: string;
+  readonly fewer: number;
+  readonly souls: readonly EventSouls[];
+  /** Each soul it brings takes the place of one more of the day's own, so the line is as long (a weave's). */
+  readonly swap?: boolean;
+  /** Where its souls start in the procedural index, past the day's own, a rank's and each other edit's. */
+  readonly index: number;
+}
+
+/** The changes the run makes to `day`'s line: its day event's, then its weave's (in place of as many of its own). */
+export function lineEdits(run: Pick<RunState, 'events' | 'weave'>, content: Content, day: number): LineEdit[] {
+  const ev = eventOn(run, content, day);
+  const weave = weaveOf(run, content);
+  const woven = weave ? weaveSoulsOn(content, weave, day) : [];
+  return [
+    ...(ev ? [{ id: `event|${ev.id}`, fewer: ev.fewer ?? 0, souls: eventSoulsOn(ev, day), index: 64 }] : []),
+    ...(weave && woven.length > 0 ? [{ id: `weave|${weave.id}`, fewer: 0, souls: woven, index: 128, swap: true }] : []),
+  ];
+}
 
 /**
- * The day's own line (`cases`, its teaching soul first when `front` is 1) as an event leaves it: the last `fewer`
- * of its own souls don't come (never the teaching soul), and the event's souls come at places drawn on a stream of
- * its own, after the teaching soul. Each is made as the day's souls are, of its kind if the generator can, bound for
- * the first destination in `to` that kind reaches today; one who'd share a name with a soul in the line is passed
- * over for another. The day's own souls are the same with the event or without it.
+ * A day's own line (`cases`, its teaching soul first when `front` is 1) as an edit leaves it: the last `fewer` of
+ * its souls don't come (and as many more as it brings, for a swap), never the teaching soul, and the edit's souls come
+ * at places drawn on a stream of its own, after the teaching soul. Each is made as the day's souls are, of its kind if
+ * the generator can, bound for the first destination in `to` that kind reaches today; one who'd share a name with a
+ * soul in the day's line is passed over for another. The souls that stay are the same with the edit or without it.
  */
-export function eventLine(
+export function editLine(
   seed: string,
   ctx: DayCtx,
   cases: readonly CaseSpec[],
   front: number,
-  ev: DayEventDef,
+  edit: LineEdit,
 ): CaseSpec[] {
-  const line = cases.slice(0, Math.max(front + 1, cases.length - (ev.fewer ?? 0)));
   const reach = reachOf(ctx);
-  const names = new Set(line.map((c) => `${c.evidence.look.name} ${c.evidence.look.patronym}`));
-  const rng = new Rng(`${ctx.content.genVersion}|${seed}|${ctx.day}|event|${ev.id}`);
-  let i = planDay(seed, ctx).count + EVENT_INDEX;
-  for (const s of eventSoulsOn(ev, ctx.day)) {
+  const names = new Set(cases.map((c) => `${c.evidence.look.name} ${c.evidence.look.patronym}`));
+  const brought: CaseSpec[] = [];
+  let i = planDay(seed, ctx).count + edit.index;
+  for (const s of edit.souls) {
     const to = s.to.find((d) => reach.get(s.kind)?.has(d) && ctx.destinations.has(d));
     if (!to) continue;
     for (let k = 0; k < s.n; k++) {
@@ -114,12 +137,16 @@ export function eventLine(
         const name = `${c.evidence.look.name} ${c.evidence.look.patronym}`;
         if (names.has(name)) continue;
         names.add(name);
-        line.splice(rng.int(front, line.length), 0, c);
+        brought.push(c);
         i++;
         break;
       }
     }
   }
+  const drop = edit.fewer + (edit.swap ? brought.length : 0);
+  const line = cases.slice(0, Math.max(front + 1, cases.length - drop));
+  const rng = new Rng(`${ctx.content.genVersion}|${seed}|${ctx.day}|${edit.id}`);
+  for (const c of brought) line.splice(rng.int(front, line.length), 0, c);
   return line;
 }
 
@@ -130,7 +157,24 @@ export function daySpecFor(content: Content, run: Pick<RunState, 'events'>, day:
   return spec && ev ? withEvent(spec, ev) : spec;
 }
 
-/** The context the run plays `day` in, its event included (`runContext` is today's). */
-export function dayContext(content: Content, run: Pick<RunState, 'seed' | 'events'>, day: number): DayCtx {
-  return createDayContext(content, day, run.seed, daySpecFor(content, run, day));
+/**
+ * The context `day` has without the run's weave (docs/tech-spec.md §53), which its own souls are made in before
+ * they're seen under the weave; undefined for a run that isn't woven.
+ */
+export function unwovenContext(
+  content: Content,
+  run: Pick<RunState, 'seed' | 'events' | 'weave'>,
+  day: number,
+): DayCtx | undefined {
+  if (!run.weave) return undefined;
+  const { weave: _, ...plain } = run;
+  return dayContext(content, plain, day);
+}
+
+/**
+ * The context the run plays `day` in, its event included, and its rules in the order of its weave (docs/tech-spec.md
+ * §53) if it was begun woven (`runContext` is today's).
+ */
+export function dayContext(content: Content, run: Pick<RunState, 'seed' | 'events' | 'weave'>, day: number): DayCtx {
+  return createDayContext(wovenContent(content, weaveOf(run, content)), day, run.seed, daySpecFor(content, run, day));
 }

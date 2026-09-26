@@ -483,6 +483,19 @@ const SliceSchema = z.strictObject({
   }),
 });
 
+/** Souls a day event or a weave brings (docs/tech-spec.md §52, §53). */
+const EventSoulsSchema = z
+  .array(
+    z.strictObject({
+      kind: Id,
+      to: z.array(DestinationSchema).min(1),
+      n: Int.min(1),
+      since: Day.optional(),
+      until: Day.optional(),
+    }),
+  )
+  .optional();
+
 export const CampaignPartSchema = z.strictObject({
   slice: SliceSchema.optional(),
   lastDay: Day.optional(),
@@ -575,6 +588,17 @@ export const CampaignPartSchema = z.strictObject({
         .min(1),
     })
     .optional(),
+  // The Norns' weave (docs/tech-spec.md §53): the same rules in another order, for a run begun woven.
+  weaving: z
+    .strictObject({
+      after: z.array(Id).min(1),
+      weaves: z
+        .array(
+          z.strictObject({ id: Id, name: Key, text: Key, order: z.record(Id, Int.min(1)), souls: EventSoulsSchema }),
+        )
+        .min(1),
+    })
+    .optional(),
   // Day events (docs/tech-spec.md §52): the day's line, its sun and that night's bills; never its rules.
   events: z
     .strictObject({
@@ -590,17 +614,7 @@ export const CampaignPartSchema = z.strictObject({
             text: Key,
             sunPct: Int.min(50).max(150).optional(),
             fewer: Int.min(1).optional(),
-            souls: z
-              .array(
-                z.strictObject({
-                  kind: Id,
-                  to: z.array(DestinationSchema).min(1),
-                  n: Int.min(1),
-                  since: Day.optional(),
-                  until: Day.optional(),
-                }),
-              )
-              .optional(),
+            souls: EventSoulsSchema,
             costsPct: z.partialRecord(z.enum(['hearth', 'food', 'medicine']), Int.min(0).max(300)).optional(),
             sickChance: Percent.optional(),
           }),

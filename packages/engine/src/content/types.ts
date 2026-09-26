@@ -154,6 +154,8 @@ export interface RuleDef {
    * mechanic adds to what the rule asks (Valhalla's rule adds "never fled" the day turning over is taught).
    */
   readonly texts?: readonly { readonly since: number; readonly text: string }[];
+  /** Read at another place than its own, by the run's weave (docs/tech-spec.md §53). Never set in content. */
+  readonly woven?: true;
 }
 
 /** How the rulebook words a rule on `day`: its latest wording by then. */
@@ -690,6 +692,34 @@ export interface CampaignDef {
   readonly promotion?: PromotionDef;
   /** Day events a run draws as it begins (docs/tech-spec.md §52); none without it. */
   readonly events?: DayEventsDef;
+  /** The Norns' weave (docs/tech-spec.md §53): the rules in another order, for a run begun woven; none without it. */
+  readonly weaving?: WeavingDef;
+}
+
+/**
+ * The Norns' weave (docs/tech-spec.md §53): once one of the endings `after` has been reached on the device, a new run
+ * can be begun woven. It draws one of `weaves` from its seed.
+ */
+export interface WeavingDef {
+  readonly after: readonly string[];
+  readonly weaves: readonly WeaveDef[];
+}
+
+/**
+ * A weave: the same rules in another order in the Order of Judgment. `order` gives rules their new places (lower is
+ * read first); the rest keep theirs. It changes a day once two rules in force that day come in another order.
+ */
+export interface WeaveDef {
+  readonly id: string;
+  /** Its name, and what the morning it first changes a day says of it (string keys). */
+  readonly name: string;
+  readonly text: string;
+  readonly order: Readonly<Record<string, number>>;
+  /**
+   * Souls it brings to each day from its first, in place of as many of the day's own: souls both of the rules it
+   * reorders claim, which it decides (as a day event's souls come, docs/tech-spec.md §52).
+   */
+  readonly souls?: readonly EventSouls[];
 }
 
 /**

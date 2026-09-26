@@ -98,3 +98,33 @@ describe('day events, as content', () => {
     expect(storm((e) => ({ ...e, fewer: 9 }))).toThrow(/day event event\.storm leaves day \d+ too short a line/);
   }, 60_000);
 });
+
+// docs/tech-spec.md §53.
+describe('the Norns’ weave, as content', () => {
+  type Weaving = NonNullable<CampaignPart['weaving']>;
+  const withWeaving = (change: (w: Weaving) => Weaving) =>
+    compileWith((c) => (c.weaving ? { ...c, weaving: change(c.weaving) } : c));
+  const first = (edit: (w: Weaving['weaves'][number]) => Weaving['weaves'][number]) =>
+    withWeaving((d) => ({ ...d, weaves: d.weaves.map((w, i) => (i === 0 ? edit(w) : w)) }));
+  it('compiles as shipped, and refuses missing words, an unknown ending or rule, and a weave named twice', () => {
+    expect(withWeaving((d) => d)).not.toThrow();
+    expect(first((w) => ({ ...w, name: 'weave.nobody' }))).toThrow(/weave weave\.\w+ uses missing string/);
+    expect(withWeaving((d) => ({ ...d, after: ['ending.nowhere'] }))).toThrow(/opens after "ending\.nowhere"/);
+    expect(first((w) => ({ ...w, order: { 'rule.nothing': 10 } }))).toThrow(/moves unknown rule "rule\.nothing"/);
+    expect(withWeaving((d) => ({ ...d, weaves: [...d.weaves, ...d.weaves.slice(0, 1)] }))).toThrow(
+      /Duplicate weave "weave\.\w+"/,
+    );
+  }, 60_000);
+  it('refuses a weave that changes no day, one that leaves no catch-all last, and souls it can’t bring', () => {
+    // Rán's rule moved to where it already is changes nothing.
+    expect(first((w) => ({ ...w, order: { 'rule.ran': 500 }, souls: [] }))).toThrow(/weave weave\.\w+ changes no day/);
+    // Hel's catch-all read before Valhalla's is no catch-all.
+    expect(first((w) => ({ ...w, order: { 'rule.hel': 650 }, souls: [] }))).toThrow(
+      /the last rule read doesn't always apply/,
+    );
+    // Drowned raiders are never Odin's.
+    expect(first((w) => ({ ...w, souls: [{ kind: 'arch.drowned_raider', to: ['VALHALLA'], n: 1 }] }))).toThrow(
+      /has no arch\.drowned_raider bound for VALHALLA/,
+    );
+  }, 60_000);
+});
