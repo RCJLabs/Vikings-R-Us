@@ -2891,6 +2891,87 @@ Notes on the tables:
   So sun to spare is a tiebreak, not a race.
 - **The words are drafts:** the grades' names and lines, the oath's lines, and Oathsworn.
 
+## 50. After M7: family trouble money can't fix, part 1: a trip home at dawn (gameplay brainstorm, item 6)
+
+**Why.** If you paid the bills, the family was never in danger. Sickness follows only unpaid bills, and no bot had ever lost anyone at home. Players who judge well have rings to spare by midwinter (§49), so trouble that costs rings costs them nothing. The brainstorm asked for trouble money can't fix:
+- Ragna needs the healer at dawn, which means a shorter shift. That's this part.
+- Ulf wants to go raiding, and a neighbour's son turns up in your queue. Those are part 2.
+
+**The mechanic: a trip home at dawn** (`fx: sun`, `RunState.dawnS`, `DayLedger.dawnS`)
+- **A scene can give or take sun** on the next shift the run begins. `# fx: sun -120` is two minutes less.
+  - A night scene's lands on the next day.
+  - A morning scene's lands on that day.
+  - The day's audit files it with the day (`DayLedger.dawnS`) and clears it. A night scene after the audit starts the next one.
+- **The shift takes it with the day's other sun** (`shiftMods`: upgrades, favours, and now this). The gate always keeps two minutes of sun (`MIN_SUN_S`), whatever a trip takes.
+- **Story Mode has no sun,** so a trip costs nothing there.
+- **The player sees it before choosing, and after:**
+  - the option says "(2:00 less sun tomorrow)", or "today" in the morning;
+  - the line after it says so again, like a standing note;
+  - the morning says "You were home at dawn: 2:00 less sun at the gate today.", and its sun line counts it;
+  - the playtest report lists each day's trip under "Home at dawn".
+- **`fx: family X gone`** loses someone at home in a scene: an adult dies, a child goes to relatives, as the night's upkeep does already.
+- **`# beat`**, a scene tag. The game notes what a choice did (standing, and now sun) at the end of its stretch of text. A letter written after a choice made that note land after the letter.
+  - `# beat` on a new part's first line ends the stretch there.
+  - Ink's pointers and visit counts couldn't tell: Continue looks past a line for glue, and ends with no pointer.
+  - Day 9's jarl lines use it too, so Ulf's note comes before them.
+
+**Ragna and the hill (the writing, drafts for your sign-off)**
+- **Night 10**, if Ragna's at home: her letter.
+  - The healer says there's a hill past the falls that mends any woman who climbs it, however long she's been ill: Lyfjaberg.
+  - She won't climb it in the snow, and won't ask to be carried.
+  - Ulf, or Asa if Ulf's away north, adds that medicine won't mend it, only the hill, and that it only gets worse.
+  - The options:
+    - **Fly her up at dawn:** `ragna_hill`, and Day 11 loses 2:00.
+    - **Send the healer silver instead:** it comes back ("The hill doesn't come down."), and the choice stands.
+    - **Let her rest until the thaw:** `ragna_waits`. There's no thaw coming, and the line knows it.
+- **Night 13, if she's resting:** the last chance, in Ulf's hand or a neighbour's (Bera): "the hill at first light, or she won't see another."
+  - **Fly her up:** `ragna_hill` = 2, and Day 14 loses 3:00. It's a hard day to be short: Hel's hall closes that morning.
+  - **"You can't. Not now.":** `ragna_refused`, and she dies in the night (`fx: family mother gone`).
+- **The mornings she's carried up** (Days 11 and 14) open with it: nine women on the hill, and one of them, Eir, takes her hands.
+- **If she died,** Móðguðr says so on Night 14: she crossed the bridge that morning and asked the way to her father's bench, and Hel, who is letting nobody in, let her in.
+- **If she climbed,** her letter on Night 15 says her chest is quiet.
+
+**Lore (established):**
+- In *Fjölsvinnsmál*, the hill Lyfjaberg heals every woman who climbs it, "though she have a year's sickness".
+- Eir is one of the maidens who sit on it.
+- Snorri names Eir the best of physicians.
+
+The poem survives only in late paper manuscripts, not the Codex Regius. Wings for a Valkyrie's horse are the game's own.
+
+**What it costs.** Day 11 has 12:00 of sun for 12–14 souls, 51–60 seconds each. Two minutes less leaves 43–50. Day 14's 3:00 takes 13:40 to 10:40, for 13–15 souls. Worked out, not measured:
+- The bots work at 25 seconds a soul, so the sim can't feel it.
+- A player who needs about 50 seconds a soul leaves one or two souls at dusk.
+- An expert chasing a grade (§49) or a clean day for promotion (§44) feels it most. Rings can't buy it back.
+
+**The bots** give the time: a trip home scores nothing to them, and losing someone at home scores −200. So every story policy flies her up on Night 10, and no ending the sims reach changes.
+
+**Tests**
+- **Story:**
+  - `fx: sun` and `fx: family X gone` parse;
+  - a `# beat` keeps a choice's note with its own part.
+- **Engine (3):**
+  - a trip lands on the next shift (the night's tomorrow, the morning's today), is filed by that day's audit, and doesn't carry on;
+  - the gate keeps `MIN_SUN_S`;
+  - someone at home can be lost: an adult dies, a child goes to relatives.
+- **Scenes and sim (4):**
+  - Night 10's options, with the silver sent back;
+  - the last chance on Night 13, and her death if refused, which Móðguðr tells;
+  - the mornings and Night 15 remember it;
+  - an expert bot's run gives Day 11 its two minutes, and loses no one.
+- **Report (1).**
+- **e2e on the full game** (phone and desktop), from a Night 10 save made in Node (`scenarioSave(..., 'night')`):
+  - the option's note;
+  - the silver sent back;
+  - the note after the choice;
+  - the morning's line, and its note and sun line;
+  - the sun at the desk;
+  - accessibility scans.
+
+**Known limits**
+- **Death is the price of refusing twice.** It's said plainly both times, and it's the design's point: trouble money can't fix. It's also the heaviest consequence any single choice has, so it's yours to keep or soften. A softer version: she goes to her sister's (`gone`, left).
+- **The last chance costs more because Day 14 is hard,** not because anything in the game computes it. Both prices are guesses for playtests.
+- **Bots always go,** so the sims say nothing about runs where she dies.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

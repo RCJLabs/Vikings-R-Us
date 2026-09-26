@@ -1,8 +1,14 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
+EXTERNAL flag(name)
 At dusk a young woman comes up the path from below, against the flow of the dead, walking the way people walk on ice.
 She is very pale and very tidy, and her hair is braided so tight it looks painful. She stops at your table and waits to be noticed, which you have never seen anyone at the gate do.
 "I'm Móðguðr. I keep the bridge to Hel's hall. The one roofed with gold, over the river." # speaker: modgudr
+// If Ragna didn't climb the hill (docs/tech-spec.md §50).
+{ flag("ragna_refused"):
+  "Your mother crossed my bridge this morning. She asked the way to her father's bench, and whether anyone in the hall needed feeding." # speaker: modgudr
+  "My lady is letting nobody in. She let her in." # speaker: modgudr
+}
 "The bridge rings when the dead cross it. It hasn't stopped ringing since the first winter. My lady would like it to stop for a while." # speaker: modgudr
 "She isn't full. She's tired. The gods send her everyone who didn't die the way they like, and then they sing about the ones who did." # speaker: modgudr
 "She'll open her doors again when someone at this gate says out loud that the quiet dead count." # speaker: modgudr

@@ -398,7 +398,9 @@ export const EffectSchema: z.ZodType<Effect> = z.union([
   z.strictObject({ rings: Int }),
   z.strictObject({ standing: FactionSchema, by: Int }),
   z.strictObject({ flag: z.string().regex(/^[A-Za-z0-9_]+$/), set: Int.optional(), inc: Int.optional() }),
-  z.strictObject({ family: z.string(), becomes: z.enum(['sick', 'well']) }),
+  z.strictObject({ family: z.string(), becomes: z.enum(['sick', 'well', 'gone']) }),
+  // A trip home at dawn (docs/tech-spec.md §50): never more than ten minutes either way.
+  z.strictObject({ sun: Int.min(-600).max(600) }),
 ]);
 
 const LookSchema = z.strictObject({

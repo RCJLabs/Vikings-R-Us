@@ -1,6 +1,11 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
 EXTERNAL flag(name)
+// Home at dawn (docs/tech-spec.md §50): Ragna carried up the hill before sunrise, at the last chance.
+{ flag("ragna_hill") == 2:
+  You carried your mother up the hill in the dark, with the snow coming sideways, and left her among nine women who smell of sage and smoke. One of them, Eir, didn't ask what had kept you. She just took your mother's hands.
+  The queue is already down the path and out of sight when you land. Skögul doesn't look at the sun. She doesn't need to.
+}
 Today's decree isn't from the quartermaster. It's on a strip of grey hide, the writing is small and cold, and it's signed with a single rune: Hel's.
 "Her hall is full," says Skögul. "She says." # speaker: skogul
 "Anyone who died in bed, of sickness or old age, who'd have gone to her, goes to the clerk now. Everyone else she takes as before: the outlaws, the cowards, the borrowers." # speaker: skogul

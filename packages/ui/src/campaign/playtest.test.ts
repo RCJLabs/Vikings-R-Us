@@ -276,6 +276,30 @@ describe('the playtest report', () => {
     expect(report(played('playtest-favour-none', 1, right))).toContain('### Favours\n\nNone yet.');
   });
 
+  it('lists the sun each day gave to home at dawn (docs/tech-spec.md §50)', () => {
+    expect(report(played('playtest-dawn-none', 1, right))).toContain('### Home at dawn\n\nNone.');
+    // A trip home chosen on Night 1 is Day 2's, and its audit files it.
+    let save = startSave(content, 'playtest-dawn', ENGINE_MAJOR);
+    let run = save.mornings[0] as RunState;
+    const apply = (action: RunAction) => {
+      const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
+      const next = stepRun(run, action, env).state;
+      save = recordAction(save, run, action, next);
+      run = next;
+    };
+    for (const night of [[{ sun: -120 }], []]) {
+      apply({ t: 'beginShift', at: 0 });
+      for (const c of run.shift?.cases ?? []) {
+        apply({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at: 1000 } });
+        apply({ t: 'shift', action: { t: 'send', at: 1000 } });
+      }
+      apply({ t: 'endAudit' });
+      if (night.length > 0) apply({ t: 'scene', id: 'scene.test.dawn', effects: night });
+      apply({ t: 'endNight' });
+    }
+    expect(report(save)).toContain('### Home at dawn\n\n- Day 2: 2:00 less sun, for home.');
+  });
+
   it('tells of each promotion offered and what was made of it, and the days worked at each rank', () => {
     // Days 1-3 judged rightly: Day 4 brings the first offer.
     let save = scenarioSave(content, 'playtest-rank', 4, ENGINE_MAJOR);

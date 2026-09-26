@@ -24,6 +24,7 @@ import {
   factionKey,
   favoursFor,
   hostMarks,
+  MIN_SUN_S,
   newRun,
   nightOutlook,
   type RunAction,
@@ -1725,6 +1726,62 @@ describe('a jarl’s bribe (docs/tech-spec.md §47)', () => {
     expect(t.einherjar.unworthy).toBe(r.einherjar.unworthy + 1);
     // A story soul never appeals.
     expect(t.appeal?.case.script).toBeUndefined();
+  });
+});
+
+describe('a trip home at dawn (docs/tech-spec.md §50)', () => {
+  const sunMs = (r: RunState) => r.shift?.sunMs ?? 0;
+  /** The run on `run`'s day with its shift begun. */
+  const begun = (content: Content, run: RunState) => drive(content, run, [{ t: 'beginShift', at: 0 }]).run;
+
+  it('takes its sun from the next shift, a night scene’s tomorrow and a morning’s today, and the audit files it', () => {
+    const d1 = drive(demo, newRun(demo, 'dawn'), shiftActions(newRun(demo, 'dawn'), demo)).run;
+    const night = drive(demo, d1, [
+      { t: 'endAudit' },
+      { t: 'scene', id: 'scene.test.night', effects: [{ sun: -120 }] },
+    ]);
+    expect(night.run.dawnS).toBe(-120);
+    const d2 = drive(demo, night.run, [{ t: 'endNight' }]).run;
+    expect(shiftMods(d2, demo).sunS).toBe(-120);
+    const plain = begun(demo, { ...d2, dawnS: undefined });
+    expect(sunMs(plain) - sunMs(begun(demo, d2))).toBe(120_000);
+    // The day's audit files it with the day, and it doesn't carry on.
+    const audited = drive(demo, d2, shiftActions(d2, demo)).run;
+    expect(audited.ledger.at(-1)?.dawnS).toBe(-120);
+    expect(audited.dawnS).toBeUndefined();
+    const d3 = drive(demo, audited, [{ t: 'endAudit' }, { t: 'endNight' }]).run;
+    expect(shiftMods(d3, demo).sunS).toBeUndefined();
+    // A morning scene's lands on the same day's shift.
+    const morning = drive(demo, d3, [{ t: 'scene', id: 'scene.test.morning', effects: [{ sun: -60 }] }]).run;
+    expect(sunMs(begun(demo, d3)) - sunMs(begun(demo, morning))).toBe(60_000);
+  });
+
+  it('never takes the whole day: the gate keeps MIN_SUN_S', () => {
+    const run = { ...newRun(demo, 'dawn-floor'), dawnS: -600 };
+    expect(sunMs(begun(demo, run))).toBe(MIN_SUN_S * 1000);
+  });
+
+  it('can lose someone at home: an adult dies, a child goes to relatives', () => {
+    const r = stepRun(
+      newRun(demo, 'gone'),
+      {
+        t: 'scene',
+        id: 'scene.test',
+        effects: [
+          { family: 'mother', becomes: 'gone' },
+          { family: 'sister', becomes: 'gone' },
+        ],
+      },
+      { content: demo, ctx: runContext(demo, newRun(demo, 'gone')) },
+    );
+    expect(r.state.family.filter((m) => m.status === 'gone').map((m) => [m.id, m.gone])).toEqual([
+      ['mother', 'died'],
+      ['sister', 'left'],
+    ]);
+    expect(r.events.filter((e) => e.e === 'family')).toEqual([
+      { e: 'family', id: 'mother', change: 'died' },
+      { e: 'family', id: 'sister', change: 'left' },
+    ]);
   });
 });
 

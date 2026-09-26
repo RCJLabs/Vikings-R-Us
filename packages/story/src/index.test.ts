@@ -105,6 +105,37 @@ describe('playScene', () => {
     expect(end.effects).toEqual([{ rings: 1 }, { standing: 'hel', by: -1 }, { flag: 'went_on', set: 1 }]);
   });
 
+  it('keeps what a choice did with its own part of the scene when a new beat follows (docs/tech-spec.md §50)', () => {
+    const json = compile(
+      [
+        'The clerk has one soul left.',
+        '* [Help him.]',
+        '  # fx: standing clerk +1',
+        '  He beams.',
+        '- The soul goes through.',
+        '-> letter',
+        '=== letter ===',
+        'A letter from home. # beat',
+        '* [Fly home at dawn.]',
+        '  # fx: sun -120',
+        '  You will be late.',
+        '- -> END',
+      ].join('\n'),
+    );
+    const f = playScene(json, env(), [0]);
+    expect(f.lines.map((l) => [l.text, l.effects ?? []])).toEqual([
+      ['The clerk has one soul left.', []],
+      ['Help him.', []],
+      ['He beams.', []],
+      ['The soul goes through.', [{ standing: 'clerk', by: 1 }]],
+      ['A letter from home.', []],
+    ]);
+    expect(playScene(json, env(), [0, 0]).lines.at(-1)).toMatchObject({
+      text: 'You will be late.',
+      effects: [{ sun: -120 }],
+    });
+  });
+
   it('is the same every time for the same seed and choices', () => {
     const json = compile('~ temp r = RANDOM(1, 1000)\nRolled {r}.\n* [a] A.\n* [b] B.\n- {shuffle: x|y|z}');
     const a = playScene(json, env({ seed: 99 }), [1]);
@@ -185,6 +216,9 @@ describe('parseFx', () => {
     expect(parseFx('fx: flag thorvald +1')).toEqual({ flag: 'thorvald', inc: 1 });
     expect(parseFx('fx: flag deals = 2')).toEqual({ flag: 'deals', set: 2 });
     expect(parseFx('fx: family sister sick')).toEqual({ family: 'sister', becomes: 'sick' });
+    expect(parseFx('fx: family mother gone')).toEqual({ family: 'mother', becomes: 'gone' });
+    expect(parseFx('fx: sun -120')).toEqual({ sun: -120 });
+    expect(parseFx('fx: sun +60')).toEqual({ sun: 60 });
   });
 
   it('ignores other tags and throws on malformed effects', () => {
@@ -195,6 +229,8 @@ describe('parseFx', () => {
       'fx: standing thor +1',
       'fx: flag a-b',
       'fx: family x dead',
+      'fx: sun',
+      'fx: sun soon',
       'fx: gold 5',
     ]) {
       expect(() => parseFx(bad), bad).toThrow();

@@ -1,10 +1,15 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
+EXTERNAL flag(name)
 EXTERNAL home(id)
 EXTERNAL rings()
 {
 - home("mother"):
   Your mother's letter is written very small, to fit more on the bark.
+  // She climbed the hill (docs/tech-spec.md §50).
+  { flag("ragna_hill"):
+    "My chest is quiet. The women on the hill gave me a stone and told me to keep it warm. I'd thank you not to tell anyone you carried me." # speaker: mother
+  }
   "There's a ferryman at the mouth of the fjord. He's been there since the autumn. People say he's older than the rocks, and he won't give his name." # speaker: mother
   "He says there's a shore across the water the wolf will never reach. He'll carry anyone there when the horn blows. Twenty rings now, to hold a place. A hundred more on the day." # speaker: mother
   "The Olafssons paid him. Old Bera paid him. Everyone with rings is paying him, and everyone without is pretending they don't believe in him." # speaker: mother
