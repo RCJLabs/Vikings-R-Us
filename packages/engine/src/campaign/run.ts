@@ -1,6 +1,7 @@
 import type {
   CampaignDef,
   Content,
+  DayEventDef,
   DeskVisit,
   Destination,
   Economy,
@@ -18,7 +19,7 @@ import { dressForDay, generateCase, generateDay, planDay } from '../gen/generate
 import { weightedPick } from '../gen/pick';
 import { scriptedCase } from '../gen/scripted';
 import type { CaseSpec } from '../gen/types';
-import { createDayContext, type DayCtx } from '../logic/context';
+import type { DayCtx } from '../logic/context';
 import { eval2 } from '../logic/pred';
 import { Rng } from '../rng/rng';
 import {
@@ -31,6 +32,7 @@ import {
   stepShift,
   type Verdict,
 } from '../shift/shift';
+import { dayContext, daySpecFor, drawEvents, eventLine, eventOn } from './events';
 import { dayGrade } from './grade';
 import {
   type Appeal,
@@ -127,7 +129,9 @@ export function newRun(content: Content, seed: string, opts: NewRunOptions = {})
   const campaign = campaignOf(content);
   if (opts.slice && !campaign.slice) throw new Error('This build has no vertical slice');
   if (opts.oath && opts.story) throw new Error('The oath and Story Mode are not played together');
-  const run = firstMorning(campaign, seed, content.genVersion, opts);
+  // The run's day events (docs/tech-spec.md §52), drawn as it begins and kept, so a replayed day has the same.
+  const events = drawEvents(content, seed);
+  const run = { ...firstMorning(campaign, seed, content.genVersion, opts), ...(events.length > 0 ? { events } : {}) };
   return opts.slice === 'fromJump' && campaign.slice ? jump(run, campaign.slice) : run;
 }
 
@@ -222,7 +226,7 @@ export function shiftMods(run: RunState, content: Content): ShiftMods {
   // A trip home at dawn (docs/tech-spec.md §50), chosen in a scene, but never the whole day: the gate keeps
   // MIN_SUN_S of it at least.
   sunS += run.dawnS ?? 0;
-  const daySun = content.days.find((d) => d.day === run.day)?.sunS;
+  const daySun = daySpecFor(content, run, run.day)?.sunS;
   if (daySun !== undefined) sunS = Math.max(sunS, MIN_SUN_S - daySun);
   return {
     ...(Object.keys(toolCostS).length > 0 ? { toolCostS } : {}),
@@ -241,12 +245,18 @@ export function favoursFor(run: RunState, content: Content): FavourDef[] {
   return (campaignOf(content).favours ?? []).filter((f) => run.standing[f.faction] >= f.at);
 }
 
+/** Family care tonight: the campaign's, and the chance a day event (docs/tech-spec.md §52) brings, bills or not. */
+export type NightCare = CampaignDef['care'] & {
+  /** Percent chance that each of the family who is well falls sick tonight whatever the bills. */
+  readonly sickAnyway?: number;
+};
+
 /**
  * Family care tonight: the campaign's, with what a god's favour gives the sick (nights more to hold out) and the
- * well (less chance of falling sick). The favours are the day's, as its audit filed them; before then, those the
- * gate will grant.
+ * well (less chance of falling sick), and any sickness the day's event brings. The favours are the day's, as its
+ * audit filed them; before then, those the gate will grant.
  */
-export function careFor(run: RunState, content: Content): CampaignDef['care'] {
+export function careFor(run: RunState, content: Content): NightCare {
   const campaign = campaignOf(content);
   const today = run.ledger[run.ledger.length - 1];
   const ids = today?.day === run.day ? (today.favours ?? []) : favoursFor(run, content).map((f) => f.id);
@@ -258,12 +268,15 @@ export function careFor(run: RunState, content: Content): CampaignDef['care'] {
     extra += e.sickNights;
     chancePct = Math.min(chancePct, e.sickChancePct ?? 100);
   }
-  if (extra === 0 && chancePct === 100) return campaign.care;
+  const event = eventOn(run, content, run.day)?.sickChance ?? 0;
+  const sickAnyway = Math.floor((event * chancePct) / 100);
+  if (extra === 0 && chancePct === 100 && sickAnyway === 0) return campaign.care;
   const { sickNights, sickChance } = campaign.care;
   return {
     ...campaign.care,
     sickNights: sickNights + extra,
     sickChance: Math.floor((sickChance * chancePct) / 100),
+    ...(sickAnyway > 0 ? { sickAnyway } : {}),
   };
 }
 
@@ -442,14 +455,16 @@ function hearAppeal(run: RunState, appeal: Appeal, stamped: Destination | null, 
 }
 
 /**
- * A day's own souls, with those who waited through the night (docs/tech-spec.md §41) placed first, after the
- * day's teaching soul, each in the place of one of the day's: one who shares its name if there is one, so no
- * two in the line do, else the last. The line is no longer for them.
+ * A day's own souls (as its event leaves them), with those who waited through the night (docs/tech-spec.md §41)
+ * placed first, after the day's teaching soul, each in the place of one of the day's: one who shares its name if
+ * there is one, so no two in the line do, else the last. The line is no longer for them.
  */
-function lineFor(seed: string, ctx: DayCtx, waiting: readonly CaseSpec[]): CaseSpec[] {
-  const cases = generateDay(seed, ctx).cases.slice();
+function lineFor(seed: string, ctx: DayCtx, waiting: readonly CaseSpec[], event?: DayEventDef): CaseSpec[] {
+  const own = generateDay(seed, ctx).cases;
   const teach = ctx.spec.queue.teachFirst;
-  const front = teach !== undefined && cases[0]?.archetype === teach ? 1 : 0;
+  const front = teach !== undefined && own[0]?.archetype === teach ? 1 : 0;
+  // The day's event (docs/tech-spec.md §52): some of the day's own souls don't come, and its own come among them.
+  const cases = event ? eventLine(seed, ctx, own, front, event) : own.slice();
   for (const w of waiting) {
     const same = cases.findIndex((c, i) => i >= front && c.evidence.look.name === w.evidence.look.name);
     const drop = same >= 0 ? same : cases.length - 1;
@@ -495,7 +510,7 @@ function extraSouls(seed: string, ctx: DayCtx, n: number, line: readonly CaseSpe
  * soul made under it comes after every soul made before it.
  */
 export function campaignQueue(run: RunState, env: RunEnv): CaseSpec[] {
-  const line = lineFor(run.seed, env.ctx, run.waiting ?? []);
+  const line = lineFor(run.seed, env.ctx, run.waiting ?? [], eventOn(run, env.content, run.day));
   const cases = [...line, ...extraSouls(run.seed, env.ctx, rankOf(run, env.content)?.souls ?? 0, line)];
   const slots = [...(env.ctx.spec.queue.scripted ?? [])].sort((a, b) => a.at - b.at);
   const noon = env.ctx.noon;
@@ -597,7 +612,7 @@ function waitingLine(
     return v.stamped === null && c && c.script === undefined ? [c] : [];
   });
   if (left.length === 0) return null;
-  const tomorrow = createDayContext(env.content, run.day + 1, run.seed);
+  const tomorrow = dayContext(env.content, run, run.day + 1);
   const soul = (c: CaseSpec): LineSoul => ({ id: c.id, name: `${c.evidence.look.name} ${c.evidence.look.patronym}` });
   const carried: CaseSpec[] = [];
   const died: LineSoul[] = [];
@@ -636,8 +651,8 @@ function drawRequests(run: RunState, env: RunEnv, waiting: readonly CaseSpec[]):
   if (!def || day === null || day < def.from) return [];
   const rng = new Rng(`${run.seed}|requests|${day}`);
   if (!rng.chance(def.chance, 100)) return [];
-  const ctx = createDayContext(env.content, day, run.seed);
-  const line = lineFor(run.seed, ctx, waiting);
+  const ctx = dayContext(env.content, run, day);
+  const line = lineFor(run.seed, ctx, waiting, eventOn(run, env.content, day));
   const held = (dest: Destination) => line.filter((c) => c.expect.dest === dest).length;
   const open = def.list.filter(
     (r) =>
@@ -766,6 +781,7 @@ function audit(
   const requests = settleRequests(run, shift);
   // The favours the gate granted (standing hasn't moved since it opened), for the night and the records.
   const favours = favoursFor(run, env.content).map((f) => f.id);
+  const event = eventOn(run, env.content, run.day);
   const ledger: DayLedger = {
     day: run.day,
     correct,
@@ -784,6 +800,7 @@ function audit(
     ...(favours.length > 0 ? { favours } : {}),
     ...(run.rank ? { rank: run.rank } : {}),
     ...(run.dawnS ? { dawnS: run.dawnS } : {}),
+    ...(event ? { event: event.id } : {}),
     // The day's grade (docs/tech-spec.md §49): Story Mode has no sun and no fines, so no grade either.
     ...(run.story ? {} : { grade: dayGrade(shift, env.ctx) }),
     ...(run.answered ? { offer: run.answered } : {}),
@@ -868,7 +885,7 @@ export interface MemberNight {
   readonly risk: number;
 }
 
-function memberNight(m: FamilyMember, bills: Bills, care: CampaignDef['care'], adult: boolean): MemberNight {
+function memberNight(m: FamilyMember, bills: Bills, care: NightCare, adult: boolean): MemberNight {
   if (m.status === 'gone') return { member: m, risk: 0 };
   const cold = bills.hearth ? 0 : m.cold + 1;
   const hungry = bills.food ? 0 : m.hungry + 1;
@@ -888,7 +905,7 @@ function memberNight(m: FamilyMember, bills: Bills, care: CampaignDef['care'], a
     return { member: { ...m, status: 'sick', cold, hungry, sickNights: 0 }, change: 'sick', cause, risk: 0 };
   }
   const unmet = (bills.hearth ? 0 : 1) + (bills.food ? 0 : 1);
-  return { member: { ...m, cold, hungry }, risk: Math.min(100, unmet * care.sickChance) };
+  return { member: { ...m, cold, hungry }, risk: Math.min(100, unmet * care.sickChance + (care.sickAnyway ?? 0)) };
 }
 
 /** Tonight's upkeep under `bills`, all but chance: the bills, Draupnir, the purse and debt by morning, each member's night. */
@@ -1143,7 +1160,7 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         ...(today.oath ? { oath: true as const } : {}),
         mods: shiftMods(today, env.content),
       };
-      const { state } = startShift(env.content, config, env.queue ?? campaignQueue(today, env));
+      const { state } = startShift(env.content, config, env.queue ?? campaignQueue(today, env), env.ctx);
       const begun = stepShift(
         state,
         { t: 'begin', at: action.at, ...(action.assists ? { assists: action.assists } : {}) },

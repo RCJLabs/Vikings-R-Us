@@ -69,3 +69,32 @@ describe('promotion, as content', () => {
     expect(withRanks((list) => [...list, ...list.slice(0, 1)])).toThrow(/Duplicate rank "rank\.\w+"/);
   }, 60_000);
 });
+
+// docs/tech-spec.md §52.
+describe('day events, as content', () => {
+  type Events = NonNullable<CampaignPart['events']>;
+  const withEvents = (change: (events: Events) => Events) =>
+    compileWith((c) => (c.events ? { ...c, events: change(c.events) } : c));
+  const first = (edit: (e: Events['pool'][number]) => Events['pool'][number]) =>
+    withEvents((d) => ({ ...d, pool: d.pool.map((e, i) => (i === 0 ? edit(e) : e)) }));
+  it('compiles as shipped, and refuses missing words, an event named twice, or more drawn than there are', () => {
+    expect(withEvents((d) => d)).not.toThrow();
+    expect(first((e) => ({ ...e, text: 'event.nobody' }))).toThrow(/day event event\.\w+ uses missing string/);
+    expect(withEvents((d) => ({ ...d, pool: [...d.pool, ...d.pool.slice(0, 1)] }))).toThrow(
+      /Duplicate day event "event\.\w+"/,
+    );
+    expect(withEvents((d) => ({ ...d, perRun: d.pool.length + 1 }))).toThrow(/draws \d+ day events, from only \d+/);
+  }, 60_000);
+  it('refuses souls of a kind a day lacks, one bound where its kind never goes, and too short a line', () => {
+    const storm = (edit: (e: Events['pool'][number]) => Events['pool'][number]) =>
+      withEvents((d) => ({ ...d, pool: d.pool.map((e) => (e.id === 'event.storm' ? edit(e) : e)) }));
+    // Days 5-8 have no bedridden souls, and a drowned raider is never Valhalla's.
+    expect(storm((e) => ({ ...e, souls: [{ kind: 'arch.bedridden', to: ['TRANSFER'], n: 1 }] }))).toThrow(
+      /day event event\.storm: day 5 has no arch\.bedridden bound for TRANSFER/,
+    );
+    expect(storm((e) => ({ ...e, souls: [{ kind: 'arch.drowned_raider', to: ['VALHALLA'], n: 1 }] }))).toThrow(
+      /has no arch\.drowned_raider bound for VALHALLA/,
+    );
+    expect(storm((e) => ({ ...e, fewer: 9 }))).toThrow(/day event event\.storm leaves day \d+ too short a line/);
+  }, 60_000);
+});

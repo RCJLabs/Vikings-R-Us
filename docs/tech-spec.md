@@ -3039,6 +3039,79 @@ The brainstorm's version, and what changed:
 - **The levy is one fight.** Ulf comes home either way. Whether he could die there is yours to decide; it's written so he can't.
 - **The words are drafts.**
 
+## 52. After M7: variety from run to run, part 1: day events (gameplay brainstorm, item 9)
+
+**Why.** Item 9 of the brainstorm: "day events drawn from the run's seed: a storm day, a plague day, a feast day". Apart from the souls, Freyja's whim and the story, every run's days were the same.
+
+The brainstorm's version, and what changed:
+- **"A plague day (Hel's hall overflows early)"** would change a rule before its day, and the rules and their teaching are fixed to their days. It's a sickness now: more who died in their beds at the gate, and a risk at home that night.
+- **Events change a day's line, never its shares.** A first version raised a destination's share of the day (more Rán on a storm day). The days' minimum shares fill their lines already, so any rise left the others short of their minimums on most days (tried and measured). So instead, an event drops some of the day's own souls and adds its own among them. The generator's plan for the day is untouched.
+- **"The Norns' weave"** (the same rules in a different order, after a first ending) is part 2. As written it breaks the story: each day's story is built on that day's new rule. The proposal is to weave the Order of Judgment's precedence instead of the days.
+
+**How it works** (`campaign.events` in `campaign.yaml`, engine `campaign/events.ts`)
+- **The draw.** A new run draws three events from its seed (`drawEvents`, on its own stream) and keeps them in the run (`RunState.events`).
+  - Each is a different event, on a different day from 4 to 18. No two fall on days running.
+  - No event falls on a day with a noon decree (§45), or before its own `since` (a storm needs Rán, Day 5).
+  - Runs begun before there were events have none. The demo has none, and neither has the Daily.
+- **What an event can do:**
+  - **`fewer`:** that many of the day's own souls don't come. They're the last in its line, never its teaching soul.
+  - **`souls`:** souls it brings, placed among the day's own at places drawn on its own stream, after the teaching soul.
+    - Each is made as the day's souls are: the kind named is tried first, as a teaching soul is. It's bound for the first destination in `to` that kind can reach that day.
+    - `since` and `until` pick different souls for different days. A sickness brings straw braggarts to Hel before Day 14, and bedridden souls to the clerk from then on.
+    - One who'd share a name with a soul already in the line is passed over.
+  - **`sunPct`:** the day's sun, in percent of its own.
+  - **`costsPct`:** that night's bills, in percent of the day's.
+  - **`sickChance`:** a chance that each of the family who is well falls sick that night, bills paid or not. Hel's favour (§43) scales it as it scales any chance of falling sick.
+- **The day's own souls are the same with the event or without it,** apart from those that don't come. `lineFor` applies the event before the souls who waited through the night (§41) take their places, so the gods' requests (§42), drawn from tomorrow's line, see the line the event makes.
+- **The rules never change,** so every soul is judged as on any day of its number, and the fairness guarantees hold as they are. The souls an event brings are generated and validated like any other.
+- **Where it shows in the engine:**
+  - `runContext` and the new `dayContext` build a day as the run plays it, with its event's sun and bills.
+  - A campaign shift now starts from that context (`startShift`'s new `ctx`). Before, it built its own, which would have missed a storm's sun; a test caught it.
+  - The audit files the event in the day's ledger (`event`).
+
+**The four events** (first guesses, drafts)
+
+| Event | Days | The line | Sun | That night |
+|---|---|---|---|---|
+| A storm off the sea | 5-18 | 3 of the day's own souls replaced by 3 drowned raiders (Rán) | 90% | |
+| Sickness in the valley | 4-18 | 2 replaced by 2 who died in their beds (Hel's, or the clerk's from Day 14) | | 20% chance each for the well, bills paid or not |
+| A battle at the ford | 4-18 | 3 more: an honest warrior (Valhalla), a disarmed one and a coward (Hel) | 115% | |
+| The jarl's feast | 4-18 | 3 fewer | | food costs nothing |
+
+**Screens**
+- **The morning:** a card with the event's name and words. Under them, what it does in numbers: the line's change, the sun's (at the player's sun speed, never in Story Mode), and tonight's bills and sickness. If Hel's favour spares the house, it says so.
+- **The night:** the event's line in the family card. The bills' own warning of sickness counts only what the bills add.
+- **The playtest report:** "Day events", one line for each day played that had one.
+
+**Content checks** (compiler): names and words exist; enough events for `perRun`; each event can fall on some day. On every day an event can fall on:
+- the shortest line keeps 3 souls after `fewer`;
+- each of its souls is of a kind the day has, and that kind can reach one of its `to`.
+
+**What the sims show** (`pnpm sim campaign`, 50 runs per policy, the same seeds with and without events)
+- **Good players end a little richer:** experts +12 to +17 rings, competent bots up to +16 (1-2%). A battle's three souls pay more than a storm or a feast costs.
+- **Novices are demoted a little more often:** 92% against 88% paying every bill, 36% against 30% when frugal.
+- **Nobody lost family to a sickness:** bots that pay their bills buy the medicine the next night.
+- **The endings came out about as before.**
+
+**Tests**
+- **Engine (7):**
+  - every event on every day it can fall on (two seeds each): the line changes by the event's count, its souls are bound where it says, and none is a fallback;
+  - the draw's rules, and the same draw for the same seed;
+  - a storm's line and sun;
+  - a battle's and a feast's lines, sun and supper;
+  - the sickness's souls before and after Day 14, its risk at night, Hel's favour, and its falling sick on replay;
+  - the ledger and the save;
+  - requests for an event day drawn from the line the event makes.
+- **Compiler (2).**
+- **Report (1).**
+- **e2e on the full game** (phone and desktop): a sickness day's morning card and its night, and a feast day's shorter line and free supper, with accessibility scans.
+- A one-off probe of every event on every day it can fall on (30 seeds each): the souls it brings were of their kind every time.
+
+**Known limits**
+- **The day's best (§49) is kept by day number,** so a best made on a feast day stands against one made in a storm.
+- **The bots don't feel the sun.** They take 25 seconds a soul and never run short, so a storm's lost minute and a battle's three souls only show as more pay or less. How hard a storm feels is a playtest question.
+- **The events' words are drafts.**
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

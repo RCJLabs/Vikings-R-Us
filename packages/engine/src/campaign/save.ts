@@ -1,6 +1,7 @@
 import type { Content, Faction } from '../content/types';
 import type { CaseSpec } from '../gen/types';
-import { createDayContext, type DayCtx } from '../logic/context';
+import type { DayCtx } from '../logic/context';
+import { dayContext } from './events';
 import { type NewRunOptions, newRun, type RunAction, type RunEnv, stepRun } from './run';
 import type { FamilyMember, RunState } from './state';
 
@@ -40,8 +41,9 @@ export interface RunSave {
   readonly journal?: readonly JournalEntry[];
 }
 
+/** The context the run plays today in, its day event (docs/tech-spec.md §52) included. */
 export function runContext(content: Content, run: RunState): DayCtx {
-  return createDayContext(content, run.day, run.seed);
+  return dayContext(content, run, run.day);
 }
 
 export function startSave(content: Content, seed: string, engine: number, opts: NewRunOptions = {}): RunSave {

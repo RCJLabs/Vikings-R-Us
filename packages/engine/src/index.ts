@@ -1,5 +1,6 @@
 export * from './achievements';
 export * from './calendar';
+export * from './campaign/events';
 export * from './campaign/grade';
 export * from './campaign/run';
 export * from './campaign/save';

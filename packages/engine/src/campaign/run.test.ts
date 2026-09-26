@@ -10,6 +10,7 @@ import { createDayContext, type DayCtx, soulCtx } from '../logic/context';
 import { judge } from '../logic/judge';
 import { solve } from '../logic/solver';
 import { type Assists, DUSK_GRACE_MS, ruledOut, stepShift } from '../shift/shift';
+import { eventDays, eventLineChange, eventSoulsOn } from './events';
 import { beatsDay, dayGrade, GRADES } from './grade';
 import {
   billForecast,
@@ -2078,5 +2079,182 @@ describe('promotion (docs/tech-spec.md §44)', () => {
     const lastDay = campaignOf(full).lastDay;
     const late = { ...cleanTo(def?.from ?? 4), day: lastDay - 1, clean: (def?.cleanDays ?? 2) - 1 };
     expect(playDay(full, late).afterShift.offer).toBeUndefined();
+  });
+});
+
+describe('day events (docs/tech-spec.md §52)', () => {
+  const def = campaignOf(full).events;
+  const ev = (id: string) => {
+    const e = def?.pool.find((x) => x.id === id);
+    if (!e) throw new Error(`no day event ${id}`);
+    return e;
+  };
+  /** The morning of `day` with only event `id` drawn for it (or none): Day 11 has no story souls to place. */
+  const morning = (id?: string, day = 11, seed = 'events'): RunState => ({
+    ...newRun(full, seed),
+    day,
+    events: id ? [{ day, id }] : [],
+  });
+  const queue = (run: RunState) => campaignQueue(run, { content: full, ctx: runContext(full, run) });
+  const sunMs = (run: RunState) => drive(full, run, [{ t: 'beginShift', at: 0 }]).run.shift?.sunMs ?? 0;
+  const pct = (n: number, p: number) => Math.floor((n * p + 50) / 100);
+  /** The souls an event brought, and the day's own souls that stayed, against the same day without it. */
+  const compare = (id: string, day = 11) => {
+    const before = queue(morning(undefined, day));
+    const after = queue(morning(id, day));
+    const own = new Set(before.map((c) => c.id));
+    return {
+      before,
+      after,
+      added: after.filter((c) => !own.has(c.id)),
+      kept: after.filter((c) => own.has(c.id)).map((c) => c.id),
+    };
+  };
+
+  it('draws different events on days 4-18 as a run begins, never two days running, the same for the same seed', () => {
+    expect(eventDays(full)).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
+    const seen = new Set<string>();
+    for (let i = 0; i < 40; i++) {
+      const events = newRun(full, `draw${i}`).events ?? [];
+      expect(events).toHaveLength(def?.perRun ?? 0);
+      expect(new Set(events.map((e) => e.id)).size).toBe(events.length);
+      events.forEach((e, k) => {
+        seen.add(e.id);
+        expect(eventDays(full)).toContain(e.day);
+        expect(e.day).toBeGreaterThanOrEqual(ev(e.id).since);
+        const prev = events[k - 1];
+        if (prev) expect(e.day - prev.day).toBeGreaterThan(1);
+      });
+    }
+    expect([...seen].sort()).toEqual(def?.pool.map((e) => e.id).sort());
+    expect(newRun(full, 'draw0').events).toEqual(newRun(full, 'draw0').events);
+    // The demo has none, and neither has a run begun before there were any: its days are as they were.
+    expect(newRun(demo, 'draw0').events).toBeUndefined();
+    const old = morning();
+    const { events: _, ...before } = old;
+    expect(queue(before as RunState).map((c) => c.id)).toEqual(queue(old).map((c) => c.id));
+  });
+
+  it('changes every day it can fall on by its own count, with its souls bound where it says, none a fallback', () => {
+    for (const e of def?.pool ?? []) {
+      for (const day of eventDays(full).filter((d) => d >= e.since)) {
+        for (const seed of ['every-a', 'every-b']) {
+          const plain = { ...newRun(full, seed), day, events: [] };
+          const withIt = { ...plain, events: [{ day, id: e.id }] };
+          const before = queue(plain);
+          const after = queue(withIt);
+          const where = `${e.id} on day ${day} (${seed})`;
+          expect(after.length - before.length, where).toBe(eventLineChange(e, day));
+          const own = new Set(before.map((c) => c.id));
+          const added = after.filter((c) => !own.has(c.id));
+          const to = new Set(eventSoulsOn(e, day).flatMap((x) => x.to));
+          expect(
+            added.every((c) => to.has(c.expect.dest) && !c.meta.fallback),
+            where,
+          ).toBe(true);
+          expect(new Set(after.map((c) => c.id)).size, where).toBe(after.length);
+        }
+      }
+    }
+  });
+
+  it('a storm brings the drowned in place of the day’s last souls, under a darker sky', () => {
+    const storm = ev('event.storm');
+    const { before, after, added, kept } = compare('event.storm');
+    expect(after).toHaveLength(before.length);
+    expect(added.map((c) => [c.archetype, c.expect.dest])).toEqual(
+      Array.from({ length: 3 }, () => ['arch.drowned_raider', 'RAN']),
+    );
+    // The day's own souls are the same, but for its last three, and its teaching soul is still first.
+    expect(kept).toEqual(before.slice(0, before.length - (storm.fewer ?? 0)).map((c) => c.id));
+    expect(after[0]?.id).toBe(before[0]?.id);
+    const day = full.days.find((d) => d.day === 11);
+    expect(runContext(full, morning('event.storm')).spec.sunS).toBe(pct(day?.sunS ?? 0, storm.sunPct ?? 100));
+    expect(sunMs(morning(undefined)) - sunMs(morning('event.storm'))).toBe(
+      ((day?.sunS ?? 0) - pct(day?.sunS ?? 0, storm.sunPct ?? 100)) * 1000,
+    );
+  });
+
+  it('a battle brings three more souls from the ford and more sun; a feast three fewer, and a free supper', () => {
+    const battle = compare('event.battle');
+    expect(battle.after).toHaveLength(battle.before.length + 3);
+    expect(battle.kept).toEqual(battle.before.map((c) => c.id));
+    expect(battle.added.map((c) => c.archetype).sort()).toEqual([
+      'arch.disarmed_warrior',
+      'arch.fled_coward',
+      'arch.honest_warrior',
+    ]);
+    expect(sunMs(morning('event.battle'))).toBeGreaterThan(sunMs(morning(undefined)));
+    const feast = compare('event.feast');
+    expect(feast.after).toHaveLength(feast.before.length - 3);
+    expect(feast.added).toEqual([]);
+    expect(feast.kept).toEqual(feast.before.slice(0, feast.before.length - 3).map((c) => c.id));
+    // Tonight the family eats at the jarl's hall: food costs nothing, and the rest of the bills are as they were.
+    const night = (id?: string) => {
+      const r = playDay(full, morning(id)).afterShift;
+      return nightOutlook(r, { content: full, ctx: runContext(full, r) }).cost;
+    };
+    const plain = night();
+    expect(plain.food).toBeGreaterThan(0);
+    expect(night('event.feast')).toEqual({ ...plain, food: 0 });
+  });
+
+  it('a sickness brings more who died in their beds, and at night a chance for each at home, bills paid or not', () => {
+    const sickness = ev('event.sickness');
+    expect(compare('event.sickness').added.map((c) => [c.archetype, c.expect.dest])).toEqual([
+      ['arch.straw_braggart', 'HEL'],
+      ['arch.straw_braggart', 'HEL'],
+    ]);
+    // Once Hel's hall is full, they're the clerk's.
+    expect(compare('event.sickness', 15).added.map((c) => [c.archetype, c.expect.dest])).toEqual([
+      ['arch.bedridden', 'TRANSFER'],
+      ['arch.bedridden', 'TRANSFER'],
+    ]);
+    const outlook = (r: RunState) => nightOutlook(r, { content: full, ctx: runContext(full, r) });
+    const sick = playDay(full, morning('event.sickness')).afterShift;
+    const plain = playDay(full, morning()).afterShift;
+    expect(outlook(sick).members.map((n) => n.risk)).toEqual(sick.family.map(() => sickness.sickChance));
+    expect(outlook(plain).members.map((n) => n.risk)).toEqual(plain.family.map(() => 0));
+    // Hel's favour spares them this as it spares any chance of falling sick.
+    const hel = campaignOf(full).favours?.find((f) => f.id === 'fav.hel');
+    const favoured = playDay(full, {
+      ...morning('event.sickness'),
+      standing: { ...morning().standing, hel: hel?.at ?? 0 },
+    }).afterShift;
+    expect(outlook(favoured).members.map((n) => n.risk)).toEqual(favoured.family.map(() => 0));
+    // Over nights with every bill paid, some fall sick, the same way on every replay.
+    const fell = Array.from({ length: 12 }, (_, i) => {
+      const night = playDay(full, morning('event.sickness', 11, `cough${i}`)).run;
+      return night.family.filter((m) => m.status === 'sick').length;
+    });
+    expect(fell.some((n) => n > 0)).toBe(true);
+    expect(playDay(full, morning('event.sickness', 11, 'cough0')).run.family).toEqual(
+      playDay(full, morning('event.sickness', 11, 'cough0')).run.family,
+    );
+  });
+
+  it('files the day’s event in its ledger, and a day replayed from its morning has the same', () => {
+    const played = playDay(full, morning('event.battle'));
+    expect(played.afterShift.ledger.at(-1)?.event).toBe('event.battle');
+    expect(playDay(full, morning()).afterShift.ledger.at(-1)?.event).toBeUndefined();
+    const save = startSave(full, 'events-save', 1);
+    expect(save.mornings[0]?.events).toEqual(newRun(full, 'events-save').events);
+  });
+
+  it('asks the gods’ requests for a day with an event from the line it brings', () => {
+    const d = campaignOf(full).requests;
+    let checked = 0;
+    for (let i = 0; i < 40 && checked < 3; i++) {
+      // The day before, and the feast (three souls fewer) on the day the requests are for.
+      const before = { ...newRun(full, `ask${i}`), day: 10, events: [{ day: 11, id: 'event.feast' }] };
+      const next = playDay(full, before).run;
+      if ((next.requests ?? []).length === 0) continue;
+      checked++;
+      const line = queue(next);
+      for (const r of next.requests ?? []) {
+        expect(line.filter((c) => c.expect.dest === r.from).length).toBeGreaterThanOrEqual(r.n);
+      }
+    }
+    expect(d && checked).toBeTruthy();
   });
 });

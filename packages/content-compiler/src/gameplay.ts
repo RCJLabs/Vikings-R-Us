@@ -55,8 +55,11 @@ import {
   COACH_FOCUS,
   createDayContext,
   type Effect,
+  eventDays,
+  eventSoulsOn,
   factPathOk,
   predPaths,
+  reachOf,
   STATE_PATHS,
   type StatePred,
   scriptedCase,
@@ -190,6 +193,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(last('requests') ? { requests: last('requests') as NonNullable<CampaignDef['requests']> } : {}),
     ...(all('favours').length > 0 ? { favours: all('favours') } : {}),
     ...(last('promotion') ? { promotion: last('promotion') as NonNullable<CampaignDef['promotion']> } : {}),
+    ...(last('events') ? { events: last('events') as NonNullable<CampaignDef['events']> } : {}),
   };
 }
 
@@ -751,6 +755,7 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (r.from === r.to) problems.push(`request ${r.id} asks for souls sent where they already belong.`);
     if (r.until !== undefined && r.until <= r.since) problems.push(`request ${r.id} stops before it starts.`);
   }
+  problems.push(...lintEvents(content, key));
   if (!content.predicates.some((p) => p.id === c.worthy)) {
     problems.push(`The campaign's worthy predicate "${c.worthy}" doesn't exist.`);
   }
@@ -758,6 +763,47 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     const spec = content.days.find((x) => x.day === d);
     if (!spec) problems.push(`Campaign day ${d} has no day spec.`);
     else if (!spec.economy) problems.push(`Campaign day ${d} has no economy.`);
+  }
+  return problems;
+}
+
+/**
+ * Day events (docs/tech-spec.md §52): strings, enough of them to draw, and on every day each can fall on, a line
+ * long enough after the souls that don't come, and the souls it brings of a kind the day has, able to reach one of
+ * their destinations (under the day's first param choices; the generator tries the kind first, not only).
+ */
+function lintEvents(content: Content, key: (k: string, where: string) => void): string[] {
+  const def = content.campaign?.events;
+  if (!def) return [];
+  const problems: string[] = [];
+  if (def.from > def.to) problems.push('The day events start after they end.');
+  if (def.perRun > def.pool.length)
+    problems.push(`A run draws ${def.perRun} day events, from only ${def.pool.length}.`);
+  const days = eventDays(content);
+  if (days.length === 0) problems.push('No day can have a day event.');
+  const ids = new Set<string>();
+  for (const ev of def.pool) {
+    const where = `day event ${ev.id}`;
+    if (ids.has(ev.id)) problems.push(`Duplicate day event "${ev.id}".`);
+    ids.add(ev.id);
+    key(ev.name, where);
+    key(ev.text, where);
+    const on = days.filter((d) => d >= ev.since);
+    if (on.length === 0) problems.push(`${where} can't fall on any day.`);
+    if (!ev.fewer && !ev.souls?.length && ev.sunPct === undefined && !ev.costsPct && !ev.sickChance) {
+      problems.push(`${where} changes nothing.`);
+    }
+    for (const day of on) {
+      const spec = content.days.find((d) => d.day === day);
+      if (!spec) continue;
+      if (spec.queue.count[0] - (ev.fewer ?? 0) < 3) problems.push(`${where} leaves day ${day} too short a line.`);
+      const ctx = createDayContext(content, day, 'lint');
+      const reach = reachOf(ctx);
+      for (const s of eventSoulsOn(ev, day)) {
+        const can = s.to.some((d) => reach.get(s.kind)?.has(d) && ctx.destinations.has(d));
+        if (!can) problems.push(`${where}: day ${day} has no ${s.kind} bound for ${s.to.join(' or ')}.`);
+      }
+    }
   }
   return problems;
 }

@@ -314,6 +314,26 @@ describe('the playtest report', () => {
     expect(report(save)).toContain('### Home at dawn\n\n- Day 2: 2:00 less sun, for home.');
   });
 
+  it('names the day event each day played brought (docs/tech-spec.md §52)', () => {
+    expect(report(played('playtest-event-none', 1, right))).toContain('### Day events\n\nNone yet.');
+    // Day 5 played from a morning whose run drew a storm for it.
+    const base = scenarioSave(content, 'playtest-event', 5, ENGINE_MAJOR);
+    let run: RunState = { ...(base.mornings.at(-1) as RunState), events: [{ day: 5, id: 'event.storm' }] };
+    let save: RunSave = { ...base, mornings: [...base.mornings.slice(0, -1), run] };
+    const apply = (action: RunAction) => {
+      const env = { content, ctx: runContext(content, run), ...(save.queue ? { queue: save.queue } : {}) };
+      const next = stepRun(run, action, env).state;
+      save = recordAction(save, run, action, next);
+      run = next;
+    };
+    apply({ t: 'beginShift', at: 0 });
+    for (const c of run.shift?.cases ?? []) {
+      apply({ t: 'shift', action: { t: 'stamp', dest: c.expect.dest, at: 1000 } });
+      apply({ t: 'shift', action: { t: 'send', at: 1000 } });
+    }
+    expect(report(save)).toContain('### Day events\n\n- Day 5: event.storm.');
+  });
+
   it('tells of each promotion offered and what was made of it, and the days worked at each rank', () => {
     // Days 1-3 judged rightly: Day 4 brings the first offer.
     let save = scenarioSave(content, 'playtest-rank', 4, ENGINE_MAJOR);

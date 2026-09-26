@@ -55,6 +55,52 @@ promotion:
   ranks:
     - { id: rank.second, name: rank.second, text: rank.second.text, souls: 2, warnings: -1, wage: 1, tithe: 20 }
     - { id: rank.first, name: rank.first, text: rank.first.text, souls: 4, warnings: -2, wage: 2, tithe: 45 }
+# Day events (docs/tech-spec.md §52): each run draws three as it begins, from its seed, on three of Days 4-18,
+# never two days running (nor on a day with a noon decree). An event changes the day's line (the last of its own
+# souls don't come, and the event's come among the rest), its sun, and that night's bills and sickness; never the
+# day's rules. Its souls are made and judged as any day's are. First guesses; `pnpm sim campaign` measures them.
+# DRAFT text.
+events:
+  perRun: 3
+  from: 4
+  to: 18
+  pool:
+    # More of the drowned in the line, and a darker day.
+    - id: event.storm
+      since: 5
+      name: event.storm
+      text: event.storm.text
+      sunPct: 90
+      fewer: 3
+      souls: [{ kind: arch.drowned_raider, to: [RAN], n: 3 }]
+    # More who died in their beds: Hel's, or from Day 14, when her hall is full, the clerk's. At night anyone well at
+    # home may catch it, bills paid or not; Hel's favour eases it as it eases any chance of falling sick.
+    - id: event.sickness
+      since: 4
+      name: event.sickness
+      text: event.sickness.text
+      fewer: 2
+      souls:
+        - { kind: arch.straw_braggart, to: [HEL], n: 2, until: 14 }
+        - { kind: arch.bedridden, to: [TRANSFER], n: 2, since: 14 }
+      sickChance: 20
+    # Three more souls from the ford, and more sun to judge them by.
+    - id: event.battle
+      since: 4
+      name: event.battle
+      text: event.battle.text
+      sunPct: 115
+      souls:
+        - { kind: arch.honest_warrior, to: [VALHALLA], n: 1 }
+        - { kind: arch.disarmed_warrior, to: [HEL], n: 1 }
+        - { kind: arch.fled_coward, to: [HEL], n: 1 }
+    # The jarl's feast: fewer souls, and the family eats at his hall tonight.
+    - id: event.feast
+      since: 4
+      name: event.feast
+      text: event.feast.text
+      fewer: 3
+      costsPct: { food: 0 }
 # Speed only (docs/build-plan.md §1): cheaper tools and questions, more sun.
 shop:
   - { id: up.sundial, name: shop.sundial, text: shop.sundial.text, price: 25, since: 4, effect: { sunS: 30 } }

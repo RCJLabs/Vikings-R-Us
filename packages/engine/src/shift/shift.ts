@@ -198,14 +198,15 @@ export function shiftContext(content: Content, config: ShiftConfig): DayCtx {
 /**
  * A new shift in its briefing. `queue` replaces generation with an already
  * generated queue (a saved campaign day), so a resume stays exact even after
- * the generator changes.
+ * the generator changes. A campaign passes the day's context as the run plays it
+ * (its day event's sun included, docs/tech-spec.md §52).
  */
 export function startShift(
   content: Content,
   config: ShiftConfig,
   queue?: readonly CaseSpec[],
+  ctx: DayCtx = shiftContext(content, config),
 ): { state: ShiftState; ctx: DayCtx } {
-  const ctx = shiftContext(content, config);
   const cases = queue ?? generateDay(config.seed, ctx).cases;
   const state: ShiftState = {
     v: 1,

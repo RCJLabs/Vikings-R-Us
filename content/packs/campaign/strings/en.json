@@ -363,5 +363,13 @@
   "ach.spotless.title": "Spotless",
   "ach.spotless.text": "Judge every soul rightly on a campaign day, Day 10 or later.",
   "ach.oathkept.title": "Oathsworn",
-  "ach.oathkept.text": "Reach the last day under the oath: no hints, no replays, and fines from the first mistake."
+  "ach.oathkept.text": "Reach the last day under the oath: no hints, no replays, and fines from the first mistake.",
+  "event.storm": "A storm off the sea",
+  "event.storm.text": "A storm came in off the sea in the night. The drowned are coming up with the tide, and the clouds are taking the light early.",
+  "event.sickness": "Sickness in the valley",
+  "event.sickness.text": "A coughing sickness is going round the valley. More who died in their beds are waiting at the gate, and tonight it may reach your house, whatever you pay for.",
+  "event.battle": "A battle at the ford",
+  "event.battle.text": "Two jarls met at the ford at dawn. The line is longer today, and the sun keeps a while longer to judge them by.",
+  "event.feast": "The jarl's feast",
+  "event.feast.text": "The jarl is holding a feast, and the fighting has stopped for it. Fewer souls come to the gate today, and tonight your family eats at his hall."
 }

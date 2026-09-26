@@ -24,6 +24,7 @@ Since 25 September 2026, the Pages deploy carries the same build at `/full/`: **
   - each god's request: what was asked, how many souls were sent as asked, and whether it was done;
   - the gods' favours each day held, and the fines they spared;
   - each day's trip home at dawn, and the sun it cost;
+  - the day events the days played brought (a storm, a sickness, a battle, a feast);
   - each promotion offered and what was made of it, the days worked at each rank, and any step down;
   - every choice made in a scene.
 - **Open the playtest form** opens the GitHub form *Campaign playtest report* with the report already filled in. A long run doesn't fit in a link (over 8,000 characters), so the form opens empty, and the game says to copy the report and paste it in.

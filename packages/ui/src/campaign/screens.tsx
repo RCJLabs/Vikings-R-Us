@@ -17,6 +17,8 @@ import {
   type Effect,
   economyFor,
   economyOf,
+  eventLineChange,
+  eventOn,
   type Faction,
   type FavourDef,
   factionKey,
@@ -1046,6 +1048,7 @@ function Morning() {
           <AppealCard run={run} />
           <PromotionCard run={run} />
           <RequestCards run={run} fined={!run.story && !assists.noFines} />
+          <EventCard run={run} sunS={ctx.spec.sunS} sunPct={assists.sunPct} />
           <section class="card">
             <Decree ctx={ctx} />
             <RulebookChanges day={run.day} />
@@ -1095,6 +1098,90 @@ function Morning() {
       </div>
       {journalOpen.value ? <JournalView /> : null}
     </main>
+  );
+}
+
+// ---------- day events ----------
+
+/**
+ * The favour that spares the well any chance of falling sick tonight (docs/tech-spec.md §43), if one does: the day's,
+ * as its audit filed them, or before then, those the gate will grant.
+ */
+function sparingFavour(run: RunState): FavourDef | undefined {
+  const today = run.ledger[run.ledger.length - 1];
+  const ids = today?.day === run.day ? (today.favours ?? []) : favoursFor(run, gameContent).map((f) => f.id);
+  return (campaignOf(gameContent).favours ?? []).find(
+    (f) => ids.includes(f.id) && 'sickNights' in f.effect && f.effect.sickChancePct === 0,
+  );
+}
+
+/** What a day event does tonight (docs/tech-spec.md §52): its bills, and the sickness it brings to the door. */
+function eventTonight(run: RunState): { id: string; text: string }[] {
+  const ev = eventOn(run, gameContent, run.day);
+  if (!ev) return [];
+  const bills = Object.entries(ev.costsPct ?? {}).map(([bill, pct]) => ({
+    id: `bill-${bill}`,
+    text: pct === 0 ? t('ui.event.free', { bill }) : t('ui.event.dearer', { bill, pct: pct ?? 100 }),
+  }));
+  if (!ev.sickChance) return bills;
+  const p = careFor(run, gameContent).sickAnyway ?? 0;
+  const spared = sparingFavour(run);
+  const sick =
+    p > 0 || !spared
+      ? { id: 'sick', text: t('ui.event.sick', { p }) }
+      : { id: 'spared', text: t('ui.event.spared', { god: factionName(spared.faction, run.day) }) };
+  return [...bills, sick];
+}
+
+/** Today's day event (docs/tech-spec.md §52), at the morning: what happened, and what it does to the day and night. */
+function EventCard({ run, sunS, sunPct }: { run: RunState; sunS: number; sunPct: number | undefined }) {
+  const ev = eventOn(run, gameContent, run.day);
+  if (!ev) return null;
+  const change = eventLineChange(ev, run.day);
+  const own = gameContent.days.find((d) => d.day === run.day)?.sunS ?? sunS;
+  const sun = sunS - own;
+  const notes = [
+    ...(change === 0
+      ? []
+      : [{ id: 'line', text: t(change > 0 ? 'ui.event.more' : 'ui.event.fewer', { n: Math.abs(change) }) }]),
+    ...(sun === 0 || run.story
+      ? []
+      : [
+          {
+            id: 'sun',
+            text: t(sun < 0 ? 'ui.event.sunLess' : 'ui.event.sunMore', {
+              time: clockText(atSunSpeed(Math.abs(sun) * 1000, sunPct)),
+            }),
+          },
+        ]),
+    ...eventTonight(run),
+  ];
+  return (
+    <section class="card event" data-testid="day-event" data-event={ev.id}>
+      <h2 data-testid="day-event-name">{t(ev.name)}</h2>
+      <p>{t(ev.text)}</p>
+      {notes.map((n) => (
+        <p key={n.id} class="muted" data-testid={`day-event-${n.id}`}>
+          {n.text}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+/** Tonight's part of the day's event, on the night screen. */
+function EventNight({ run }: { run: RunState }) {
+  const ev = eventOn(run, gameContent, run.day);
+  const lines = eventTonight(run);
+  if (!ev || lines.length === 0) return null;
+  return (
+    <>
+      {lines.map((l) => (
+        <p key={l.id} class={l.id === 'sick' ? 'warn' : 'muted'} data-testid={`event-night-${l.id}`}>
+          {t('ui.event.tonight', { name: t(ev.name), text: l.text })}
+        </p>
+      ))}
+    </>
   );
 }
 
@@ -1672,7 +1759,9 @@ function Outlook({ run, outlook, bills }: { run: RunState; outlook: NightOutlook
     }
     return [];
   });
-  const risk = Math.max(0, ...outlook.members.map((n) => n.risk));
+  // A day event's sickness (docs/tech-spec.md §52) has its own line; this is what the bills as set add to it.
+  const anyway = careFor(run, gameContent).sickAnyway ?? 0;
+  const risk = Math.max(0, ...outlook.members.map((n) => n.risk)) - anyway;
   const need = !bills.hearth && !bills.food ? 'both' : !bills.hearth ? 'hearth' : 'food';
   return (
     <>
@@ -1888,6 +1977,7 @@ function Night() {
             <h2>{t('ui.night.family')}</h2>
             <FamilyList run={run} plan />
             <FavoursTonight run={run} />
+            <EventNight run={run} />
           </section>
           <BillsCard run={run} outlook={outlook} />
           <RankCard run={run} />
