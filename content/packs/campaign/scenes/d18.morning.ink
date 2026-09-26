@@ -20,6 +20,7 @@ Skögul goes on sharpening the spear.
   "Welcome to the department. Nothing changes until the horn. And then, well. Everything does, but not for you." # speaker: clerk
   Skögul's whetstone doesn't stop, not for a moment.
 * ["Not yet."]
+  # fx: flag clerk_later
   "Of course. It will keep. Vellum does." # speaker: clerk
   He goes back to his table and puts the contract in a drawer, on top, where he can see it.
 * ["My place is at this gate."]

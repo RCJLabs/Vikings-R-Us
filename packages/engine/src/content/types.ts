@@ -880,7 +880,9 @@ export type FavourEffect =
    * The sick at home: nights more a sick member holds out without medicine before they're lost, and the percent
    * of the usual chance of falling sick from a night's unpaid bill (0: no one falls sick by chance).
    */
-  | { readonly sickNights: number; readonly sickChancePct?: number };
+  | { readonly sickNights: number; readonly sickChancePct?: number }
+  /** Rings the audit pays for each soul sent on with its nails long, for the ship (docs/tech-spec.md §57). */
+  | { readonly nailRings: number };
 
 /**
  * The gods' requests: some mornings a god asks, openly, for a favour: souls that belong to another god, sent

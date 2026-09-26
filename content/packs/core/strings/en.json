@@ -433,6 +433,7 @@
   "ui.audit.title": "Day {n}: the audit",
   "ui.audit.pay": "Wages: {n} judged rightly at {wage} each",
   "ui.audit.bonus": "Lies caught before stamping",
+  "ui.audit.nails": "{god}'s pay for nails left uncut",
   "ui.audit.forgiven": "{n, plural, one {# mistake} other {# mistakes}} forgiven",
   "ui.audit.fines": "Fines for {n, plural, one {# more mistake} other {# more mistakes}}",
   "ui.audit.finesAll": "Fines for {n, plural, one {# mistake} other {# mistakes}}",

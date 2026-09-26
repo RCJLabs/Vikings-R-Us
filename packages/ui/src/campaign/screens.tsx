@@ -1449,7 +1449,10 @@ function RankCard({ run }: { run: RunState }) {
 
 // ---------- the gods' favour ----------
 
-/** Whether a favour does anything today: Story Mode has no sun and no fines, and the assist can waive fines. */
+/**
+ * Whether a favour does anything today: Story Mode has no sun and no fines, and the assist can waive fines. Rings for
+ * nails left long (docs/tech-spec.md §57) are paid in any mode.
+ */
 const moot = (f: FavourDef, story: boolean, noFines: boolean): boolean =>
   'sunS' in f.effect || 'freeQuestions' in f.effect ? story : 'finePct' in f.effect ? story || noFines : false;
 
@@ -1467,9 +1470,13 @@ function FavoursToday({ run, noFines }: { run: RunState; noFines: boolean }) {
   );
 }
 
-/** Every favour there is, the standing each takes and the standing now: for a player deciding whom to court. */
+/**
+ * Every favour of the powers met so far, the standing each takes and the standing now: for a player deciding whom to
+ * court. A power the story hasn't brought in yet stays out of it, as it does from the standing strip.
+ */
 function FavourGuide({ run }: { run: RunState }) {
-  const all = campaignOf(gameContent).favours ?? [];
+  const met = factionsMet(run);
+  const all = (campaignOf(gameContent).favours ?? []).filter((f) => met.includes(f.faction));
   if (all.length === 0) return null;
   const today = new Set(favoursFor(run, gameContent).map((f) => f.id));
   return (
@@ -1507,6 +1514,14 @@ function FinesEased({ ledger, day }: { ledger: DayLedger; day: number }) {
       ))}
     </>
   );
+}
+
+/** Who paid the day's rings for nails left long (docs/tech-spec.md §57), by the name they go by today. */
+function nailPayer(ledger: DayLedger, day: number): string {
+  const f = (campaignOf(gameContent).favours ?? []).find(
+    (x) => (ledger.favours ?? []).includes(x.id) && 'nailRings' in x.effect,
+  );
+  return f ? factionName(f.faction, day) : '';
 }
 
 /** The day's favours that act at night (the sick's extra night), as the gate granted them. */
@@ -1707,6 +1722,12 @@ function Audit() {
             <tr>
               <td>{t('ui.audit.bonus', { n: score.caught })}</td>
               <td class="num">{signed(ledger.bonus)}</td>
+            </tr>
+          ) : null}
+          {(ledger.nails ?? 0) > 0 ? (
+            <tr data-testid="audit-nails">
+              <td>{t('ui.audit.nails', { god: nailPayer(ledger, a.run.day) })}</td>
+              <td class="num">{signed(ledger.nails ?? 0)}</td>
             </tr>
           ) : null}
           {forgiven > 0 ? (

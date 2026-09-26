@@ -127,6 +127,7 @@ const DAY_HEADS = [
   'Unjudged',
   'Pay',
   'Bonus',
+  'Nails',
   'Fines',
   'Bills',
   'Shop',
@@ -139,11 +140,12 @@ const DAY_HEADS = [
 
 /**
  * Each finished day's accounts, one row a day; a day whose night is still to come has its night cells empty. The arms
- * column is there only in a build that sells them.
+ * column is there only in a build that sells them, and the nails column (rings a favour paid for nails left uncut,
+ * docs/tech-spec.md §57) only in one with such a favour.
  */
-function days(ledger: readonly DayLedger[], arms: boolean): string[] {
+function days(ledger: readonly DayLedger[], has: { arms: boolean; nails: boolean }): string[] {
   if (ledger.length === 0) return ['### Days', '', 'No day finished yet.'];
-  const heads = DAY_HEADS.filter((h) => arms || h !== 'Arms');
+  const heads = DAY_HEADS.filter((h) => (has.arms || h !== 'Arms') && (has.nails || h !== 'Nails'));
   const rows = ledger.map((l) => {
     const n = l.night;
     // The day's grade (docs/tech-spec.md §49), with the liars caught before their stamp.
@@ -156,11 +158,12 @@ function days(ledger: readonly DayLedger[], arms: boolean): string[] {
       String(l.unjudged),
       signed(l.pay),
       signed(l.bonus),
+      ...(has.nails ? [signed(l.nails ?? 0)] : []),
       signed(-l.fines),
       n ? signed(-(n.hearth + n.food + n.medicine)) : '',
       // Upgrades bought, net of what sold back; arms; the reprieve beside the purse it left (docs/tech-spec.md §56).
       n ? signed(-n.upgrades + (n.sold ?? 0)) : '',
-      ...(arms ? [n ? signed(-(n.arms ?? 0)) : ''] : []),
+      ...(has.arms ? [n ? signed(-(n.arms ?? 0)) : ''] : []),
       n ? signed(n.story) : '',
       n ? signed(n.draupnir) : '',
       n ? `${n.rings}${n.reprieve ? ` (reprieve ${signed(n.reprieve)})` : ''}` : '',
@@ -270,7 +273,8 @@ function favours(p: PlaytestInput): string[] {
       return f ? [`${p.t(factionKey(p.content, f.faction, l.day))}'s favour (${p.t(f.text)})`] : [];
     });
     const spared = l.eased ? [`${l.eased} rings of fines spared`] : [];
-    return held.length > 0 ? [`- Day ${l.day}: ${[...held, ...spared].join('; ')}.`] : [];
+    const nails = l.nails ? [`${l.nails} rings for nails left uncut`] : [];
+    return held.length > 0 ? [`- Day ${l.day}: ${[...held, ...spared, ...nails].join('; ')}.`] : [];
   });
   return ['### Favours', '', ...(lines.length > 0 ? lines : ['None yet.'])];
 }
@@ -408,7 +412,10 @@ export function playtestReport(p: PlaytestInput): string {
   return [
     ...header(p),
     '',
-    ...days(p.run.ledger, campaignOf(p.content).arms !== undefined),
+    ...days(p.run.ledger, {
+      arms: campaignOf(p.content).arms !== undefined,
+      nails: (campaignOf(p.content).favours ?? []).some((f) => 'nailRings' in f.effect),
+    }),
     '',
     ...mistakes(p),
     '',

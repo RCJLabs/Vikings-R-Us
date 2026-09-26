@@ -73,11 +73,14 @@ function drive(content: Content, run0: RunState, actions: readonly RunAction[]) 
   return { run, events, ctx };
 }
 
-/** A whole shift: judge each soul right (clipping what needs it), or wrong where `wrong(i)` says so; catch lies if asked. */
+/**
+ * A whole shift: judge each soul right (clipping what needs it, unless `uncut`), or wrong where `wrong(i)` says so;
+ * catch lies if asked.
+ */
 function shiftActions(
   run: RunState,
   content: Content,
-  opts: { wrong?: (i: number) => boolean; catchLies?: boolean } = {},
+  opts: { wrong?: (i: number) => boolean; catchLies?: boolean; uncut?: boolean } = {},
 ): RunAction[] {
   const ctx = runContext(content, run);
   const started = stepRun(run, { t: 'beginShift', at: 0 }, { content, ctx }).state;
@@ -93,7 +96,7 @@ function shiftActions(
     const wrong = opts.wrong?.(i) ?? false;
     const dest: Destination = wrong ? (c.expect.dest === 'HEL' ? 'VALHALLA' : 'HEL') : c.expect.dest;
     // Judging right includes what must be done first (from Day 8, clipping long nails).
-    for (const id of wrong ? [] : (c.expect.procedures ?? [])) {
+    for (const id of wrong || opts.uncut ? [] : (c.expect.procedures ?? [])) {
       const tool = ctx.procedures.find((p) => p.id === id)?.tool;
       if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at } });
     }
@@ -105,7 +108,12 @@ function shiftActions(
 function playDay(
   content: Content,
   run: RunState,
-  opts: { wrong?: (i: number) => boolean; bills?: Partial<ReturnType<typeof defaultBills>>; buy?: string[] } = {},
+  opts: {
+    wrong?: (i: number) => boolean;
+    bills?: Partial<ReturnType<typeof defaultBills>>;
+    buy?: string[];
+    uncut?: boolean;
+  } = {},
 ) {
   const shift = drive(content, run, shiftActions(run, content, opts));
   const night: RunAction[] = [{ t: 'endAudit' }];
@@ -1630,6 +1638,36 @@ describe('the gods’ favour (docs/tech-spec.md §43)', () => {
     expect(waived.fines).toBe(0);
     expect(waived.eased).toBe(plain.fines);
   });
+
+  it('pays a ring a nail with Loki’s, for each soul sent on with its nails long, and the day adds up (§57)', () => {
+    const loki = favour('fav.loki');
+    const more = favour('fav.loki.more');
+    const ring = 'nailRings' in loki.effect ? loki.effect.nailRings : 0;
+    // A day of the ship's decree, every soul stamped rightly and every long nail left uncut.
+    let run = newRun(full, 'nails');
+    while (run.day < 9) run = playDay(full, run).run;
+    const day = (standing: number, uncut = true) => {
+      const morning = { ...run, standing: { ...run.standing, loki: standing } };
+      const after = playDay(full, morning, { uncut }).afterShift;
+      const l = after.ledger.at(-1);
+      if (!l) throw new Error('no audit');
+      // The purse comes to the day's accounts, the nails included.
+      expect(after.rings - morning.rings).toBe(l.pay + l.bonus - l.fines + (l.nails ?? 0));
+      return l;
+    };
+    const below = day(loki.at - 1);
+    const paid = day(loki.at);
+    const twice = day(more.at);
+    const long = (below.mistakes ?? []).filter((m) => (m.skipped?.length ?? 0) > 0).length;
+    expect(long).toBeGreaterThan(0);
+    expect(below.nails).toBeUndefined();
+    expect(paid.favours).toContain('fav.loki');
+    expect(paid.nails).toBe(ring * long);
+    expect(twice.nails).toBe(2 * ring * long);
+    // Each is still a mistake, as it was without the favour; a day with every nail cut pays nothing.
+    expect(paid.wrong).toBe(below.wrong);
+    expect(day(more.at, false).nails).toBeUndefined();
+  });
 });
 
 describe('a noon decree (docs/tech-spec.md §45)', () => {
@@ -2321,8 +2359,9 @@ describe('day events (docs/tech-spec.md §52)', () => {
     };
   };
 
-  it('draws different events on days 4-18 as a run begins, never two days running, the same for the same seed', () => {
-    expect(eventDays(full)).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
+  it('draws different events on days 5-18 as a run begins, never two days running, the same for the same seed', () => {
+    // From Day 5: Day 4 brings Freyja's stamp alone (docs/tech-spec.md §57).
+    expect(eventDays(full)).toEqual([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
     const seen = new Set<string>();
     for (let i = 0; i < 40; i++) {
       const events = newRun(full, `draw${i}`).events ?? [];

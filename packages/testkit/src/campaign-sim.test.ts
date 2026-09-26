@@ -1,4 +1,4 @@
-import { FACTIONS, reachableEndings } from '@cots/engine';
+import { campaignOf, FACTIONS, reachableEndings } from '@cots/engine';
 import { playScene } from '@cots/story';
 import { describe, expect, it } from 'vitest';
 import {
@@ -173,6 +173,48 @@ describe('a jarl’s bribe (docs/tech-spec.md §47)', () => {
     expect(refused).toContain('I remember a jarl');
     expect(took).not.toBe(refused);
     expect(text('scene.d13.night', 13, {})).not.toContain('jarl');
+  });
+});
+
+describe('the clerk’s contract, kept (docs/tech-spec.md §57)', () => {
+  const scenes = loadScenes('dev-full');
+  const mark = campaignOf(loadContent('dev-full')).favours?.find((f) => f.id === 'fav.clerk')?.at ?? 0;
+  const env = (day: number, flags: Record<string, number>, clerk: number, rings = 50) => ({
+    seed: 1,
+    day,
+    rings,
+    flags,
+    standing: { odin: 0, freyja: 0, hel: 0, loki: 0, clerk },
+    family: { mother: 'well', brother: 'well', sister: 'well' },
+  });
+  const play = (id: string, e: ReturnType<typeof env>, choices: number[]) => {
+    const json = scenes[id];
+    if (!json) throw new Error(`no ${id}`);
+    return playScene(json, e, choices);
+  };
+
+  it('is kept for one who said "Not yet", and offered again on Day 19 while they stay in his favour', () => {
+    expect(mark).toBeGreaterThan(0);
+    expect(play('scene.d18.morning', env(18, {}, 0), [1]).effects).toEqual(
+      expect.arrayContaining([{ flag: 'clerk_later', set: 1 }]),
+    );
+    const again = play('scene.d19.morning', env(19, { clerk_later: 1 }, mark), [0]);
+    expect(again.done).toBe(false);
+    expect(again.choices.map((c) => c.text)).toEqual(['Sign it now and pay the ten rings.', '"No. Not now either."']);
+    expect(play('scene.d19.morning', env(19, { clerk_later: 1 }, mark), [0, 0]).effects).toEqual(
+      expect.arrayContaining([{ rings: -10 }, { flag: 'clerk_contract', set: 1 }, { standing: 'clerk', by: 2 }]),
+    );
+    expect(play('scene.d19.morning', env(19, { clerk_later: 1 }, mark), [0, 1]).effects).toEqual(
+      expect.arrayContaining([{ flag: 'clerk_later', set: 0 }]),
+    );
+    // Too poor to pay: the offer is there, and can't be taken.
+    expect(play('scene.d19.morning', env(19, { clerk_later: 1 }, mark, 5), [0]).choices[0]?.locked).toBe(true);
+  });
+
+  it('is not offered again below his favour, after "My place is at this gate", or once signed', () => {
+    expect(play('scene.d19.morning', env(19, { clerk_later: 1 }, mark - 1), [0]).done).toBe(true);
+    expect(play('scene.d19.morning', env(19, {}, mark + 5), [0]).done).toBe(true);
+    expect(play('scene.d19.morning', env(19, { clerk_later: 1, clerk_contract: 1 }, mark + 5), [0]).done).toBe(true);
   });
 });
 

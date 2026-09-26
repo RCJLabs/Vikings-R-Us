@@ -288,6 +288,17 @@ describe('the playtest report', () => {
       `### Favours\n\n- Day 5: faction.clerk's favour (favour.clerk); ${clerk.eased} rings of fines spared.`,
     );
     expect(report(played('playtest-favour-none', 1, right))).toContain('### Favours\n\nNone yet.');
+    // Loki's pays for nails left uncut (docs/tech-spec.md §57), under the name he goes by that day.
+    const nailSave = played('playtest-nails', 1, right);
+    const { run } = resumeSave(nailSave, content, ENGINE_MAJOR);
+    const [one] = run.ledger;
+    if (!one) throw new Error('a day was played');
+    const paid = { ...run, ledger: [{ ...one, favours: ['fav.loki'], nails: 20 }] };
+    const text = playtestReport({ save: nailSave, run: paid, slot: 0, build: 'b', content, scenes, t });
+    expect(text).toContain("- Day 1: faction.stranger's favour (favour.loki); 20 rings for nails left uncut.");
+    expect(text.split('\n').find((l) => l.startsWith('| 1 |'))).toContain(
+      `| ${one.bonus > 0 ? '+' : ''}${one.bonus} | +20 |`,
+    );
   });
 
   it('lists the sun each day gave to home at dawn (docs/tech-spec.md §50)', () => {
@@ -353,6 +364,7 @@ describe('the playtest report', () => {
     const bought = { ...run, ledger, armed: { 'front.wolf': 12 } };
     const text = playtestReport({ save, run: bought, slot: 0, build: 'b', content, scenes, t });
     expect(text).toContain('| Shop | Arms | Story |');
+    expect(text).toContain('| Bonus | Nails | Fines |');
     const rows = text.split('\n').filter((l) => /^\| \d+ \|/.test(l));
     // Upgrades net of what sold back, then the arms.
     expect(rows[0]).toContain('| -15 | -40 |');
@@ -363,6 +375,7 @@ describe('the playtest report', () => {
     const demo = loadContent('web-demo');
     const plain = playtestReport({ save, run, slot: 0, build: 'b', content: demo, scenes, t });
     expect(plain).toContain('| Shop | Story |');
+    expect(plain).toContain('| Bonus | Fines |');
   });
 
   it('tells of the last battle once fought: the order, and each front as it went (docs/tech-spec.md §54)', () => {
@@ -412,8 +425,8 @@ describe('the playtest report', () => {
   });
 
   it('tells of each promotion offered and what was made of it, and the days worked at each rank', () => {
-    // Days 1-3 judged rightly: Day 4 brings the first offer.
-    let save = scenarioSave(content, 'playtest-rank', 4, ENGINE_MAJOR);
+    // Days 1-5 judged rightly: Day 6 brings the first offer (docs/tech-spec.md §57).
+    let save = scenarioSave(content, 'playtest-rank', 6, ENGINE_MAJOR);
     let run = resumeSave(save, content, ENGINE_MAJOR).run;
     expect(run.offer).toBe(1);
     const apply = (action: RunAction) => {
@@ -423,7 +436,7 @@ describe('the playtest report', () => {
       run = next;
     };
     apply({ t: 'promotion', accept: true });
-    for (let day = 4; day <= 5; day++) {
+    for (let day = 6; day <= 7; day++) {
       apply({ t: 'beginShift', at: 0 });
       let at = 0;
       for (const c of run.shift?.cases ?? []) {
@@ -432,11 +445,11 @@ describe('the playtest report', () => {
         apply({ t: 'shift', action: { t: 'send', at } });
       }
       apply({ t: 'endAudit' });
-      if (day === 5) apply({ t: 'stepDown' });
+      if (day === 7) apply({ t: 'stepDown' });
       apply({ t: 'endNight' });
     }
     expect(report(save)).toContain(
-      '### Rank\n\n- Day 4: offered rank.second; taken.\n- Days 4–5: worked as rank.second.\n- Day 5: stepped down from rank.second.',
+      '### Rank\n\n- Day 6: offered rank.second; taken.\n- Days 6–7: worked as rank.second.\n- Day 7: stepped down from rank.second.',
     );
     expect(report(played('playtest-rank-none', 1, right))).toContain('### Rank\n\nNo promotion yet.');
   });
