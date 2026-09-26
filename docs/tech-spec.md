@@ -3310,6 +3310,54 @@ The brainstorm's version, and what changed:
 - **A name alone can repeat.** Generated souls avoid the story's names, but two generated souls can share a name on different days; the day tells them apart.
 - **The words are drafts** (six strings, core `ui.ragnarok.soul`, `.more`, `.stand`, `.willRun`, `.fled`, `.foughtHere`).
 
+## 55. After M7: what became of them (the endings and an epilogue)
+
+**Why.** The rundown after item 8 found the endings the thinnest part of the game: 19 to 44 words each, for twenty days of play, where the plan budgeted about 700. Meanwhile the run knows far more than the endings used: where the family was when the horn blew, who went up the hill and who went to the pass, how each power was treated, and where each of the story's own souls was sent.
+
+**How it works**
+- **Fuller endings.** Each of the nine campaign endings is now a short scene of three or four paragraphs, about 125 words, drawing on what the run was (the nails, the questions asked, the ferry's fare, the contract, who said the quiet dead count). The failures (demoted, an empty house) and the demo's and the slice's ends are as they were. The ending screen and the gallery show an ending's paragraphs.
+- **The epilogue** (`epilogue` in `campaign.yaml`, engine `campaign/epilogue.ts`). After the ending's own words, a card: "What became of them", in three parts (at home, the powers, the dead you judged).
+  - **Slots.** Each slot says the first of its lines whose condition holds; a line without one always does, so it goes last. A slot none of whose lines holds says nothing.
+  - **Conditions** read the finished run the way the endings do, plus two new paths: `member.<id>.<how>` (well, sick, gone, died or left), and `ending.<id>`, which only the epilogue may read (while a run goes on it has no ending).
+  - **When.** Not after a failure, or the demo's or the slice's end (`epilogue.when`). Naglfar can sail on Day 18 or 19, before the horn, so lines that tell of the horn or the battle ask for Day 20.
+  - **Nothing twice.** A god's own ending already says what became of them and you, so that god's slot is silent at it; the ship's, the ferry's and the wood's endings say where the family went, so the slot that says it is silent there.
+  - **The story's souls.** Four now record where they were sent: Halla (`halla_judged`, `halla_transfer`), Thrand (`thrand_judged`, `thrand_valhalla`), Solveig (`solveig_ran`, `solveig_elsewhere`) and Old Hrolf (`hrolf_hel`). Kari's line reads whether his mother is in the hall he asked for; a run begun before these were kept knows neither, and its line only says he went to be with her.
+  - **Numbers.** Its words may use `{rings}`, `{day}`, `{fronts}` (held) and `{ran}` (who ran at the battle); none does yet.
+
+  | Part | Slots (lines) |
+  |---|---|
+  | At home | where the family was (7), Ragna (5), Ulf (6), Asa (5) |
+  | The powers | Skögul (4), Odin (4), Loki (6), the clerk (4), Hel (2), Freyja (2) |
+  | The dead you judged | Thorvald (5), Geir (4), Old Hrolf (2), the jarl (3), Kari (6), Thrand (3), Halla (2) |
+
+- **For review.** The story script (`pnpm story:script`) shows the epilogue with each line's condition in words, and counts its flags as read. The playtest report lists what the epilogue said, by part and slot.
+
+**Measured** (56 bot runs: 14 policies, 4 seeds each). The bots' epilogues said 36 of the 70 lines. Their story policies choose narrowly: they always fly Ragna up the hill, send Ulf north, leave the roof and never lie to Odin. So most family lines past the first, and the lines for choices no policy makes, are for players.
+
+**Checks**
+- **Compiler:**
+  - the words exist;
+  - conditions read run state there is;
+  - `member.*` names someone in the family, and `ending.*` an ending;
+  - only the epilogue reads the ending;
+  - no line follows one that always holds;
+  - slot ids are unique.
+- **Engine** (7):
+  - each slot's first line that holds, in order;
+  - the member and ending paths;
+  - the epilogue's own `when`, and its numbers;
+  - every shipped line can be said: a search over the values its slot's conditions name, each tried in a run built to have it and read back through `epilogueFor`;
+  - a whole run says something in every part, and nothing after a failure.
+- **Compiler tests** (2).
+- **Playtest report:** the epilogue by part and slot.
+- **e2e** (phone and desktop, with axe scans): the ending's paragraphs, then the epilogue, slot by slot in the parts' order, as the engine says.
+
+**Known limits**
+- **"Can be said" is logic, not story.** The search takes flags as independent, and the story ties some together (a Thorvald sent home on Day 16 was judged that day too). So a line can pass the check and still never come up. Skögul's last line needs an ending at Day 20 without the battle, which the campaign doesn't have; it stays as a fallback.
+- **Bots show about half the lines,** so the rest rest on the search and on players.
+- **Some refuges are left open.** When the wood's or the ship's ending doesn't come, where they leave the family stays open: the wood's line says the song doesn't say, and the ship's has only Loki's word.
+- **The words are drafts:** about 3,000 of them (the nine endings, 70 lines), for sign-off like the rest.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

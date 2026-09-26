@@ -6,6 +6,9 @@ import {
   createDayContext,
   type DayLedger,
   type DayMistake,
+  EPILOGUE_SECTIONS,
+  epilogueFor,
+  epilogueParams,
   type Faction,
   factionKey,
   factionsMet,
@@ -303,6 +306,23 @@ function battle(p: PlaytestInput): string[] {
   return ['### Ragnarök', '', `Held in this order: ${order}.`, '', ...lines];
 }
 
+/**
+ * The epilogue (docs/tech-spec.md §55): once the run has ended, what it said became of everyone, by section, each
+ * line with its slot, so a tester's report says which were shown.
+ */
+function epilogue(p: PlaytestInput): string[] {
+  const lines = epilogueFor(p.run, p.content.campaign);
+  if (lines.length === 0) return [];
+  const params = epilogueParams(p.run);
+  const out = ['### Epilogue', ''];
+  for (const section of EPILOGUE_SECTIONS) {
+    for (const l of lines.filter((x) => x.section === section)) {
+      out.push(`- ${section}, ${l.slot.replace(/^epi\./, '')}: ${p.t(l.text, params)}`);
+    }
+  }
+  return [...out, ''];
+}
+
 /** Promotion (docs/tech-spec.md §44): each offer and what was made of it, the days at each rank, and steps down. */
 function ranks(p: PlaytestInput): string[] {
   const defs = p.content.campaign?.promotion?.ranks ?? [];
@@ -394,6 +414,7 @@ export function playtestReport(p: PlaytestInput): string {
     ...choices(p),
     '',
     ...(p.run.battle ? [...battle(p), ''] : []),
+    ...epilogue(p),
   ].join('\n');
 }
 

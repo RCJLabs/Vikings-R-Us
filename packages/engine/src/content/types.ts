@@ -699,6 +699,34 @@ export interface CampaignDef {
    * it, the last night ends with the finale.
    */
   readonly ragnarok?: RagnarokDef;
+  /** What became of everyone, told after the ending from the run (docs/tech-spec.md §55); none without it. */
+  readonly epilogue?: EpilogueDef;
+}
+
+/**
+ * The epilogue (docs/tech-spec.md §55): after the ending's own words, a line for each of the run's people and powers,
+ * read from how the run left them. Each slot says the first of its lines whose `when` holds (a line without one always
+ * does); a slot none of whose lines holds says nothing.
+ */
+export interface EpilogueDef {
+  /** The epilogue shows only while this holds, at the ending (the failures, say, have none). */
+  readonly when?: StatePred;
+  /** Whether its words are drafts: the screen says so. */
+  readonly draft?: boolean;
+  readonly slots: readonly EpilogueSlotDef[];
+}
+
+/** Where a slot's line sits on the screen: the family, the powers, the souls the run judged. */
+export type EpilogueSection = 'home' | 'powers' | 'dead';
+
+export const EPILOGUE_SECTIONS: readonly EpilogueSection[] = ['home', 'powers', 'dead'];
+
+export interface EpilogueSlotDef {
+  readonly id: string;
+  readonly section: EpilogueSection;
+  /** The slot is silent unless this holds. */
+  readonly when?: StatePred;
+  readonly lines: readonly { readonly when?: StatePred; readonly text: string }[];
 }
 
 /**

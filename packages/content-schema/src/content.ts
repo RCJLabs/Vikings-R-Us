@@ -629,6 +629,23 @@ export const CampaignPartSchema = z.strictObject({
         .min(1),
     })
     .optional(),
+  // The epilogue (docs/tech-spec.md §55): what became of everyone, told after the ending from the run.
+  epilogue: z
+    .strictObject({
+      when: z.lazy(() => StatePredSchema).optional(),
+      draft: z.boolean().optional(),
+      slots: z
+        .array(
+          z.strictObject({
+            id: Id,
+            section: z.enum(['home', 'powers', 'dead']),
+            when: z.lazy(() => StatePredSchema).optional(),
+            lines: z.array(z.strictObject({ when: z.lazy(() => StatePredSchema).optional(), text: Key })).min(1),
+          }),
+        )
+        .min(1),
+    })
+    .optional(),
   // Day events (docs/tech-spec.md §52): the day's line, its sun and that night's bills; never its rules.
   events: z
     .strictObject({

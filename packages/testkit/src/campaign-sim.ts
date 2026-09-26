@@ -14,6 +14,7 @@ import {
   deskVisit,
   earnedAt,
   economyOf,
+  epilogueFor,
   FACTIONS,
   type Faction,
   fight,
@@ -369,6 +370,8 @@ export interface RunResult {
   readonly diedWaiting: number;
   /** The achievements the run earned, of those asked for (SimOptions.achievements). */
   readonly achievements: readonly string[];
+  /** What the epilogue said of the run (docs/tech-spec.md §55), its lines' string keys; none before an ending. */
+  readonly epilogue: readonly string[];
 }
 
 export interface SimOptions {
@@ -520,6 +523,7 @@ export function simulateRun(
     ),
     diedWaiting: run.ledger.reduce((n, l) => n + (l.waiting?.died.length ?? 0), 0),
     achievements: earned,
+    epilogue: epilogueFor(run, content.campaign).map((l) => l.text),
   };
 }
 

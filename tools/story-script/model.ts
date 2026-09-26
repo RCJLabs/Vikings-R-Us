@@ -78,6 +78,13 @@ export interface FlagDoc {
   readonly readBy: readonly Mention[];
 }
 
+export interface EpilogueDoc {
+  readonly id: string;
+  readonly section: string;
+  readonly when?: StatePred;
+  readonly lines: readonly { readonly text: string; readonly when?: StatePred }[];
+}
+
 export interface EndingDoc {
   readonly id: string;
   readonly title: string;
@@ -94,6 +101,8 @@ export interface ScriptModel {
   readonly flags: readonly FlagDoc[];
   /** Journal threads: what the journal lists as still in play, and when. */
   readonly threads: readonly { readonly text: string; readonly when: StatePred }[];
+  /** The epilogue (docs/tech-spec.md §55): each slot's lines, and when each is said. */
+  readonly epilogue: readonly EpilogueDoc[];
   /** The vertical slice's jump, when the build has one: the day it jumps to and the flags it sets. */
   readonly slice?: { readonly after: number; readonly day: number; readonly flags: readonly string[] };
   /** The family by id ("brother"), with the names the strings give them ("Ulf, your brother"). */
@@ -297,6 +306,13 @@ export function buildModel(build: {
       });
     }
   }
+  // The epilogue (docs/tech-spec.md §55): each line reads the flags its condition names, and its slot's.
+  for (const slot of content.campaign?.epilogue?.slots ?? []) {
+    for (const line of slot.lines) {
+      const fs = unique([...(slot.when ? stateFlags(slot.when) : []), ...(line.when ? stateFlags(line.when) : [])]);
+      for (const f of fs) add(read, f, { where: `Epilogue: ${t(line.text)}`, anchor: 'epilogue' });
+    }
+  }
   const flags: FlagDoc[] = unique([...set.keys(), ...read.keys()])
     .sort()
     .map((name) => ({ name, setBy: set.get(name) ?? [], readBy: read.get(name) ?? [] }));
@@ -313,6 +329,12 @@ export function buildModel(build: {
     endings,
     flags,
     threads: (content.campaign?.threads ?? []).map((th) => ({ text: t(th.text), when: th.when })),
+    epilogue: (content.campaign?.epilogue?.slots ?? []).map((s) => ({
+      id: s.id,
+      section: s.section,
+      ...(s.when ? { when: s.when } : {}),
+      lines: s.lines.map((l) => ({ text: t(l.text), ...(l.when ? { when: l.when } : {}) })),
+    })),
     ...(slice ? { slice: { after: slice.after, day: slice.day, flags: Object.keys(slice.preset.flags ?? {}) } } : {}),
     family: (content.campaign?.family ?? []).map((m) => ({ id: m.id, name: t(m.name) })),
     strings,

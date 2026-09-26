@@ -18,3 +18,4 @@ expect: HEL
 when: { state: flags.roof_mended, gte: 1 }
 onStamp:
   - { stamped: '*', effects: [{ flag: hrolf_judged }] }
+  - { stamped: HEL, effects: [{ flag: hrolf_hel }] }

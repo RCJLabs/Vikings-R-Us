@@ -19,3 +19,7 @@ look: { gender: m, name: Thrand, patronym: Eyvindsson, age: 78, build: lean, bea
 lines: [case.thrand.spear, case.thrand.poems, case.thrand.count]
 words: { pool.weapons: spear }
 expect: VALHALLA
+# The epilogue reads where he went (docs/tech-spec.md §55).
+onStamp:
+  - { stamped: '*', effects: [{ flag: thrand_judged }] }
+  - { stamped: VALHALLA, effects: [{ flag: thrand_valhalla }] }

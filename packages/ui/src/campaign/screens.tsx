@@ -17,8 +17,11 @@ import {
   defaultBills,
   deskVisit,
   type Effect,
+  EPILOGUE_SECTIONS,
   economyFor,
   economyOf,
+  epilogueFor,
+  epilogueParams,
   eventLineChange,
   eventOn,
   type Faction,
@@ -267,7 +270,9 @@ function EndingsGallery() {
             <li key={e.id} data-testid="ending-found">
               <details>
                 <summary>{t(e.title)}</summary>
-                <p>{t(e.text)}</p>
+                {paragraphs(t(e.text)).map((p) => (
+                  <p key={p}>{p}</p>
+                ))}
               </details>
             </li>
           ) : (
@@ -285,6 +290,38 @@ function EndingsGallery() {
  * How the run stood when it ended: the host at Ragnarök part by part, with what the endings ask of it
  * (naming only endings found on this device), the powers' standing, and where the souls went.
  */
+/** A text's paragraphs: an ending's words run to several, a blank line between each. */
+function paragraphs(text: string): string[] {
+  return text.split(/\n\s*\n/).filter((p) => p.trim() !== '');
+}
+
+/** What became of everyone (docs/tech-spec.md §55): the epilogue's lines for the run, by section. */
+function Epilogue({ run }: { run: RunState }) {
+  const campaign = campaignOf(gameContent);
+  const lines = epilogueFor(run, campaign);
+  if (lines.length === 0) return null;
+  const params = epilogueParams(run);
+  return (
+    <section class="card epilogue" data-testid="epilogue">
+      <h2>{t('ui.epilogue.title')}</h2>
+      {campaign.epilogue?.draft ? <p class="scene__draft">{t('ui.campaign.draft')}</p> : null}
+      {EPILOGUE_SECTIONS.map((section) => {
+        const here = lines.filter((l) => l.section === section);
+        return here.length === 0 ? null : (
+          <div key={section} class="epilogue__section" data-section={section}>
+            <h3>{t(`ui.epilogue.${section}`)}</h3>
+            {here.map((l) => (
+              <p key={l.slot} data-testid="epilogue-line" data-slot={l.slot}>
+                {t(l.text, params)}
+              </p>
+            ))}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 /** A front's name, and a host's, from the build's last battle (docs/tech-spec.md §54). */
 function frontName(id: string): string {
   return t(campaignOf(gameContent).ragnarok?.fronts.find((f) => f.id === id)?.name ?? id);
@@ -2336,7 +2373,14 @@ function Ending() {
       <h1 ref={focus} tabIndex={-1} data-testid="ending-title">
         {ending ? t(ending.title) : run.ending}
       </h1>
-      {ending ? <p class="ending__text">{t(ending.text)}</p> : null}
+      {ending ? (
+        <div class="ending__text" data-testid="ending-text">
+          {paragraphs(t(ending.text)).map((p) => (
+            <p key={p}>{p}</p>
+          ))}
+        </div>
+      ) : null}
+      <Epilogue run={run} />
       <p class="muted" data-testid="ending-found-count">
         {t('ui.gallery.count', {
           n: reachableEndings(gameContent).filter((e) => settings.value.endingsSeen.includes(e.id)).length,

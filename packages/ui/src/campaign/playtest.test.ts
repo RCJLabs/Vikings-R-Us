@@ -379,6 +379,12 @@ describe('the playtest report', () => {
     for (const n of story) expect(text).toContain(`${n.name} (Day ${n.day})`);
     expect(text).toContain("  - The story's own in its host: ");
     expect(text).toContain('- **Ending:**');
+    // Then what the epilogue said, by section and slot (docs/tech-spec.md §55). The scenario jumper plays no scenes, so
+    // nobody chose where the family would be; Thorvald, sent home each time, slept through the horn.
+    expect(run.ending).not.toBeNull();
+    expect(text).toContain('### Epilogue\n\n- home, refuge: epi.refuge.none{"rings":');
+    expect(text).toMatch(/- powers, skogul: epi\.skogul\.\w+\{/);
+    expect(text).toContain('- dead, thorvald: epi.thorvald.slept{');
   });
 
   it('tells of each promotion offered and what was made of it, and the days worked at each rank', () => {
