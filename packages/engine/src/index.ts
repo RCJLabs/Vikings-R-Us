@@ -5,6 +5,7 @@ export * from './campaign/grade';
 export * from './campaign/run';
 export * from './campaign/save';
 export * from './campaign/state';
+export * from './campaign/weave';
 export * from './content/types';
 export * from './gen/generate';
 export { makeLook } from './gen/look';

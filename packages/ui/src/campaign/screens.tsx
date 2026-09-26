@@ -43,6 +43,9 @@ import {
   standingFx,
   standingLead,
   threadsInPlay,
+  weaveDay,
+  weaveOf,
+  weaveOpen,
   withEffects,
 } from '@cots/engine';
 import { journalEnv, playScene, type SceneLine, sceneEnv } from '@cots/story';
@@ -364,6 +367,7 @@ function SlotSummary({ record }: { record: SlotRecord }) {
       {t('ui.campaign.summary', { day: run.day, rings: run.rings, home, family: run.family.length })}
       {run.story ? ` · ${t('ui.campaign.story')}` : ''}
       {run.oath ? ` · ${t('ui.campaign.sworn')}` : ''}
+      {run.weave ? ` · ${t('ui.campaign.woven')}` : ''}
       {run.slice ? ` · ${t('ui.campaign.slice')}` : ''}
     </p>
   );
@@ -401,6 +405,7 @@ function StartChoice({ i, value, onChange }: { i: number; value: Start; onChange
 function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
   const [story, setStory] = useState(false);
   const [oath, setOath] = useState(false);
+  const [woven, setWoven] = useState(false);
   const [start, setStart] = useState<Start>('campaign');
   const [confirm, setConfirm] = useState(false);
   const days = record ? replayableDays(record.save) : [];
@@ -431,13 +436,29 @@ function Slot({ i, record }: { i: number; record: SlotRecord | null }) {
           />{' '}
           {t('ui.campaign.oath')}
         </label>
+        {/* The Norns' weave (docs/tech-spec.md §53): opened by reaching an ending on this device. */}
+        {campaignOf(gameContent).weaving ? (
+          <label class="slot__story">
+            <input
+              type="checkbox"
+              checked={woven && weaveOpen(gameContent, settings.value.endingsSeen)}
+              disabled={!weaveOpen(gameContent, settings.value.endingsSeen)}
+              data-testid={`weave-${i}`}
+              onChange={(e) => setWoven((e.target as HTMLInputElement).checked)}
+            />{' '}
+            {t('ui.campaign.weave')}
+            {weaveOpen(gameContent, settings.value.endingsSeen) ? null : (
+              <span class="muted"> ({t('ui.campaign.weaveLocked')})</span>
+            )}
+          </label>
+        ) : null}
         <StartChoice i={i} value={start} onChange={setStart} />
         <div class="row">
           <button
             type="button"
             class="btn btn--primary"
             data-testid={`new-${i}`}
-            onClick={() => newCampaign(i, story, start === 'campaign' ? undefined : start, oath && !story)}
+            onClick={() => newCampaign(i, story, start === 'campaign' ? undefined : start, oath && !story, woven)}
           >
             {t('ui.campaign.new')}
           </button>
@@ -1031,6 +1052,7 @@ function Morning() {
         {t('ui.campaign.purse', { n: run.rings })}
         {run.story ? ` · ${t('ui.campaign.story')}` : ''}
         {run.oath ? ` · ${t('ui.campaign.sworn')}` : ''}
+        {run.weave ? ` · ${t('ui.campaign.woven')}` : ''}
         <RankName run={run} />
       </p>
       <StandingStrip run={run} />
@@ -1051,6 +1073,7 @@ function Morning() {
           <EventCard run={run} sunS={ctx.spec.sunS} sunPct={assists.sunPct} />
           <section class="card">
             <Decree ctx={ctx} />
+            <WeaveNote run={run} />
             <RulebookChanges day={run.day} />
             <WaitingNote run={run} />
             <FavoursToday run={run} noFines={assists.noFines === true} />
@@ -1098,6 +1121,22 @@ function Morning() {
       </div>
       {journalOpen.value ? <JournalView /> : null}
     </main>
+  );
+}
+
+// ---------- the Norns' weave ----------
+
+/** The Norns' weave (docs/tech-spec.md §53), the morning of the first day it changes: its name and what it does. */
+function WeaveNote({ run }: { run: RunState }) {
+  const weave = weaveOf(run, gameContent);
+  if (!weave || weaveDay(gameContent, weave) !== run.day) return null;
+  return (
+    <div class="banner" role="status" data-testid="weave-note">
+      <p>
+        <b>{t('ui.weave.title', { name: t(weave.name) })}</b>
+      </p>
+      <p>{t(weave.text)}</p>
+    </div>
   );
 }
 

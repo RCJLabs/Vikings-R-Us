@@ -371,6 +371,8 @@ export interface SimOptions {
   readonly pleas?: boolean;
   /** Whether the run is played under the oath (docs/tech-spec.md §49): fines from the first mistake. */
   readonly oath?: boolean;
+  /** A weave to play the run under (docs/tech-spec.md §53), by id, for measuring it. */
+  readonly weave?: string;
 }
 
 /** One bot run to the end of the campaign (or its ending). */
@@ -382,7 +384,8 @@ export function simulateRun(
   options: SimOptions = {},
 ): RunResult {
   const policy = options.story ?? PLAIN;
-  let run = newRun(content, seed, options.oath ? { oath: true } : {});
+  const begun = newRun(content, seed, options.oath ? { oath: true } : {});
+  let run: RunState = options.weave ? { ...begun, weave: options.weave } : begun;
   const rng = new Rng(`sim|${seed}|${judging.name}|${strategy}`);
   let lowest = run.rings;
   let sickNights = 0;
@@ -521,6 +524,7 @@ export function simulateCampaign(
   serve?: Faction,
   promote?: boolean,
   bribes?: boolean,
+  weave?: string,
 ): PolicyReport[] {
   const out: PolicyReport[] = [];
   const mean = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0) / Math.max(1, xs.length);
@@ -536,6 +540,7 @@ export function simulateCampaign(
             ...(serve ? { serve } : {}),
             ...(promote !== undefined ? { promote } : {}),
             ...(bribes ? { bribes } : {}),
+            ...(weave ? { weave } : {}),
           }),
         );
         const ranks = campaignOf(content).promotion?.ranks.length ?? 0;

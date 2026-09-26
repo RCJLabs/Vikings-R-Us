@@ -5,7 +5,7 @@ import type { AppealsDef, CampaignDef, Content, Destination, Effect, Faction, Sc
 import { generateDay, tierKnobs } from '../gen/generate';
 import { scriptedCase } from '../gen/scripted';
 import type { CaseSpec } from '../gen/types';
-import { validateCase } from '../gen/validate';
+import { revealsOf, validateCase } from '../gen/validate';
 import { createDayContext, type DayCtx, soulCtx } from '../logic/context';
 import { judge } from '../logic/judge';
 import { solve } from '../logic/solver';
@@ -44,6 +44,7 @@ import {
 } from './run';
 import { type RunSave, recordAction, replayableDays, replayDay, resumeSave, runContext, startSave } from './save';
 import { type FamilyMember, factionsMet, hostParts, type RunState, ragnarokStrength, stateValue } from './state';
+import { weaveDay, weaveOpen, wovenRules } from './weave';
 
 const demo = loadContent('web-demo');
 const full = loadContent('dev-full');
@@ -2256,5 +2257,127 @@ describe('day events (docs/tech-spec.md §52)', () => {
       }
     }
     expect(d && checked).toBeTruthy();
+  });
+});
+
+describe('the Norns’ weave (docs/tech-spec.md §53)', () => {
+  const weaving = campaignOf(full).weaving;
+  const weave = (id: string) => {
+    const w = weaving?.weaves.find((x) => x.id === id);
+    if (!w) throw new Error(`no weave ${id}`);
+    return w;
+  };
+  /** The morning of `day` in a run woven with `id` (or not woven), with no day event to muddle the line. */
+  const morning = (day: number, id?: string, seed = 'woven'): RunState => {
+    const { weave: _, ...plain } = { ...newRun(full, seed), day, events: [] };
+    return id ? { ...plain, weave: id } : plain;
+  };
+  const queue = (run: RunState) => campaignQueue(run, { content: full, ctx: runContext(full, run) });
+  const readOrder = (run: RunState) => runContext(full, run).rules.map((r) => r.id);
+
+  it('is drawn from the run’s seed when a run is begun woven, and only then; the demo has none to draw', () => {
+    const drawn = new Set<string>();
+    for (let i = 0; i < 24; i++) {
+      const run = newRun(full, `draw${i}`, { woven: true });
+      expect(weaving?.weaves.map((w) => w.id)).toContain(run.weave);
+      drawn.add(run.weave ?? '');
+      expect(newRun(full, `draw${i}`, { woven: true }).weave).toBe(run.weave);
+      expect(newRun(full, `draw${i}`).weave).toBeUndefined();
+    }
+    expect([...drawn].sort()).toEqual(weaving?.weaves.map((w) => w.id).sort());
+    expect(newRun(demo, 'draw0', { woven: true }).weave).toBeUndefined();
+    // It opens once one of its endings has been reached on the device.
+    expect(weaveOpen(full, [])).toBe(false);
+    expect(weaveOpen(full, ['ending.demoted', 'ending.alone'])).toBe(false);
+    expect(weaveOpen(full, ['ending.lastStand'])).toBe(true);
+    expect(weaveOpen(demo, ['ending.lastStand'])).toBe(false);
+  });
+
+  it('reads the rules in its order from its first day, and says which it moved', () => {
+    expect(weaveDay(full, weave('weave.sea'))).toBe(6);
+    expect(weaveDay(full, weave('weave.clerkLast'))).toBe(10);
+    // Before its first day, the order is the day's own.
+    expect(readOrder(morning(5, 'weave.sea'))).toEqual(readOrder(morning(5)));
+    const sea = readOrder(morning(6, 'weave.sea'));
+    expect(sea.indexOf('rule.ran')).toBeLessThan(sea.indexOf('rule.outlaw'));
+    const clerk = readOrder(morning(12, 'weave.clerkLast'));
+    expect(clerk.indexOf('rule.transfer')).toBeGreaterThan(clerk.indexOf('rule.valhalla'));
+    expect(clerk.at(-1)).toBe('rule.hel');
+    expect(
+      runContext(full, morning(12, 'weave.clerkLast'))
+        .rules.filter((r) => r.woven)
+        .map((r) => r.id),
+    ).toEqual(['rule.transfer']);
+    expect(wovenRules(full, weave('weave.clerkLast'), 12)).toEqual(['rule.transfer']);
+  });
+
+  it('makes the day’s souls as in any run, judged in its order, with two of its own in place of two', () => {
+    // Days with no story soul to place among them.
+    for (const [id, day] of [
+      ['weave.sea', 11],
+      ['weave.clerkLast', 14],
+    ] as const) {
+      const plain = queue(morning(day));
+      const woven = queue(morning(day, id));
+      expect(woven, id).toHaveLength(plain.length);
+      const byId = new Map(plain.map((c) => [c.id, c]));
+      const same = woven.filter((c) => byId.has(c.id));
+      // The same people, less the two the weave's own replaced (the last of the day's own).
+      expect(
+        same.map((c) => c.id),
+        id,
+      ).toEqual(plain.slice(0, plain.length - 2).map((c) => c.id));
+      for (const c of same) expect(c.truth, id).toEqual(byId.get(c.id)?.truth);
+      expect(
+        woven.filter((c) => !byId.has(c.id)),
+        id,
+      ).toHaveLength(2);
+    }
+    // Its own are souls both rules claim, which the day's own order would send elsewhere, whenever the generator makes
+    // them of their kind (it tries the kind first, not only): nearly all of them.
+    for (const [id, day] of [
+      ['weave.sea', 11],
+      ['weave.clerkLast', 14],
+    ] as const) {
+      let contested = 0;
+      let brought = 0;
+      for (const seed of ['claim-a', 'claim-b', 'claim-c', 'claim-d', 'claim-e']) {
+        const own = new Set(queue(morning(day, undefined, seed)).map((c) => c.id));
+        const plainCtx = runContext(full, morning(day, undefined, seed));
+        for (const c of queue(morning(day, id, seed)).filter((x) => !own.has(x.id))) {
+          brought++;
+          if (judge(c.truth, plainCtx).dest !== c.expect.dest) contested++;
+        }
+      }
+      expect(brought, id).toBe(10);
+      expect(contested, id).toBeGreaterThanOrEqual(7);
+    }
+  });
+
+  it('keeps every soul in a woven line fair under its order: the careful bot judges them all rightly', () => {
+    for (const id of ['weave.sea', 'weave.clerkLast']) {
+      for (const day of [10, 14, 17]) {
+        for (const seed of ['fair-a', 'fair-b']) {
+          const run = morning(day, id, seed);
+          const ctx = runContext(full, run);
+          for (const c of queue(run)) {
+            const cx = soulCtx(ctx, c);
+            const j = solve(c.evidence.fields, cx, { reveals: revealsOf(c.lies) }).judgment;
+            expect(j.kind === 'determined' && j.dest, `${id} day ${day} ${c.id}`).toBe(c.expect.dest);
+            const knobs = tierKnobs(c.meta.tier, cx.spec.queue.knobs);
+            const valid = validateCase(c.evidence, c.truth, c.lies, c.expect, c.meta.decisive, cx, knobs);
+            expect(valid.ok, `${id} day ${day} ${c.id}`).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  it('keeps its weave in the save, so a day replayed from its morning reads the same order', () => {
+    const save = startSave(full, 'woven-save', 1, { woven: true });
+    const first = save.mornings[0];
+    expect(first?.weave).toBe(newRun(full, 'woven-save', { woven: true }).weave);
+    const run = { ...(first as RunState), day: 12 };
+    expect(readOrder(run)).toEqual(readOrder({ ...run }));
   });
 });

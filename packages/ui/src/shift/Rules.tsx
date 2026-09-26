@@ -47,6 +47,12 @@ export function RulesPanel({
         {ctx.rules.map((r) => (
           <li key={r.id} data-rule={r.id} class={out?.has(r.id) ? 'is-out' : undefined} data-out={out?.has(r.id)}>
             {t(ruleText(r, ctx.day))}
+            {r.woven ? (
+              <span class="rules__woven muted" data-testid="rule-woven">
+                {' '}
+                ({t('ui.rules.woven')})
+              </span>
+            ) : null}
             {out?.has(r.id) ? <span class="rules__out"> ({t('ui.rules.out')})</span> : null}
           </li>
         ))}

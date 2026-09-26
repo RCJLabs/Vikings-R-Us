@@ -84,6 +84,9 @@ function header(p: PlaytestInput): string[] {
     `seed \`${run.seed}\``,
     run.story ? 'Story Mode' : '',
     run.oath ? 'under oath' : '',
+    run.weave
+      ? `woven: ${t(p.content.campaign?.weaving?.weaves.find((w) => w.id === run.weave)?.name ?? run.weave)}`
+      : '',
     run.slice ? 'the slice' : '',
   ]
     .filter((s) => s !== '')

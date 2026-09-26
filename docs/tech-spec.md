@@ -3046,7 +3046,7 @@ The brainstorm's version, and what changed:
 The brainstorm's version, and what changed:
 - **"A plague day (Hel's hall overflows early)"** would change a rule before its day, and the rules and their teaching are fixed to their days. It's a sickness now: more who died in their beds at the gate, and a risk at home that night.
 - **Events change a day's line, never its shares.** A first version raised a destination's share of the day (more Rán on a storm day). The days' minimum shares fill their lines already, so any rise left the others short of their minimums on most days (tried and measured). So instead, an event drops some of the day's own souls and adds its own among them. The generator's plan for the day is untouched.
-- **"The Norns' weave"** (the same rules in a different order, after a first ending) is part 2. As written it breaks the story: each day's story is built on that day's new rule. The proposal is to weave the Order of Judgment's precedence instead of the days.
+- **"The Norns' weave"** (the same rules in a different order, after a first ending) is part 2 (§53). As written it breaks the story: each day's story is built on that day's new rule. It weaves the Order of Judgment's precedence instead of the days.
 
 **How it works** (`campaign.events` in `campaign.yaml`, engine `campaign/events.ts`)
 - **The draw.** A new run draws three events from its seed (`drawEvents`, on its own stream) and keeps them in the run (`RunState.events`).
@@ -3111,6 +3111,80 @@ The brainstorm's version, and what changed:
 - **The day's best (§49) is kept by day number,** so a best made on a feast day stands against one made in a storm.
 - **The bots don't feel the sun.** They take 25 seconds a soul and never run short, so a storm's lost minute and a battle's three souls only show as more pay or less. How hard a storm feels is a playtest question.
 - **The events' words are drafts.**
+
+## 53. After M7: variety from run to run, part 2: the Norns' weave (gameplay brainstorm, item 9)
+
+**Why.** The brainstorm's "after a first ending, the Norns' weave brings the same rules in a different order". Read as the days' rules arriving in another order, it breaks the story: each day's story is built on that day's new rule (the registry and Geir, the rune-lens and Ulf's copied Ulfberhts, Loki's "don't clip", the clerk, the carver, Loki, Muninn, Hel's strike). So the weave keeps the days and changes the order the rules are *read* in, in the Order of Judgment: the same rules, and where two both hold, the other one decides.
+
+**How it works** (`weaving` in `campaign.yaml`, engine `campaign/weave.ts`)
+- **Opening it.** Once a run on the device has reached one of `weaving.after`'s endings, a new run can be begun woven. That list is any Day 20 ending and the early story ending; being demoted, an empty house, and the demo's and slice's ends don't count. Before then, the new-run option is disabled and says what opens it.
+- **The draw.** A run begun woven (`newRun({ woven })`) draws one weave from its seed and keeps it (`RunState.weave`).
+- **What a weave is.** It gives some rules new places in the Order (`order`); the rest keep theirs.
+  - The run's contexts read the rules in that order (`wovenContent`, through `dayContext`): the desk, the rulebook, appeals, the line at dusk, and the requests.
+  - It changes a day once two rules in force that day come in another order (`weaveDay`). The morning of that day names the weave and says what it does.
+  - A woven run says "Woven" on its mornings and its slot. The rulebook marks the rule it moved: "(the Norns' weave)".
+- **The day's own souls are made exactly as in an unwoven run,** then seen under the weave's order (`underWeave`). Each keeps its truth, lies and look, and is judged and dressed with evidence the way the line at dusk dresses a soul for a new day (`dressForDay`, §41).
+  - So the generator's figures are the unwoven ones, and every soul still meets the fairness contract under the rules as read.
+  - A soul no dressing fits would give its place to one made under the weave. None has been seen.
+  - Tried first: making the souls under the woven order directly. Souls of a kind two rules claim were then made for halls their sampler rarely reaches, and the acceptance gate failed (15-28% for baptized souls under the clerk's weave).
+- **Its own souls.** On its own, a weave decides few souls: measured, 2% and 3% of them from its first day. So each woven day from its first also brings two souls that both reordered rules claim, in place of two of the day's own (a swap, as a storm's are). They're made under the weave, of their kind if the generator can, and none on a day with a noon decree.
+
+**The two weaves** (drafts)
+
+| Weave | What moves | First day | Its two souls a day |
+|---|---|---|---|
+| Rán's thread first | Rán's rule is read before the registry's and the clerk's: the drowned are hers, even outlaws, even the baptized | 6 | From Day 10: baptized souls who drowned (Rán's, not the clerk's) |
+| The clerk's thread last | The clerk's rule is read after every hall's but Hel's: the baptized are his only when no other rule claims them | 10 | A baptized warrior who fell well (Odin's or Freyja's), and a baptized soul who drowned (Rán's) |
+
+- **Dropped on the way:**
+  - The clerk's thread first (baptized outlaws): the generator can't find them often enough to bring any.
+  - Freyja's thread first (borrowed blades before her whim): whether a borrowed blade is hers depends on the day's whim, and on some whims none can be.
+- **The story souls are checked under each weave by the compiler.** None of them changes hall.
+
+**Measured** (a probe of 20 seeds a day, and `pnpm sim sweep --weave`)
+- **How much it decides:** with its own souls, a weave decides 11-12% of souls from its first day.
+- **Its own souls are contested nearly always:** 100% of Rán's, and about 83% of the clerk's. The rest are souls of another kind, when the generator can't make a baptized warrior for the day.
+- **Every soul dressed:** no failures in about 11,000.
+- **The bots:** the careful bot judges everything rightly. The one that trusts testimony gets 55-63%.
+
+**What the sims show** (`pnpm sim campaign --weave`, 50 runs per policy, against the same seeds unwoven)
+- **Rán's thread first makes Ragnarök harder.** The drowned count for nothing in the host, and its souls take the places of souls that counted.
+  - Hosts are about 23 weaker.
+  - "The wolf wins" comes for competent bots in 1-3 runs of 50, where it never did.
+  - Novices are demoted a little more often.
+- **The clerk's thread last leaves the host about as it was.** A baptized warrior sent to Valhalla counts twice, and one sent to Rán counts for nothing, as with the clerk.
+- **Rings barely move.** The bots judge by the rules as read, so a weave costs them nothing to learn. For a player it's a new order to learn; that's the point of it, and a playtest question.
+
+**Checks**
+- **Compiler:**
+  - the endings that open it exist, and so do the rules it moves;
+  - every weave changes some day, and Hel's catch-all is still read last on every day;
+  - it can bring its souls on every day, under every choice of the day's params;
+  - the story souls are made under each weave.
+  - The event souls' check (§52) now uses every param choice too.
+- **The sweep's `--weave`:** each day is made as usual and its souls dressed for the weave.
+  - The bots and the destinations use the woven souls; the generator's figures and the day's mix count the souls as made.
+  - Souls no dressing fits are held to the fallbacks' rate.
+  - Per push: 30 seeds per weave, checking every soul dressed, the careful bot at 100%, and the trusting bot at 65% or less.
+  - Nightly: 2,000 seeds per weave, with every gate.
+
+**Tests**
+- **Engine (5):**
+  - the draw, and what opens it;
+  - the order from its first day, and the moved rule marked;
+  - the day's own souls the same people judged in its order, with its two in place of two, and those contested;
+  - every soul fair under its order;
+  - the save.
+- **Compiler (2), the woven sweep (1).**
+- **e2e on the full game** (phone and desktop):
+  - the option before and after an ending;
+  - a woven run's marks;
+  - a woven Day 10's note and rulebook order, with accessibility scans.
+
+**Known limits**
+- **Two weaves only,** and a woven run shows which one on the first day it changes.
+- **The weave's souls take the places of the last souls in the line as the day's event left it.** On an event day, one of those can be a soul the event brought (a storm's drowned raider, say).
+- **The words are drafts.**
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

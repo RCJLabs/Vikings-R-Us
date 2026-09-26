@@ -33,6 +33,7 @@ import type {
   Content,
   CueDef,
   DaySpec,
+  Destination,
   EndlessTwist,
   FactDef,
   FactLaw,
@@ -63,6 +64,9 @@ import {
   STATE_PATHS,
   type StatePred,
   scriptedCase,
+  weaveDay,
+  weaveSoulsOn,
+  wovenContent,
 } from '@cots/engine';
 import { z } from 'zod';
 
@@ -194,6 +198,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(all('favours').length > 0 ? { favours: all('favours') } : {}),
     ...(last('promotion') ? { promotion: last('promotion') as NonNullable<CampaignDef['promotion']> } : {}),
     ...(last('events') ? { events: last('events') as NonNullable<CampaignDef['events']> } : {}),
+    ...(last('weaving') ? { weaving: last('weaving') as NonNullable<CampaignDef['weaving']> } : {}),
   };
 }
 
@@ -756,6 +761,7 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (r.until !== undefined && r.until <= r.since) problems.push(`request ${r.id} stops before it starts.`);
   }
   problems.push(...lintEvents(content, key));
+  problems.push(...lintWeaving(content, key));
   if (!content.predicates.some((p) => p.id === c.worthy)) {
     problems.push(`The campaign's worthy predicate "${c.worthy}" doesn't exist.`);
   }
@@ -797,15 +803,73 @@ function lintEvents(content: Content, key: (k: string, where: string) => void): 
       const spec = content.days.find((d) => d.day === day);
       if (!spec) continue;
       if (spec.queue.count[0] - (ev.fewer ?? 0) < 3) problems.push(`${where} leaves day ${day} too short a line.`);
-      const ctx = createDayContext(content, day, 'lint');
-      const reach = reachOf(ctx);
       for (const s of eventSoulsOn(ev, day)) {
-        const can = s.to.some((d) => reach.get(s.kind)?.has(d) && ctx.destinations.has(d));
-        if (!can) problems.push(`${where}: day ${day} has no ${s.kind} bound for ${s.to.join(' or ')}.`);
+        if (!canBring(content, day, s.kind, s.to)) {
+          problems.push(`${where}: day ${day} has no ${s.kind} bound for ${s.to.join(' or ')}.`);
+        }
       }
     }
   }
   return problems;
+}
+
+/**
+ * The Norns' weave (docs/tech-spec.md §53): the endings that open it, strings, rules that exist, a weave that changes
+ * some day, the catch-all still read last on every day, and the souls it brings of a kind each day has, able to reach
+ * where they're bound under its order. The story souls are checked under each weave with the rest (lintScripted).
+ */
+function lintWeaving(content: Content, key: (k: string, where: string) => void): string[] {
+  const def = content.campaign?.weaving;
+  if (!def) return [];
+  const problems: string[] = [];
+  const endings = new Set(content.campaign?.endings.map((e) => e.id));
+  for (const id of def.after)
+    if (!endings.has(id)) problems.push(`The weave opens after "${id}", which isn't an ending.`);
+  const rules = new Set(content.rules.map((r) => r.id));
+  const ids = new Set<string>();
+  const lastDay = content.campaign?.lastDay ?? 0;
+  for (const w of def.weaves) {
+    const where = `weave ${w.id}`;
+    if (ids.has(w.id)) problems.push(`Duplicate weave "${w.id}".`);
+    ids.add(w.id);
+    key(w.name, where);
+    key(w.text, where);
+    for (const id of Object.keys(w.order)) if (!rules.has(id)) problems.push(`${where} moves unknown rule "${id}".`);
+    const first = weaveDay(content, w);
+    if (first === null) {
+      problems.push(`${where} changes no day.`);
+      continue;
+    }
+    const woven = wovenContent(content, w);
+    for (const d of content.days) {
+      const inForce = woven.rules
+        .filter((r) => r.since <= d.day && (r.until === undefined || d.day < r.until))
+        .sort((a, b) => a.order - b.order);
+      const last = inForce[inForce.length - 1];
+      if (!last || !('always' in last.when))
+        problems.push(`${where}: on day ${d.day} the last rule read doesn't always apply.`);
+    }
+    for (let day = first; day <= lastDay; day++) {
+      for (const s of weaveSoulsOn(content, w, day)) {
+        if (!canBring(woven, day, s.kind, s.to)) {
+          problems.push(`${where}: day ${day} has no ${s.kind} bound for ${s.to.join(' or ')}.`);
+        }
+      }
+    }
+  }
+  return problems;
+}
+
+/**
+ * Whether souls of `kind` can be bound for one of `to` on `day` under every choice of the day's params (Freyja's whim
+ * and the like), with the rules read as `rules` reads them. The generator tries the kind first, not only.
+ */
+function canBring(rules: Content, day: number, kind: string, to: readonly Destination[]): boolean {
+  return paramCombos(rules, day).every((choose) => {
+    const ctx = createDayContext(rules, day, 'lint', undefined, choose);
+    const reach = reachOf(ctx);
+    return to.some((d) => reach.get(kind)?.has(d) && ctx.destinations.has(d));
+  });
 }
 
 /** Every combination of a day's param choices (Freyja's whim and the like), by choice id. */
@@ -876,13 +940,20 @@ function lintScripted(content: Content, strings: Readonly<Record<string, string>
       }
       placed.add(def.id);
       if (slot.at > d.queue.count[1]) problems.push(`day ${d.day} places ${def.id} past the end of its queue.`);
-      for (const choose of paramCombos(content, d.day)) {
-        const ctx = createDayContext(content, d.day, 'lint', undefined, choose);
-        const made = scriptedCase(def, ctx, 'lint', slot.at);
-        if (!made.ok) {
-          const params = Object.entries(choose).map(([k, v]) => `${k}=${v}`);
-          problems.push(`day ${d.day}: ${made.why}${params.length > 0 ? ` with ${params.join(', ')}` : ''}.`);
-          break;
+      // Under every order a run can read the rules in: its own, and each weave's (docs/tech-spec.md §53).
+      const orders = [
+        { rules: content, under: '' },
+        ...(content.campaign?.weaving?.weaves ?? []).map((w) => ({ rules: wovenContent(content, w), under: w.id })),
+      ];
+      for (const { rules, under } of orders) {
+        for (const choose of paramCombos(content, d.day)) {
+          const ctx = createDayContext(rules, d.day, 'lint', undefined, choose);
+          const made = scriptedCase(def, ctx, 'lint', slot.at);
+          if (!made.ok) {
+            const params = [...Object.entries(choose).map(([k, v]) => `${k}=${v}`), ...(under ? [under] : [])];
+            problems.push(`day ${d.day}: ${made.why}${params.length > 0 ? ` with ${params.join(', ')}` : ''}.`);
+            break;
+          }
         }
       }
     }

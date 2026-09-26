@@ -1,7 +1,7 @@
 import { gameContent } from 'virtual:content';
 import {
-  createDayContext,
   type DayCtx,
+  dayContext,
   ENGINE_MAJOR,
   type RunAction,
   type RunEnv,
@@ -20,6 +20,7 @@ import {
   startShift,
   stepRun,
   stepShift,
+  weaveOpen,
 } from '@cots/engine';
 import { batch, signal } from '@preact/signals';
 import { t } from '../i18n';
@@ -37,6 +38,7 @@ import {
   say,
   screen,
   session,
+  settings,
   unlock,
 } from '../store';
 
@@ -219,14 +221,22 @@ export function openSlot(slot: number): void {
   screen.value = screenFor(run);
 }
 
-export function newCampaign(slot: number, story: boolean, slice?: 'play' | 'fromJump', oath = false): void {
+export function newCampaign(
+  slot: number,
+  story: boolean,
+  slice?: 'play' | 'fromJump',
+  oath = false,
+  woven = false,
+): void {
   // Never over a save, nor over something unreadable the player hasn't cleared.
   if (!isFree(slot)) return;
   // Run seeds are random; everything after is deterministic from the seed.
   const seed = `run:${Date.now().toString(36)}:${Math.floor(Math.random() * 1e9).toString(36)}`;
   // The oath (docs/tech-spec.md §49) isn't sworn in Story Mode.
   const sworn = oath && !story ? { oath: true } : {};
-  write(slot, startSave(gameContent, seed, ENGINE_MAJOR, { story, ...sworn, ...(slice ? { slice } : {}) }));
+  // The Norns' weave (docs/tech-spec.md §53), once an ending on this device has opened it.
+  const weave = woven && weaveOpen(gameContent, settings.peek().endingsSeen) ? { woven: true } : {};
+  write(slot, startSave(gameContent, seed, ENGINE_MAJOR, { story, ...sworn, ...weave, ...(slice ? { slice } : {}) }));
   openSlot(slot);
 }
 
@@ -275,7 +285,8 @@ export function hearAppeal(): void {
   const a = active.peek();
   const appeal = a?.run.appeal;
   if (!a || !appeal || a.run.phase !== 'morning') return;
-  const ctx = createDayContext(gameContent, appeal.day, a.run.seed);
+  // The rules of the day it was judged, in the order the run reads them (its weave's, docs/tech-spec.md §53).
+  const ctx = dayContext(gameContent, a.run, appeal.day);
   const config = {
     mode: 'practice' as const,
     seed: a.run.seed,
