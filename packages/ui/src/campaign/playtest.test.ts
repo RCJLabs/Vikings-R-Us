@@ -341,6 +341,30 @@ describe('the playtest report', () => {
     expect(report(woven)).toContain('woven: weave.sea');
   });
 
+  it('counts the market each night, arms and sales too, and the night the reprieve paid (docs/tech-spec.md §56)', () => {
+    const save = played('playtest-market', 2, right);
+    const { run } = resumeSave(save, content, ENGINE_MAJOR);
+    const [one, two] = run.ledger;
+    if (!one?.night || !two?.night) throw new Error('two nights were played');
+    const ledger: DayLedger[] = [
+      { ...one, night: { ...one.night, upgrades: 20, sold: 5, arms: 40 } },
+      { ...two, night: { ...two.night, reprieve: 57, rings: 0 } },
+    ];
+    const bought = { ...run, ledger, armed: { 'front.wolf': 12 } };
+    const text = playtestReport({ save, run: bought, slot: 0, build: 'b', content, scenes, t });
+    expect(text).toContain('| Shop | Arms | Story |');
+    const rows = text.split('\n').filter((l) => /^\| \d+ \|/.test(l));
+    // Upgrades net of what sold back, then the arms.
+    expect(rows[0]).toContain('| -15 | -40 |');
+    expect(rows[1]).toContain('| 0 (reprieve +57) |');
+    expect(text).toContain('- **Arms:** front.wolf +12');
+    expect(text).toContain('- **Reprieve:** Night 2, 57 rings of debt paid');
+    // A build that sells no arms has no column for them.
+    const demo = loadContent('web-demo');
+    const plain = playtestReport({ save, run, slot: 0, build: 'b', content: demo, scenes, t });
+    expect(plain).toContain('| Shop | Story |');
+  });
+
   it('tells of the last battle once fought: the order, and each front as it went (docs/tech-spec.md §54)', () => {
     // The last day's night, the horn, and the hosts sent with the shore first. One soul sent to Hel by mistake
     // on Day 7 will run from her legion.

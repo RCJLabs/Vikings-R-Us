@@ -701,6 +701,39 @@ export interface CampaignDef {
   readonly ragnarok?: RagnarokDef;
   /** What became of everyone, told after the ending from the run (docs/tech-spec.md §55); none without it. */
   readonly epilogue?: EpilogueDef;
+  /** Arms for the last battle (docs/tech-spec.md §56): from a night on, rings buy strength at a front. */
+  readonly arms?: ArmsDef;
+  /** The share of an upgrade's price it sells back for, in percent (docs/tech-spec.md §56); none sell without it. */
+  readonly sellBack?: number;
+  /** Once a run, the night a debt would end it, someone pays it (docs/tech-spec.md §56); none without it. */
+  readonly reprieve?: ReprieveDef;
+}
+
+/**
+ * Arms for the last battle (docs/tech-spec.md §56). From a night on, the quartermaster sells arms for one front a
+ * night; each lot adds strength at its front at Ragnarök, and costs more than the one before.
+ */
+export interface ArmsDef {
+  /** The first night arms are for sale. */
+  readonly from: number;
+  /** Strength each lot adds at its front. */
+  readonly strength: number;
+  /** Each lot's price, in the order they're bought: when they run out, so do the arms. */
+  readonly prices: readonly number[];
+  /** What each front's arms are (string keys), in the order the night lists them. */
+  readonly fronts: readonly { readonly front: string; readonly name: string; readonly text: string }[];
+}
+
+/**
+ * A reprieve (docs/tech-spec.md §56): the first night of a run that would end it in `ending`, it doesn't. The purse is
+ * set to `rings`, the nights in debt start again, and `flag` is set, for the story to remember; never under the oath.
+ */
+export interface ReprieveDef {
+  readonly ending: string;
+  readonly rings: number;
+  readonly flag: string;
+  /** What the next morning says of it (a string key). */
+  readonly text: string;
 }
 
 /**

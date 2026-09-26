@@ -11,6 +11,10 @@ family:
   - { id: sister, name: family.sister, adult: false }
 draupnir: { nights: [9, 18], rings: 8 }
 debtFloor: -30
+# Upgrades sell back for half what they cost, and once a run, the night the debt would end it, Skögul pays the
+# quartermaster instead (docs/tech-spec.md §56): never under the oath.
+sellBack: 50
+reprieve: { ending: ending.demoted, rings: 0, flag: skogul_paid, text: reprieve.text }
 care: { needNights: 2, sickChance: 30, sickNights: 2 }
 # Appeals (docs/tech-spec.md §40): the morning after a day, one soul from it may ask to be judged again, on
 # that day's rules. Mostly souls sent to the wrong place; now and then one judged rightly tries its luck.

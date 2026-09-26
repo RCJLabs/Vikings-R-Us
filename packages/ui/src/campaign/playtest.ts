@@ -84,6 +84,12 @@ function header(p: PlaytestInput): string[] {
   // Only the powers met so far, by the names they go by today: the report mustn't spoil the story.
   const standing = factionsMet(run).map((f) => `${t(factionKey(p.content, f, run.day))} ${signed(run.standing[f])}`);
   const bought = campaign.shop.filter((u) => run.upgrades.includes(u.id)).map((u) => t(u.name));
+  // Arms for the last battle, by front, and the night the reprieve paid (docs/tech-spec.md §56).
+  const fronts = campaign.ragnarok?.fronts ?? [];
+  const armed = Object.entries(run.armed ?? {}).map(
+    ([id, n]) => `${t(fronts.find((f) => f.id === id)?.name ?? id)} +${n}`,
+  );
+  const paid = run.ledger.find((l) => (l.night?.reprieve ?? 0) > 0);
   const ending = run.ending ? campaign.endings.find((e) => e.id === run.ending) : undefined;
   const about = [
     `slot ${p.slot + 1}`,
@@ -107,6 +113,8 @@ function header(p: PlaytestInput): string[] {
     `- **Family:** ${family.join(' · ')}`,
     ...(standing.length > 0 ? [`- **Standing:** ${standing.join(' · ')}`] : []),
     ...(bought.length > 0 ? [`- **Bought:** ${bought.join(', ')}`] : []),
+    ...(armed.length > 0 ? [`- **Arms:** ${armed.join(', ')}`] : []),
+    ...(paid?.night ? [`- **Reprieve:** Night ${paid.day}, ${paid.night.reprieve} rings of debt paid`] : []),
     ...(run.ending ? [`- **Ending:** ${ending ? t(ending.title) : run.ending}`] : []),
   ];
 }
@@ -122,15 +130,20 @@ const DAY_HEADS = [
   'Fines',
   'Bills',
   'Shop',
+  'Arms',
   'Story',
   'Draupnir',
   'Rings after the night',
   'Assists',
 ];
 
-/** Each finished day's accounts, one row a day; a day whose night is still to come has its night cells empty. */
-function days(ledger: readonly DayLedger[]): string[] {
+/**
+ * Each finished day's accounts, one row a day; a day whose night is still to come has its night cells empty. The arms
+ * column is there only in a build that sells them.
+ */
+function days(ledger: readonly DayLedger[], arms: boolean): string[] {
   if (ledger.length === 0) return ['### Days', '', 'No day finished yet.'];
+  const heads = DAY_HEADS.filter((h) => arms || h !== 'Arms');
   const rows = ledger.map((l) => {
     const n = l.night;
     // The day's grade (docs/tech-spec.md §49), with the liars caught before their stamp.
@@ -145,17 +158,19 @@ function days(ledger: readonly DayLedger[]): string[] {
       signed(l.bonus),
       signed(-l.fines),
       n ? signed(-(n.hearth + n.food + n.medicine)) : '',
-      n ? signed(-n.upgrades) : '',
+      // Upgrades bought, net of what sold back; arms; the reprieve beside the purse it left (docs/tech-spec.md §56).
+      n ? signed(-n.upgrades + (n.sold ?? 0)) : '',
+      ...(arms ? [n ? signed(-(n.arms ?? 0)) : ''] : []),
       n ? signed(n.story) : '',
       n ? signed(n.draupnir) : '',
-      n ? String(n.rings) : '',
+      n ? `${n.rings}${n.reprieve ? ` (reprieve ${signed(n.reprieve)})` : ''}` : '',
       assistsText(l.assists),
     ];
     return `| ${cells.join(' | ')} |`;
   });
   // Numbers to the right; the grade and the assists are words.
-  const align = DAY_HEADS.map((h) => (h === 'Grade' || h === 'Assists' ? '---' : '---:'));
-  return ['### Days', '', `| ${DAY_HEADS.join(' | ')} |`, `| ${align.join(' | ')} |`, ...rows];
+  const align = heads.map((h) => (h === 'Grade' || h === 'Assists' ? '---' : '---:'));
+  return ['### Days', '', `| ${heads.join(' | ')} |`, `| ${align.join(' | ')} |`, ...rows];
 }
 
 function mistakeLine(p: PlaytestInput, day: number, m: DayMistake): string {
@@ -393,7 +408,7 @@ export function playtestReport(p: PlaytestInput): string {
   return [
     ...header(p),
     '',
-    ...days(p.run.ledger),
+    ...days(p.run.ledger, campaignOf(p.content).arms !== undefined),
     '',
     ...mistakes(p),
     '',

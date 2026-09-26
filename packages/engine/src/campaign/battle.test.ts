@@ -32,6 +32,8 @@ function runWith(p: {
   ran?: number;
   ranMisfits?: number;
   nails?: number;
+  /** Strength bought with arms (docs/tech-spec.md §56), by front. */
+  armed?: Record<string, number>;
 }): RunState {
   return {
     ...base,
@@ -39,6 +41,7 @@ function runWith(p: {
     sent: { HEL: p.hel ?? 0, RAN: p.ran ?? 0 },
     misfits: { HEL: p.helMisfits ?? 0, RAN: p.ranMisfits ?? 0 },
     naglfar: p.nails ?? 0,
+    ...(p.armed ? { armed: p.armed } : {}),
   };
 }
 
@@ -139,12 +142,19 @@ describe('the last battle', () => {
         ran: fc.nat(30),
         ranMisfits: fc.nat(5),
         nails: fc.nat(20),
+        armsA: fc.nat(40),
+        armsC: fc.nat(20),
       }),
       fc.shuffledSubarray(['front.a', 'front.b', 'front.c'], { minLength: 3, maxLength: 3 }),
     ],
     { numRuns: 300 },
   )('holds every front it says it holds, and no front it says fell was held', (p, order) => {
-    const run = runWith({ ...p, helMisfits: Math.min(p.helMisfits, p.hel), ranMisfits: Math.min(p.ranMisfits, p.ran) });
+    const run = runWith({
+      ...p,
+      helMisfits: Math.min(p.helMisfits, p.hel),
+      ranMisfits: Math.min(p.ranMisfits, p.ran),
+      armed: { 'front.a': p.armsA, 'front.c': p.armsC },
+    });
     const b = fight(run, DEF, order);
     const hosts = hostsAt(run, DEF);
     for (const f of b.fronts) {

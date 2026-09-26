@@ -51,6 +51,12 @@ import { weaveDay, weaveOpen, wovenRules } from './weave';
 const demo = loadContent('web-demo');
 const full = loadContent('dev-full');
 
+/** The run with its reprieve already spent (docs/tech-spec.md §56), so the debt ends it as before. */
+function spent(run: RunState, content: Content): RunState {
+  const flag = campaignOf(content).reprieve?.flag;
+  return flag ? { ...run, flags: { ...run.flags, [flag]: 1 } } : run;
+}
+
 /** Steps a run through actions, keeping the day context current and failing on rejections. */
 function drive(content: Content, run0: RunState, actions: readonly RunAction[]) {
   let run = run0;
@@ -383,8 +389,8 @@ describe('the family at night', () => {
 });
 
 describe('endings', () => {
-  it('two nights deep in debt ends the run: Demoted', () => {
-    let run: RunState = { ...newRun(demo, 'debt'), rings: -100 };
+  it('two nights deep in debt ends the run: Demoted, once the reprieve is spent', () => {
+    let run: RunState = { ...spent(newRun(demo, 'debt'), demo), rings: -100 };
     run = playDay(demo, run, { wrong: () => true }).run;
     expect(run.debtNights).toBe(1);
     const end = playDay(demo, run, { wrong: () => true });
@@ -510,9 +516,9 @@ describe('planning the night', () => {
 
   it('counts Draupnir in the purse by morning, and says when the debt would end the run', () => {
     // Night 9: firewood 14, food 7 for each of three, and Draupnir's 8.
-    const base = newRun(full, 'debt9');
-    const at = (rings: number, debtNights: number) => {
-      const { run, env } = night(base, { day: 9, rings, debtNights, bills: defaultBills(base) });
+    const base = spent(newRun(full, 'debt9'), full);
+    const at = (rings: number, debtNights: number, from = base) => {
+      const { run, env } = night(from, { day: 9, rings, debtNights, bills: defaultBills(from) });
       return nightOutlook(run, env);
     };
     expect(at(0, 1)).toMatchObject({ cost: { hearth: 14, food: 21, medicine: 0 }, draupnir: 8, rings: -27 });
@@ -520,6 +526,8 @@ describe('planning the night', () => {
     expect(at(0, 1)).toMatchObject({ debtNights: 0, ends: null });
     expect(at(-10, 0)).toMatchObject({ rings: -37, debtNights: 1, ends: null });
     expect(at(-10, 1)).toMatchObject({ debtNights: 2, ends: { ending: 'ending.demoted', why: 'debt' } });
+    // Unless the reprieve is still to come: then it pays, and says so (docs/tech-spec.md §56).
+    expect(at(-10, 1, newRun(full, 'debt9'))).toMatchObject({ rings: 0, debtNights: 0, ends: null, reprieve: true });
     expect(debtLimit(full)).toBe(2);
     expect(debtLimit(demo)).toBe(2);
   });
@@ -879,10 +887,14 @@ describe('the last battle (docs/tech-spec.md §54)', () => {
 
   it('waits for an ending checked before any that reads it: deep in debt on the last night, no battle', () => {
     const { night } = lastNight();
-    const broke = { ...night, rings: -1000, debtNights: 1 };
+    const broke = { ...spent(night, full), rings: -1000, debtNights: 1 };
     const r = stepRun(broke, { t: 'endNight' }, env(broke));
     expect(r.state).toMatchObject({ phase: 'ending', ending: 'ending.demoted' });
     expect(r.events).not.toContainEqual({ e: 'horn' });
+    // With the reprieve still to come, it pays, and the horn blows.
+    const saved = stepRun({ ...night, rings: -1000, debtNights: 1 }, { t: 'endNight' }, env(broke));
+    expect(saved.state).toMatchObject({ phase: 'ragnarok', ending: null });
+    expect(saved.events.map((e) => e.e)).toContain('reprieve');
   });
 
   it('decides the endings that read it: which fronts held, and how many', () => {

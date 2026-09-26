@@ -35,6 +35,8 @@ export interface FrontBattle {
   readonly stood: readonly Stood[];
   /** Its own host's souls sent there by mistake, who broke and ran: each cost it 1. */
   readonly ran: number;
+  /** Strength the run bought for it with arms (docs/tech-spec.md §56). */
+  readonly arms: number;
   readonly strength: number;
   readonly held: boolean;
 }
@@ -61,8 +63,12 @@ export function foeAt(front: FrontDef, run: RunState): number {
   return front.foe + (front.perNail ?? 0) * (run.naglfar ?? 0);
 }
 
-/** What a host must make up at its own front: the foe, and 1 for each of its souls who'll run. */
-const needAt = (front: FrontDef, host: HostState, run: RunState) => foeAt(front, run) + host.misfits;
+/** Strength the run bought for a front with arms (docs/tech-spec.md §56). */
+export const armsAt = (run: RunState, front: string): number => run.armed?.[front] ?? 0;
+
+/** What a host must make up at its own front: the foe, and 1 for each of its souls who'll run, less its arms. */
+const needAt = (front: FrontDef, host: HostState, run: RunState) =>
+  Math.max(0, foeAt(front, run) + host.misfits - armsAt(run, front.id));
 
 /**
  * Whether the hosts can hold every front in `hold` at once: each front's own host first (2 a soul), then what the
@@ -71,7 +77,9 @@ const needAt = (front: FrontDef, host: HostState, run: RunState) => foeAt(front,
 function holdable(hosts: readonly HostState[], fronts: readonly FrontDef[], run: RunState, hold: ReadonlySet<string>) {
   let short = 0;
   let spare = 0;
-  for (const f of fronts) if (hold.has(f.id) && !hosts.some((h) => h.front === f.id)) short += foeAt(f, run);
+  for (const f of fronts) {
+    if (hold.has(f.id) && !hosts.some((h) => h.front === f.id)) short += Math.max(0, foeAt(f, run) - armsAt(run, f.id));
+  }
   for (const h of hosts) {
     const f = fronts.find((x) => x.id === h.front);
     let left = h.souls;
@@ -105,7 +113,7 @@ function arrange(hosts: readonly HostState[], def: RagnarokDef, run: RunState, h
     if (!held.includes(f.id)) continue;
     const own = hosts.find((h) => h.front === f.id);
     if (!own) {
-      short.set(f.id, foeAt(f, run));
+      short.set(f.id, Math.max(0, foeAt(f, run) - armsAt(run, f.id)));
       continue;
     }
     const need = needAt(f, own, run);
@@ -137,8 +145,10 @@ function arrange(hosts: readonly HostState[], def: RagnarokDef, run: RunState, h
     // Its own host first.
     const sorted = [...list.filter((s) => s.host === own?.id), ...list.filter((s) => s.host !== own?.id)];
     const ran = own?.misfits ?? 0;
-    const strength = Math.max(0, sorted.reduce((n, s) => n + s.strength, 0) - ran);
-    return { id: f.id, foe: foeAt(f, run), stood: sorted, ran, strength, held: held.includes(f.id) };
+    const arms = armsAt(run, f.id);
+    // Those who run cost it 1 each, arms or no.
+    const strength = Math.max(0, sorted.reduce((n, s) => n + s.strength, 0) - ran + arms);
+    return { id: f.id, foe: foeAt(f, run), stood: sorted, ran, arms, strength, held: held.includes(f.id) };
   });
 }
 

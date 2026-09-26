@@ -240,6 +240,8 @@ async function walkEnding(page: Page, checks: Checks) {
     const morning = record.save.mornings[record.save.mornings.length - 1];
     morning.rings = -200;
     morning.debtNights = 1;
+    // Skögul's reprieve already spent (docs/tech-spec.md §56), so the debt ends the run.
+    morning.flags = { ...morning.flags, skogul_paid: 1 };
     localStorage.setItem('cots.campaign.0', JSON.stringify(record));
   })()`);
   await page.reload();

@@ -13,6 +13,9 @@ Skögul sits on the end of your table with her spear across her knees, and for o
   # fx: flag owes_skogul = 0
   The page curls and goes out.
 }
+{ flag("skogul_paid"):
+  "I paid the quartermaster for you once, the night he came for your wings. I'd do it again. Don't tell him that." # speaker: skogul
+}
 { flag("told_skogul"):
   "You told me about the stranger, the day he came in a borrowed face. You didn't have to. I wrote it down, the way I write everything down." # speaker: skogul
 }
