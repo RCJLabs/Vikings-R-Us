@@ -324,6 +324,52 @@ export interface EndlessTwist {
   readonly mix?: Readonly<Partial<Record<Destination, readonly [number, number]>>>;
 }
 
+/**
+ * A day event (docs/tech-spec.md §52): something that happens in the world on a day of a run, drawn from the run's
+ * seed as it begins. It changes the day's line (some of its own souls don't come, others do), its sun, and that
+ * night's bills and sickness; never the day's rules, and never how the day's own souls are made.
+ */
+export interface DayEventDef {
+  readonly id: string;
+  /** The first day whose mechanics it needs (a storm needs Rán). */
+  readonly since: number;
+  /** Its name, and what the morning says of it (string keys). */
+  readonly name: string;
+  readonly text: string;
+  /** The day's sun, in percent of its own. */
+  readonly sunPct?: number;
+  /** How many of the day's own souls don't come: the last in its line, never its teaching soul. */
+  readonly fewer?: number;
+  /**
+   * Souls it brings, placed among the day's own: `n` of kind `kind` (tried first, as a teaching soul is), each bound
+   * for the first of `to` that kind can reach that day; on days from `since` and before `until`, when given.
+   */
+  readonly souls?: readonly EventSouls[];
+  /** Tonight's bills, in percent of the day's. */
+  readonly costsPct?: Readonly<Partial<Record<'hearth' | 'food' | 'medicine', number>>>;
+  /** Percent chance tonight that each of the family who is well falls sick, bills paid or not. */
+  readonly sickChance?: number;
+}
+
+/** Souls a day event brings (docs/tech-spec.md §52). */
+export interface EventSouls {
+  readonly kind: string;
+  readonly to: readonly Destination[];
+  readonly n: number;
+  readonly since?: number;
+  readonly until?: number;
+}
+
+/** The day events a run draws (docs/tech-spec.md §52). */
+export interface DayEventsDef {
+  /** How many a run draws: each a different event, on a different day, never two days running. */
+  readonly perRun: number;
+  /** The first and last days they can fall on (never a day with a noon decree). */
+  readonly from: number;
+  readonly to: number;
+  readonly pool: readonly DayEventDef[];
+}
+
 export interface DayParam {
   readonly pool: readonly { readonly id: string; readonly text: string; readonly is: Pred }[];
 }
@@ -642,6 +688,8 @@ export interface CampaignDef {
   readonly favours?: readonly FavourDef[];
   /** Ranks a strong player is offered, each harder and better paid (docs/tech-spec.md §44); none without it. */
   readonly promotion?: PromotionDef;
+  /** Day events a run draws as it begins (docs/tech-spec.md §52); none without it. */
+  readonly events?: DayEventsDef;
 }
 
 /**

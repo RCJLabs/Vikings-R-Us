@@ -260,6 +260,16 @@ function home(p: PlaytestInput): string[] {
   return ['### Home at dawn', '', ...(lines.length > 0 ? lines : ['None.'])];
 }
 
+/** The day events the days played brought (docs/tech-spec.md §52), as each audit filed them. */
+function dayEvents(p: PlaytestInput): string[] {
+  const defs = new Map((p.content.campaign?.events?.pool ?? []).map((e) => [e.id, e]));
+  const lines = p.run.ledger.flatMap((l) => {
+    const e = l.event ? defs.get(l.event) : undefined;
+    return e ? [`- Day ${l.day}: ${p.t(e.name)}.`] : [];
+  });
+  return ['### Day events', '', ...(lines.length > 0 ? lines : ['None yet.'])];
+}
+
 /** Promotion (docs/tech-spec.md §44): each offer and what was made of it, the days at each rank, and steps down. */
 function ranks(p: PlaytestInput): string[] {
   const defs = p.content.campaign?.promotion?.ranks ?? [];
@@ -343,6 +353,8 @@ export function playtestReport(p: PlaytestInput): string {
     ...favours(p),
     '',
     ...home(p),
+    '',
+    ...dayEvents(p),
     '',
     ...ranks(p),
     '',

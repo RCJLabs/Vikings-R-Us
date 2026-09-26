@@ -125,6 +125,12 @@ export interface DayWaiting {
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
 }
 
+/** A day event as a run drew it (docs/tech-spec.md §52): the day, and which. */
+export interface DayEventAt {
+  readonly day: number;
+  readonly id: string;
+}
+
 /** One day's accounts, shown at the audit and the night. */
 export interface DayLedger {
   readonly day: number;
@@ -159,6 +165,8 @@ export interface DayLedger {
   readonly rank?: number;
   /** Seconds of sun the day gave to home, at dawn (docs/tech-spec.md §50): negative. */
   readonly dawnS?: number;
+  /** The day's event (docs/tech-spec.md §52), by id, when it had one. */
+  readonly event?: string;
   /** The day's grade (docs/tech-spec.md §49); absent in Story Mode, and in saves from before grades. */
   readonly grade?: DayGrade;
   /** The morning's promotion, offered and taken or not. */
@@ -235,6 +243,11 @@ export interface RunState {
   readonly oath?: true;
   /** A vertical-slice run: after the slice's first days it jumps to its late day. */
   readonly slice?: boolean;
+  /**
+   * The day events the run drew as it began (docs/tech-spec.md §52), by day. Absent when none, and in runs begun
+   * before there were any.
+   */
+  readonly events?: readonly DayEventAt[];
   /** A soul asking to be judged again this morning (docs/tech-spec.md §40). */
   readonly appeal?: Appeal;
   /** How this morning's appeal went, until the day's audit files it in its ledger. */
