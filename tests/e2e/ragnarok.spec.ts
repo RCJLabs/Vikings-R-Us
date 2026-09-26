@@ -2,6 +2,8 @@ import AxeBuilder from '@axe-core/playwright';
 import {
   type Battle,
   ENGINE_MAJOR,
+  EPILOGUE_SECTIONS,
+  epilogueFor,
   fight,
   heldFronts,
   type NamedSoul,
@@ -147,10 +149,23 @@ test('after the last night, the horn: the fronts held in the order set, the batt
   await expect(page.getByTestId('achievement-note')).toHaveCount(0);
   await expectAccessible(page);
   await page.getByTestId('to-ending').click();
-  const ending = stepRun(horn, { t: 'marshal', order: gateFirst }, { content, ctx: runContext(content, horn) }).state
-    .ending;
-  expect(ending).not.toBeNull();
+  const ended = stepRun(horn, { t: 'marshal', order: gateFirst }, { content, ctx: runContext(content, horn) }).state;
+  expect(ended.ending).not.toBeNull();
   await expect(page.getByTestId('ending-title')).toBeVisible();
+  // The ending's words run to paragraphs, then the epilogue (docs/tech-spec.md §55): what the engine says became of
+  // everyone, slot by slot, under its section's heading.
+  expect(await page.getByTestId('ending-text').locator('p').count()).toBeGreaterThan(1);
+  const said = epilogueFor(ended, content.campaign);
+  expect(said.length).toBeGreaterThan(0);
+  const epilogue = page.getByTestId('epilogue');
+  await expect(epilogue.getByRole('heading', { name: 'What became of them' })).toBeVisible();
+  await expect(epilogue.getByTestId('epilogue-line')).toHaveCount(said.length);
+  const bySection = EPILOGUE_SECTIONS.flatMap((s) => said.filter((l) => l.section === s).map((l) => l.slot));
+  expect(
+    await epilogue.getByTestId('epilogue-line').evaluateAll((els) => els.map((e) => e.getAttribute('data-slot'))),
+  ).toEqual(bySection);
+  // Thorvald, sent home each time the jumper met him, slept through the horn.
+  await expect(epilogue.locator('[data-slot="epi.thorvald"]')).toContainText('slept through all of it');
   await expect(page.getByTestId('battle-report')).toContainText('The last battle');
   await expect(page.locator('[data-testid="battle-report"] [data-front="front.fire"]')).toHaveAttribute(
     'data-held',

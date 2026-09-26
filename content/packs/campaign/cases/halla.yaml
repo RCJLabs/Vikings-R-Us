@@ -19,3 +19,7 @@ look: { gender: f, name: Halla, patronym: Thordisdottir, age: 84, build: lean, b
 lines: [case.halla.born, case.halla.promise, case.halla.loaf]
 words: { pool.weapons: seax }
 expect: TRANSFER
+# The epilogue reads where she went (docs/tech-spec.md §55).
+onStamp:
+  - { stamped: '*', effects: [{ flag: halla_judged }] }
+  - { stamped: TRANSFER, effects: [{ flag: halla_transfer }] }

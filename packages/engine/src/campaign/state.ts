@@ -404,6 +404,17 @@ export function stateValue(run: RunState, path: string): number {
       if (key === 'home') return run.family.filter((m) => m.status !== 'gone').length;
       return run.family.filter((m) => m.status === key).length;
     }
+    // One of the family by id, and how they are (docs/tech-spec.md §55): gone, or died or left in particular.
+    case 'member': {
+      const [, id, how] = path.split('.');
+      const m = run.family.find((x) => x.id === id);
+      if (!m) return 0;
+      if (how === 'died' || how === 'left') return m.status === 'gone' && m.gone === how ? 1 : 0;
+      return m.status === how ? 1 : 0;
+    }
+    // The ending the run came to (docs/tech-spec.md §55): only an epilogue can read it, the run being over.
+    case 'ending':
+      return run.ending === path ? 1 : 0;
     default:
       return 0;
   }
@@ -434,7 +445,7 @@ export function predPaths(p: StatePred): string[] {
 
 /** Paths a StatePred may use (the content linter checks endings against it). */
 export const STATE_PATHS =
-  /^(day|rings|debtNights|naglfar|ragnarok|oath|fronts|front\.[A-Za-z0-9_]+|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;
+  /^(day|rings|debtNights|naglfar|ragnarok|oath|fronts|front\.[A-Za-z0-9_]+|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone)|member\.[A-Za-z0-9_]+\.(well|sick|gone|died|left)|ending\.[A-Za-z0-9_]+)$/;
 
 /** Whether a StatePred reads the last battle (docs/tech-spec.md §54): what it asks can't be known before it's fought. */
 export function readsBattle(p: StatePred): boolean {

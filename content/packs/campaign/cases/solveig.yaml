@@ -16,3 +16,12 @@ words: { pool.weapons: seax }
 expect: RAN
 onStamp:
   - { stamped: '*', effects: [{ flag: solveig_judged }] }
+  # Whether her boy finds her there (docs/tech-spec.md §55): in Rán's hall, or sent somewhere else. Two flags, so a run
+  # begun before they were kept knows neither.
+  - { stamped: RAN, effects: [{ flag: solveig_ran }] }
+  - { stamped: VALHALLA, effects: [{ flag: solveig_elsewhere }] }
+  - { stamped: HEL, effects: [{ flag: solveig_elsewhere }] }
+  - { stamped: RETURN, effects: [{ flag: solveig_elsewhere }] }
+  - { stamped: FOLKVANGR, effects: [{ flag: solveig_elsewhere }] }
+  - { stamped: TRANSFER, effects: [{ flag: solveig_elsewhere }] }
+  - { stamped: DETAIN, effects: [{ flag: solveig_elsewhere }] }

@@ -1938,6 +1938,16 @@ a.btn {
 
 .ending__text {
   font-size: 1.1rem;
+  max-width: 65ch;
+}
+
+/* An ending runs to a few paragraphs: close together, one text. */
+.ending__text p {
+  margin: 0 0 0.75em;
+}
+
+.ending__text p:last-child {
+  margin-bottom: 0;
 }
 
 /* The registry (Day 6): a portrait beside the entry */
@@ -2277,6 +2287,26 @@ a.btn {
 
 .front__move {
   gap: 0.5rem;
+}
+
+/* The epilogue (docs/tech-spec.md §55): what became of everyone, after the ending's words. */
+.epilogue__section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.epilogue__section + .epilogue__section {
+  margin-top: 0.75rem;
+}
+
+.epilogue__section h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.epilogue__section p {
+  margin: 0;
+  max-width: 65ch;
 }
 
 /* The souls a host or a front names: on a line of their own. */

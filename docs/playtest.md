@@ -27,7 +27,8 @@ Since 25 September 2026, the Pages deploy carries the same build at `/full/`: **
   - the day events the days played brought (a storm, a sickness, a battle, a feast);
   - each promotion offered and what was made of it, the days worked at each rank, and any step down;
   - every choice made in a scene;
-  - the last battle, once fought: the order the fronts were set in, and each front's foe, who stood there, who ran, and whether it held; under each front, by name and day, the souls who ran from its own host and the story's own souls in that host.
+  - the last battle, once fought: the order the fronts were set in, and each front's foe, who stood there, who ran, and whether it held; under each front, by name and day, the souls who ran from its own host and the story's own souls in that host;
+  - the epilogue, once the run has ended: each line it said, by part and slot.
 - **Open the playtest form** opens the GitHub form *Campaign playtest report* with the report already filled in. A long run doesn't fit in a link (over 8,000 characters), so the form opens empty, and the game says to copy the report and paste it in.
 - **Copy the report,** for testers who'd rather send it another way.
 - **Saves kept apart from the public demo's.** See Known limits for why.

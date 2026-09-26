@@ -52,7 +52,10 @@ function wordsFor(model: ScriptModel) {
     return `<a class="flag" href="#${flagAnchor(name)}" title="${esc(title)}">${esc(name)}</a>`;
   };
   const wording: Wording = { person, power, flag };
-  return { person, power, speaker, flag, wording, flags };
+  const titles = new Map(model.endings.map((e) => [e.id, e.title]));
+  const ending = (id: string) => esc(titles.get(id) ?? id);
+  const front = (id: string) => esc(model.strings[id] ?? id);
+  return { person, power, speaker, flag, wording, flags, ending, front };
 }
 type Words = ReturnType<typeof wordsFor>;
 
@@ -247,6 +250,17 @@ function stateWords(p: StatePred, w: Words): string {
       return `${range('')} souls stamped ${esc(key)}`;
     case 'einherjar':
       return `${range('')} ${key === 'worthy' ? 'worthy' : 'unworthy'} einherjar`;
+    case 'fronts':
+      return `${range('')} fronts held at Ragnarök`;
+    case 'front':
+      return p.lte === 0 ? `${w.front(p.state)} didn't hold` : `${w.front(p.state)} held`;
+    case 'ending':
+      return p.lte === 0 ? `the run didn't end in ${w.ending(p.state)}` : `the run ended in ${w.ending(p.state)}`;
+    case 'member': {
+      const how = p.state.split('.')[2] ?? '';
+      const is = { well: 'is well', sick: 'is sick', gone: 'is gone', died: 'died', left: 'went to relatives' }[how];
+      return p.lte === 0 ? `not (${w.person(key)} ${is ?? how})` : `${w.person(key)} ${is ?? how}`;
+    }
     default:
       return `${esc(p.state)} is ${range('')}`;
   }
@@ -313,7 +327,31 @@ function endingHtml(e: EndingDoc, w: Words): string {
 <article class="ending" id="${endingAnchor(e.id)}">
   <h3>${esc(e.title)}</h3>
   <p class="only">${e.when ? `When ${stateWords(e.when, w)}.` : 'Only as the campaign’s last night, when nothing else has ended it.'}</p>
-  <p class="ending-text">${esc(e.text)}</p>
+  ${e.text
+    .split(/\n\s*\n/)
+    .map((p) => `<p class="ending-text">${esc(p)}</p>`)
+    .join('')}
+</article>`;
+}
+
+const SECTION_NAMES: Readonly<Record<string, string>> = {
+  home: 'At home',
+  powers: 'The powers',
+  dead: 'The dead you judged',
+};
+
+function epilogueHtml(s: ScriptModel['epilogue'][number], w: Words): string {
+  const lines = s.lines
+    .map(
+      (l, i) =>
+        `<li><p class="only">${l.when ? `${i === 0 ? 'If' : 'Else, if'} ${stateWords(l.when, w)}:` : i === 0 ? 'Always:' : 'Otherwise:'}</p><p class="ending-text">${esc(l.text)}</p></li>`,
+    )
+    .join('');
+  return `
+<article class="ending" id="epilogue-${esc(s.id)}">
+  <h3>${esc(SECTION_NAMES[s.section] ?? s.section)}: ${esc(s.id.replace(/^epi\./, ''))}</h3>
+  ${s.when ? `<p class="only">Only when ${stateWords(s.when, w)}.</p>` : ''}
+  <ol class="threads">${lines}</ol>
 </article>`;
 }
 
@@ -700,7 +738,7 @@ export function renderScript(model: ScriptModel, generated: string): { body: str
 <div class="shell">
   <nav class="rail" aria-label="Days">
     <ol>${rail}</ol>
-    <div class="rail-more"><a href="#flags">Flags</a><a href="#endings">Endings</a><a href="#threads">Journal threads</a></div>
+    <div class="rail-more"><a href="#flags">Flags</a><a href="#endings">Endings</a><a href="#epilogue">Epilogue</a><a href="#threads">Journal threads</a></div>
   </nav>
   <main class="script">
     ${model.days.map((d) => dayHtml(d, w)).join('')}
@@ -718,6 +756,11 @@ export function renderScript(model: ScriptModel, generated: string): { body: str
       <h2>Endings</h2>
       <p>Checked every night, in this order; the first that holds ends the run.</p>
       ${model.endings.map((e) => endingHtml(e, w)).join('')}
+    </section>
+    <section class="appendix" id="epilogue">
+      <h2>Epilogue</h2>
+      <p>After the ending's own words, what became of everyone. Each part says the first of its lines whose condition holds.</p>
+      ${model.epilogue.map((s) => epilogueHtml(s, w)).join('')}
     </section>
     <section class="appendix" id="threads">
       <h2>Journal threads</h2>

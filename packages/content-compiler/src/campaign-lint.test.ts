@@ -192,3 +192,50 @@ function d0Hosts(): [
   if (!a || !b) throw new Error('the battle needs two hosts');
   return [a, b];
 }
+
+type Epilogue = NonNullable<CampaignPart['epilogue']>;
+
+// docs/tech-spec.md §55.
+describe('the epilogue, as content', () => {
+  const slot = (lines: Epilogue['slots'][number]['lines']): Epilogue['slots'][number] => ({
+    id: 'epi.test',
+    section: 'home',
+    lines,
+  });
+  const withEpilogue = (slots: Epilogue['slots'], when?: Epilogue['when']) =>
+    compileWith((c) => ({ ...c, epilogue: { ...(when ? { when } : {}), slots } }));
+  it('reads the family by name and the ending the run came to, and nothing that isn’t there', () => {
+    const fine = slot([
+      { when: { state: 'member.mother.died', gte: 1 }, text: 'ending.wolf.text' },
+      { when: { state: 'ending.wolf', gte: 1 }, text: 'ending.wolf.text' },
+      { text: 'ending.lastStand.text' },
+    ]);
+    expect(withEpilogue([fine], { state: 'day', gte: 20 })).not.toThrow();
+    expect(withEpilogue([slot([{ when: { state: 'member.uncle.gone', gte: 1 }, text: 'ending.wolf.text' }])])).toThrow(
+      /epilogue slot epi\.test, line 1 reads "member\.uncle\.gone", but nobody in the family is "uncle"/,
+    );
+    expect(withEpilogue([slot([{ when: { state: 'ending.moon', gte: 1 }, text: 'ending.wolf.text' }])])).toThrow(
+      /epilogue slot epi\.test, line 1 reads "ending\.moon", which isn't an ending/,
+    );
+    expect(withEpilogue([slot([{ when: { state: 'member.mother', gte: 1 }, text: 'ending.wolf.text' }])])).toThrow(
+      /reads unknown run state "member\.mother"/,
+    );
+    expect(withEpilogue([slot([{ text: 'epi.nobody' }])])).toThrow(
+      /epilogue slot epi\.test uses missing string "epi\.nobody"/,
+    );
+    expect(withEpilogue([fine, fine])).toThrow(/Duplicate epilogue slot "epi\.test"/);
+  }, 60_000);
+
+  it('refuses a line that can never show, and an ending or thread that reads the ending', () => {
+    expect(withEpilogue([slot([{ text: 'ending.wolf.text' }, { text: 'ending.lastStand.text' }])])).toThrow(
+      /epilogue slot epi\.test: line 1 always holds, so the lines after it never show/,
+    );
+    const endingReads = compileWith((c) => ({
+      ...c,
+      endings: (c.endings ?? []).map((e) =>
+        e.id === 'ending.wolf' ? { ...e, when: { state: 'ending.odin', gte: 1 } } : e,
+      ),
+    }));
+    expect(endingReads).toThrow(/ending ending\.wolf reads the run's ending: only the epilogue can/);
+  }, 60_000);
+});

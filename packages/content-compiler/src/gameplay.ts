@@ -201,6 +201,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(last('events') ? { events: last('events') as NonNullable<CampaignDef['events']> } : {}),
     ...(last('weaving') ? { weaving: last('weaving') as NonNullable<CampaignDef['weaving']> } : {}),
     ...(last('ragnarok') ? { ragnarok: last('ragnarok') as NonNullable<CampaignDef['ragnarok']> } : {}),
+    ...(last('epilogue') ? { epilogue: last('epilogue') as NonNullable<CampaignDef['epilogue']> } : {}),
   };
 }
 
@@ -730,14 +731,54 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     if (e.when) walk(e.when, `ending ${e.id}`);
   }
   if (!endingIds.has(c.finale)) problems.push(`The campaign's finale "${c.finale}" isn't an ending.`);
+  // One of the family by id, and the ending a run came to (docs/tech-spec.md §55): the members must exist, and the
+  // ending, which only an epilogue can read (while a run goes on, it hasn't one).
+  const names = (p: StatePred, where: string, epilogue: boolean): void => {
+    for (const path of predPaths(p)) {
+      const [head, id] = path.split('.');
+      if (head === 'member' && !c.family.some((m) => m.id === id)) {
+        problems.push(`${where} reads "${path}", but nobody in the family is "${id}".`);
+      }
+      if (head === 'ending' && !epilogue) problems.push(`${where} reads the run's ending: only the epilogue can.`);
+      else if (head === 'ending' && !endingIds.has(path))
+        problems.push(`${where} reads "${path}", which isn't an ending.`);
+    }
+  };
+  for (const e of c.endings) if (e.when) names(e.when, `ending ${e.id}`, false);
   const threadIds = new Set<string>();
   for (const th of c.threads ?? []) {
     if (threadIds.has(th.id)) problems.push(`Duplicate thread "${th.id}".`);
     threadIds.add(th.id);
     key(th.text, `thread ${th.id}`);
     walk(th.when, `thread ${th.id}`);
+    names(th.when, `thread ${th.id}`, false);
     if (th.count !== undefined && !STATE_PATHS.test(th.count)) {
       problems.push(`thread ${th.id} counts unknown run state "${th.count}".`);
+    }
+  }
+  // The epilogue (docs/tech-spec.md §55): its words exist, its conditions read what a run has, and no line is
+  // unreachable behind one that always holds.
+  const epilogue = c.epilogue;
+  if (epilogue) {
+    const check = (p: StatePred | undefined, where: string) => {
+      if (!p) return;
+      walk(p, where);
+      names(p, where, true);
+    };
+    check(epilogue.when, 'the epilogue');
+    const slotIds = new Set<string>();
+    for (const s of epilogue.slots) {
+      const where = `epilogue slot ${s.id}`;
+      if (slotIds.has(s.id)) problems.push(`Duplicate epilogue slot "${s.id}".`);
+      slotIds.add(s.id);
+      check(s.when, where);
+      s.lines.forEach((l, i) => {
+        key(l.text, where);
+        check(l.when, `${where}, line ${i + 1}`);
+        if (!l.when && i < s.lines.length - 1) {
+          problems.push(`${where}: line ${i + 1} always holds, so the lines after it never show.`);
+        }
+      });
     }
   }
   const rankIds = new Set<string>();
