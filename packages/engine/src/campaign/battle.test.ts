@@ -2,7 +2,7 @@ import { loadContent } from '@cots/testkit';
 import { fc, test } from '@fast-check/vitest';
 import { describe, expect, it } from 'vitest';
 import type { RagnarokDef } from '../content/types';
-import { type Battle, fight, heldFronts, hostsAt } from './battle';
+import { type Battle, fight, heldFronts, hostsAt, namedIn } from './battle';
 import { newRun } from './run';
 import type { RunState } from './state';
 
@@ -52,6 +52,25 @@ describe('the hosts', () => {
       ['host.b', 44, 6, false],
       ['host.c', 7, 2, true],
     ]);
+  });
+});
+
+describe('the souls it names', () => {
+  it('are each host’s own, those who’ll run apart from the story’s, in the order of the days they came', () => {
+    const run: RunState = {
+      ...base,
+      named: [
+        { name: 'Geir Hallsson', day: 6, hall: 'HEL', runs: true },
+        { name: 'Asgaut Thorolfsson', day: 9, hall: 'HEL', runs: false },
+        { name: 'Bjorn Ketilsson', day: 11, hall: 'VALHALLA', runs: true },
+        // Appealed on Day 4 and sent wrong again: added last, it's still told by its day.
+        { name: 'Ulfhild Grimsdottir', day: 3, hall: 'HEL', runs: true },
+      ],
+    };
+    expect(namedIn(run, 'HEL').runs.map((n) => n.name)).toEqual(['Ulfhild Grimsdottir', 'Geir Hallsson']);
+    expect(namedIn(run, 'HEL').story.map((n) => n.name)).toEqual(['Asgaut Thorolfsson']);
+    expect(namedIn(run, 'RAN')).toEqual({ runs: [], story: [] });
+    expect(namedIn(base, 'HEL')).toEqual({ runs: [], story: [] });
   });
 });
 

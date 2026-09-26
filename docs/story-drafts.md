@@ -46,6 +46,7 @@ Every scene has **Approve** and **Needs changes** buttons and a note. Claude can
 | Day events (after M7: gameplay item 9): the four events' names and morning words (a storm off the sea, sickness in the valley, a battle at the ford, the jarl's feast) | campaign strings `event.*`; `events` in `content/packs/campaign/campaign.yaml` | ~130 |
 | The Norns' weave (after M7: gameplay item 9): the two weaves' names and words, and the new-run option | campaign strings `weave.*`; core `ui.weave.*`, `ui.campaign.weave*`, `ui.rules.woven`; `weaving` in `content/packs/campaign/campaign.yaml` | ~80 |
 | The last battle (after M7: gameplay item 8): the horn's words, the hosts' and fronts' names, each front's foe and what its holding or falling means, the screen's words, the Every front held achievement | campaign strings `ragnarok.text`, `host.*`, `front.*`, `ach.everyFront.*`; core `ui.ragnarok.*`; `ragnarok` in `content/packs/campaign/campaign.yaml` | ~400 |
+| The souls the last battle names (item 8, part 2): who'll stand, who'll run, who ran, who fought here | core `ui.ragnarok.soul`, `.more`, `.stand`, `.willRun`, `.fled`, `.foughtHere` | ~20 |
 | The journal's threads: what's still in play (after M7: audit item 3) | `threads` in `content/packs/campaign/campaign.yaml`, campaign strings `thread.*` | ~150 |
 | Speaker names | strings `speaker.*` (demo, campaign) | — |
 | Family, shop and ending text (M4.1, M7) | strings `family.*`, `shop.*`, demo `ending.*` | ~250 |

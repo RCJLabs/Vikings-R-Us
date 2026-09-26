@@ -936,6 +936,16 @@ describe('the last battle (docs/tech-spec.md §54)', () => {
     expect(resumeSave(save, full, 0).run).toEqual(run);
   }, 30_000);
 
+  it('names the story’s own souls sent into a host, who won’t run', () => {
+    const { horn } = lastNight();
+    const named = horn.named ?? [];
+    // A perfect chooser: nobody runs, and each named soul is one of the story's.
+    expect(named.length).toBeGreaterThan(0);
+    expect(named.filter((n) => n.runs)).toEqual([]);
+    const story = new Set((full.scripted ?? []).map((c) => `${c.look.name} ${c.look.patronym}`));
+    for (const n of named) expect(story.has(n.name), n.name).toBe(true);
+  }, 30_000);
+
   it('never comes in the demo or the vertical slice', () => {
     expect(battleDue({ ...newRun(demo, 'x'), day: 3 }, demo)).toBe(false);
     expect(battleDue({ ...newRun(full, 'x'), day: 20, slice: true }, full)).toBe(false);
@@ -957,6 +967,30 @@ describe('souls sent to the wrong hall (docs/tech-spec.md §54)', () => {
     // A day judged rightly adds none.
     const clean = playDay(demo, run).run;
     expect(clean.misfits).toEqual(tally);
+    // A build without the battle names nobody.
+    expect(run.named).toBeUndefined();
+  });
+
+  it('are named, in the full game, in the host of the hall they were sent to: as many as will run from it', () => {
+    let run = newRun(full, 'named');
+    for (let d = 1; d <= 4; d++) run = playDay(full, run, { wrong: (i) => (i + d) % 3 === 0 }).run;
+    const hosts = campaignOf(full).ragnarok?.hosts ?? [];
+    const named = run.named ?? [];
+    expect(named.filter((n) => n.runs).length).toBeGreaterThan(0);
+    for (const n of named) {
+      expect(
+        hosts.some((h) => h.hall === n.hall),
+        n.name,
+      ).toBe(true);
+      expect(n.day).toBeGreaterThanOrEqual(1);
+      expect(n.day).toBeLessThanOrEqual(4);
+    }
+    // Each host's runners, named, are as many as run from it: the unworthy from Valhalla, the misfits elsewhere.
+    for (const h of hosts) {
+      const runs = named.filter((n) => n.hall === h.hall && n.runs).length;
+      const counted = h.hall === 'VALHALLA' ? run.einherjar.unworthy : (run.misfits?.[h.hall] ?? 0);
+      expect(runs, h.hall).toBe(counted);
+    }
   });
 });
 
@@ -1077,6 +1111,25 @@ describe('appeals', () => {
     // It no longer stands in the wrong hall's host, to run at Ragnarök (docs/tech-spec.md §54).
     expect(state.misfits?.[appeal.stamped] ?? 0).toBe((found.misfits?.[appeal.stamped] ?? 0) - 1);
     expect(state.misfits?.[right] ?? 0).toBe(found.misfits?.[right] ?? 0);
+  });
+
+  it('takes a righted soul out of the host it would have run from, by name (docs/tech-spec.md §54)', () => {
+    const content = appealing(full);
+    // Every soul sent wrong on Day 1, where both halls have hosts: the appeal comes from one who'll run.
+    const found = playDay(content, newRun(content, 'appeal-named'), { wrong: () => true }).run;
+    const appeal = found.appeal;
+    expect(appeal).toBeDefined();
+    if (!appeal) return;
+    const name = `${appeal.case.evidence.look.name} ${appeal.case.evidence.look.patronym}`;
+    const was = (r: RunState) => (r.named ?? []).filter((n) => n.name === name && n.day === appeal.day);
+    expect(was(found)).toEqual([{ name, day: 1, hall: appeal.stamped, runs: true }]);
+    // Sent where it belonged, it won't run, and (not one of the story's souls) the battle doesn't name it.
+    const righted = hear(content, found, appeal.case.expect.dest).state;
+    expect(was(righted)).toEqual([]);
+    expect(righted.named?.length).toBe((found.named?.length ?? 0) - 1);
+    // Upheld in another wrong hall, it runs from that one instead.
+    const other = (['VALHALLA', 'HEL'] as const).find((d) => d !== appeal.stamped && d !== appeal.case.expect.dest);
+    if (other) expect(was(hear(content, found, other).state)).toEqual([{ name, day: 1, hall: other, runs: true }]);
   });
 
   it('rewards turning down a soul judged rightly, fines deciding wrongly, and lets a verdict stand for nothing', () => {

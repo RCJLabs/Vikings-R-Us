@@ -2279,6 +2279,16 @@ a.btn {
   gap: 0.5rem;
 }
 
+/* The souls a host or a front names: on a line of their own. */
+.host__names,
+.report__ran {
+  display: block;
+}
+
+.front p.front__names {
+  margin-top: 0;
+}
+
 /* Planning the night: the purse beside a costly option, the nights ahead, a sleep that ends the run. */
 .scene__purse {
   margin: 0;

@@ -3274,8 +3274,41 @@ The brainstorm's version, and what changed:
 - **The foes are tuned on bots.** A bot's mistakes fall at random; a player's don't (a misread whim, say), so which hosts come up short will differ. That's a playtest question.
 - **Leaving nails long now costs the shore, not the war.** The sims' "wolf" story policy leaves two long a day, and now ends on the last stand instead of the wolf. Weak judging brings the wolf, as the reach test shows.
 - **Runs begun before this counted no misfits on their earlier days,** so their hosts come out stronger.
-- **No soul is named yet** (part 2).
 - **The words are drafts.** Some ending texts read oddly after a battle: the clerk's transfer "when the horn blows".
+
+### Part 2: the souls it names
+
+**Why.** A count of souls who run says the judging mattered; a name says which judgment it was. The battle now names the souls the player sent wrong who run from a host, and the story's own souls who stand in one, so a misjudged soul from Day 6 turns up at Hel's gate on the last night.
+
+**How it works**
+- **The record.** `RunState.named` lists, for each host's hall, the souls the battle names (`NamedSoul`: name and patronym, the day, the hall, whether it runs).
+  - **Who runs:** the same souls the counts already call misfits. To Valhalla, an unworthy soul. Anywhere else, a soul sent there by mistake that wasn't given to a god who asked for it.
+  - **Who stands:** a story soul sent into a host that won't run from it. That includes one given to a god (to Valhalla, if it's worthy), and a worthy story soul sent to Valhalla by mistake.
+  - Nobody else is named. Halls without a host (RETURN, TRANSFER, DETAIN) name nobody, and neither do builds without the battle.
+- **When it's kept.** The audit adds each day's names beside the misfit counts. An appeal moves the soul's name with the soul: out of the host it was in, and into the one it's sent to if it runs there. When two souls share a name and a day, only one leaves.
+- **The screens** show three names at most, earliest first ("Geir Hallsson (Day 6)"), then how many more, counted from the host's misfits rather than the names:
+  - **The horn:** under each host, "Among those who'll stand: …" and "Who will run: …".
+  - **The battle:** under each front, who ran from its own host, and the story's souls who "fought here" when their host stood there.
+  - **The ending's report:** who ran, front by front.
+  - **The playtest report:** every name under each front, the runners and the story's souls.
+
+**Measured.** The list is short, and every morning in the save carries it. In bot runs (one each) it named 12 by the horn at 97% accuracy and 31 at 85%. Across a run's mornings that adds 7–16 KB to a save of about 250–280 KB.
+
+**Tests**
+- **Engine** (4):
+  - each host's names, runners apart from the story's, in the order of their days (`namedIn`);
+  - in the full game, each host's named runners are as many as its misfits (to Valhalla, as many as the unworthy), and every name is in a host's hall;
+  - a perfect run names only the story's souls, none of them running;
+  - an appeal takes a righted soul's name out, and one upheld in another wrong hall runs from that hall instead.
+  - The demo names nobody.
+- **Playtest report:** the names under each front.
+- **e2e:** a Day 20 save with five souls who'll run from Hel's legion, four of them named. It checks the names and "and 2 more" on the horn, the battle and the report, on phone and desktop, with axe scans.
+
+**Known limits**
+- **Runs begun before this name nobody from their earlier days.** Their counts are still shown, with "N more" making up the difference, and a host whose runners have no names shows only the count.
+- **Which souls stand where is told, not modelled.** The battle moves numbers, not souls. A story soul is said to fight at its own host's front whenever that host stood there, even when some of its host went elsewhere.
+- **A name alone can repeat.** Generated souls avoid the story's names, but two generated souls can share a name on different days; the day tells them apart.
+- **The words are drafts** (six strings, core `ui.ragnarok.soul`, `.more`, `.stand`, `.willRun`, `.fled`, `.foughtHere`).
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
