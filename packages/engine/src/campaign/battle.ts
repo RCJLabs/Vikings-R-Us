@@ -1,5 +1,5 @@
 import type { Content, Destination, FrontDef, RagnarokDef } from '../content/types';
-import type { RunState } from './state';
+import type { NamedSoul, RunState } from './state';
 
 /*
  * The last battle (docs/tech-spec.md §54). After the campaign's last night the hosts the run filled go to the fronts.
@@ -166,4 +166,16 @@ export function battleDue(run: RunState, content: Content): boolean {
 /** The fronts held, in the content's order. */
 export function heldFronts(battle: Battle): string[] {
   return battle.fronts.filter((f) => f.held).map((f) => f.id);
+}
+
+/**
+ * The souls the battle names in the host of a hall (docs/tech-spec.md §54): those who'll run, and the story's own, each
+ * in the order of the days they came (an appeal adds its soul last, whatever its day).
+ */
+export function namedIn(
+  run: RunState,
+  hall: Destination,
+): { readonly runs: readonly NamedSoul[]; readonly story: readonly NamedSoul[] } {
+  const here = (run.named ?? []).filter((n) => n.hall === hall).sort((a, b) => a.day - b.day);
+  return { runs: here.filter((n) => n.runs), story: here.filter((n) => !n.runs) };
 }

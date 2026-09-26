@@ -9,6 +9,8 @@ import {
   type Faction,
   factionKey,
   factionsMet,
+  type NamedSoul,
+  namedIn,
   type RunSave,
   type RunState,
   ruleText,
@@ -276,7 +278,8 @@ function dayEvents(p: PlaytestInput): string[] {
 
 /**
  * The last battle (docs/tech-spec.md §54): the order the fronts were to be held in, and each front as it went: the
- * foe, who stood there, who ran, and whether it held. Only once it's been fought.
+ * foe, who stood there, who ran, and whether it held; and under it, by name, every soul who ran from its own host and
+ * the story's own souls in that host. Only once it's been fought.
  */
 function battle(p: PlaytestInput): string[] {
   const b = p.run.battle;
@@ -284,10 +287,17 @@ function battle(p: PlaytestInput): string[] {
   if (!b || !def) return [];
   const front = (id: string) => def.fronts.find((f) => f.id === id);
   const host = (id: string) => p.t(def.hosts.find((h) => h.id === id)?.name ?? id);
-  const lines = b.fronts.map((f) => {
+  const names = (souls: readonly NamedSoul[]) => souls.map((n) => `${n.name} (Day ${n.day})`).join(', ');
+  const lines = b.fronts.flatMap((f) => {
     const stood = f.stood.map((s) => `${host(s.host)} ${s.souls}`).join(', ') || 'nobody';
     const ran = f.ran > 0 ? `, ${f.ran} ran` : '';
-    return `- ${p.t(front(f.id)?.name ?? f.id)}: ${f.held ? 'held' : 'fell'}, ${f.strength} against ${f.foe} (${stood}${ran}).`;
+    const own = def.hosts.find((h) => h.front === f.id);
+    const { runs, story } = own ? namedIn(p.run, own.hall) : { runs: [], story: [] };
+    return [
+      `- ${p.t(front(f.id)?.name ?? f.id)}: ${f.held ? 'held' : 'fell'}, ${f.strength} against ${f.foe} (${stood}${ran}).`,
+      ...(runs.length > 0 ? [`  - Ran: ${names(runs)}.`] : []),
+      ...(story.length > 0 ? [`  - The story's own in its host: ${names(story)}.`] : []),
+    ];
   });
   const order = b.order.map((id) => p.t(front(id)?.name ?? id)).join(', then ');
   return ['### Ragnarök', '', `Held in this order: ${order}.`, '', ...lines];

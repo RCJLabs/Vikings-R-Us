@@ -126,6 +126,16 @@ export interface DayWaiting {
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
 }
 
+/** A soul the last battle names (docs/tech-spec.md §54), in the host of the hall it was sent to. */
+export interface NamedSoul {
+  readonly name: string;
+  /** The day it was judged. */
+  readonly day: number;
+  readonly hall: Destination;
+  /** It will run: sent to the hall by mistake (to Valhalla: unworthy). Otherwise a story soul who'll stand there. */
+  readonly runs: boolean;
+}
+
 /** A day event as a run drew it (docs/tech-spec.md §52): the day, and which. */
 export interface DayEventAt {
   readonly day: number;
@@ -217,6 +227,11 @@ export interface RunState {
   readonly misfits?: Readonly<Partial<Record<Destination, number>>>;
   /** The last battle, once it's been fought (docs/tech-spec.md §54). */
   readonly battle?: Battle;
+  /**
+   * The souls the last battle names (docs/tech-spec.md §54): in each host, those who'll run, and the story's own
+   * souls who'll stand. Kept as the misfits are; absent in runs begun before it was, and when there are none.
+   */
+  readonly named?: readonly NamedSoul[];
   readonly family: readonly FamilyMember[];
   readonly upgrades: readonly string[];
   /** Story memory across days. Integers only (Ink reads them). */

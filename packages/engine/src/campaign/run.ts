@@ -54,6 +54,7 @@ import {
   evalState,
   type FamilyMember,
   type LineSoul,
+  type NamedSoul,
   type RequestSettled,
   type RunState,
   readsBattle,
@@ -421,8 +422,25 @@ function chooseAppeal(
   };
 }
 
+/** A soul's name as the screens give it: its name and its father's. */
+export const soulName = (c: CaseSpec): string => `${c.evidence.look.name} ${c.evidence.look.patronym}`;
+
+/**
+ * Whether a soul stamped to a hall is one the last battle names there (docs/tech-spec.md §54): one who'll run (to
+ * Valhalla, the unworthy; elsewhere, one sent by mistake and not given to a god who asked), or a story soul.
+ */
+function namedAs(campaign: CampaignDef, c: CaseSpec, day: number, hall: Destination, runs: boolean): NamedSoul[] {
+  if (!(campaign.ragnarok?.hosts ?? []).some((h) => h.hall === hall)) return [];
+  return runs || c.script ? [{ name: soulName(c), day, hall, runs }] : [];
+}
+
 /** Moves a soul from one hall to another in the run's counts (Ragnarök's host is made of them). */
-function moveSoul(run: RunState, appeal: Appeal, to: Destination): Pick<RunState, 'sent' | 'einherjar' | 'misfits'> {
+function moveSoul(
+  run: RunState,
+  appeal: Appeal,
+  to: Destination,
+  campaign: CampaignDef,
+): Pick<RunState, 'sent' | 'einherjar' | 'misfits' | 'named'> {
   const sent: Partial<Record<Destination, number>> = { ...run.sent };
   sent[appeal.stamped] = Math.max(0, (sent[appeal.stamped] ?? 0) - 1);
   sent[to] = (sent[to] ?? 0) + 1;
@@ -435,7 +453,14 @@ function moveSoul(run: RunState, appeal: Appeal, to: Destination): Pick<RunState
   const misfits: Partial<Record<Destination, number>> = { ...run.misfits };
   if (appeal.stamped !== expected) misfits[appeal.stamped] = Math.max(0, (misfits[appeal.stamped] ?? 0) - 1);
   if (to !== expected) misfits[to] = (misfits[to] ?? 0) + 1;
-  return { sent, einherjar, misfits };
+  // And so do the souls the battle names: it leaves the host it was in (once, should two share a name), for the one
+  // it joins.
+  const name = soulName(appeal.case);
+  const named = [...(run.named ?? [])];
+  const at = named.findIndex((n) => n.name === name && n.day === appeal.day && n.hall === appeal.stamped);
+  if (at >= 0) named.splice(at, 1);
+  named.push(...namedAs(campaign, appeal.case, appeal.day, to, to === 'VALHALLA' ? !appeal.worthy : to !== expected));
+  return { sent, einherjar, misfits, ...(named.length > 0 || run.named ? { named } : {}) };
 }
 
 /**
@@ -477,7 +502,7 @@ function hearAppeal(run: RunState, appeal: Appeal, stamped: Destination | null, 
   add(standingFx(campaign, expected, stamped), 1);
   const nextStanding = { ...run.standing };
   for (const [f, n] of Object.entries(standing)) nextStanding[f as Faction] += n ?? 0;
-  const moved = stamped === appeal.stamped ? {} : moveSoul(run, appeal, stamped);
+  const moved = stamped === appeal.stamped ? {} : moveSoul(run, appeal, stamped, campaign);
   const heard: AppealHeard = { ...base, outcome, rings, standing };
   const { appeal: _, ...rest } = run;
   return { ...rest, ...moved, rings: run.rings + rings, standing: nextStanding, appealHeard: heard };
@@ -865,8 +890,15 @@ function audit(
   const given = (v: Verdict) => requests.some((r) => r.met && v.expected === r.from && v.stamped === r.to);
   // Souls sent to a hall they didn't belong in, but for those given: at Ragnarök they break and run (§54).
   const misfits: Partial<Record<Destination, number>> = { ...run.misfits };
+  // And the souls the battle will name: who'll run from each host, and the story's own who'll stand in one.
+  const named: NamedSoul[] = [...(run.named ?? [])];
   for (const v of shift.verdicts) {
-    if (v.stamped !== null && v.stamped !== v.expected && !given(v)) misfits[v.stamped] = (misfits[v.stamped] ?? 0) + 1;
+    if (v.stamped === null) continue;
+    const wrong = v.stamped !== v.expected && !given(v);
+    if (wrong) misfits[v.stamped] = (misfits[v.stamped] ?? 0) + 1;
+    const c = shift.cases[v.index];
+    const runs = v.stamped === 'VALHALLA' ? !(costs.get(v.index)?.worthy ?? false) : wrong;
+    if (c) named.push(...namedAs(campaign, c, run.day, v.stamped, runs));
   }
   const appeal = chooseAppeal(run, shift, campaign, costs, fined, given);
   const asked = drawRequests(run, env, line?.carried ?? []);
@@ -882,6 +914,7 @@ function audit(
       sent,
       naglfar,
       ...(Object.keys(misfits).length > 0 ? { misfits } : {}),
+      ...(named.length > 0 ? { named } : {}),
       ledger: [...run.ledger, ledger],
       ...(appeal ? { appeal } : {}),
       ...(line && line.carried.length > 0 ? { waiting: line.carried } : {}),

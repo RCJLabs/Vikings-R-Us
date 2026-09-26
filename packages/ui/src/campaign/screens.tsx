@@ -32,7 +32,9 @@ import {
   hostParts,
   hostsAt,
   type JournalEntry,
+  type NamedSoul,
   type NightOutlook,
+  namedIn,
   nightOutlook,
   type RunEvent,
   type RunState,
@@ -300,6 +302,38 @@ function stoodText(f: FrontBattle): string {
   return f.ran > 0 ? `${who}; ${t('ui.ragnarok.ran', { n: f.ran })}` : who;
 }
 
+/**
+ * Souls the battle names (docs/tech-spec.md §54), the first three by name and the day they came, then how many more
+ * of `count` (a run begun before souls were named counts more than it names).
+ */
+function namesText(named: readonly NamedSoul[], count = named.length): string {
+  const shown = named.slice(0, 3).map((n) => t('ui.ragnarok.soul', { name: n.name, day: n.day }));
+  const more = Math.max(0, count - shown.length);
+  return listText(more > 0 ? [...shown, t('ui.ragnarok.more', { n: more })] : shown);
+}
+
+/** Who ran from a front's own host, by name, and the story's own souls in it where that host stood (§54). */
+function FrontNames({ run, f }: { run: RunState; f: FrontBattle }) {
+  const own = campaignOf(gameContent).ragnarok?.hosts.find((h) => h.front === f.id);
+  if (!own) return null;
+  const { runs, story } = namedIn(run, own.hall);
+  const stood = f.stood.some((s) => s.host === own.id);
+  return (
+    <>
+      {runs.length > 0 ? (
+        <p class="front__names" data-testid="front-ran">
+          {t('ui.ragnarok.fled', { names: namesText(runs, f.ran) })}
+        </p>
+      ) : null}
+      {stood && story.length > 0 ? (
+        <p class="front__names" data-testid="front-stood">
+          {t('ui.ragnarok.foughtHere', { names: namesText(story) })}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 /** What an ending asks of the battle, in words. */
 function markText(m: BattleMark): string {
   return listText([
@@ -307,6 +341,17 @@ function markText(m: BattleMark): string {
     ...(m.atLeast !== undefined ? [t('ui.ragnarok.markAtLeast', { n: m.atLeast })] : []),
     ...(m.atMost !== undefined ? [t('ui.ragnarok.markAtMost', { n: m.atMost })] : []),
   ]);
+}
+
+/** In the ending's report, who ran from a front's own host, by name (docs/tech-spec.md §54). */
+function ReportRan({ run, f }: { run: RunState; f: FrontBattle }) {
+  const own = campaignOf(gameContent).ragnarok?.hosts.find((h) => h.front === f.id);
+  const runs = own ? namedIn(run, own.hall).runs : [];
+  return runs.length > 0 ? (
+    <span class="report__ran" data-testid="report-ran">
+      {t('ui.ragnarok.fled', { names: namesText(runs, f.ran) })}
+    </span>
+  ) : null;
 }
 
 function RagnarokReport({ run }: { run: RunState }) {
@@ -345,6 +390,7 @@ function RagnarokReport({ run }: { run: RunState }) {
                   foe: f.foe,
                 })}
                 <span class="muted"> ({stoodText(f)})</span>
+                <ReportRan run={run} f={f} />
               </li>
             ))}
           </ul>
@@ -2142,16 +2188,29 @@ function Ragnarok() {
       <section class="card" data-testid="hosts">
         <h2>{t('ui.ragnarok.hosts')}</h2>
         <ul class="ragnarok__hosts">
-          {hostsAt(run, def).map((h) => (
-            <li key={h.id} data-testid="host" data-host={h.id}>
-              <strong>{hostName(h.id)}</strong>: {t('ui.ragnarok.host', { souls: h.souls })}
-              {h.misfits > 0 ? `, ${t('ui.ragnarok.runs', { n: h.misfits })}` : ''}.{' '}
-              <span class="muted">
-                {t('ui.ragnarok.own', { front: frontName(h.front) })}
-                {h.only ? ` ${t('ui.ragnarok.only')}` : ''}
-              </span>
-            </li>
-          ))}
+          {hostsAt(run, def).map((h) => {
+            const { runs, story } = namedIn(run, h.hall);
+            return (
+              <li key={h.id} data-testid="host" data-host={h.id}>
+                <strong>{hostName(h.id)}</strong>: {t('ui.ragnarok.host', { souls: h.souls })}
+                {h.misfits > 0 ? `, ${t('ui.ragnarok.runs', { n: h.misfits })}` : ''}.{' '}
+                <span class="muted">
+                  {t('ui.ragnarok.own', { front: frontName(h.front) })}
+                  {h.only ? ` ${t('ui.ragnarok.only')}` : ''}
+                </span>
+                {story.length > 0 ? (
+                  <span class="host__names" data-testid="host-stand">
+                    {t('ui.ragnarok.stand', { names: namesText(story) })}
+                  </span>
+                ) : null}
+                {runs.length > 0 ? (
+                  <span class="host__names" data-testid="host-runs">
+                    {t('ui.ragnarok.willRun', { names: namesText(runs, h.misfits) })}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
         <p class="muted">{t('ui.ragnarok.rule')}</p>
       </section>
@@ -2251,6 +2310,7 @@ function BattleView() {
               <p class="muted">
                 {t('ui.ragnarok.against', { strength: f.strength, foe: f.foe })}: {stoodText(f)}
               </p>
+              <FrontNames run={a.run} f={f} />
             </li>
           );
         })}

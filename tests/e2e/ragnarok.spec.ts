@@ -4,6 +4,8 @@ import {
   ENGINE_MAJOR,
   fight,
   heldFronts,
+  type NamedSoul,
+  namedIn,
   type RunSave,
   type RunState,
   resumeSave,
@@ -27,12 +29,28 @@ const def = content.campaign?.ragnarok;
 const LAST = content.campaign?.lastDay ?? 20;
 
 // The last day's night, every soul judged rightly (their nails left long: the scenario jumper doesn't clip them), with
-// hardly anyone in Freyja's host: the fire takes souls from Hel's legion, so holding it costs her gate.
+// hardly anyone in Freyja's host: the fire takes souls from Hel's legion, so holding it costs her gate. And five souls
+// sent to Hel by mistake, who'll run from her legion: four of them named (as a run begun before souls were named would
+// name only its later ones).
 const base = scenarioSave(content, 'e2e-ragnarok', LAST, ENGINE_MAJOR, 'night');
 const lastMorning = base.mornings.at(-1) as RunState;
+const RUNNERS: readonly NamedSoul[] = [
+  { name: 'Bjorn Ketilsson', day: 2, hall: 'HEL', runs: true },
+  { name: 'Ulfhild Grimsdottir', day: 7, hall: 'HEL', runs: true },
+  { name: 'Hallvard Sveinsson', day: 12, hall: 'HEL', runs: true },
+  { name: 'Torunn Oddsdottir', day: 15, hall: 'HEL', runs: true },
+];
 const save: RunSave = {
   ...base,
-  mornings: [...base.mornings.slice(0, -1), { ...lastMorning, sent: { ...lastMorning.sent, FOLKVANGR: 0 } }],
+  mornings: [
+    ...base.mornings.slice(0, -1),
+    {
+      ...lastMorning,
+      sent: { ...lastMorning.sent, FOLKVANGR: 0 },
+      misfits: { ...lastMorning.misfits, HEL: 5 },
+      named: [...(lastMorning.named ?? []), ...RUNNERS],
+    },
+  ],
 };
 const night = resumeSave(save, content, ENGINE_MAJOR).run;
 const horn = stepRun(night, { t: 'endNight' }, { content, ctx: runContext(content, night) }).state;
@@ -84,6 +102,15 @@ test('after the last night, the horn: the fronts held in the order set, the batt
   await expect(page.getByTestId('ragnarok-title')).toHaveText('Ragnarök');
   await expect(page.getByTestId('host')).toHaveCount(def?.hosts.length ?? 0);
   await expect(page.locator('[data-host="host.freyja"]')).toContainText("Freyja's host");
+  // Each host names who'll run from it (three, and how many more) and the story's own souls who'll stand.
+  const ran = 'Bjorn Ketilsson (Day 2), Ulfhild Grimsdottir (Day 7), Hallvard Sveinsson (Day 12), and 2 more';
+  const hel = page.locator('[data-host="host.hel"]');
+  await expect(hel).toContainText('5 who will run');
+  await expect(hel.getByTestId('host-runs')).toHaveText(`Who will run: ${ran}.`);
+  const helStory = namedIn(horn, 'HEL').story;
+  expect(helStory.length).toBeGreaterThan(0);
+  await expect(hel.getByTestId('host-stand')).toContainText(`${helStory[0]?.name} (Day ${helStory[0]?.day})`);
+  await expect(page.locator('[data-host="host.freyja"]').getByTestId('host-runs')).toHaveCount(0);
   await expect(page.getByTestId('front')).toHaveCount(ids.length);
   expect(await holding(page)).toEqual(asListed);
   await expect(page.getByTestId('fronts-held')).toHaveText(
@@ -110,9 +137,13 @@ test('after the last night, the horn: the fronts held in the order set, the batt
       String(withGate.includes(id)),
     );
   }
-  await expect(page.locator('[data-testid="battle-front"][data-front="front.gate"]')).toContainText(
-    'Garm never got through',
-  );
+  const gateBattle = page.locator('[data-testid="battle-front"][data-front="front.gate"]');
+  await expect(gateBattle).toContainText('Garm never got through');
+  await expect(gateBattle.getByTestId('front-ran')).toHaveText(`${ran} ran.`);
+  await expect(gateBattle.getByTestId('front-stood')).toContainText(`${helStory[0]?.name} (Day ${helStory[0]?.day})`);
+  await expect(
+    page.locator('[data-testid="battle-front"][data-front="front.fire"]').getByTestId('front-ran'),
+  ).toHaveCount(0);
   await expect(page.getByTestId('achievement-note')).toHaveCount(0);
   await expectAccessible(page);
   await page.getByTestId('to-ending').click();
@@ -125,6 +156,9 @@ test('after the last night, the horn: the fronts held in the order set, the batt
     'data-held',
     'false',
   );
+  await expect(
+    page.locator('[data-testid="battle-report"] [data-front="front.gate"]').getByTestId('report-ran'),
+  ).toHaveText(`${ran} ran.`);
   await expect(page.getByTestId('battle-marks')).toBeVisible();
   // The ending's achievements waited for it (not a word of them over the battle), and go once read.
   await expect(page.getByTestId('achievement-note')).toBeVisible();

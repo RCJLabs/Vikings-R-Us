@@ -342,8 +342,18 @@ describe('the playtest report', () => {
   });
 
   it('tells of the last battle once fought: the order, and each front as it went (docs/tech-spec.md §54)', () => {
-    // The last day's night, the horn, and the hosts sent with the shore first.
-    let save = scenarioSave(content, 'playtest-battle', 20, ENGINE_MAJOR, 'night');
+    // The last day's night, the horn, and the hosts sent with the shore first. One soul sent to Hel by mistake
+    // on Day 7 will run from her legion.
+    const perfect = scenarioSave(content, 'playtest-battle', 20, ENGINE_MAJOR, 'night');
+    const last = perfect.mornings.at(-1) as RunState;
+    const runner = { name: 'Bjorn Ketilsson', day: 7, hall: 'HEL', runs: true } as const;
+    let save: RunSave = {
+      ...perfect,
+      mornings: [
+        ...perfect.mornings.slice(0, -1),
+        { ...last, misfits: { ...last.misfits, HEL: 1 }, named: [...(last.named ?? []), runner] },
+      ],
+    };
     let run = resumeSave(save, content, ENGINE_MAJOR).run;
     for (const a of [{ t: 'endNight' }, { t: 'marshal', order: ['front.ship'] }] as RunAction[]) {
       const next = stepRun(run, a, { content, ctx: runContext(content, run) }).state;
@@ -362,6 +372,12 @@ describe('the playtest report', () => {
     for (const f of run.battle?.fronts ?? []) {
       expect(text).toContain(`- ${f.id}: ${f.held ? 'held' : 'fell'}, ${f.strength} against ${f.foe} (`);
     }
+    // Under each front, by name: who ran from its own host, and the story's own souls in it.
+    expect(text).toMatch(/- front\.gate: [^\n]*, 1 ran\)\.\n {2}- Ran: Bjorn Ketilsson \(Day 7\)\./);
+    const story = (run.named ?? []).filter((n) => !n.runs);
+    expect(story.length).toBeGreaterThan(0);
+    for (const n of story) expect(text).toContain(`${n.name} (Day ${n.day})`);
+    expect(text).toContain("  - The story's own in its host: ");
     expect(text).toContain('- **Ending:**');
   });
 
