@@ -434,6 +434,8 @@ export const ScriptedCaseSchema: z.ZodType<ScriptedCaseDef> = z.strictObject({
     )
     .min(1)
     .optional(),
+  // A plea at the desk (docs/tech-spec.md §51).
+  plea: z.strictObject({ stamp: DestinationSchema, text: Key }).optional(),
 });
 
 const FamilyDefSchema: z.ZodType<FamilyDef> = z.strictObject({ id: z.string(), name: Key, adult: z.boolean() });

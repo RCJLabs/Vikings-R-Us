@@ -1,15 +1,45 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
 EXTERNAL flag(name)
+EXTERNAL home(id)
+-> kari
+
+// The levy came down from the pass (docs/tech-spec.md §51): Ulf's part in it, if he had one, and what the
+// neighbours make of where you sent Kari.
+=== kari ===
+{
+- flag("ulf_levy") && home("brother"):
+  # fx: family brother sick
+  Ulf's letter is in a hand you hardly know: he's writing with the wrong one.
+  "We held the pass till the sun came up. I was three shields down from Kari when the line went. I carried him as far as the cairn, and then I couldn't." # speaker: ulf
+  "It's my arm, not my legs. Mother says I'm to stop writing and let it mend." # speaker: ulf
+- flag("ulf_stayed") && home("brother"):
+  Ulf's letter is three lines long.
+  "Kari's shield came home on a cart this afternoon. I should have been next to him." # speaker: ulf
+  "Don't write back that I shouldn't. I know you're right. That's worse." # speaker: ulf
+- else:
+  The letter from home is short. Solveig's boy didn't come down from the pass.
+}
+{
+- flag("kari_ran"):
+  Under it, in Bera's big slanting hand:
+  "I dreamed of Solveig last night, at a loom by the sea, and her boy beside her, handing her the thread. I don't know what you did. Thank you for it." # speaker: bera
+- flag("kari_valhalla"):
+  Under it, in Bera's big slanting hand:
+  "They say Kari's on Odin's benches now, with a horn in each hand. Solveig would have hated it, and been proud." # speaker: bera
+}
+-> thorvald
+
+=== thorvald ===
 {
 - flag("thorvald16_returned"):
-  At dusk Thorvald comes back up the path with his cap in his hands.
+  At dusk Thorvald comes back up the path with his cap in his hands. # beat
   "Sent home again," he says. "My mother says I should stop trying." # speaker: thorvald
 - flag("thorvald16_judged"):
-  At dusk Thorvald comes back up the path with his cap in his hands. Wherever you sent him, they sent him straight back. Nobody down there wanted a man with a heartbeat.
+  At dusk Thorvald comes back up the path with his cap in his hands. Wherever you sent him, they sent him straight back. Nobody down there wanted a man with a heartbeat. # beat
   "They were very nice about it," he says. "Mostly." # speaker: thorvald
 - else:
-  At dusk the broad man with the braided beard is still sitting at the end of the queue, where the sun ran out on him, with his cap in his hands.
+  At dusk the broad man with the braided beard is still sitting at the end of the queue, where the sun ran out on him, with his cap in his hands. # beat
   "I'll come back tomorrow, shall I?" # speaker: thorvald
 }
 Skögul sits on the end of the table with her supper. Thorvald sits down next to her without being asked.

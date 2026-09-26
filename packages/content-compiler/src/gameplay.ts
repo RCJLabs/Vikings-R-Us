@@ -809,6 +809,11 @@ function lintScripted(content: Content, strings: Readonly<Record<string, string>
     }
     if (def.when) walk(def.when, where);
     for (const rule of def.onStamp ?? []) for (const e of rule.effects) effect(e, where);
+    // A plea (docs/tech-spec.md §51) asks for a stamp where the soul doesn't belong, in words the desk can show.
+    if (def.plea) {
+      if (def.plea.stamp === def.expect) problems.push(`${where} pleads for ${def.expect}, where it belongs anyway.`);
+      if (!(def.plea.text in strings)) problems.push(`${where} uses missing string "${def.plea.text}".`);
+    }
   }
   const placed = new Set<string>();
   for (const spec of [content.daily, content.primer]) {

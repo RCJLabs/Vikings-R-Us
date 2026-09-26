@@ -23,6 +23,8 @@ queue:
   count: [13, 15]
   teachFirst: arch.proud_liar
   scripted:
+    # Solveig's boy, from the levy at the pass (docs/tech-spec.md §51).
+    - { case: case.kari, at: 2 }
     - { case: case.thorvald16, at: 6 }
   archetypes:
     - { id: arch.honest_warrior, w: 2 }

@@ -33,4 +33,28 @@ You don't know. Nobody at the gate has ever mentioned a shore. But nobody at the
   # fx: standing odin +1
   You write it firmly, the way Skögul says things. It looks less firm on the bark.
 - On the shingle below the gate, where nobody ever lands, a small grey boat has been drawn up that wasn't there this morning. There's nobody in it.
+-> levy
+
+// The levy (docs/tech-spec.md §51): Solveig's boy goes to hold the pass, and Ulf, if he's home, wants to go too.
+// Money can't keep him: the steward would take silver, but Ulf won't be bought out.
+=== levy ===
+{ flag("ulf_home") && home("brother"): -> levy_ulf }
+The raven has one more scrap of bark, squeezed in at the bottom: Solveig's boy, Kari, has gone up to the pass with the jarl's levy, with his father's spear. # beat
 -> END
+
+=== levy_ulf ===
+Folded into the bark is a second letter, in Ulf's square hand. # beat
+"The jarl's calling the levy to hold the pass before the snow shuts it. Kari, Solveig's boy, has taken his father's spear down off the wall. He's going." # speaker: ulf
+"I want to go with him. Somebody should stand next to him who knew his mother." # speaker: ulf
+- (choose)
+* ["Go, then. Keep your shield up."]
+  # fx: flag ulf_levy
+  # fx: standing odin +1
+  You write it, and then you write it again, bigger, because your hand wasn't steady the first time.
+* [Pay the jarl's steward to strike his name.]
+  You wrap twenty rings in a note to the steward. The raven comes back with them, and a line in Ulf's hand: "Keep your rings. I'm not a debt."
+  -> choose
+* ["Stay. They need you at home."]
+  # fx: flag ulf_stayed
+  You write that the house needs a man who can mend a roof more than the pass needs one more spear. It's true. He won't thank you for it.
+- -> END

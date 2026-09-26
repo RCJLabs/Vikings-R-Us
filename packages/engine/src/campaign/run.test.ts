@@ -38,6 +38,7 @@ import {
   stateMarks,
   stepRun,
   storyOffer,
+  storyPlea,
   threadsInPlay,
 } from './run';
 import { type RunSave, recordAction, replayableDays, replayDay, resumeSave, runContext, startSave } from './save';
@@ -1726,6 +1727,57 @@ describe('a jarl’s bribe (docs/tech-spec.md §47)', () => {
     expect(t.einherjar.unworthy).toBe(r.einherjar.unworthy + 1);
     // A story soul never appeals.
     expect(t.appeal?.case.script).toBeUndefined();
+  });
+});
+
+describe('a plea at the desk (docs/tech-spec.md §51)', () => {
+  const def = full.scripted?.find((d) => d.plea);
+  const spec = full.days.find((d) => (d.queue.scripted ?? []).some((s) => s.case === def?.id));
+  if (!def || !spec) throw new Error('no story soul in this build pleads');
+  const morning = (): RunState => ({ ...newRun(full, 'plea'), day: spec.day });
+  /** The day's shift, every other soul judged rightly and the one who pleads stamped `stamped`, to its audit. */
+  const judged = (stamped: Destination) => {
+    const base = morning();
+    const ctx = runContext(full, base);
+    const queue = campaignQueue(base, { content: full, ctx });
+    const actions: RunAction[] = [{ t: 'beginShift', at: 0 }];
+    queue.forEach((c, i) => {
+      const t = (i + 1) * 1000;
+      const pleads = c.script === def.id;
+      for (const id of pleads ? [] : (c.expect.procedures ?? [])) {
+        const tool = ctx.procedures.find((p) => p.id === id)?.tool;
+        if (tool) actions.push({ t: 'shift', action: { t: 'tool', tool, at: t } });
+      }
+      actions.push({ t: 'shift', action: { t: 'stamp', dest: pleads ? stamped : c.expect.dest, at: t } });
+      actions.push({ t: 'shift', action: { t: 'send', at: t } });
+    });
+    return drive(full, base, actions).run;
+  };
+
+  it('says what it asks for, a stamp where it doesn’t belong; other souls ask nothing', () => {
+    const base = morning();
+    const queue = campaignQueue(base, { content: full, ctx: runContext(full, base) });
+    const soul = queue.find((c) => c.script === def.id);
+    if (!soul) throw new Error('no one pleading in the line');
+    expect(storyPlea(full, soul)).toEqual({ dest: def.plea?.stamp, text: def.plea?.text });
+    expect(storyPlea(full, soul)?.dest).not.toBe(soul.expect.dest);
+    for (const c of queue.filter((x) => x.script !== def.id)) expect(storyPlea(full, c)).toBeNull();
+  });
+
+  it('granted, is a mistake all the same, filed as a plea; refused, the day is clean', () => {
+    const plea = def.plea?.stamp ?? 'HEL';
+    const refused = judged(def.expect);
+    expect(refused.ledger.at(-1)?.wrong).toBe(0);
+    expect(refused.flags.kari_valhalla).toBe(1);
+    const granted = judged(plea);
+    const l = granted.ledger.at(-1);
+    expect(l?.wrong).toBe(1);
+    expect(l?.mistakes).toEqual([expect.objectContaining({ stamped: plea, expected: def.expect, pled: true })]);
+    expect(l?.standing).toEqual(standingFx(campaignOf(full), def.expect, plea));
+    expect(granted.flags.kari_ran).toBe(1);
+    expect(granted.flags.kari_valhalla).toBeUndefined();
+    // A story soul never appeals.
+    expect(granted.appeal?.case.script).toBeUndefined();
   });
 });
 

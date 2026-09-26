@@ -16,6 +16,7 @@ import {
   soulCtx,
   stampsFor,
   storyOffer,
+  storyPlea,
   sunLeft,
   type Verdict,
 } from '@cots/engine';
@@ -1006,6 +1007,17 @@ function OfferNote({ s, c }: { s: Session; c: CaseSpec }) {
   );
 }
 
+/** What a story soul asks for, openly, where it doesn't belong (docs/tech-spec.md §51), while it's at the desk. */
+function PleaNote({ s, c }: { s: Session; c: CaseSpec }) {
+  const plea = storyPlea(s.content, c);
+  if (!plea) return null;
+  return (
+    <p class="shift__appeal" data-testid="plea-banner">
+      {t(plea.text, { name: `${c.evidence.look.name} ${c.evidence.look.patronym}` })}
+    </p>
+  );
+}
+
 /**
  * A noon decree (docs/tech-spec.md §45): from `notice` souls before it holds, the raven's news on the desk with the
  * new choices, and once it holds, a line to say what changed at noon. The rulebook shows the rules of the soul at
@@ -1124,6 +1136,7 @@ export function ShiftScreen() {
           </p>
         ) : null}
         {s.mode.kind === 'campaign' && c ? <OfferNote s={s} c={c} /> : null}
+        {s.mode.kind === 'campaign' && c ? <PleaNote s={s} c={c} /> : null}
         <CoachBar s={s} lesson={lesson} />
         {c ? <SoulDesk key={c.id} s={s} c={c} layout={layout} /> : null}
       </div>

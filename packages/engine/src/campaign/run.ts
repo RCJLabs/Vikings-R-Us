@@ -559,6 +559,15 @@ export function storyOffer(content: Content, c: CaseSpec): { dest: Destination; 
   return best;
 }
 
+/**
+ * What a story soul asks for at the desk (docs/tech-spec.md §51), openly, where it doesn't belong: the stamp, and the
+ * words for it. Granted, the stamp is a mistake all the same.
+ */
+export function storyPlea(content: Content, c: CaseSpec): { dest: Destination; text: string } | null {
+  const plea = c.script ? content.scripted?.find((d) => d.id === c.script)?.plea : undefined;
+  return plea && plea.stamp !== c.expect.dest ? { dest: plea.stamp, text: plea.text } : null;
+}
+
 /** The story consequences of how today's story souls were stamped. */
 function storyEffects(shift: ShiftState, content: Content): Effect[] {
   const out: Effect[] = [];
@@ -718,6 +727,7 @@ function audit(
     } else {
       wrong++;
       const paid = c ? stampRings(env.content, c, v.stamped) : 0;
+      const pled = c ? storyPlea(env.content, c)?.dest === v.stamped : false;
       mistakes.push({
         rule: v.rule,
         expected: v.expected,
@@ -725,6 +735,7 @@ function audit(
         ...(v.skipped && v.skipped.length > 0 ? { skipped: v.skipped } : {}),
         ...(c?.noon ? { noon: true as const } : {}),
         ...(paid > 0 ? { paid } : {}),
+        ...(pled ? { pled: true as const } : {}),
       });
       if (fined && wrong > economy.warnings) {
         const fine = economy.fines[Math.min(wrong - economy.warnings - 1, economy.fines.length - 1)] ?? 0;
