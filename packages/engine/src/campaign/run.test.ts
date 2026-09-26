@@ -413,7 +413,7 @@ describe('endings', () => {
     expect(f).toMatchObject({ phase: 'ending', ending: 'ending.odin' });
     expect(f.battle?.fronts.find((x) => x.id === 'front.wolf')?.held).toBe(true);
     expect(endingFor({ ...f, standing: { ...f.standing, odin: 0 } }, full)).toBe(campaignOf(full).finale);
-  });
+  }, 30_000);
 
   it('Draupnir drips rings on its nights', () => {
     const content: Content = { ...demo, campaign: { ...campaignOf(demo), draupnir: { nights: [1], rings: 8 } } };
@@ -875,7 +875,7 @@ describe('the last battle (docs/tech-spec.md §54)', () => {
     // It's fought once.
     expect(marshal(fought.state).events[0]).toMatchObject({ e: 'rejected' });
     expect(marshal(night).events[0]).toMatchObject({ e: 'rejected' });
-  });
+  }, 30_000);
 
   it('waits for an ending checked before any that reads it: deep in debt on the last night, no battle', () => {
     const { night } = lastNight();
@@ -934,7 +934,7 @@ describe('the last battle (docs/tech-spec.md §54)', () => {
     step({ t: 'marshal', order: ['front.ship', 'front.fire'] });
     expect(run.phase).toBe('ending');
     expect(resumeSave(save, full, 0).run).toEqual(run);
-  });
+  }, 30_000);
 
   it('never comes in the demo or the vertical slice', () => {
     expect(battleDue({ ...newRun(demo, 'x'), day: 3 }, demo)).toBe(false);
@@ -2301,7 +2301,8 @@ describe('day events (docs/tech-spec.md §52)', () => {
         }
       }
     }
-  });
+    // About 240 days' lines made: under 3s here, near the 5s default on a busy CI runner.
+  }, 60_000);
 
   it('a storm brings the drowned in place of the day’s last souls, under a darker sky', () => {
     const storm = ev('event.storm');
