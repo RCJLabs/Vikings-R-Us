@@ -202,6 +202,9 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(last('weaving') ? { weaving: last('weaving') as NonNullable<CampaignDef['weaving']> } : {}),
     ...(last('ragnarok') ? { ragnarok: last('ragnarok') as NonNullable<CampaignDef['ragnarok']> } : {}),
     ...(last('epilogue') ? { epilogue: last('epilogue') as NonNullable<CampaignDef['epilogue']> } : {}),
+    ...(last('arms') ? { arms: last('arms') as NonNullable<CampaignDef['arms']> } : {}),
+    ...(last('sellBack') !== undefined ? { sellBack: last('sellBack') as number } : {}),
+    ...(last('reprieve') ? { reprieve: last('reprieve') as NonNullable<CampaignDef['reprieve']> } : {}),
   };
 }
 
@@ -828,8 +831,19 @@ function lintRagnarok(content: Content, key: (k: string, where: string) => void)
   const problems: string[] = [];
   const reads = c.endings.filter((e) => e.when !== undefined && readsBattle(e.when));
   const def = c.ragnarok;
+  // Upgrades sold back and a reprieve (docs/tech-spec.md §56) need no battle.
+  if (c.sellBack !== undefined && (c.sellBack < 0 || c.sellBack > 100)) {
+    problems.push(`Upgrades sell back for ${c.sellBack}% of their price: it must be 0 to 100.`);
+  }
+  if (c.reprieve) {
+    key(c.reprieve.text, 'the reprieve');
+    if (!c.endings.some((e) => e.id === c.reprieve?.ending)) {
+      problems.push(`The reprieve stays "${c.reprieve.ending}", which isn't an ending.`);
+    }
+  }
   if (!def) {
     for (const e of reads) problems.push(`ending ${e.id} reads the last battle, but this build has none.`);
+    if (c.arms) problems.push('This build sells arms for the last battle, but has none.');
     return problems;
   }
   key(def.text, 'the last battle');
@@ -863,6 +877,17 @@ function lintRagnarok(content: Content, key: (k: string, where: string) => void)
       if (p.startsWith('front.') && !fronts.has(p)) problems.push(`ending ${e.id} reads unknown front "${p}".`);
     }
   }
+  // Arms for the last battle (docs/tech-spec.md §56): for fronts the battle has, each named once.
+  const armed = new Set<string>();
+  for (const a of c.arms?.fronts ?? []) {
+    const where = `arms for ${a.front}`;
+    if (!fronts.has(a.front)) problems.push(`${where}: the battle has no such front.`);
+    if (armed.has(a.front)) problems.push(`${where} are listed twice.`);
+    armed.add(a.front);
+    key(a.name, where);
+    key(a.text, where);
+  }
+  if (c.arms && c.arms.from > c.lastDay) problems.push('Arms go on sale after the last night.');
   return problems;
 }
 

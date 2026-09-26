@@ -82,8 +82,8 @@ describe('the epilogue', () => {
     const battle = {
       order: ['front.a', 'front.b'],
       fronts: [
-        { id: 'front.a', foe: 10, stood: [], ran: 2, strength: 12, held: true },
-        { id: 'front.b', foe: 10, stood: [], ran: 3, strength: 4, held: false },
+        { id: 'front.a', foe: 10, stood: [], ran: 2, arms: 0, strength: 12, held: true },
+        { id: 'front.b', foe: 10, stood: [], ran: 3, arms: 0, strength: 4, held: false },
       ],
     };
     expect(epilogueParams(ended('ending.wolf', { rings: 42, battle }))).toEqual({
@@ -134,7 +134,7 @@ describe('the shipped epilogue', () => {
       flags: {},
       battle: {
         order: fronts,
-        fronts: fronts.map((id) => ({ id, foe: 1, stood: [], ran: 0, strength: 0, held: false })),
+        fronts: fronts.map((id) => ({ id, foe: 1, stood: [], ran: 0, arms: 0, strength: 0, held: false })),
       },
     };
     for (const [path, v] of values) {

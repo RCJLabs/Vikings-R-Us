@@ -629,6 +629,17 @@ export const CampaignPartSchema = z.strictObject({
         .min(1),
     })
     .optional(),
+  // Arms for the last battle, upgrades sold back, and a reprieve from debt (docs/tech-spec.md §56).
+  arms: z
+    .strictObject({
+      from: Day,
+      strength: Int.min(1),
+      prices: z.array(Int.min(1)).min(1),
+      fronts: z.array(z.strictObject({ front: Id, name: Key, text: Key })).min(1),
+    })
+    .optional(),
+  sellBack: Percent.optional(),
+  reprieve: z.strictObject({ ending: Id, rings: Int, flag: Id, text: Key }).optional(),
   // The epilogue (docs/tech-spec.md §55): what became of everyone, told after the ending from the run.
   epilogue: z
     .strictObject({

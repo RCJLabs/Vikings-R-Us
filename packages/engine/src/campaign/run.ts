@@ -81,6 +81,10 @@ export type RunAction =
   | { readonly t: 'endAudit' }
   | { readonly t: 'bills'; readonly bills: Bills }
   | { readonly t: 'buy'; readonly item: string }
+  /** At night, an upgrade sold back for its share of the price (docs/tech-spec.md §56). */
+  | { readonly t: 'sell'; readonly item: string }
+  /** At night, a lot of arms bought for a front of the last battle (docs/tech-spec.md §56). */
+  | { readonly t: 'arm'; readonly front: string }
   | {
       readonly t: 'scene';
       readonly id: string;
@@ -105,6 +109,10 @@ export type RunEvent =
   | { readonly e: 'shift'; readonly event: ShiftEvent }
   | { readonly e: 'audited'; readonly ledger: DayLedger }
   | { readonly e: 'bought'; readonly item: string }
+  | { readonly e: 'sold'; readonly item: string; readonly rings: number }
+  | { readonly e: 'armed'; readonly front: string; readonly strength: number; readonly price: number }
+  /** A debt that would have ended the run was paid, once (docs/tech-spec.md §56): the rings it took. */
+  | { readonly e: 'reprieve'; readonly rings: number }
   | { readonly e: 'scene'; readonly id: string; readonly effects: readonly Effect[] }
   | { readonly e: 'family'; readonly id: string; readonly change: 'sick' | 'well' | 'died' | 'left' }
   | { readonly e: 'draupnir'; readonly rings: number }
@@ -308,6 +316,29 @@ export function careFor(run: RunState, content: Content): NightCare {
 /** The upgrades on sale tonight. */
 export function shopFor(run: RunState, content: Content): UpgradeDef[] {
   return campaignOf(content).shop.filter((u) => u.since <= run.day && !run.upgrades.includes(u.id));
+}
+
+/** What an upgrade the run has sells back for tonight (docs/tech-spec.md §56), or null if it can't be sold. */
+export function sellPrice(run: RunState, content: Content, item: string): number | null {
+  const share = campaignOf(content).sellBack;
+  const u = campaignOf(content).shop.find((x) => x.id === item);
+  if (share === undefined || !u || !run.upgrades.includes(item)) return null;
+  return Math.floor((u.price * share) / 100);
+}
+
+/**
+ * The next lot of arms tonight (docs/tech-spec.md §56): its price and strength, and whether the run can buy it. Null
+ * in a build without arms, before they're for sale, or once they've run out.
+ */
+export function armsTonight(
+  run: RunState,
+  content: Content,
+): { readonly price: number; readonly strength: number; readonly bought: boolean } | null {
+  const arms = campaignOf(content).arms;
+  if (!arms || run.day < arms.from || run.slice) return null;
+  const price = arms.prices[run.armsBought ?? 0];
+  if (price === undefined) return null;
+  return { price, strength: arms.strength, bought: run.armedOn === run.day };
 }
 
 export function economyOf(env: RunEnv): Economy {
@@ -1030,6 +1061,8 @@ export interface NightOutlook {
   readonly members: readonly MemberNight[];
   /** The ending tonight's upkeep would bring about (the debt, or no one left at home), if it would. */
   readonly ends: { readonly ending: string; readonly why: 'debt' | 'home' } | null;
+  /** Tonight's debt would end the run, but the reprieve will pay it (docs/tech-spec.md §56); `rings` is then its purse. */
+  readonly reprieve?: boolean;
 }
 
 /**
@@ -1044,20 +1077,53 @@ export function nightOutlook(run: RunState, env: RunEnv, bills: Bills = run.bill
     rings: u.rings,
     debtNights: u.debtNights,
   };
-  const ending = endingFor(projected, env.content);
   const debt = new Set(
     stateMarks(env.content, 'debtNights').flatMap((m) => (m.atLeast !== undefined ? [m.ending] : [])),
   );
   const home = new Set(
     stateMarks(env.content, 'family.home').flatMap((m) => (m.atMost !== undefined ? [m.ending] : [])),
   );
-  const why = ending && debt.has(ending) ? 'debt' : ending && home.has(ending) ? 'home' : null;
-  return { ...u, ends: ending && why ? { ending, why } : null };
+  const ends = (ending: string | null): NightOutlook['ends'] => {
+    const why = ending && debt.has(ending) ? 'debt' : ending && home.has(ending) ? 'home' : null;
+    return ending && why ? { ending, why } : null;
+  };
+  const ending = endingFor(projected, env.content);
+  // A reprieve pays the debt that would end the run tonight, once (docs/tech-spec.md §56): the morning's purse is its,
+  // and only another ending (no one left at home) can end the run now.
+  const r = campaignOf(env.content).reprieve;
+  if (r && reprieveFor(run, env.content, ending)) {
+    const paid: RunState = { ...projected, rings: r.rings, debtNights: 0, flags: { ...run.flags, [r.flag]: 1 } };
+    return { ...u, rings: r.rings, debtNights: 0, ends: ends(endingFor(paid, env.content)), reprieve: true };
+  }
+  return { ...u, ends: ends(ending) };
 }
 
 /** The run as `effects` would leave it (a scene's option, say), for previews: rings, standing, flags and family. */
 export function withEffects(run: RunState, effects: readonly Effect[], content?: Content): RunState {
   return applyEffects(run, effects, [], content);
+}
+
+/** Whether a reprieve (docs/tech-spec.md §56) would keep `ending` from ending the run tonight. */
+function reprieveFor(run: RunState, content: Content, ending: string | null): boolean {
+  const r = campaignOf(content).reprieve;
+  return !!r && ending === r.ending && !run.oath && (run.flags[r.flag] ?? 0) <= 0;
+}
+
+/**
+ * The night's reprieve (docs/tech-spec.md §56): the first night a debt would end the run, it's paid instead. The purse
+ * is set to the reprieve's, the nights in debt start again, its flag is set, and the night's accounts say so.
+ */
+function reprieved(after: RunState, run: RunState, env: RunEnv, events: RunEvent[]): RunState {
+  const r = campaignOf(env.content).reprieve;
+  if (!r || !reprieveFor(run, env.content, endingFor(after, env.content))) return after;
+  const paid = r.rings - after.rings;
+  events.push({ e: 'reprieve', rings: paid });
+  const last = after.ledger[after.ledger.length - 1];
+  const ledger =
+    last?.night && last.day === after.day
+      ? [...after.ledger.slice(0, -1), { ...last, night: { ...last.night, reprieve: paid, rings: r.rings } }]
+      : after.ledger;
+  return { ...after, rings: r.rings, debtNights: 0, flags: { ...after.flags, [r.flag]: 1 }, ledger };
 }
 
 /** Tonight's upkeep: bills paid or skipped, and what that does to the family. */
@@ -1090,12 +1156,16 @@ function night(run: RunState, env: RunEnv, events: RunEvent[]): RunState {
               draupnir: u.draupnir,
               story: run.storyRings,
               ...(u.tithe > 0 ? { tithe: u.tithe } : {}),
+              ...(run.trade?.arms ? { arms: run.trade.arms } : {}),
+              ...(run.trade?.sold ? { sold: run.trade.sold } : {}),
               rings: u.rings,
             },
           },
         ]
       : run.ledger;
-  return { ...run, family, rings: u.rings, debtNights: u.debtNights, ledger };
+  // Tonight's dealings are filed in its accounts (docs/tech-spec.md §56), and done with.
+  const { trade: _, ...rest } = run;
+  return { ...rest, family, rings: u.rings, debtNights: u.debtNights, ledger };
 }
 
 /** The day that follows `day` in this run (the slice jumps), or null after its last playable day. */
@@ -1369,10 +1439,46 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
         events: [{ e: 'bought', item: item.id }],
       };
     }
+    case 'sell': {
+      if (run.phase !== 'night') return reject(run, 'the shop opens at night');
+      const rings = sellPrice(run, env.content, action.item);
+      if (rings === null) return reject(run, 'not yours to sell');
+      const trade = run.trade ?? { arms: 0, sold: 0 };
+      return {
+        state: {
+          ...run,
+          rings: run.rings + rings,
+          upgrades: run.upgrades.filter((id) => id !== action.item),
+          trade: { ...trade, sold: trade.sold + rings },
+        },
+        events: [{ e: 'sold', item: action.item, rings }],
+      };
+    }
+    case 'arm': {
+      if (run.phase !== 'night') return reject(run, 'arms are sold at night');
+      const lot = armsTonight(run, env.content);
+      if (!lot) return reject(run, 'no arms for sale');
+      if (lot.bought) return reject(run, 'one lot a night');
+      if (!campaignOf(env.content).arms?.fronts.some((f) => f.front === action.front))
+        return reject(run, 'no such front');
+      if (run.rings < lot.price) return reject(run, 'not enough rings');
+      const trade = run.trade ?? { arms: 0, sold: 0 };
+      return {
+        state: {
+          ...run,
+          rings: run.rings - lot.price,
+          armed: { ...run.armed, [action.front]: (run.armed?.[action.front] ?? 0) + lot.strength },
+          armsBought: (run.armsBought ?? 0) + 1,
+          armedOn: run.day,
+          trade: { ...trade, arms: trade.arms + lot.price },
+        },
+        events: [{ e: 'armed', front: action.front, strength: lot.strength, price: lot.price }],
+      };
+    }
     case 'endNight': {
       if (run.phase !== 'night') return reject(run, 'the night has not come');
       const events: RunEvent[] = [];
-      const after = night(run, env, events);
+      const after = reprieved(night(run, env, events), run, env, events);
       const ending = endingFor(after, env.content);
       if (ending) {
         events.push({ e: 'ended', ending });

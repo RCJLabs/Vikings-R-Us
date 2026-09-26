@@ -195,6 +195,10 @@ export interface DayLedger {
     readonly story: number;
     /** Odin's tithe for a rank held (docs/tech-spec.md §44). */
     readonly tithe?: number;
+    /** Rings spent on arms, got back for upgrades sold, and paid by a reprieve (docs/tech-spec.md §56). */
+    readonly arms?: number;
+    readonly sold?: number;
+    readonly reprieve?: number;
     readonly rings: number;
   };
 }
@@ -252,6 +256,16 @@ export interface RunState {
   readonly bills: Bills | null;
   /** Rings spent in the shop tonight. */
   readonly spent: number;
+  /**
+   * Tonight's other dealings (docs/tech-spec.md §56): rings spent on arms, and got back for upgrades sold. Filed in
+   * the night's accounts, and cleared with them.
+   */
+  readonly trade?: { readonly arms: number; readonly sold: number };
+  /** Arms bought for the last battle (docs/tech-spec.md §56): the strength each front has bought, by front id. */
+  readonly armed?: Readonly<Record<string, number>>;
+  /** How many lots of arms the run has bought, and the night it bought the last. */
+  readonly armsBought?: number;
+  readonly armedOn?: number;
   readonly ending: string | null;
   /** Story Mode: no sun and no fines. */
   readonly story: boolean;
@@ -384,6 +398,9 @@ export function stateValue(run: RunState, path: string): number {
       return run.sent?.[key as Destination] ?? 0;
     case 'naglfar':
       return run.naglfar ?? 0;
+    // Lots of arms bought for the last battle (docs/tech-spec.md §56).
+    case 'arms':
+      return run.armsBought ?? 0;
     case 'ragnarok':
       return ragnarokStrength(run);
     case 'day':
@@ -445,7 +462,7 @@ export function predPaths(p: StatePred): string[] {
 
 /** Paths a StatePred may use (the content linter checks endings against it). */
 export const STATE_PATHS =
-  /^(day|rings|debtNights|naglfar|ragnarok|oath|fronts|front\.[A-Za-z0-9_]+|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone)|member\.[A-Za-z0-9_]+\.(well|sick|gone|died|left)|ending\.[A-Za-z0-9_]+)$/;
+  /^(day|rings|debtNights|naglfar|arms|ragnarok|oath|fronts|front\.[A-Za-z0-9_]+|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone)|member\.[A-Za-z0-9_]+\.(well|sick|gone|died|left)|ending\.[A-Za-z0-9_]+)$/;
 
 /** Whether a StatePred reads the last battle (docs/tech-spec.md §54): what it asks can't be known before it's fought. */
 export function readsBattle(p: StatePred): boolean {

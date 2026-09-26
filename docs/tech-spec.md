@@ -3358,6 +3358,88 @@ The brainstorm's version, and what changed:
 - **Some refuges are left open.** When the wood's or the ship's ending doesn't come, where they leave the family stays open: the wood's line says the song doesn't say, and the ship's has only Loki's word.
 - **The words are drafts:** about 3,000 of them (the nine endings, 70 lines), for sign-off like the rest.
 
+## 56. After M7: rings with a late job, and a softer bottom
+
+**Why.** The rundown after item 8 found both ends of the economy broken.
+- **Nothing to buy late.** Expert bots bought all 13 upgrades (390 rings in all) and still ended the run with about 800 rings they had no use for.
+- **A cliff for novices.** Novices who paid every bill went into debt as winter bills rose from about Day 9, and 29 of 30 were demoted.
+
+**How it works**
+- **Arms for the last battle** (`arms` in the campaign's `campaign.yaml`; the demo has none).
+  - From Night 13 the night screen has a quartermaster's card. It sells one lot of arms a night, for the front the player chooses.
+  - Each lot is dearer than the last: 40, 60, 80, 100, 120, 140 and 160 rings, 700 in all. The lots run out after seven.
+  - Each lot adds 6 strength at its front when the horn blows. It counts after the front's runners: strength = max(0, souls' strength − runners + arms), so arms can't hide a rout.
+  - Each front on the card says whether it would hold if the horn blew tonight, and at what strength against what foe. That's the battle as the horn's screen first shows it, fronts held in the order listed, with tonight's hosts. Before this there was no view of the fronts until Day 20, so a purchase would have been a guess.
+  - Arms aren't sold in the vertical slice. The state path `arms` counts the lots bought, for content to read; nothing reads it yet.
+- **Upgrades sell back** (`sellBack`, a percentage; 50 in the demo pack, so both builds have it).
+  - At night, each owned upgrade has a button to sell it for half its price, rounded down.
+  - Once sold, it's back in the market at full price.
+- **Skögul's reprieve** (`reprieve`, in the demo pack, so both builds have it).
+  - The first night a debt would demote you, Skögul pays it: the purse is set to 0, the count of nights in debt starts over, and the run gets the flag `skogul_paid`.
+  - It happens once a run, and never under the oath.
+  - The night's outlook says so before you sleep, and shows the purse the morning will have. The night doesn't warn about demotion that night.
+  - The morning's news says who paid. On Night 19, Skögul mentions it.
+  - Another ending that holds that night still ends the run. For example, if no one is left at home.
+- **The accounts.**
+  - Each night files the rings spent on arms (`arms`), the rings from anything sold back (`sold`) and what the reprieve paid (`reprieve`). The day's sums still come to the purse.
+  - The run keeps the arms at each front (`armed`), the lots bought (`armsBought`) and the night of the last one (`armedOn`). `trade`, tonight's arms and sales, is cleared when the night ends.
+  - Every new field is optional, so older saves load unchanged.
+
+**Tuning.** The same 60 seeds per policy were run with and without the changes, with story policies playing the scenes.
+
+| Policy | Rings at the end (before → after) | Fronts held, before | Fronts held, after | Demoted (before → after) |
+|---|---|---|---|---|
+| Expert, pays every bill | 833 → 133 | 4 in 38 runs, 3 in 22 | 4 in all 60 | 0 → 0 |
+| Competent, pays every bill | 455 → 112 | 3 in 59, 2 in 1 | 4 in 6, 3 in 54 | 0 → 0 |
+| Competent, frugal | 871 → 176 | 3 in 59, 2 in 1 | 4 in 20, 3 in 40 | 0 → 0 |
+| Novice, frugal | 46 → −5 | 1 in 25, 2 in 19 | 1 in 25, 2 in 27, 3 in 1 | 16 → 7 (16 reprieved) |
+| Novice, pays every bill | −85 → −57 | 1 in 2, 2 in 5 | 1 in 19, 2 in 16 | 53 → 25 (42 reprieved) |
+
+- **Endings.** The endings of runs that reach the battle don't change: expert Odin endings are 31 of 60 either way, and Odin's policy gets 32 either way.
+- **Strength per lot.** Lot strengths of 4, 5, 6 and 8 were tried. Every one gives experts all four fronts in every run, because their shortfall at the fourth front is small. At 6, competent players who save hold a fourth front in a third of runs, and those who pay every bill in a tenth.
+- **All accounts add up.** The sim's ledger check covers arms, sales and the reprieve.
+- **`pnpm sim campaign`** (200 runs per policy, no story choices):
+  - Experts buy all seven lots and hold all four fronts.
+  - Competent players buy 4.5 to 6.9 lots and hold 3.1 to 3.3 fronts on average.
+  - Novices who pay every bill are demoted in 36% of runs, 70% having been reprieved first. Careless players are still demoted in every run.
+
+**The bots.**
+- **Arms.** A bot buys a lot when the rings left would still cover tonight's bills and the next three nights', plus the fare on the ferry's path, with 10 to spare. It arms its policy's front if the battle would lose it, otherwise the lost front with the smallest shortfall.
+- **Selling.** A bot in debt sells its dearest upgrades when the night would leave it below the debt floor.
+- The sim reports arms bought and runs reprieved.
+
+**Checks**
+- **Compiler:**
+  - `sellBack` is 0–100;
+  - the reprieve's words exist and its ending is one;
+  - arms need a battle;
+  - arms fronts are the battle's, each listed once, with their words;
+  - arms go on sale before the last night.
+- **Engine:**
+  - arms: the sale window, one lot a night, dearer each time, a front not in the battle, a thin purse, running out, the night's accounts, and a front held by arms;
+  - sell-back: the refund, not twice, not what the run hasn't got, not by day;
+  - the reprieve: the outlook and the night agree, it pays once, never under the oath, and on the last night the horn still blows;
+  - the debt's older tests now spend the reprieve first;
+  - the battle's property test adds arms. That test found a bug: runners' cost was dropped at a front with arms.
+- **Playtest report:**
+  - an Arms column (in builds that sell arms);
+  - the Shop column net of anything sold;
+  - the reprieve beside the rings;
+  - arms by front and the reprieve's night in the summary.
+- **e2e** (phone and desktop, with axe scans):
+  - buying a lot and what the card then says;
+  - the horn counting arms;
+  - selling back;
+  - the reprieve's note and the next morning's news.
+
+**Known limits**
+- **Experts can't lose a front any more,** at any lot strength worth buying. The battle's order still matters for everyone else.
+- **Tonight's view understates the early nights,** since the hosts grow until Day 20. It also uses the listed order, which the player may change at the horn.
+- **The debt banner still says the next night in debt means demotion,** even while the reprieve is unspent. It's the rule; the reprieve shows itself as the exception, on the night it applies.
+- **Novices who pay every bill are still demoted** in 25 of 60 runs (frugal ones in 7). The reprieve covers one night, and a second debt still ends the run.
+- **A run demoted before this build can reopen.** A save replays its last day's actions with the engine it's loaded by, and the night that demoted it is one of them. If the reprieve wasn't spent, it now pays that debt, and the slot goes on to the next morning. The ending stays found in the gallery. Bumping the engine's version would avoid it, but would rewind every day in progress instead.
+- **The words are drafts:** about 250 of them, for sign-off like the rest.
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

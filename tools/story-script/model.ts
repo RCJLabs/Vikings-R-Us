@@ -292,6 +292,15 @@ export function buildModel(build: {
       detail: 'stands in for the skipped days',
     });
   }
+  // A reprieve sets its flag (docs/tech-spec.md §56), the night a debt would have ended the run.
+  const reprieve = content.campaign?.reprieve;
+  if (reprieve) {
+    add(set, reprieve.flag, {
+      where: 'The reprieve',
+      anchor: 'endings',
+      detail: 'the first night a debt would have ended the run',
+    });
+  }
   for (const e of endings) {
     for (const f of e.when ? stateFlags(e.when) : []) {
       add(read, f, { where: `Ending: ${e.title}`, anchor: endingAnchor(e.id) });

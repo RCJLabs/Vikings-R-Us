@@ -1936,6 +1936,17 @@ a.btn {
   flex: 1 1 16rem;
 }
 
+/* What's yours, each with what it sells back for. */
+.shop__owned {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.shop__owned h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
 .ending__text {
   font-size: 1.1rem;
   max-width: 65ch;

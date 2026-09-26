@@ -232,6 +232,18 @@ threads:
   - { id: thread.stayHome, when: { state: flags.stay_home, gte: 1 }, text: thread.stayHome }
   - { id: thread.clerkContract, when: { state: flags.clerk_contract, gte: 1 }, text: thread.clerkContract }
   - { id: thread.truth, when: { state: flags.truth, gte: 1 }, text: thread.truth, count: flags.truth }
+# Arms for the last battle (docs/tech-spec.md §56): from the night Muninn says Odin knows how it ends, the
+# quartermaster sells arms for one front a night, each lot dearer than the last, each adding strength at its front.
+# First guesses for the sims to tune. The words are DRAFT.
+arms:
+  from: 13
+  strength: 6
+  prices: [40, 60, 80, 100, 120, 140, 160]
+  fronts:
+    - { front: front.wolf, name: arms.wolf, text: arms.wolf.text }
+    - { front: front.fire, name: arms.fire, text: arms.fire.text }
+    - { front: front.gate, name: arms.gate, text: arms.gate.text }
+    - { front: front.ship, name: arms.ship, text: arms.ship.text }
 # The epilogue (docs/tech-spec.md §55): after the ending's own words, what became of everyone, read from how the run
 # left them. Each slot says the first of its lines whose `when` holds (the last, without one, whatever else); a slot
 # with none that holds says nothing. Not after a failure or the slice's end. Naglfar can sail on Day 18 or 19, before

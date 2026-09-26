@@ -239,3 +239,35 @@ describe('the epilogue, as content', () => {
     expect(endingReads).toThrow(/ending ending\.wolf reads the run's ending: only the epilogue can/);
   }, 60_000);
 });
+
+type Arms = NonNullable<CampaignPart['arms']>;
+
+// docs/tech-spec.md §56.
+describe('arms and the reprieve, as content', () => {
+  const withArms = (change: (a: Arms) => Arms) => compileWith((c) => (c.arms ? { ...c, arms: change(c.arms) } : c));
+  it('compiles as shipped, and refuses arms for a front the battle hasn’t, twice for one, or without words', () => {
+    expect(withArms((a) => a)).not.toThrow();
+    const [first, ...rest] = [...(loadPacks(packsDir).get('campaign')?.content.campaign?.arms?.fronts ?? [])];
+    if (!first) throw new Error('the campaign sells no arms');
+    expect(withArms((a) => ({ ...a, fronts: [{ ...first, front: 'front.moon' }, ...rest] }))).toThrow(
+      /arms for front\.moon: the battle has no such front/,
+    );
+    expect(withArms((a) => ({ ...a, fronts: [first, first, ...rest] }))).toThrow(
+      /arms for front\.\w+ are listed twice/,
+    );
+    expect(withArms((a) => ({ ...a, fronts: [{ ...first, name: 'arms.nobody' }, ...rest] }))).toThrow(
+      /uses missing string "arms\.nobody"/,
+    );
+    expect(withArms((a) => ({ ...a, from: 99 }))).toThrow(/Arms go on sale after the last night/);
+  }, 60_000);
+
+  it('refuses a reprieve from an ending there isn’t', () => {
+    const packs = loadPacks(packsDir);
+    const demo = packs.get('demo')?.content.campaign;
+    if (!demo?.reprieve) throw new Error('the demo pack has no reprieve');
+    const reprieve = { ...demo.reprieve, ending: 'ending.moon' };
+    expect(compileWith((c) => ({ ...c, reprieve }))).toThrow(
+      /The reprieve stays "ending\.moon", which isn't an ending/,
+    );
+  }, 60_000);
+});

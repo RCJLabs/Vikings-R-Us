@@ -2,6 +2,8 @@ import {
   type AchievementDef,
   type AchievementMoment,
   type Assists,
+  armsTonight,
+  billForecast,
   billTotal,
   type CaseSpec,
   type Content,
@@ -29,6 +31,7 @@ import {
   runContext,
   type ShiftAction,
   type ShiftState,
+  sellPrice,
   shiftFacts,
   shopFor,
   solve,
@@ -313,7 +316,29 @@ function hearAppeal(run: RunState, content: Content, ctx: DayCtx, judging: Judgi
   return stepRun(run, { t: 'appeal', stamped }, { content, ctx }).state;
 }
 
-function nightActions(run: RunState, content: Content, ctx: DayCtx, strategy: NightStrategy): RunAction[] {
+/**
+ * The front a bot arms (docs/tech-spec.md §56): its god's, if the battle as the hosts stand tonight would lose it,
+ * else the front that would fall by the least, else its god's, else the first for sale.
+ */
+function armsFront(run: RunState, content: Content, prefer?: string): string | undefined {
+  const campaign = campaignOf(content);
+  const forSale = (campaign.arms?.fronts ?? []).map((f) => f.front);
+  const def = campaign.ragnarok;
+  if (!def) return forSale[0];
+  const lost = fight(run, def, botOrder(run, content, prefer))
+    .fronts.filter((f) => !f.held && forSale.includes(f.id))
+    .sort((a, b) => a.foe - a.strength - (b.foe - b.strength));
+  if (prefer && lost.some((f) => f.id === prefer)) return prefer;
+  return lost[0]?.id ?? (prefer && forSale.includes(prefer) ? prefer : forSale[0]);
+}
+
+function nightActions(
+  run: RunState,
+  content: Content,
+  ctx: DayCtx,
+  strategy: NightStrategy,
+  policy: StoryPolicy = PLAIN,
+): RunAction[] {
   const actions: RunAction[] = [];
   const economy = economyOf({ content, ctx });
   let bills = defaultBills(run);
@@ -337,6 +362,30 @@ function nightActions(run: RunState, content: Content, ctx: DayCtx, strategy: Ni
         rings -= u.price;
       }
     }
+  }
+  // Arms for the last battle (docs/tech-spec.md §56): a lot a night with rings to spare after the next nights' bills,
+  // and the ferry's fare for a bot bound for the ferry.
+  const lot = armsTonight(run, content);
+  if (lot && !lot.bought && strategy !== 'neglect') {
+    const ahead = billForecast(run, content, 3).reduce((n, b) => n + b.hearth + b.food + b.tithe - b.draupnir, 0);
+    const fare = (policy.flags?.ferryman ?? 0) > 0 ? 100 : 0;
+    const front = armsFront(run, content, policy.front);
+    if (front && rings - lot.price >= cost.hearth + cost.food + cost.medicine + ahead + fare + 10) {
+      actions.push({ t: 'arm', front });
+      rings -= lot.price;
+    }
+  }
+  // Upgrades sold back (docs/tech-spec.md §56), the dearest first, when tonight would end the run in debt.
+  const floor = campaignOf(content).debtFloor;
+  const owned = campaignOf(content)
+    .shop.filter((u) => run.upgrades.includes(u.id))
+    .sort((a, b) => b.price - a.price);
+  for (const u of owned) {
+    if (run.debtNights < 1 || rings - cost.hearth - cost.food - cost.medicine >= floor) break;
+    const back = sellPrice(run, content, u.id);
+    if (back === null) continue;
+    actions.push({ t: 'sell', item: u.id });
+    rings += back;
   }
   actions.push({ t: 'bills', bills }, { t: 'endNight' });
   return actions;
@@ -372,6 +421,9 @@ export interface RunResult {
   readonly achievements: readonly string[];
   /** What the epilogue said of the run (docs/tech-spec.md §55), its lines' string keys; none before an ending. */
   readonly epilogue: readonly string[];
+  /** Lots of arms bought, and whether a reprieve paid a debt (docs/tech-spec.md §56). */
+  readonly arms: number;
+  readonly reprieved: boolean;
 }
 
 export interface SimOptions {
@@ -467,7 +519,7 @@ export function simulateRun(
     if (initial && defs.length > 0) note({ at: 'shift', mode: 'campaign', facts: shiftFacts(initial, log, ctx) });
     run = stepRun(run, { t: 'endAudit' }, { content, ctx }).state;
     if (options.scenes) run = playStory(run, content, ctx, options.scenes, 'night', policy);
-    for (const a of nightActions(run, content, ctx, strategy)) run = stepRun(run, a, { content, ctx }).state;
+    for (const a of nightActions(run, content, ctx, strategy, policy)) run = stepRun(run, a, { content, ctx }).state;
     // The day's accounts must add up to the change in rings.
     const l = run.ledger[run.ledger.length - 1];
     const n = l?.night;
@@ -485,7 +537,10 @@ export function simulateRun(
         (n.tithe ?? 0) -
         n.upgrades +
         n.draupnir +
-        n.story;
+        n.story -
+        (n.arms ?? 0) +
+        (n.sold ?? 0) +
+        (n.reprieve ?? 0);
       if (start + delta !== n.rings) ledgerOk = false;
       storyRings += n.story;
     }
@@ -524,6 +579,8 @@ export function simulateRun(
     diedWaiting: run.ledger.reduce((n, l) => n + (l.waiting?.died.length ?? 0), 0),
     achievements: earned,
     epilogue: epilogueFor(run, content.campaign).map((l) => l.text),
+    arms: run.armsBought ?? 0,
+    reprieved: run.ledger.some((l) => (l.night?.reprieve ?? 0) !== 0),
   };
 }
 
@@ -552,6 +609,9 @@ export interface PolicyReport {
   readonly meanMet: number;
   /** Days worked at each rank over a run (means; the first is the first rank). */
   readonly meanRankDays: readonly number[];
+  /** Lots of arms bought (mean), and runs a reprieve saved (docs/tech-spec.md §56). */
+  readonly meanArms: number;
+  readonly reprieved: number;
   readonly endings: Record<string, number>;
   readonly ledgerErrors: number;
 }
@@ -621,6 +681,8 @@ export function simulateCampaign(
           meanRankDays: Array.from({ length: ranks }, (_, k) =>
             mean(results.map((r) => r.ledger.filter((l) => l.rank === k + 1).length)),
           ),
+          meanArms: mean(results.map((r) => r.arms)),
+          reprieved: results.filter((r) => r.reprieved).length,
           endings,
           ledgerErrors: results.filter((r) => !r.ledgerOk).length,
         });

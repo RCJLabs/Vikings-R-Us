@@ -1,6 +1,7 @@
 import { gameContent, loadScenes, manifest } from 'virtual:content';
 import {
   type AppealHeard,
+  armsTonight,
   type BattleMark,
   type Bills,
   battleMarks,
@@ -45,6 +46,7 @@ import {
   reachableEndings,
   replayableDays,
   ruleText,
+  sellPrice,
   shiftMods,
   shiftScore,
   shopFor,
@@ -330,13 +332,16 @@ function hostName(id: string): string {
   return t(campaignOf(gameContent).ragnarok?.hosts.find((h) => h.id === id)?.name ?? id);
 }
 
-/** Who stood at a front, and how many of its own ran. */
+/** Who stood at a front, the arms bought for it (docs/tech-spec.md §56), and how many of its own ran. */
 function stoodText(f: FrontBattle): string {
   const who =
     f.stood.length > 0
       ? listText(f.stood.map((s) => t('ui.ragnarok.stood', { host: hostName(s.host), souls: s.souls })))
       : t('ui.ragnarok.nobody');
-  return f.ran > 0 ? `${who}; ${t('ui.ragnarok.ran', { n: f.ran })}` : who;
+  // A battle fought before arms were sold has none.
+  const arms = f.arms > 0 ? [t('ui.ragnarok.arms', { n: f.arms })] : [];
+  const ran = f.ran > 0 ? [t('ui.ragnarok.ran', { n: f.ran })] : [];
+  return [who, ...arms, ...ran].join('; ');
 }
 
 /**
@@ -1129,6 +1134,9 @@ function NightNews({ events }: { events: readonly RunEvent[] }) {
   const news = events.flatMap((e) => {
     if (e.e === 'family') return [t(`ui.news.${e.change}`, { name: familyShort(gameContent, e.id) })];
     if (e.e === 'draupnir') return [t('ui.news.draupnir', { n: e.rings })];
+    // The reprieve (docs/tech-spec.md §56) says who paid, in the build's words.
+    const reprieve = campaignOf(gameContent).reprieve;
+    if (e.e === 'reprieve' && reprieve) return [t(reprieve.text)];
     return [];
   });
   if (news.length === 0) return null;
@@ -2059,7 +2067,11 @@ function BillsCard({ run, outlook }: { run: RunState; outlook: NightOutlook }) {
         <p data-testid="draupnir-tonight">{t('ui.night.draupnir', { n: outlook.draupnir })}</p>
       ) : null}
       <p data-testid="after-bills">{t('ui.night.after', { n: outlook.rings })}</p>
-      {outlook.ends?.why === 'debt' ? (
+      {outlook.reprieve ? (
+        <p data-testid="reprieve-note">
+          <b>{t('ui.night.reprieve')}</b>
+        </p>
+      ) : outlook.ends?.why === 'debt' ? (
         <p class="warn" data-testid="debt-warning">
           <b>{t('ui.night.demoted', { floor })}</b>
         </p>
@@ -2114,6 +2126,11 @@ function ShopCard({ run }: { run: RunState }) {
   const items = shopFor(run, gameContent);
   const owned = campaignOf(gameContent).shop.filter((u) => run.upgrades.includes(u.id));
   if (items.length === 0 && owned.length === 0) return null;
+  // What's yours sells back for a share of its price, where the build buys it back (docs/tech-spec.md §56).
+  const selling = owned.flatMap((u) => {
+    const n = sellPrice(run, gameContent, u.id);
+    return n === null ? [] : [{ u, n }];
+  });
   return (
     <section class="card shop" data-testid="shop">
       <h2>{t('ui.night.shop')}</h2>
@@ -2133,9 +2150,96 @@ function ShopCard({ run }: { run: RunState }) {
           </button>
         </div>
       ))}
-      {owned.length > 0 ? (
+      {selling.length > 0 ? (
+        <div class="shop__owned" data-testid="owned">
+          <h3>{t('ui.shop.owned')}</h3>
+          {selling.map(({ u, n }) => (
+            <div key={u.id} class="shop__item">
+              <p>
+                <b>{t(u.name)}</b>
+              </p>
+              <button
+                type="button"
+                class="btn btn--small"
+                data-testid={`sell-${u.id}`}
+                aria-label={t('ui.shop.sellLabel', { name: t(u.name), n })}
+                onClick={() => dispatch({ t: 'sell', item: u.id })}
+              >
+                {t('ui.shop.sell', { n })}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : owned.length > 0 ? (
         <p class="muted" data-testid="owned">
           {t('ui.night.owned', { items: owned.map((u) => t(u.name)).join(', ') })}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * Arms for the last battle (docs/tech-spec.md §56): from their night, one lot a night for the front of your choice, each
+ * dearer than the last. Each front says how it would stand if the horn blew tonight, the fronts held in the order
+ * listed, as the horn's own screen first lists them.
+ */
+function ArmsCard({ run }: { run: RunState }) {
+  const campaign = campaignOf(gameContent);
+  const def = campaign.ragnarok;
+  const lot = armsTonight(run, gameContent);
+  if (!campaign.arms || !def || !lot) return null;
+  const tonight = fight(
+    run,
+    def,
+    def.fronts.map((f) => f.id),
+  );
+  const short = run.rings < lot.price;
+  const bought = run.armsBought ?? 0;
+  return (
+    <section class="card shop" data-testid="arms">
+      <h2>{t('ui.arms.title')}</h2>
+      <p class="muted">{t('ui.arms.lead', { strength: lot.strength })}</p>
+      {lot.bought ? (
+        <p data-testid="arms-tonight">{t('ui.arms.tonight')}</p>
+      ) : short ? (
+        <p data-testid="arms-short">{t('ui.arms.short', { price: lot.price })}</p>
+      ) : null}
+      {campaign.arms.fronts.map((a) => {
+        const f = tonight.fronts.find((x) => x.id === a.front);
+        return (
+          <div key={a.front} class="shop__item" data-testid="arms-front" data-front={a.front}>
+            <p>
+              <b>{t(a.name)}</b>: {t(a.text)}
+              {f ? (
+                <span class="muted">
+                  {' '}
+                  {t('ui.arms.now', {
+                    front: frontName(a.front),
+                    held: f.held ? 'yes' : 'no',
+                    strength: f.strength,
+                    foe: f.foe,
+                    arms: f.arms,
+                  })}
+                </span>
+              ) : null}
+            </p>
+            <button
+              type="button"
+              class="btn btn--small"
+              data-testid={`arm-${a.front}`}
+              disabled={lot.bought || short}
+              aria-label={t('ui.arms.buyLabel', { name: t(a.name), price: lot.price })}
+              onClick={() => dispatch({ t: 'arm', front: a.front })}
+            >
+              {t('ui.arms.buy', { price: lot.price })}
+            </button>
+          </div>
+        );
+      })}
+      {bought > 0 ? (
+        <p class="muted" data-testid="arms-bought">
+          {t('ui.arms.armed', { n: bought, total: campaign.arms.prices.length })}
         </p>
       ) : null}
     </section>
@@ -2169,6 +2273,7 @@ function Night() {
           <BillsCard run={run} outlook={outlook} />
           <RankCard run={run} />
           <ShopCard run={run} />
+          <ArmsCard run={run} />
           <SleepRow key={outlook.ends?.why ?? 'none'} ends={outlook.ends} />
         </>
       ) : null}
