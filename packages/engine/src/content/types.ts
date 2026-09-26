@@ -694,6 +694,50 @@ export interface CampaignDef {
   readonly events?: DayEventsDef;
   /** The Norns' weave (docs/tech-spec.md §53): the rules in another order, for a run begun woven; none without it. */
   readonly weaving?: WeavingDef;
+  /**
+   * The last battle (docs/tech-spec.md §54): after the last night, the hosts the run filled go to the fronts. Without
+   * it, the last night ends with the finale.
+   */
+  readonly ragnarok?: RagnarokDef;
+}
+
+/**
+ * The last battle (docs/tech-spec.md §54). Each host is the souls sent to one hall; each front has a foe. The player
+ * sets the order the fronts are held in, and each is held if the hosts can hold it along with those before it.
+ */
+export interface RagnarokDef {
+  /** What the horn says, as the hosts wait for their fronts (a string key). */
+  readonly text: string;
+  readonly hosts: readonly HostDef[];
+  readonly fronts: readonly FrontDef[];
+}
+
+/**
+ * A host: the souls sent to one hall. Those sent there rightly fight, twice as hard at the host's own front as
+ * anywhere else; those sent there by mistake (for Valhalla, the unworthy) break and run, each costing that front 1.
+ */
+export interface HostDef {
+  readonly id: string;
+  /** Its name (a string key). */
+  readonly name: string;
+  readonly hall: Destination;
+  /** Its own front. */
+  readonly front: string;
+  /** It fights at its own front and nowhere else (the drowned, at sea). */
+  readonly only?: true;
+}
+
+export interface FrontDef {
+  readonly id: string;
+  /** Its name; what comes against it; and what it means that it held, or fell (string keys). */
+  readonly name: string;
+  readonly text: string;
+  readonly held: string;
+  readonly fell: string;
+  /** The strength that comes against it. */
+  readonly foe: number;
+  /** And this much more for every soul sent on with its nails long (Naglfar's crew). */
+  readonly perNail?: number;
 }
 
 /**

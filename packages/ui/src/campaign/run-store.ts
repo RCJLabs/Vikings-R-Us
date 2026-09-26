@@ -91,7 +91,9 @@ export function screenFor(run: RunState): Screen {
         ? 'audit'
         : run.phase === 'night'
           ? 'night'
-          : 'ending';
+          : run.phase === 'ragnarok'
+            ? 'ragnarok'
+            : 'ending';
 }
 
 /** Steps the run, saves the action and returns what happened. Rejected and empty actions aren't saved. */
@@ -347,6 +349,17 @@ export function sleep(): void {
     session.value = null;
     screen.value = screenFor(r.run);
   });
+}
+
+/** The hosts sent to the fronts in this order (docs/tech-spec.md §54): how it went, then the ending. */
+export function marshal(order: readonly string[]): void {
+  const r = dispatch({ t: 'marshal', order });
+  if (r?.run.battle) screen.value = 'battle';
+}
+
+/** From how the battle went, to the ending. */
+export function toEnding(): void {
+  screen.value = 'ending';
 }
 
 export function leaveCampaign(): void {

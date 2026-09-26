@@ -128,3 +128,67 @@ describe('the Norns’ weave, as content', () => {
     );
   }, 60_000);
 });
+
+// docs/tech-spec.md §54.
+describe('the last battle, as content', () => {
+  type Ragnarok = NonNullable<CampaignPart['ragnarok']>;
+  const withBattle = (change: (d: Ragnarok) => Ragnarok) =>
+    compileWith((c) => (c.ragnarok ? { ...c, ragnarok: change(c.ragnarok) } : c));
+  it('compiles as shipped, and refuses missing words, a front endings can’t read, and hosts that share', () => {
+    expect(withBattle((d) => d)).not.toThrow();
+    expect(withBattle((d) => ({ ...d, text: 'ragnarok.nothing' }))).toThrow(/the last battle uses missing string/);
+    expect(
+      withBattle((d) => ({ ...d, fronts: d.fronts.map((f, i) => (i === 0 ? { ...f, fell: 'x.y' } : f)) })),
+    ).toThrow(/front front\.\w+ uses missing string "x\.y"/);
+    expect(
+      withBattle((d) => ({
+        ...d,
+        fronts: [...d.fronts, { ...(d.fronts[0] as Ragnarok['fronts'][number]), id: 'wall' }],
+      })),
+    ).toThrow(/front wall: a front's id is "front\.<name>"/);
+    const [a, b] = d0Hosts();
+    expect(withBattle((d) => ({ ...d, hosts: [{ ...a, front: 'front.nowhere' }, ...d.hosts.slice(1)] }))).toThrow(
+      /host host\.\w+ has unknown front "front\.nowhere"/,
+    );
+    expect(withBattle((d) => ({ ...d, hosts: [a, { ...b, front: a.front }, ...d.hosts.slice(2)] }))).toThrow(
+      /both have front\.\w+ for their own front/,
+    );
+    expect(withBattle((d) => ({ ...d, hosts: [a, { ...b, hall: a.hall }, ...d.hosts.slice(2)] }))).toThrow(
+      /are both the souls sent to VALHALLA/,
+    );
+  }, 60_000);
+  it('refuses an ending that reads a front there isn’t, or the battle in a build without one', () => {
+    const reads = (state: string) =>
+      compileWith((c) => ({
+        ...c,
+        endings: (c.endings ?? []).map((e) =>
+          e.id === 'ending.wolf'
+            ? {
+                ...e,
+                when: {
+                  all: [
+                    { state: 'day', gte: 20 },
+                    { state, gte: 1 },
+                  ],
+                },
+              }
+            : e,
+        ),
+      }));
+    expect(reads('front.moon')).toThrow(/ending ending\.wolf reads unknown front "front\.moon"/);
+    expect(compileWith(({ ragnarok: _, ...c }) => c)).toThrow(
+      /ending ending\.\w+ reads the last battle, but this build has none/,
+    );
+  }, 60_000);
+});
+
+/** The shipped battle's first two hosts. */
+function d0Hosts(): [
+  NonNullable<CampaignPart['ragnarok']>['hosts'][number],
+  NonNullable<CampaignPart['ragnarok']>['hosts'][number],
+] {
+  const hosts = loadPacks(packsDir).get('campaign')?.content.campaign?.ragnarok?.hosts ?? [];
+  const [a, b] = hosts;
+  if (!a || !b) throw new Error('the battle needs two hosts');
+  return [a, b];
+}

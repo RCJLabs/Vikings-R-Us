@@ -33,3 +33,8 @@
   title: ach.oathkept.title
   text: ach.oathkept.text
   when: { at: run, test: { all: [{ state: oath, is: 1 }, { state: day, gte: 20 }] } }
+# The last battle (docs/tech-spec.md §54): every front held, which takes hosts sent rightly all the way.
+- id: ach.everyFront
+  title: ach.everyFront.title
+  text: ach.everyFront.text
+  when: { at: run, test: { state: fronts, gte: 4 } }

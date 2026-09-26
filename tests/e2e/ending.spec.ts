@@ -3,7 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { FULL } from './urls';
 
 /*
- * The Ragnarök report in the full game, on the quickest ending to reach:
+ * The ending's report in the full game, on the quickest ending to reach:
  * the test empties the saved morning's purse after a night in debt, so the
  * next night in debt demotes the player on Day 1. On the way, the screens say
  * so: a banner from the morning, a warning at the bills, and a sleep that asks first.
@@ -26,7 +26,7 @@ async function judgeAll(page: Page) {
   }
 }
 
-test('the ending reports the host part by part, naming only the endings found', async ({ page }) => {
+test('the ending reports what the endings ask of the last battle, naming only the endings found', async ({ page }) => {
   await page.goto('./');
   await page.getByTestId('play-campaign').click();
   await page.getByTestId('new-0').click();
@@ -63,10 +63,14 @@ test('the ending reports the host part by part, naming only the endings found', 
 
   await expect(page.getByTestId('ending-title')).toHaveText('Demoted');
   await expect(page.getByTestId('ending-found-count')).toHaveText('1 of 11 endings found on this device.');
-  const total = Number(await page.getByTestId('host-total').textContent());
-  expect(total).toBeGreaterThan(0);
-  await expect(page.getByTestId('host-marks').locator('li')).toHaveText([
-    "An ending you haven't found: a host of 260 or more.",
-    "An ending you haven't found: a host of 240 or less.",
+  // Demoted on Day 1, there was no battle (docs/tech-spec.md §54); what the endings ask of it is still said.
+  await expect(page.getByTestId('battle-unfought')).toHaveText("It wasn't fought: the run ended first.");
+  await expect(page.getByTestId('battle-marks').locator('li')).toHaveText([
+    "An ending you haven't found: the fire held and at least 3 fronts held.",
+    "An ending you haven't found: Hel's gate held.",
+    "An ending you haven't found: the fire held.",
+    "An ending you haven't found: the wolf held.",
+    "An ending you haven't found: no more than 1 front held.",
   ]);
+  await expect(page.getByTestId('host')).toHaveCount(0);
 });

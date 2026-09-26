@@ -599,6 +599,36 @@ export const CampaignPartSchema = z.strictObject({
         .min(1),
     })
     .optional(),
+  // The last battle (docs/tech-spec.md §54): the hosts the run filled, and the fronts they hold.
+  ragnarok: z
+    .strictObject({
+      text: Key,
+      hosts: z
+        .array(
+          z.strictObject({
+            id: Id,
+            name: Key,
+            hall: DestinationSchema,
+            front: Id,
+            only: z.literal(true).optional(),
+          }),
+        )
+        .min(1),
+      fronts: z
+        .array(
+          z.strictObject({
+            id: Id,
+            name: Key,
+            text: Key,
+            held: Key,
+            fell: Key,
+            foe: Int.min(1),
+            perNail: Int.min(1).optional(),
+          }),
+        )
+        .min(1),
+    })
+    .optional(),
   // Day events (docs/tech-spec.md §52): the day's line, its sun and that night's bills; never its rules.
   events: z
     .strictObject({

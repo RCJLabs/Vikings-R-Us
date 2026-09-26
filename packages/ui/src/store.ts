@@ -650,6 +650,9 @@ export type Screen =
   | 'morning'
   | 'audit'
   | 'night'
+  /** The last battle (docs/tech-spec.md §54): the hosts sent to the fronts, and how it went. */
+  | 'ragnarok'
+  | 'battle'
   | 'ending';
 
 export const screen = signal<Screen>('title');

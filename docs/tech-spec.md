@@ -1392,7 +1392,7 @@ The range in each cell spans the three night strategies (pay everything, skip th
 ## 22. After M7: the Ragnarök report, the endings gallery, branching replays (audit item 4)
 
 **What changed**
-- **The ending screen reports how the run stood.** The host at Ragnarök part by part (worthy einherjar twice over, the unworthy against, Freyja's host and Hel's legion twice over, Naglfar's nails against), adding up to the host; what the endings ask of it (read from their conditions by `hostMarks`, so the 260 and 240 come from `campaign.yaml`, not the UI); each power's standing at the end, with whoever was ahead of the rest; and where the souls went. The host section only appears in builds whose endings read the host (not the demo).
+- **The ending screen reports how the run stood.** (Since §54 the endings read the last battle instead, and the report shows it in place of the host.) The host at Ragnarök part by part (worthy einherjar twice over, the unworthy against, Freyja's host and Hel's legion twice over, Naglfar's nails against), adding up to the host; what the endings ask of it (read from their conditions by `hostMarks`, so the 260 and 240 come from `campaign.yaml`, not the UI); each power's standing at the end, with whoever was ahead of the rest; and where the souls went. The host section only appears in builds whose endings read the host (not the demo).
 - **Endings are kept per device.** Reaching an ending adds it to the device's settings (`endingsSeen`, any slot, any run; a slot that ended before this counts when it's opened). The slots screen lists the endings this build can reach (`reachableEndings`: those with a condition, and the finale), naming the ones found (their text behind a click) and not the rest. The report names an ending only once it's been found here: "An ending you haven't found: a host of 260 or more."
 - **A replay can branch.** Each slot offers "Replay here" (as before: the day starts again and the later days are forgotten) and "Replay in a new slot", which copies the save up to that morning into the first empty slot and leaves the original as it was. With every slot full the button is off, and the note says to empty one.
 
@@ -1946,7 +1946,7 @@ Since then: Oathsworn (campaign), for reaching Day 20 under the oath (§49), the
   - Day 12's Loki, the stitch scars on his lips;
   - Day 3's morning scene;
   - Night 5's bills, with a sick child;
-  - an ending's report of the host at Ragnarök.
+  - an ending's report of the last battle (the host at Ragnarök before §54).
 - **Phone shots:** 7 of the above.
 - **Clips:**
   - stamp and send: the soul walks off, the next walks up;
@@ -3185,6 +3185,97 @@ The brainstorm's version, and what changed:
 - **Two weaves only,** and a woven run shows which one on the first day it changes.
 - **The weave's souls take the places of the last souls in the line as the day's event left it.** On an event day, one of those can be a soul the event brought (a storm's drowned raider, say).
 - **The words are drafts.**
+
+## 54. After M7: a Ragnarök you fight (gameplay brainstorm, item 8)
+
+**Why.** The brainstorm: twenty days of judging fed a single number; instead, after Day 20 the hosts the run filled go to the fronts, their strength coming from who was sent where. Two things were wrong with the number as it stood:
+- **It barely mattered.** In the nightly sims, competent bots' hosts came to about 290 and experts' to about 328, well past the endings' 260 and 240. Only novices came near.
+- **It barely told skill apart.** A host counted every soul sent to its hall, right or wrong, so a novice's Freyja's host (29) was bigger than an expert's (25). Only the unworthy einherjar and the nails left long said anything about judging.
+
+**How it works** (`ragnarok` in `campaign.yaml`, engine `campaign/battle.ts`)
+- **When.** After the last night comes the horn: a new phase, `ragnarok`, where the hosts wait for their fronts. An ending checked before any that reads the battle still ends the run first: demoted, an empty house, Naglfar sailing early. The demo, the vertical slice and builds without `ragnarok` end as before.
+- **The hosts** are the souls sent to each hall: Odin's einherjar (Valhalla), Freyja's host (Fólkvangr), Hel's legion (Hel) and Rán's drowned (Rán).
+  - A soul sent there rightly fights. One sent there by mistake breaks and runs; for Valhalla that's an unworthy soul, as before.
+  - The audit now counts those per hall (`RunState.misfits`). A soul given to a god who asked for it, with the request done in full, is the god's and doesn't count. An appeal that rights a soul takes it out.
+- **The fronts**, each a host's own:
+
+  | Front | Foe | Host |
+  |---|---|---|
+  | the wolf | Fenrir, 100 | Odin's einherjar |
+  | the fire | Surtr, 70 | Freyja's host |
+  | Hel's gate | Garm, 130 | Hel's legion |
+  | the shore | Naglfar, 35, and 2 more for each soul sent on with its nails long | Rán's drowned |
+
+- **Strength.** At its own front each soul sent rightly counts 2 and each who runs costs 1. At any other front a soul counts 1. The drowned fight only at sea.
+- **The order.** The player sets the order the fronts are held in.
+  - Each in turn is held if the hosts can hold it along with those before it: its own host first, then what the other hosts can spare, 1 a soul. The check is exact (`fight`); where there's a choice, spare souls come from the host with most to spare.
+  - A front that can't be held falls, and its host's souls go where they're needed.
+  - The screen shows, as the order changes, which fronts will hold. Then the horn: how each front went, then the ending. The ending's achievements wait for the ending, so none names it over the battle.
+- **The endings read it**, through `fronts` (how many held) and `front.<id>`:
+  - **The green earth:** the fire held, and three fronts in all. It was a host of 260.
+  - **The wolf wins:** one front held or none. It was a host of 240 or less.
+  - **Freyja's own, Chooser eternal and Hel's steward** now each need their god's front held (the fire, the wolf, her gate), as their words say.
+  - The rest are unchanged. Before the battle, `endingFor` checks only the endings ordered before the first that reads it.
+- **The ending's report** shows the battle front by front, and what the endings ask of it (`battleMarks`), naming unfound endings as before. The host's number is no longer shown, since no ending reads it.
+
+**Tuning** (the foes searched against the hosts of 60 sim runs per policy)
+- **The first foes had one right answer.** Hel's legion is three times any other host, so the best order was always to give up Hel's gate and send her legion everywhere else.
+- **Counting who runs made the hosts tell skill apart.** Effective hosts for expert, competent and novice bots:
+
+  | Host | Expert | Competent | Novice |
+  |---|---|---|---|
+  | Einherjar | 54 | 47 | 33 |
+  | Freyja's | 23 | 17 | 10 |
+  | Hel's | 86 | 73 | 53 |
+  | The drowned | 28 | 23 | 13 |
+
+- **The foes above:**
+  - Experts hold all four in about half their runs, and otherwise can give up any of the wolf, the fire or the gate.
+  - Competent runs hold three, most with two or three fronts they could lose.
+  - Novices hold one.
+
+**Measured** (`pnpm sim campaign`-style runs, 60 per policy, frugal nights; endings before this in brackets)
+
+| Bots | Fronts held | Endings |
+|---|---|---|
+| Expert, plain | 4 in 60% | last stand 35, Odin 25 (Odin 48%) |
+| Competent, plain | 3 in 97% | last stand 59, Odin 1 (the same) |
+| Novice, plain (39 of 60 reach Ragnarök) | 1 in 64% | the wolf 25, last stand 14 (the wolf 78%) |
+| Competent, Odin's story | 3 in 95% | Odin 28 (50%) |
+| Competent, the green earth's | 3 in 97% | the green earth 58 (98%) |
+| Expert, Freyja's, serving her | 4 in 73% | Freyja's own 60 |
+| Expert, Hel's, serving her | 4 in 48% | Hel's steward 57 |
+| Competent, leaving nails long | 2 in 95% | last stand 60 (the wolf 55%) |
+
+**Checks**
+- **Compiler:**
+  - the words exist;
+  - front ids are `front.<name>`, for endings to read;
+  - each host's own front exists, and no two hosts share a front or a hall;
+  - an ending reads the battle only in a build that has one, and only its fronts.
+- **Sims:**
+  - Bots take, of every order, one that holds the most fronts, with their story's god's front among them (`botOrder`).
+  - The campaign table's host column is now fronts held.
+  - Every ending is still reached, and so is the new achievement, Every front held.
+
+**Tests**
+- **Engine:**
+  - the battle (8, one a 300-run property test: every front said to hold does, and every front that fell couldn't have held after those before it);
+  - the run (5): the horn, an early ending first, the endings that read it, the save, no battle in the demo or the slice;
+  - souls sent to the wrong hall (1), with appeals and requests checked too.
+- **Compiler:** 2.
+- **e2e on the full game** (phone and desktop, axe scans):
+  - the last night to the horn, and the hosts;
+  - a front moved to the top, with focus kept on its other button, and the fronts that hold changing with it;
+  - the battle, then the ending with the battle in its report;
+  - the ending's achievements held back until the ending.
+
+**Known limits**
+- **The foes are tuned on bots.** A bot's mistakes fall at random; a player's don't (a misread whim, say), so which hosts come up short will differ. That's a playtest question.
+- **Leaving nails long now costs the shore, not the war.** The sims' "wolf" story policy leaves two long a day, and now ends on the last stand instead of the wolf. Weak judging brings the wolf, as the reach test shows.
+- **Runs begun before this counted no misfits on their earlier days,** so their hosts come out stronger.
+- **No soul is named yet** (part 2).
+- **The words are drafts.** Some ending texts read oddly after a battle: the clerk's transfer "when the horn blows".
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

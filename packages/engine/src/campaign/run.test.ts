@@ -10,9 +10,11 @@ import { createDayContext, type DayCtx, soulCtx } from '../logic/context';
 import { judge } from '../logic/judge';
 import { solve } from '../logic/solver';
 import { type Assists, DUSK_GRACE_MS, ruledOut, stepShift } from '../shift/shift';
+import { battleDue } from './battle';
 import { eventDays, eventLineChange, eventSoulsOn } from './events';
 import { beatsDay, dayGrade, GRADES } from './grade';
 import {
+  battleMarks,
   billForecast,
   campaignOf,
   campaignQueue,
@@ -403,9 +405,13 @@ describe('endings', () => {
     for (let d = 1; d <= 3; d++) f = playDay(full, f).run;
     expect(f).toMatchObject({ phase: 'morning', day: 4 });
     for (let d = 4; d <= campaignOf(full).lastDay; d++) f = playDay(full, f).run;
-    // To Ragnarök's night. Detaining the story Loki pleased Odin, so a perfect chooser with no story is his;
+    // To Ragnarök's night, and the horn: the hosts wait for their fronts (docs/tech-spec.md §54).
+    expect(f).toMatchObject({ phase: 'ragnarok', day: campaignOf(full).lastDay, ending: null });
+    f = drive(full, f, [{ t: 'marshal', order: [] }]).run;
+    // Detaining the story Loki pleased Odin, so a perfect chooser with no story is his, with the wolf's front held;
     // without that point nothing else holds, and the finale ends the run.
-    expect(f).toMatchObject({ phase: 'ending', day: campaignOf(full).lastDay, ending: 'ending.odin' });
+    expect(f).toMatchObject({ phase: 'ending', ending: 'ending.odin' });
+    expect(f.battle?.fronts.find((x) => x.id === 'front.wolf')?.held).toBe(true);
     expect(endingFor({ ...f, standing: { ...f.standing, odin: 0 } }, full)).toBe(campaignOf(full).finale);
   });
 
@@ -816,11 +822,141 @@ describe('the Ragnarök report', () => {
     expect(full11).toHaveLength(11);
     expect(full11).not.toContain('ending.demoEnd');
     expect(full11.at(-1)).toBe('ending.lastStand');
-    expect(hostMarks(full)).toEqual([
-      { ending: 'ending.rebirth', atLeast: 260 },
-      { ending: 'ending.wolf', atMost: 240 },
+    // The host's number no longer decides an ending: the last battle does (docs/tech-spec.md §54).
+    expect(hostMarks(full)).toEqual([]);
+    expect(battleMarks(full)).toEqual([
+      { ending: 'ending.rebirth', atLeast: 3, held: ['front.fire'] },
+      { ending: 'ending.hel', held: ['front.gate'] },
+      { ending: 'ending.freyja', held: ['front.fire'] },
+      { ending: 'ending.odin', held: ['front.wolf'] },
+      { ending: 'ending.wolf', atMost: 1, held: [] },
     ]);
-    expect(hostMarks(demo)).toEqual([]);
+    expect(battleMarks(demo)).toEqual([]);
+  });
+});
+
+describe('the last battle (docs/tech-spec.md §54)', () => {
+  // A perfect chooser's run to the last day's night, bills set, and the horn after it.
+  let memo: { night: RunState; horn: RunState } | undefined;
+  const lastNight = () => {
+    if (memo) return memo;
+    let run = newRun(full, 'battle-run');
+    const last = campaignOf(full).lastDay;
+    for (let d = 1; d < last; d++) run = playDay(full, run).run;
+    const night = drive(full, run, [...shiftActions(run, full), { t: 'endAudit' }]).run;
+    memo = { night, horn: drive(full, night, [{ t: 'endNight' }]).run };
+    return memo;
+  };
+  const env = (run: RunState) => ({ content: full, ctx: runContext(full, run) });
+  const marshal = (run: RunState, order: readonly string[] = []) => stepRun(run, { t: 'marshal', order }, env(run));
+
+  it('comes after the last night, and nothing else can be done till the hosts are sent', () => {
+    const { night, horn } = lastNight();
+    expect(battleDue(night, full)).toBe(true);
+    const ended = stepRun(night, { t: 'endNight' }, env(night));
+    expect(ended.events).toContainEqual({ e: 'horn' });
+    expect(horn).toMatchObject({ phase: 'ragnarok', ending: null, bills: null });
+    expect(horn.battle).toBeUndefined();
+    // Before it's fought no ending that reads it can hold, and there's no finale yet.
+    expect(endingFor(horn, full)).toBeNull();
+    expect(stateValue(horn, 'fronts')).toBe(0);
+    for (const a of [{ t: 'endNight' }, { t: 'endAudit' }, { t: 'beginShift', at: 0 }] as RunAction[]) {
+      expect(stepRun(horn, a, env(horn)).events[0]?.e, a.t).toBe('rejected');
+    }
+    // Fought: every front, in the content's order, and the ending.
+    const fought = marshal(horn, ['front.gate']);
+    expect(fought.events.map((e) => e.e)).toEqual(['fought', 'ended']);
+    const battle = fought.state.battle;
+    expect(battle?.order[0]).toBe('front.gate');
+    expect(battle?.fronts.map((x) => x.id)).toEqual(campaignOf(full).ragnarok?.fronts.map((x) => x.id));
+    expect(fought.state.phase).toBe('ending');
+    expect(stateValue(fought.state, 'fronts')).toBe(battle?.fronts.filter((x) => x.held).length);
+    for (const x of battle?.fronts ?? []) expect(stateValue(fought.state, x.id), x.id).toBe(x.held ? 1 : 0);
+    // It's fought once.
+    expect(marshal(fought.state).events[0]).toMatchObject({ e: 'rejected' });
+    expect(marshal(night).events[0]).toMatchObject({ e: 'rejected' });
+  });
+
+  it('waits for an ending checked before any that reads it: deep in debt on the last night, no battle', () => {
+    const { night } = lastNight();
+    const broke = { ...night, rings: -1000, debtNights: 1 };
+    const r = stepRun(broke, { t: 'endNight' }, env(broke));
+    expect(r.state).toMatchObject({ phase: 'ending', ending: 'ending.demoted' });
+    expect(r.events).not.toContainEqual({ e: 'horn' });
+  });
+
+  it('decides the endings that read it: which fronts held, and how many', () => {
+    const { horn } = lastNight();
+    // No worthy einherjar and nobody in the other halls: at most the shore, and the wolf wins.
+    const empty: RunState = {
+      ...horn,
+      einherjar: { worthy: 0, unworthy: 10 },
+      sent: { RAN: horn.sent?.RAN ?? 0 },
+      misfits: {},
+    };
+    const lost = marshal(empty).state;
+    expect(stateValue(lost, 'fronts')).toBeLessThanOrEqual(1);
+    expect(lost.ending).toBe('ending.wolf');
+    // Odin's chooser needs his front held: led by Odin, with the wolf's front given up, the ending isn't his.
+    const odin = { ...horn, standing: { ...horn.standing, odin: 5 } };
+    expect(marshal(odin, ['front.wolf']).state.ending).toBe('ending.odin');
+    const noWolf: RunState = { ...odin, einherjar: { worthy: 0, unworthy: 0 } };
+    const lostWolf = marshal(noWolf, ['front.fire', 'front.gate', 'front.ship']).state;
+    expect(stateValue(lostWolf, 'front.wolf')).toBe(0);
+    expect(lostWolf.ending).not.toBe('ending.odin');
+    // The green earth needs the fire held, and three fronts in all.
+    const wood = { ...horn, flags: { ...horn.flags, wood: 1, truth: 3 } };
+    const green = marshal(wood, ['front.fire']).state;
+    expect(stateValue(green, 'front.fire')).toBe(1);
+    expect(green.ending).toBe('ending.rebirth');
+    // With nobody in Freyja's host and the gate held first, what Hel's legion can spare doesn't hold the fire.
+    const burnt: RunState = { ...wood, sent: { ...wood.sent, FOLKVANGR: 0 }, einherjar: { worthy: 5, unworthy: 0 } };
+    const noFire = marshal(burnt, ['front.gate', 'front.wolf', 'front.ship', 'front.fire']).state;
+    expect(stateValue(noFire, 'front.fire')).toBe(0);
+    expect(noFire.ending).not.toBe('ending.rebirth');
+  });
+
+  it('is in the save: resumed, the same order fights the same battle', () => {
+    let save = startSave(full, 'battle-save', 0);
+    let run = resumeSave(save, full, 0).run;
+    const last = campaignOf(full).lastDay;
+    const step = (a: RunAction) => {
+      const r = stepRun(run, a, env(run));
+      if (r.state !== run) save = recordAction(save, run, a, r.state);
+      run = r.state;
+    };
+    while (run.phase !== 'ragnarok' && run.day <= last) {
+      for (const a of [...shiftActions(run, full), { t: 'endAudit' } as RunAction, { t: 'endNight' } as RunAction])
+        step(a);
+    }
+    expect(run.phase).toBe('ragnarok');
+    expect(resumeSave(save, full, 0).run).toEqual(run);
+    step({ t: 'marshal', order: ['front.ship', 'front.fire'] });
+    expect(run.phase).toBe('ending');
+    expect(resumeSave(save, full, 0).run).toEqual(run);
+  });
+
+  it('never comes in the demo or the vertical slice', () => {
+    expect(battleDue({ ...newRun(demo, 'x'), day: 3 }, demo)).toBe(false);
+    expect(battleDue({ ...newRun(full, 'x'), day: 20, slice: true }, full)).toBe(false);
+    const { horn } = lastNight();
+    const { ragnarok: _, ...without } = campaignOf(full);
+    const plain: Content = { ...full, campaign: without };
+    expect(battleDue(horn, plain)).toBe(false);
+  });
+});
+
+describe('souls sent to the wrong hall (docs/tech-spec.md §54)', () => {
+  it('are counted at the audit by the hall they were sent to', () => {
+    const { afterShift, run } = playDay(demo, newRun(demo, 'misfits'), { wrong: (i) => i % 2 === 0 });
+    const wrong = (afterShift.shift?.verdicts ?? []).filter((v) => v.stamped !== null && v.stamped !== v.expected);
+    expect(wrong.length).toBeGreaterThan(0);
+    const tally: Partial<Record<Destination, number>> = {};
+    for (const v of wrong) if (v.stamped) tally[v.stamped] = (tally[v.stamped] ?? 0) + 1;
+    expect(run.misfits).toEqual(tally);
+    // A day judged rightly adds none.
+    const clean = playDay(demo, run).run;
+    expect(clean.misfits).toEqual(tally);
   });
 });
 
@@ -938,6 +1074,9 @@ describe('appeals', () => {
     }
     expect(state.sent?.[right] ?? 0).toBe((found.sent?.[right] ?? 0) + 1);
     expect(state.sent?.[appeal.stamped] ?? 0).toBe((found.sent?.[appeal.stamped] ?? 0) - 1);
+    // It no longer stands in the wrong hall's host, to run at Ragnarök (docs/tech-spec.md §54).
+    expect(state.misfits?.[appeal.stamped] ?? 0).toBe((found.misfits?.[appeal.stamped] ?? 0) - 1);
+    expect(state.misfits?.[right] ?? 0).toBe(found.misfits?.[right] ?? 0);
   });
 
   it('rewards turning down a soul judged rightly, fines deciding wrongly, and lets a verdict stand for nothing', () => {
@@ -1239,6 +1378,8 @@ describe('the gods’ requests', () => {
     expect(settled).toMatchObject({ god: r.god, n: r.n, done: r.n, met: true, standing: r.reward });
     // Each soul sent as asked is still a mistake: no wage, and the standing rows move as they always do.
     expect(ledger?.wrong).toBeGreaterThanOrEqual(r.n);
+    // But it's the god's: it doesn't break and run at Ragnarök (docs/tech-spec.md §54).
+    expect(after.misfits?.[r.to] ?? 0).toBe(run.misfits?.[r.to] ?? 0);
     for (const [f, n] of Object.entries(r.reward)) {
       const faction = f as keyof typeof after.standing;
       const rows = ledger?.standing[faction] ?? 0;
@@ -1252,8 +1393,11 @@ describe('the gods’ requests', () => {
     const run = asked(5, (x) => (x.requests?.[0]?.n ?? 0) >= 2);
     const [r] = run.requests ?? [];
     if (!r) return;
-    const part = serveDay(full, run, favour(r.from, r.to, r.n - 1)).ledger.at(-1)?.requests?.[0];
+    const partRun = serveDay(full, run, favour(r.from, r.to, r.n - 1));
+    const part = partRun.ledger.at(-1)?.requests?.[0];
     expect(part).toMatchObject({ done: r.n - 1, met: false, standing: {} });
+    // Nobody got what they asked for: those souls stand in the wrong hall's host, like any mistake.
+    expect(partRun.misfits?.[r.to] ?? 0).toBe((run.misfits?.[r.to] ?? 0) + r.n - 1);
     const declined = serveDay(full, run, () => undefined);
     expect(declined.ledger.at(-1)?.requests?.[0]).toMatchObject({ done: 0, met: false, standing: {} });
     expect(declined.ledger.at(-1)?.wrong).toBe(0);

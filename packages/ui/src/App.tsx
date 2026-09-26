@@ -66,6 +66,8 @@ function Screen() {
     case 'morning':
     case 'audit':
     case 'night':
+    case 'ragnarok':
+    case 'battle':
     case 'ending': {
       const ui = campaignUi.value;
       return ui ? <ui.CampaignScreen which={screen.value} /> : <Title />;

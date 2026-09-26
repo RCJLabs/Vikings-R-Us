@@ -1,7 +1,9 @@
 import { gameContent, loadScenes, manifest } from 'virtual:content';
 import {
   type AppealHeard,
+  type BattleMark,
   type Bills,
+  battleMarks,
   billForecast,
   billTotal,
   type Content,
@@ -21,11 +23,14 @@ import {
   eventOn,
   type Faction,
   type FavourDef,
+  type FrontBattle,
   factionKey,
   factionsMet,
   favoursFor,
+  fight,
   hostMarks,
   hostParts,
+  hostsAt,
   type JournalEntry,
   type NightOutlook,
   nightOutlook,
@@ -77,6 +82,7 @@ import {
   leaveCampaign,
   letAppealStand,
   loadSlots,
+  marshal,
   newCampaign,
   openSlot,
   replayFrom,
@@ -85,6 +91,7 @@ import {
   sleep,
   slots,
   stepDown,
+  toEnding,
   toGate,
   unreadable,
 } from './run-store';
@@ -276,6 +283,32 @@ function EndingsGallery() {
  * How the run stood when it ended: the host at Ragnarök part by part, with what the endings ask of it
  * (naming only endings found on this device), the powers' standing, and where the souls went.
  */
+/** A front's name, and a host's, from the build's last battle (docs/tech-spec.md §54). */
+function frontName(id: string): string {
+  return t(campaignOf(gameContent).ragnarok?.fronts.find((f) => f.id === id)?.name ?? id);
+}
+function hostName(id: string): string {
+  return t(campaignOf(gameContent).ragnarok?.hosts.find((h) => h.id === id)?.name ?? id);
+}
+
+/** Who stood at a front, and how many of its own ran. */
+function stoodText(f: FrontBattle): string {
+  const who =
+    f.stood.length > 0
+      ? listText(f.stood.map((s) => t('ui.ragnarok.stood', { host: hostName(s.host), souls: s.souls })))
+      : t('ui.ragnarok.nobody');
+  return f.ran > 0 ? `${who}; ${t('ui.ragnarok.ran', { n: f.ran })}` : who;
+}
+
+/** What an ending asks of the battle, in words. */
+function markText(m: BattleMark): string {
+  return listText([
+    ...(m.held.length > 0 ? [t('ui.ragnarok.markHeld', { fronts: listText(m.held.map(frontName)) })] : []),
+    ...(m.atLeast !== undefined ? [t('ui.ragnarok.markAtLeast', { n: m.atLeast })] : []),
+    ...(m.atMost !== undefined ? [t('ui.ragnarok.markAtMost', { n: m.atMost })] : []),
+  ]);
+}
+
 function RagnarokReport({ run }: { run: RunState }) {
   const marks = hostMarks(gameContent);
   const host = hostParts(run);
@@ -293,8 +326,40 @@ function RagnarokReport({ run }: { run: RunState }) {
     ['ui.ending.helLegion', host.hel, 2 * host.hel],
     ['ui.ending.naglfar', host.naglfar, -2 * host.naglfar],
   ];
+  const battle = run.battle;
+  // What the endings ask of the battle, in a build that has one, whether or not the run got that far.
+  const asked = battleMarks(gameContent);
   return (
     <>
+      {battle || asked.length > 0 ? (
+        <section class="card" data-testid="battle-report">
+          <h2>{t('ui.ragnarok.report')}</h2>
+          {battle ? null : <p data-testid="battle-unfought">{t('ui.ragnarok.unfought')}</p>}
+          <ul class="report__fronts">
+            {(battle?.fronts ?? []).map((f) => (
+              <li key={f.id} data-front={f.id} data-held={f.held}>
+                {t('ui.ragnarok.reportFront', {
+                  front: frontName(f.id),
+                  verdict: t(f.held ? 'ui.ragnarok.held' : 'ui.ragnarok.fell'),
+                  strength: f.strength,
+                  foe: f.foe,
+                })}
+                <span class="muted"> ({stoodText(f)})</span>
+              </li>
+            ))}
+          </ul>
+          {asked.length > 0 ? (
+            <>
+              <p class="muted report__lead">{t('ui.ragnarok.marks')}</p>
+              <ul class="report__marks" data-testid="battle-marks">
+                {asked.map((m) => (
+                  <li key={m.ending}>{t('ui.ragnarok.mark', { ending: title(m.ending), what: markText(m) })}</li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </section>
+      ) : null}
       {marks.length > 0 ? (
         <section class="card" data-testid="host">
           <h2>{t('ui.ending.host')}</h2>
@@ -2037,6 +2102,168 @@ function Night() {
 
 // ---------- ending ----------
 
+/**
+ * The horn (docs/tech-spec.md §54): the hosts the run filled, and the fronts in the order they're to be held, which the
+ * player sets; each front says, as it's ordered, whether it will hold.
+ */
+function Ragnarok() {
+  const a = active.value;
+  const def = campaignOf(gameContent).ragnarok;
+  const focus = useAutoFocus<HTMLHeadingElement>();
+  const [order, setOrder] = useState<string[]>(() => def?.fronts.map((f) => f.id) ?? []);
+  // A front moved to the top or the bottom keeps the focus on the button it still has.
+  const [moved, setMoved] = useState<{ id: string; by: -1 | 1 } | null>(null);
+  useLayoutEffect(() => {
+    if (!moved) return;
+    const i = order.indexOf(moved.id);
+    const edge = (moved.by < 0 && i === 0) || (moved.by > 0 && i === order.length - 1);
+    if (!edge) return;
+    const other = moved.by < 0 ? 'front-later' : 'front-earlier';
+    document.querySelector<HTMLButtonElement>(`[data-front="${moved.id}"] [data-testid="${other}"]`)?.focus();
+  }, [moved, order]);
+  if (!a || !def) return null;
+  const { run } = a;
+  const battle = fight(run, def, order);
+  const move = (i: number, by: -1 | 1) => {
+    const id = order[i];
+    if (!id || i + by < 0 || i + by >= order.length) return;
+    const next = order.filter((x) => x !== id);
+    next.splice(i + by, 0, id);
+    setOrder(next);
+    setMoved({ id, by });
+  };
+  const held = battle.fronts.filter((f) => f.held).length;
+  return (
+    <main class="screen screen--ragnarok">
+      <h1 ref={focus} tabIndex={-1} data-testid="ragnarok-title">
+        {t('ui.ragnarok.title')}
+      </h1>
+      <p class="ragnarok__lead">{t(def.text)}</p>
+      <section class="card" data-testid="hosts">
+        <h2>{t('ui.ragnarok.hosts')}</h2>
+        <ul class="ragnarok__hosts">
+          {hostsAt(run, def).map((h) => (
+            <li key={h.id} data-testid="host" data-host={h.id}>
+              <strong>{hostName(h.id)}</strong>: {t('ui.ragnarok.host', { souls: h.souls })}
+              {h.misfits > 0 ? `, ${t('ui.ragnarok.runs', { n: h.misfits })}` : ''}.{' '}
+              <span class="muted">
+                {t('ui.ragnarok.own', { front: frontName(h.front) })}
+                {h.only ? ` ${t('ui.ragnarok.only')}` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p class="muted">{t('ui.ragnarok.rule')}</p>
+      </section>
+      <section class="card" data-testid="fronts">
+        <h2>{t('ui.ragnarok.fronts')}</h2>
+        <p class="muted">{t('ui.ragnarok.order')}</p>
+        <ol class="ragnarok__fronts">
+          {battle.order.map((id, i) => {
+            const f = battle.fronts.find((x) => x.id === id);
+            const d = def.fronts.find((x) => x.id === id);
+            if (!f || !d) return null;
+            return (
+              <li
+                key={id}
+                class={`front ${f.held ? 'is-held' : 'is-fell'}`}
+                data-testid="front"
+                data-front={id}
+                data-held={f.held}
+              >
+                <div class="front__head">
+                  <strong class="front__name">{t(d.name)}</strong>
+                  <span class="front__verdict" data-testid="front-verdict">
+                    {t(f.held ? 'ui.ragnarok.holds' : 'ui.ragnarok.falls')}
+                  </span>
+                </div>
+                <p class="muted">{t(d.text)}</p>
+                <p>
+                  {t('ui.ragnarok.against', { strength: f.strength, foe: f.foe })}: {stoodText(f)}
+                </p>
+                <div class="row front__move">
+                  <button
+                    type="button"
+                    class="btn"
+                    data-testid="front-earlier"
+                    disabled={i === 0}
+                    aria-label={t('ui.ragnarok.earlierLabel', { front: t(d.name) })}
+                    onClick={() => move(i, -1)}
+                  >
+                    {t('ui.ragnarok.earlier')}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn"
+                    data-testid="front-later"
+                    disabled={i === battle.order.length - 1}
+                    aria-label={t('ui.ragnarok.laterLabel', { front: t(d.name) })}
+                    onClick={() => move(i, 1)}
+                  >
+                    {t('ui.ragnarok.later')}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+        <p aria-live="polite" data-testid="fronts-held">
+          {t('ui.ragnarok.count', { n: held, total: battle.fronts.length })}
+        </p>
+      </section>
+      <div class="row">
+        <button type="button" class="btn btn--primary" data-testid="sound-horn" onClick={() => marshal(battle.order)}>
+          {t('ui.ragnarok.sound')}
+        </button>
+      </div>
+    </main>
+  );
+}
+
+/** How the last battle went, front by front, before the ending (docs/tech-spec.md §54). */
+function BattleView() {
+  const a = active.value;
+  const def = campaignOf(gameContent).ragnarok;
+  const focus = useAutoFocus<HTMLHeadingElement>();
+  const battle = a?.run.battle;
+  if (!a || !def || !battle) return null;
+  return (
+    <main class="screen screen--battle">
+      <h1 ref={focus} tabIndex={-1} data-testid="battle-title">
+        {t('ui.ragnarok.title')}
+      </h1>
+      <ul class="battle__fronts">
+        {battle.fronts.map((f) => {
+          const d = def.fronts.find((x) => x.id === f.id);
+          if (!d) return null;
+          return (
+            <li
+              key={f.id}
+              class={`card front ${f.held ? 'is-held' : 'is-fell'}`}
+              data-testid="battle-front"
+              data-front={f.id}
+              data-held={f.held}
+            >
+              <h2 class="front__name">
+                {t(d.name)}: {t(f.held ? 'ui.ragnarok.held' : 'ui.ragnarok.fell')}
+              </h2>
+              <p>{t(f.held ? d.held : d.fell)}</p>
+              <p class="muted">
+                {t('ui.ragnarok.against', { strength: f.strength, foe: f.foe })}: {stoodText(f)}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+      <div class="row">
+        <button type="button" class="btn btn--primary" data-testid="to-ending" onClick={toEnding}>
+          {t('ui.ragnarok.after')}
+        </button>
+      </div>
+    </main>
+  );
+}
+
 function Ending() {
   useStoryText();
   const a = active.value;
@@ -2081,6 +2308,10 @@ export function CampaignScreen({ which }: { which: Screen }) {
       return <Audit />;
     case 'night':
       return <Night />;
+    case 'ragnarok':
+      return <Ragnarok />;
+    case 'battle':
+      return <BattleView />;
     case 'ending':
       return <Ending />;
     default:

@@ -2207,6 +2207,78 @@ a.btn {
   gap: 0.25rem;
 }
 
+/* The last battle (docs/tech-spec.md §54): the hosts, the fronts in the order they're held, and how it went. */
+.ragnarok__lead {
+  max-width: 60ch;
+}
+
+.ragnarok__hosts,
+.report__fronts {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ragnarok__fronts,
+.battle__fronts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ragnarok__fronts .front {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--bad);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+
+.front.is-held {
+  border-left-color: var(--good);
+}
+
+.battle__fronts .front {
+  border-left: 4px solid var(--bad);
+}
+
+.front p {
+  margin: 0.35rem 0;
+}
+
+.front__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Front names are written to sit mid-sentence ("the wolf"); as a heading they start with a capital. */
+.front__name {
+  display: inline-block;
+}
+
+.front__name::first-letter {
+  text-transform: uppercase;
+}
+
+/* The red is too faint for text on the panel (3.7:1); the border says it, and the word. */
+.front__verdict {
+  font-weight: 600;
+}
+
+.front.is-held .front__verdict {
+  color: var(--good);
+}
+
+.front__move {
+  gap: 0.5rem;
+}
+
 /* Planning the night: the purse beside a costly option, the nights ahead, a sleep that ends the run. */
 .scene__purse {
   margin: 0;

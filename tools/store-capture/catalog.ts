@@ -77,7 +77,7 @@ export const STILLS: readonly Entry[] = [
   {
     id: 'ending',
     title: 'An ending',
-    note: 'A 20-day run’s ending: the report of the host at Ragnarök.',
+    note: 'A 20-day run’s ending: the last battle, front by front, in its report.',
     sizes: ['steam'],
   },
 ];

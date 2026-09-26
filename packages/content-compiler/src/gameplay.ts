@@ -61,6 +61,7 @@ import {
   factPathOk,
   predPaths,
   reachOf,
+  readsBattle,
   STATE_PATHS,
   type StatePred,
   scriptedCase,
@@ -199,6 +200,7 @@ export function mergeCampaign(parts: readonly CampaignPart[]): CampaignDef | und
     ...(last('promotion') ? { promotion: last('promotion') as NonNullable<CampaignDef['promotion']> } : {}),
     ...(last('events') ? { events: last('events') as NonNullable<CampaignDef['events']> } : {}),
     ...(last('weaving') ? { weaving: last('weaving') as NonNullable<CampaignDef['weaving']> } : {}),
+    ...(last('ragnarok') ? { ragnarok: last('ragnarok') as NonNullable<CampaignDef['ragnarok']> } : {}),
   };
 }
 
@@ -762,6 +764,7 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
   }
   problems.push(...lintEvents(content, key));
   problems.push(...lintWeaving(content, key));
+  problems.push(...lintRagnarok(content, key));
   if (!content.predicates.some((p) => p.id === c.worthy)) {
     problems.push(`The campaign's worthy predicate "${c.worthy}" doesn't exist.`);
   }
@@ -769,6 +772,55 @@ function lintCampaign(content: Content, strings: Readonly<Record<string, string>
     const spec = content.days.find((x) => x.day === d);
     if (!spec) problems.push(`Campaign day ${d} has no day spec.`);
     else if (!spec.economy) problems.push(`Campaign day ${d} has no economy.`);
+  }
+  return problems;
+}
+
+/**
+ * The last battle (docs/tech-spec.md §54): strings; fronts named `front.<name>`, so endings can read them; each host's
+ * own front a front, and no two hosts with the same front or hall; and endings that read the battle only in a build
+ * that has one, and only of its fronts.
+ */
+function lintRagnarok(content: Content, key: (k: string, where: string) => void): string[] {
+  const c = content.campaign;
+  if (!c) return [];
+  const problems: string[] = [];
+  const reads = c.endings.filter((e) => e.when !== undefined && readsBattle(e.when));
+  const def = c.ragnarok;
+  if (!def) {
+    for (const e of reads) problems.push(`ending ${e.id} reads the last battle, but this build has none.`);
+    return problems;
+  }
+  key(def.text, 'the last battle');
+  const fronts = new Set<string>();
+  for (const f of def.fronts) {
+    const where = `front ${f.id}`;
+    if (fronts.has(f.id)) problems.push(`Duplicate front "${f.id}".`);
+    fronts.add(f.id);
+    if (!/^front\.[A-Za-z0-9_]+$/.test(f.id))
+      problems.push(`${where}: a front's id is "front.<name>", for endings to read.`);
+    for (const k of [f.name, f.text, f.held, f.fell]) key(k, where);
+  }
+  const hosts = new Set<string>();
+  const own = new Map<string, string>();
+  const halls = new Map<string, string>();
+  for (const h of def.hosts) {
+    const where = `host ${h.id}`;
+    if (hosts.has(h.id)) problems.push(`Duplicate host "${h.id}".`);
+    hosts.add(h.id);
+    key(h.name, where);
+    if (!fronts.has(h.front)) problems.push(`${where} has unknown front "${h.front}" for its own.`);
+    const sharesFront = own.get(h.front);
+    if (sharesFront) problems.push(`${where} and ${sharesFront} both have ${h.front} for their own front.`);
+    own.set(h.front, h.id);
+    const sharesHall = halls.get(h.hall);
+    if (sharesHall) problems.push(`${where} and ${sharesHall} are both the souls sent to ${h.hall}.`);
+    halls.set(h.hall, h.id);
+  }
+  for (const e of reads) {
+    for (const p of predPaths(e.when as StatePred)) {
+      if (p.startsWith('front.') && !fronts.has(p)) problems.push(`ending ${e.id} reads unknown front "${p}".`);
+    }
   }
   return problems;
 }

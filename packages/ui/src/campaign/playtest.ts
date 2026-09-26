@@ -46,6 +46,7 @@ const PHASES: Readonly<Record<RunState['phase'], string>> = {
   shift: 'at the gate',
   audit: 'the audit',
   night: 'night',
+  ragnarok: 'sending the hosts to the fronts',
   ending: 'the ending',
 };
 
@@ -273,6 +274,25 @@ function dayEvents(p: PlaytestInput): string[] {
   return ['### Day events', '', ...(lines.length > 0 ? lines : ['None yet.'])];
 }
 
+/**
+ * The last battle (docs/tech-spec.md §54): the order the fronts were to be held in, and each front as it went: the
+ * foe, who stood there, who ran, and whether it held. Only once it's been fought.
+ */
+function battle(p: PlaytestInput): string[] {
+  const b = p.run.battle;
+  const def = p.content.campaign?.ragnarok;
+  if (!b || !def) return [];
+  const front = (id: string) => def.fronts.find((f) => f.id === id);
+  const host = (id: string) => p.t(def.hosts.find((h) => h.id === id)?.name ?? id);
+  const lines = b.fronts.map((f) => {
+    const stood = f.stood.map((s) => `${host(s.host)} ${s.souls}`).join(', ') || 'nobody';
+    const ran = f.ran > 0 ? `, ${f.ran} ran` : '';
+    return `- ${p.t(front(f.id)?.name ?? f.id)}: ${f.held ? 'held' : 'fell'}, ${f.strength} against ${f.foe} (${stood}${ran}).`;
+  });
+  const order = b.order.map((id) => p.t(front(id)?.name ?? id)).join(', then ');
+  return ['### Ragnarök', '', `Held in this order: ${order}.`, '', ...lines];
+}
+
 /** Promotion (docs/tech-spec.md §44): each offer and what was made of it, the days at each rank, and steps down. */
 function ranks(p: PlaytestInput): string[] {
   const defs = p.content.campaign?.promotion?.ranks ?? [];
@@ -363,6 +383,7 @@ export function playtestReport(p: PlaytestInput): string {
     '',
     ...choices(p),
     '',
+    ...(p.run.battle ? [...battle(p), ''] : []),
   ].join('\n');
 }
 
