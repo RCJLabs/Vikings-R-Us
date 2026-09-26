@@ -1116,7 +1116,7 @@ See the table in `build-plan.md` §12. Engineering exit criteria:
 - Day summaries are pinned in `tests/golden/days-1-5.json`; Daily checksums arrived with M2 (§14).
 
 **Tooling**
-- `pnpm sim sweep --seeds N [--days 1-5]` prints acceptance, attempts, fallbacks, timing, destination mix and bot scores, and fails on the §3.8 thresholds. CI runs 200 seeds as a test; `nightly.yml` runs 10,000.
+- `pnpm sim sweep --seeds N [--days 1-5]` prints acceptance, attempts, fallbacks, timing, destination mix and bot scores, and fails on the §3.8 thresholds. CI runs 200 seeds as a test; `nightly.yml` runs 10,000, split by days across four parallel jobs (Days 1–10, 11–15, 16–18, 19–20: about equal work, since later days are heavier), with the Dailies, the campaign bots and the deeper fairness run as jobs of their own. Each range must meet the thresholds by itself, which implies the whole sweep would: a mean, a rate or a p99 that holds in every part holds for the whole.
 - `pnpm exec tsx tools/sim/dump.ts <day> <seed> [index]` prints souls with evidence, lies, proof and question answers.
 - `pnpm golden:update` rewrites the golden summaries after an intended generator change. Bump `genVersion` too.
 - The Case Lab (`pnpm dev`) shows a soul's truth, evidence, solver beliefs and support, rule evaluation, questions and generation log, plus a 100-seed sweep.

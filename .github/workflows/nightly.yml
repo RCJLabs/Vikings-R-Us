@@ -1,7 +1,10 @@
 name: Nightly sweep
 
 # The full-size generator checks (docs/tech-spec.md §9): 10k seeds x every
-# playable day, 10k Dailies, plus a deeper run of the fairness property tests.
+# playable day, 10k Dailies, the campaign bots, plus a deeper run of the
+# fairness property tests. Each is its own job, and the generator sweep is split
+# by days across four runners: run in one job, 20 days x 10k seeds took 50
+# minutes and the whole night ran past an hour.
 # Scheduled workflows run from the default branch.
 on:
   schedule:
@@ -12,9 +15,17 @@ permissions:
   contents: read
 
 jobs:
-  sweep:
+  generator:
+    name: generator (days ${{ matrix.days }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # Split by measured cost, not by count: later days have more souls and
+        # more rules, so each range is about a quarter of the work. Seeds are
+        # nightly-0..9999 on every day, the same pairs as one full sweep.
+        days: ['1-10', '11-15', '16-18', '19-20']
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -23,11 +34,47 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm sim sweep --seeds 10000 --prefix nightly
+      - run: pnpm sim sweep --seeds 10000 --days ${{ matrix.days }} --prefix nightly
+
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       # Dailies #1-#10000: about 27 years of them.
       - run: pnpm sim sweep --daily --seeds 10000
+
+  campaign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       # Bots with four skill levels and three night strategies play the campaign.
       - run: pnpm sim campaign --seeds 200
+
+  fairness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm exec vitest run packages/engine/src/gen
         env:
           FAIRNESS_RUNS: '2000'
