@@ -4,15 +4,15 @@ import { expect, type Page, test } from '@playwright/test';
 import { FULL } from './urls';
 
 /*
- * Promotion (docs/tech-spec.md §44) in the full game: a save on Day 4's morning, made in Node with Days 1-3
- * judged rightly, so the first rank is offered. It's taken, the day is worked at it, and at night the rank is
+ * Promotion (docs/tech-spec.md §44) in the full game: a save on Day 6's morning, made in Node with Days 1-5
+ * judged rightly, so the first rank is offered (from Day 6, §57). It's taken, the day is worked at it, and at night the rank is
  * stepped down from.
  */
 
 test.use({ baseURL: FULL });
 
 const content = loadContent('dev-full');
-const save = scenarioSave(content, 'e2e-promotion', 4, ENGINE_MAJOR);
+const save = scenarioSave(content, 'e2e-promotion', 6, ENGINE_MAJOR);
 const morning = save.mornings[save.mornings.length - 1] as RunState;
 const rank = content.campaign?.promotion?.ranks[0];
 const ctx = runContext(content, morning);
@@ -37,7 +37,7 @@ test('a rank offered after clean days: taken in the morning, worked at the gate,
   await page.goto('./');
   await page.getByTestId('play-campaign').click();
   await page.getByTestId('continue-0').click();
-  await expect(page.getByTestId('morning-title')).toHaveText('Day 4');
+  await expect(page.getByTestId('morning-title')).toHaveText('Day 6');
   while ((await page.getByTestId('scene-done').count()) === 0) await page.getByTestId('scene-choice').first().click();
   await page.getByTestId('scene-done').click();
 
@@ -63,7 +63,7 @@ test('a rank offered after clean days: taken in the morning, worked at the gate,
   );
   expect(saved).toHaveLength(total);
   for (const c of saved) await stampAndSend(page, c.expect.dest);
-  await expect(page.getByTestId('audit-title')).toHaveText('Day 4: the audit');
+  await expect(page.getByTestId('audit-title')).toHaveText('Day 6: the audit');
   await expect(page.getByTestId('ledger')).toContainText(`Wages: ${total} judged rightly at ${wage + rank.wage} each`);
 
   // At night, the tithe among the bills, and the way back down.

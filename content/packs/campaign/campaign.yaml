@@ -19,13 +19,14 @@ standing:
 # warriors, so they can be rivals for them. The rows do most of the moving: a favour of Freyja's moves her 3
 # (2 souls and the reward), which with her ending at 8 is what a bot devoted to her in the story still lacks
 # (docs/tech-spec.md §42). First guesses; `pnpm sim campaign --serve <god>` measures them.
+# They begin on Day 5, the day after Freyja's stamp, so Day 4 teaches her stamp alone (docs/tech-spec.md §57).
 requests:
-  from: 4
+  from: 5
   chance: 50
   rivals: 25
   list:
-    - { id: req.freyja, god: freyja, from: VALHALLA, to: FOLKVANGR, n: 2, reward: { freyja: 1 }, since: 4, text: request.freyja }
-    - { id: req.odin, god: odin, from: FOLKVANGR, to: VALHALLA, n: 1, reward: { odin: 1 }, since: 4, text: request.odin }
+    - { id: req.freyja, god: freyja, from: VALHALLA, to: FOLKVANGR, n: 2, reward: { freyja: 1 }, since: 5, text: request.freyja }
+    - { id: req.odin, god: odin, from: FOLKVANGR, to: VALHALLA, n: 1, reward: { odin: 1 }, since: 5, text: request.odin }
     - { id: req.hel, god: hel, from: VALHALLA, to: HEL, n: 2, reward: { hel: 1 }, since: 5, text: request.hel }
     - { id: req.clerk, god: clerk, from: HEL, to: TRANSFER, n: 2, reward: { clerk: 1 }, since: 10, text: request.clerk }
 # Favour (docs/tech-spec.md §43): at the gate each morning, every god whose standing is at a favour's mark grants
@@ -43,14 +44,20 @@ favours:
   - { id: fav.hel.more, faction: hel, at: 8, effect: { sickNights: 1 }, text: favour.hel.more }
   - { id: fav.clerk, faction: clerk, at: 3, effect: { finePct: 50 }, text: favour.clerk }
   - { id: fav.clerk.more, faction: clerk, at: 8, effect: { finePct: 0 }, text: favour.clerk.more }
+  # Loki's (docs/tech-spec.md §57): a ring a nail for each soul sent on with its nails long, the ship's price, paid at
+  # the audit. Each is still a mistake, with its citation, its fine past the day's warnings and no wage; the ring a nail
+  # about makes up the wage. Bots that take his deal hold the first on two fifths of their mornings, from Day 13 or so.
+  - { id: fav.loki, faction: loki, at: 4, effect: { nailRings: 10 }, text: favour.loki }
+  - { id: fav.loki.more, faction: loki, at: 8, effect: { nailRings: 10 }, text: favour.loki.more }
 # Promotion (docs/tech-spec.md §44): two clean days in a row (every soul judged rightly, none left at dusk)
 # bring the next rank's offer the next morning. A rank brings souls more each day (after the day's own), fewer
 # mistakes forgiven before the fines, a higher wage and a tithe to Odin each night. Declining costs nothing, and
 # a rank can be stepped down from at night (tonight's tithe is still owed). With +2 and +3 a soul and tithes of
 # 6 and 14, promoted expert bots ended far richer (1,753 rings against 764); these leave them at 1,039 with a
 # host a fifth stronger, and competent bots even. First guesses; `pnpm sim campaign --promote` measures them.
+# The first offer can come on Day 6, after Freyja's stamp and the first requests have had a day each (§57).
 promotion:
-  from: 4
+  from: 6
   cleanDays: 2
   ranks:
     - { id: rank.second, name: rank.second, text: rank.second.text, souls: 2, warnings: -1, wage: 1, tithe: 20 }
@@ -80,14 +87,14 @@ weaving:
       souls:
         - { kind: arch.baptized, to: [VALHALLA, FOLKVANGR], n: 1 }
         - { kind: arch.baptized, to: [RAN], n: 1 }
-# Day events (docs/tech-spec.md §52): each run draws three as it begins, from its seed, on three of Days 4-18,
+# Day events (docs/tech-spec.md §52): each run draws three as it begins, from its seed, on three of Days 5-18,
 # never two days running (nor on a day with a noon decree). An event changes the day's line (the last of its own
 # souls don't come, and the event's come among the rest), its sun, and that night's bills and sickness; never the
 # day's rules. Its souls are made and judged as any day's are. First guesses; `pnpm sim campaign` measures them.
 # DRAFT text.
 events:
   perRun: 3
-  from: 4
+  from: 5
   to: 18
   pool:
     # More of the drowned in the line, and a darker day.
@@ -101,7 +108,7 @@ events:
     # More who died in their beds: Hel's, or from Day 14, when her hall is full, the clerk's. At night anyone well at
     # home may catch it, bills paid or not; Hel's favour eases it as it eases any chance of falling sick.
     - id: event.sickness
-      since: 4
+      since: 5
       name: event.sickness
       text: event.sickness.text
       fewer: 2
@@ -111,7 +118,7 @@ events:
       sickChance: 20
     # Three more souls from the ford, and more sun to judge them by.
     - id: event.battle
-      since: 4
+      since: 5
       name: event.battle
       text: event.battle.text
       sunPct: 115
@@ -121,7 +128,7 @@ events:
         - { kind: arch.fled_coward, to: [HEL], n: 1 }
     # The jarl's feast: fewer souls, and the family eats at his hall tonight.
     - id: event.feast
-      since: 4
+      since: 5
       name: event.feast
       text: event.feast.text
       fewer: 3

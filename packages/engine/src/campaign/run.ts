@@ -832,6 +832,11 @@ function audit(
   // A god's favour can lighten each fine (docs/tech-spec.md §43).
   const finePct = shift.config.mods?.finePct ?? 100;
   let eased = 0;
+  // The favours the gate granted (standing hasn't moved since it opened), for the audit, the night and the records.
+  const granted = favoursFor(run, env.content);
+  // One can pay for each soul sent on with its nails long (docs/tech-spec.md §57); a god's favours add up.
+  const nailRings = granted.reduce((n, f) => n + ('nailRings' in f.effect ? f.effect.nailRings : 0), 0);
+  let nails = 0;
   const mistakes: DayMistake[] = [];
   // What each verdict cost, for an appeal to give back.
   const costs = new Map<number, { fine: number; standing: Partial<Record<Faction, number>>; worthy: boolean }>();
@@ -881,13 +886,13 @@ function audit(
     sent[v.stamped] = (sent[v.stamped] ?? 0) + 1;
     // Every soul sent on with a procedure skipped (so far only nails left uncut) builds Naglfar.
     naglfar += v.skipped?.length ?? 0;
+    nails += nailRings * (v.skipped?.length ?? 0);
   });
   // The souls still in line at dusk: tomorrow's first, or (the living) lost in the night.
   const line = waitingLine(run, shift, env);
   // Today's requests settled; tomorrow's come with the morning.
   const requests = settleRequests(run, shift);
-  // The favours the gate granted (standing hasn't moved since it opened), for the night and the records.
-  const favours = favoursFor(run, env.content).map((f) => f.id);
+  const favours = granted.map((f) => f.id);
   const event = eventOn(run, env.content, run.day);
   const ledger: DayLedger = {
     day: run.day,
@@ -898,6 +903,7 @@ function audit(
     bonus,
     fines,
     ...(eased > 0 ? { eased } : {}),
+    ...(nails > 0 ? { nails } : {}),
     standing,
     ...(assists ? { assists } : {}),
     ...(mistakes.length > 0 ? { mistakes } : {}),
@@ -939,7 +945,7 @@ function audit(
   return {
     run: {
       ...rest,
-      rings: run.rings + pay + bonus - fines,
+      rings: run.rings + pay + bonus - fines + nails,
       standing: nextStanding,
       einherjar,
       sent,

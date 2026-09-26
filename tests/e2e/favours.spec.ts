@@ -23,7 +23,9 @@ import { FULL } from './urls';
 test.use({ baseURL: FULL });
 
 const content = loadContent('dev-full');
-const favours = content.campaign?.favours ?? [];
+const all = content.campaign?.favours ?? [];
+// Loki's pays for nails, which don't come until Day 8: its own test below. The rest are courted from Day 5.
+const favours = all.filter((f) => f.faction !== 'loki');
 
 const marks = (god: Faction) => favours.filter((f) => f.faction === god).map((f) => f.at);
 const SECOND: readonly Faction[] = ['odin', 'clerk'];
@@ -154,4 +156,45 @@ test("the gods' favour: granted at the gate, spent at the desk, the audit and th
   const hearth = runContext(content, save.mornings[save.mornings.length - 1] as RunState).spec.economy?.costs.hearth;
   expect(await after()).toBe(paid + (hearth ?? Number.NaN));
   await expect(page.getByTestId('outlook-risk')).toHaveCount(0);
+});
+
+test("Loki's favour pays at the audit for nails left uncut, under the name he goes by that day (§57)", async ({
+  page,
+}) => {
+  const loki = all.find((f) => f.id === 'fav.loki');
+  if (!loki) throw new Error('no favour of Loki’s');
+  const ring = 'nailRings' in loki.effect ? loki.effect.nailRings : 0;
+  // Day 9, with the ship's decree: before Day 12 he is still the stranger.
+  const base = scenarioSave(content, 'e2e-nails', 9, ENGINE_MAJOR);
+  const morning = base.mornings[base.mornings.length - 1] as RunState;
+  const courted = { ...morning, standing: { ...morning.standing, loki: loki.at } };
+  const nailed: RunSave = { ...base, mornings: [...base.mornings.slice(0, -1), courted] };
+  const { queue } = dayQueue(nailed);
+  const long = queue.filter((c) => (c.expect.procedures ?? []).length > 0).length;
+  expect(long).toBeGreaterThan(0);
+
+  await page.addInitScript(
+    (record) => localStorage.setItem('cots.campaign.0', record),
+    JSON.stringify({ v: 1, rev: 1, savedAt: 0, save: nailed }),
+  );
+  await page.goto('./');
+  await page.getByTestId('play-campaign').click();
+  await page.getByTestId('continue-0').click();
+  await expect(page.getByTestId('morning-title')).toHaveText('Day 9');
+  while ((await page.getByTestId('scene-done').count()) === 0) await page.getByTestId('scene-choice').first().click();
+  await page.getByTestId('scene-done').click();
+  await expect(page.getByTestId('favour-today')).toContainText([
+    "The stranger's favour today: a ring a nail, ten rings for each soul you send on with its nails uncut.",
+  ]);
+
+  // Every soul stamped rightly, no nail cut: each long-nailed soul is a mistake, cited, and paid for by the stranger.
+  await page.getByTestId('to-gate').click();
+  for (const c of queue) {
+    await stampAndSend(page, c.expect.dest);
+    if ((c.expect.procedures ?? []).length > 0) await page.getByTestId('citation-close').click();
+  }
+  await expect(page.getByTestId('audit-title')).toHaveText('Day 9: the audit');
+  const row = page.getByTestId('audit-nails');
+  await expect(row.locator('td').first()).toHaveText("The stranger's pay for nails left uncut");
+  await expect(row.locator('td').nth(1)).toHaveText(`+${ring * long}`);
 });

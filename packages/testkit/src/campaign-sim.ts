@@ -529,7 +529,8 @@ export function simulateRun(
       const delta =
         appeal +
         l.pay +
-        l.bonus -
+        l.bonus +
+        (l.nails ?? 0) -
         l.fines -
         n.hearth -
         n.food -

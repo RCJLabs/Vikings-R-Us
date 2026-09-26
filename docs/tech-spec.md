@@ -2266,7 +2266,7 @@ The brainstorm's version, and what changed:
 - **Requests that conflict** are kept, as rivals. Freyja and Hel both want Odin's warriors, so on some mornings both ask for the same souls, to be sent to different halls. When the line holds enough for both, both can be done, at twice the mistakes.
 
 **The draw** (`drawRequests` in `campaign/run.ts`, at each audit, for the next morning)
-- **When:** from `requests.from` (Day 4), on `chance`% of mornings, whenever there's a next day.
+- **When:** from `requests.from` (Day 5 since §57; Day 4 before), on `chance`% of mornings, whenever there's a next day.
 - **Its own stream** of the run's seed (`<seed>|requests|<day>`), so nothing else in a run changes: a bot that ignores requests plays exactly as it did before them.
 - **Which:** a request is open on a day inside its `since` and `until` when both its places are stamps that day and the next day's line holds at least `n` souls that belong where it asks from. That line includes the souls who wait from tonight (§41), so every request can be done.
 - **One** open request is picked. Then, `rivals`% of the time, another god's open request for the same souls joins it.
@@ -2355,7 +2355,7 @@ So at standing 3, for an expert, a single favour of Freyja's or Hel's mostly dec
 
 **Known limits**
 - **One favour mostly decides the ending** (above).
-- **The clerk's favours alone never reach his ending,** which also needs the contract from the story (`flags.clerk_contract`).
+- **The clerk's favours alone never reach his ending,** which also needs the contract from the story (`flags.clerk_contract`). Since §57, staying in his favour keeps the contract on offer a day longer.
 - **A mistake can do a request by accident.** Competent bots that ignore requests still complete 0.2–0.3 a run, with mistakes that happen to match one. The god is pleased all the same.
 - **The gods' words are drafts,** like the rest of the story.
 - **The Daily and Endless are untouched,** and the demo ends before Day 4.
@@ -2368,7 +2368,7 @@ The brainstorm's version, and what changed:
 - **Kept:** Odin gives more sun, Freyja a free question a day, Hel milder sickness at home, the clerk halved fines. Like the upgrades, favours give time, information or money, never what decides a soul.
 - **"Milder sickness"** is made concrete: no one at home falls sick by chance (from a night's unpaid bill), and the sick hold out a night longer without medicine. Nights in a row without firewood or food still make them sick. The chance part was added after the first measurements (below): the extra night alone changed nothing the sim could see.
 - **It set no standing to reach.** The first favours come at 4, or at 3 for the two that ease hardship (sickness and fines), so they come to players who court a god, and rarely by accident (below). A second, stronger favour comes at 8.
-- **Loki gets none.** The brainstorm names four gods, and the stranger isn't named until Day 12. A favour of his would be the place for the Naglfar plot to pay out during a run, if you want one.
+- **Loki gets none.** The brainstorm names four gods, and the stranger isn't named until Day 12. A favour of his would be the place for the Naglfar plot to pay out during a run, if you want one. (He has one since §57: a ring a nail.)
 
 **The rule** (`favoursFor` in `campaign/run.ts`): at the gate each morning, every god whose standing is at a favour's `at` or more grants it for the day and its night. A god's favours add up: sun and free questions are summed, and of the fine and sickness percentages the lowest holds.
 - **Settled at the gate.** Standing doesn't move during a shift, so the audit files the same favours the gate granted (`favours` in the day's ledger).
@@ -2467,7 +2467,7 @@ The brainstorm's version, and what changed:
 
 **The offer** (`promote` in `campaign/run.ts`, at each audit)
 - **Counting:** clean days in a row are counted (`clean`). When they reach `cleanDays`, the next morning offers the next rank (`offer`) and the count starts again.
-- **When:** from `promotion.from` (Day 4), never for the last day, and never in Story Mode, which has no sun and no fines to be promoted into.
+- **When:** from `promotion.from` (Day 6 since §57; Day 4 before), never for the last day, and never in Story Mode, which has no sun and no fines to be promoted into.
 - **Answered in the morning** (`{ t: 'promotion', accept }`). An offer still unanswered when the gate opens lapses, and is filed as declined.
 - **Filed:** the day's audit files the answer (`offer`) and the day's rank (`rank`) in the ledger.
 
@@ -2516,7 +2516,7 @@ So for a bot a rank is money and a stronger host for the flawless, and a wash fo
 - **Compiler (1):** a rank's missing words, or a rank named twice, are refused.
 - **Report (1).**
 - **Sim:** accounts that add up with the tithe.
-- **e2e on the full game** (phone and desktop): a save on Day 4's morning with the offer. It's taken, the day is worked at the rank, and the rank is stepped down from at night. The test checks:
+- **e2e on the full game** (phone and desktop): a save on the morning of the first offer (Day 6 since §57). It's taken, the day is worked at the rank, and the rank is stepped down from at night. The test checks:
   - the offer's terms;
   - the rank after the purse, and tonight's bills with the tithe;
   - the longer line and the rank's wage;
@@ -3050,7 +3050,7 @@ The brainstorm's version, and what changed:
 
 **How it works** (`campaign.events` in `campaign.yaml`, engine `campaign/events.ts`)
 - **The draw.** A new run draws three events from its seed (`drawEvents`, on its own stream) and keeps them in the run (`RunState.events`).
-  - Each is a different event, on a different day from 4 to 18. No two fall on days running.
+  - Each is a different event, on a different day from 5 to 18 (4 to 18 before §57). No two fall on days running.
   - No event falls on a day with a noon decree (§45), or before its own `since` (a storm needs Rán, Day 5).
   - Runs begun before there were events have none. The demo has none, and neither has the Daily.
 - **What an event can do:**
@@ -3074,9 +3074,9 @@ The brainstorm's version, and what changed:
 | Event | Days | The line | Sun | That night |
 |---|---|---|---|---|
 | A storm off the sea | 5-18 | 3 of the day's own souls replaced by 3 drowned raiders (Rán) | 90% | |
-| Sickness in the valley | 4-18 | 2 replaced by 2 who died in their beds (Hel's, or the clerk's from Day 14) | | 20% chance each for the well, bills paid or not |
-| A battle at the ford | 4-18 | 3 more: an honest warrior (Valhalla), a disarmed one and a coward (Hel) | 115% | |
-| The jarl's feast | 4-18 | 3 fewer | | food costs nothing |
+| Sickness in the valley | 5-18 | 2 replaced by 2 who died in their beds (Hel's, or the clerk's from Day 14) | | 20% chance each for the well, bills paid or not |
+| A battle at the ford | 5-18 | 3 more: an honest warrior (Valhalla), a disarmed one and a coward (Hel) | 115% | |
+| The jarl's feast | 5-18 | 3 fewer | | food costs nothing |
 
 **Screens**
 - **The morning:** a card with the event's name and words. Under them, what it does in numbers: the line's change, the sun's (at the player's sun speed, never in Story Mode), and tonight's bills and sickness. If Hel's favour spares the house, it says so.
@@ -3439,6 +3439,74 @@ The brainstorm's version, and what changed:
 - **Novices who pay every bill are still demoted** in 25 of 60 runs (frugal ones in 7). The reprieve covers one night, and a second debt still ends the run.
 - **A run demoted before this build can reopen.** A save replays its last day's actions with the engine it's loaded by, and the night that demoted it is one of them. If the reprieve wasn't spent, it now pays that debt, and the slot goes on to the next morning. The ending stays found in the gallery. Bumping the engine's version would avoid it, but would rewind every day in progress instead.
 - **The words are drafts:** about 250 of them, for sign-off like the rest.
+
+## 57. After M7: a lighter Day 4, Loki's favour, and the clerk's contract kept
+
+**Why.** Items 4 and 6 of the rundown.
+- **Day 4 piled up.** Freyja's stamp and her daily demand, the first promotion offer, the first gods' requests and the first possible day event all began that day. Of 60 expert runs, the offer came on Day 4 in 34, a request in 24 and an event in 14.
+- **Loki had no favour.** §43 left it as the place for the Naglfar plot to pay out during a run.
+- **The clerk's contract was offered once,** on Day 18. "Not yet" was final, though he says it will keep, so courting him only mattered for the standing his ending needs.
+
+**How it works**
+- **Day 4 teaches Freyja's stamp alone.**
+  - Requests start on Day 5: `requests.from`, and Freyja's and Odin's `since`.
+  - Day events fall on Days 5–18: `events.from`, and each event's `since`.
+  - The first promotion offer comes from Day 6 (`promotion.from`). Clean days before it still count towards it.
+  - Runs already under way keep the events they drew when they began, and the offers and requests already made.
+- **Loki's favour** (`fav.loki` at standing 4, `fav.loki.more` at 8; the new effect `nailRings`).
+  - At the audit he pays a ring a nail: 10 rings for each soul sent on with its nails uncut, and 20 at the second mark.
+  - Each is still a mistake, with its citation, its fine past the day's warnings, no wage, and the standing its hall's god loses. At the first mark the pay about makes up the wage (8 to 10 rings from Day 7).
+  - The day's accounts file it (`nails`), and the purse comes to them.
+  - The audit shows it as its own row, under the name he goes by that day: the stranger, before Day 12.
+  - The playtest report has a Nails column, in builds with such a favour, and notes the rings among the day's favours.
+- **The favour guide** on the morning screen now lists only the powers met so far, as the standing strip does. It no longer names the stranger, or the clerk, before the story does.
+- **The clerk's contract, kept.**
+  - "Not yet" on Day 18 now sets `clerk_later`.
+  - On Day 19's morning, if the contract isn't signed and his standing is at his favour's mark (3), he offers it once more, for the same ten rings. "No" closes it.
+  - "My place is at this gate" closes it on Day 18.
+  - His ending still needs the contract. That's its premise: he wouldn't transfer anyone without the paperwork.
+
+**Measured** (60 runs per policy on the same seeds, story policies playing the scenes)
+
+| | Before | After |
+|---|---|---|
+| Experts offered promotion on Day 4 / 5 / 6 | 34 / 8 / 24 | 0 / 0 / 27 |
+| Experts asked a request on Day 4 / 5 | 24 / 31 | 0 / 30 |
+| Runs with a day event on Day 4 / 5 | 14 / 12 | 0 / 9 |
+| Freyja's ending, expert / competent courting her | 58 / 49 | 56 / 45 |
+| Hel's ending, expert / competent courting her | 57 / 19 | 56 / 20 |
+| The clerk's ending, expert / competent courting him | 58 / 48 | 60 / 50 |
+| Promoted experts' rings at the end | 430 | 397 |
+
+- **Loki's favour, with and without** (payAll):
+  - Bots that take his deal are paid 114 rings (expert) and 197 (competent) over about 7 days. Their runs end on Day 18 with the ship, as before.
+  - The policy that takes his deal and breaks it on Day 18 is paid 82.
+  - Novices, whose missed disguises raise his standing by accident, are paid 34. They're demoted a little less (19 of 60 against 22).
+  - Endings are the same either way, and every day's accounts add up.
+- **`pnpm sim campaign`** (200 runs per policy, no story choices):
+  - Novices who pay every bill are now demoted in 29.5% of runs (36% before), and those who buy upgrades first in 59.5% (63%).
+  - Experts and competent players end as before.
+
+**Checks**
+- **Engine:**
+  - Loki's pays a ring a nail for each soul sent uncut, twice that at the second mark, and nothing below the mark or when every nail is cut; the purse comes to the day's accounts;
+  - day events are drawn on Days 5–18.
+- **Scenes:**
+  - the contract is offered on Day 19 only after "Not yet" and at the clerk's favour mark (a test ties the scene's number to the content's);
+  - signing costs ten rings and gives the contract and his +2;
+  - the offer is locked when too poor;
+  - it isn't offered after the refusal, below the mark, or once signed.
+- **Report:** the Nails column, only where a favour pays for nails, and the note among the favours.
+- **e2e** (phone and desktop):
+  - Loki's favour on Day 9, under the stranger's name, paid at the audit for each soul sent uncut;
+  - promotion on Day 6;
+  - the Day 5 favour test courting the four gods, with the guide listing only the powers met.
+
+**Known limits**
+- **Loki pays for mistakes, on purpose.** At the second mark, 20 rings a soul beats the wage, fines aside, so leaving nails long pays. For bots that take his deal the ship sails on Day 18 anyway. A player could still reach 8 by letting his disguises go without the deal, at 2 of Odin's standing each.
+- **The guide hides the powers not yet met,** so no one can plan for the clerk's favour before Day 10.
+- **The clerk's second offer is on Day 19 only,** and his ending still needs the contract. A run that never said "Not yet" doesn't see it.
+- **The words are drafts:** about 150 of them (Loki's two favours, the audit's row, the clerk's Day 19 beat).
 
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)

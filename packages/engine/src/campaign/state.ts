@@ -153,6 +153,8 @@ export interface DayLedger {
   readonly fines: number;
   /** Rings of the day's fines a god's favour spared (docs/tech-spec.md §43), when it spared any. */
   readonly eased?: number;
+  /** Rings a god's favour paid for the souls sent on with their nails long (docs/tech-spec.md §57), when it paid. */
+  readonly nails?: number;
   /** Standing moved by today's mistakes at the gate (right stamps never move it). */
   readonly standing: Readonly<Partial<Record<Faction, number>>>;
   /**
