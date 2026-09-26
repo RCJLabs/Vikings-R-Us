@@ -525,6 +525,11 @@ export interface ScriptedCaseDef {
   readonly when?: StatePred;
   /** Story consequences at the audit, by the stamp used (`*` matches any stamp; unjudged souls do nothing). */
   readonly onStamp?: readonly { readonly stamped: Destination | '*'; readonly effects: readonly Effect[] }[];
+  /**
+   * What the soul asks for, openly, where it doesn't belong (docs/tech-spec.md §51): the stamp, and the desk's words
+   * for it (a string with `{name}`). Granted, it's a mistake all the same.
+   */
+  readonly plea?: { readonly stamp: Destination; readonly text: string };
 }
 
 /** What a story scene (or a scripted soul) does to the run, applied once. */

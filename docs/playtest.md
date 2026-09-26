@@ -18,7 +18,7 @@ Since 25 September 2026, the Pages deploy carries the same build at `/full/`: **
 - **A Playtest report button on each save slot.** It opens the report, which covers:
   - the run so far: the day, the rings, the family, standing with the powers met, and whether it's under oath;
   - one row per day: the day's grade and the liars caught, the souls judged rightly and wrongly, pay, bonus, fines, bills, shop, story, Draupnir, and the rings after the night;
-  - every soul sent wrong: the stamp, where it belonged, the rule that decided it, whether it came after a noon decree, and whether it was a bribe taken;
+  - every soul sent wrong: the stamp, where it belonged, the rule that decided it, whether it came after a noon decree, and whether it was a bribe taken or a plea granted;
   - every appeal heard, and how it went;
   - each night the sun set on the line: who waited for the next day, who died in the night, and what it cost;
   - each god's request: what was asked, how many souls were sent as asked, and whether it was done;

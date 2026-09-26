@@ -241,3 +241,69 @@ describe('Ragna and the hill (docs/tech-spec.md §50)', () => {
     expect(r.familyLost).toBe(0);
   }, 120_000);
 });
+
+describe('the levy and Solveig’s boy (docs/tech-spec.md §51)', () => {
+  const scenes = loadScenes('dev-full');
+  const env = (day: number, flags: Record<string, number>, brother = 'well') => ({
+    seed: 1,
+    day,
+    rings: 50,
+    flags,
+    standing: { odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 },
+    family: { mother: 'well', brother, sister: 'well' },
+  });
+  const play = (id: string, day: number, flags: Record<string, number>, choices: number[], brother = 'well') => {
+    const json = scenes[id];
+    if (!json) throw new Error(`no ${id}`);
+    return playScene(json, env(day, flags, brother), choices);
+  };
+  const text = (f: ReturnType<typeof play>) => f.lines.map((l) => l.text).join('\n');
+
+  it('lets Ulf go with the levy on Night 15, if he stayed home; silver can’t keep him', () => {
+    // The ferryman's choice first; then Ulf: go, pay the steward, stay.
+    const go = play('scene.d15.night', 15, { ulf_home: 1 }, [1, 0]);
+    expect(go.effects).toEqual(
+      expect.arrayContaining([
+        { flag: 'ulf_levy', set: 1 },
+        { standing: 'odin', by: 1 },
+      ]),
+    );
+    const steward = play('scene.d15.night', 15, { ulf_home: 1 }, [1, 1]);
+    expect(text(steward)).toContain("I'm not a debt.");
+    expect(steward.effects.some((e) => 'rings' in e)).toBe(false);
+    expect(steward.choices.map((c) => c.text)).toEqual([
+      '"Go, then. Keep your shield up."',
+      '"Stay. They need you at home."',
+    ]);
+    expect(play('scene.d15.night', 15, { ulf_home: 1 }, [1, 2]).effects).toEqual(
+      expect.arrayContaining([{ flag: 'ulf_stayed', set: 1 }]),
+    );
+    // Away in the north, or gone, he isn't asked: the levy is news.
+    const north = play('scene.d15.night', 15, { ulf_shipyard: 1 }, [1]);
+    expect(north.done).toBe(true);
+    expect(text(north)).toContain('gone up to the pass');
+    expect(play('scene.d15.night', 15, { ulf_home: 1 }, [1], 'gone').done).toBe(true);
+  });
+
+  it('brings the levy home on Night 16: Ulf hurt if he went, and the neighbours know where Kari went', () => {
+    const hurt = play('scene.d16.night', 16, { ulf_levy: 1, kari_valhalla: 1 }, []);
+    expect(hurt.effects).toEqual(expect.arrayContaining([{ family: 'brother', becomes: 'sick' }]));
+    expect(text(hurt)).toContain('three shields down from Kari');
+    expect(text(hurt)).toContain("Odin's benches");
+    const stayed = play('scene.d16.night', 16, { ulf_stayed: 1, kari_ran: 1 }, []);
+    expect(stayed.effects.some((e) => 'family' in e)).toBe(false);
+    expect(text(stayed)).toContain('I should have been next to him');
+    expect(text(stayed)).toContain('at a loom by the sea');
+    expect(text(play('scene.d16.night', 16, {}, []))).toContain("Solveig's boy didn't come down from the pass");
+  });
+
+  it('is granted by a bot that grants pleas: a mistake, and Odin’s standing', () => {
+    const content = loadContent('dev-full');
+    const day16 = (pleas: boolean) =>
+      simulateRun(content, 'plea-0', bot('expert'), 'payAll', { pleas }).ledger.find((l) => l.day === 16);
+    expect((day16(false)?.mistakes ?? []).some((m) => m.pled)).toBe(false);
+    expect((day16(true)?.mistakes ?? []).filter((m) => m.pled)).toEqual([
+      expect.objectContaining({ expected: 'VALHALLA', stamped: 'RAN', pled: true }),
+    ]);
+  }, 120_000);
+});

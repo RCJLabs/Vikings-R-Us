@@ -2972,6 +2972,73 @@ The poem survives only in late paper manuscripts, not the Codex Regius. Wings fo
 - **The last chance costs more because Day 14 is hard,** not because anything in the game computes it. Both prices are guesses for playtests.
 - **Bots always go,** so the sims say nothing about runs where she dies.
 
+## 51. After M7: family trouble money can't fix, part 2: the levy, and a plea at the desk (gameplay brainstorm, item 6)
+
+**Why.** The rest of the brainstorm's item 6: "Ulf wants to go raiding" and "a neighbour's son turns up in your queue". Part 1 (§50) made trouble cost time. This part makes it cost a stance: whether Ulf goes, and whether a boy from home gets the stamp he asks for.
+
+The brainstorm's version, and what changed:
+- **"Ulf wants to go raiding"** becomes the jarl's levy, going up to hold the pass before the snow shuts it. The raiding season is summer, and this is the last winter. It's the same wish: to stand with the men from the valley.
+- **"A neighbour's son turns up in your queue"** is Kari, Solveig's boy. Solveig is the neighbour who drowned at the herring on Day 5. He goes up with the levy, dies at the pass, and comes to the gate on Day 16.
+- **Both are tied together:** the levy takes him, and Ulf may stand beside him.
+
+**Night 15: the levy** (drafts)
+- **If Ulf stayed home** (`ulf_home`, from Day 9), his letter comes after the ferryman's: the jarl's calling the levy, Kari has taken his father's spear down, and Ulf wants to go with him. The options:
+  - **"Go, then. Keep your shield up."** Sets `ulf_levy`, and Odin +1: a man given to the levy.
+  - **Pay the jarl's steward to strike his name.** The rings come back: "Keep your rings. I'm not a debt." The choice stands.
+  - **"Stay. They need you at home."** Sets `ulf_stayed`.
+- **If Ulf is in the north, or gone,** the levy is news: Kari has gone up to the pass.
+
+**Day 16: Kari at the desk** (`case.kari`, drafts)
+- **Who he is:** Kari Solveigarson, 22, second in line. He died at the pass at sunrise, spear in hand, wounds in front. The fairness check proves he belongs in Valhalla under every whim of the day.
+- **His lines:**
+  - "Is this where they come from the herring? My mother went at the herring. Solveig, Arne's daughter."
+  - "We held the pass till the sun came up. Then we didn't."
+  - "I don't need Odin's benches. Send me where she is."
+- **The plea** (`plea` on a story soul, `storyPlea`):
+  - While he's at the desk, a banner reads "Kari Solveigarson asks for a Rán stamp, to be with his mother: a mistake all the same."
+  - The stamp is the answer, as with the jarl's bribe (§47). Rán grants it (`kari_ran`); Valhalla doesn't (`kari_valhalla`).
+- **Granted, it's a wrong stamp with the usual costs:**
+  - no wage;
+  - a citation, and a fine past the day's warnings;
+  - Odin −1, for a soul of his sent elsewhere;
+  - a warrior short at Ragnarök.
+
+  The mistake is filed with `pled`, and the playtest report says "A plea granted."
+- **If the player sent Solveig somewhere else on Day 5,** she isn't in Rán. Nothing says so; the plea is what he believes.
+
+**Night 16: the levy comes home** (drafts), before Thorvald's wood:
+- **If Ulf went,** he writes with the wrong hand. He was three shields down from Kari when the line went, and carried him as far as the cairn. His arm is hurt (`fx: family brother sick`), so he needs medicine, as any sickness does.
+- **If Ulf stayed,** Kari's shield came home on a cart: "I should have been next to him."
+- **Otherwise,** the letter says Kari didn't come down from the pass.
+- **Bera, the neighbour, knows where you sent him:**
+  - Rán: she dreamed of Solveig at a loom by the sea, with her boy handing her the thread.
+  - Valhalla: "Solveig would have hated it, and been proud."
+
+**What the sims do** (`pleas` in `SimOptions`):
+- Bots never grant a plea unless told. One that grants it makes one mistake more, on Day 16.
+- Bots devoted to another god keep Ulf home, since Odin's +1 counts against them. The rest let him go: the first option wins a tie.
+- Ulf's wound costs one night's medicine. Any bot that pays its bills pays that too.
+
+**Tests**
+- **Engine (2):**
+  - the plea says its stamp, and nobody else pleads;
+  - granted, it's a mistake filed with `pled`, with a standing cost like any, and no appeal; refused, the day is clean.
+- **Scenes and sim (3):**
+  - Night 15's options, and the steward's rings sent back;
+  - Night 16 in each case;
+  - a bot that grants pleas makes that one mistake.
+- **Report (1).**
+- **e2e on the full game** (phone and desktop), from a Day 16 save:
+  - the banner, with an accessibility scan;
+  - granting it is cited;
+  - the audit's count;
+  - Bera's line that night.
+
+**Known limits**
+- **Pleas are only a story soul's.** Generated souls don't ask.
+- **The levy is one fight.** Ulf comes home either way. Whether he could die there is yours to decide; it's written so he can't.
+- **The words are drafts.**
+
 ## Sources
 - Play: [target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en) · [testing requirements for new personal accounts](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en)
 - Steam Next Fest: [June 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/june_2027) · [February 2027](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest/feb_2027) · [overview](https://partner.steamgames.com/doc/marketing/upcoming_events/nextfest)

@@ -48,6 +48,8 @@ export interface DayMistake {
   readonly noon?: true;
   /** Rings a story soul paid for this stamp (docs/tech-spec.md §47): a bribe taken, not a slip. */
   readonly paid?: number;
+  /** The stamp a story soul pleaded for (docs/tech-spec.md §51): a plea granted, not a slip. */
+  readonly pled?: true;
 }
 
 /**

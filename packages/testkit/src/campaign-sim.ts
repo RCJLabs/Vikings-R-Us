@@ -34,6 +34,7 @@ import {
   startSave,
   stepRun,
   storyOffer,
+  storyPlea,
 } from '@cots/engine';
 import { type ScenePath, sceneEnv, scenePaths } from '@cots/story';
 
@@ -222,6 +223,7 @@ function shiftActions(
   paceS = BOT_PACE_S,
   serve?: Faction,
   bribes = false,
+  pleas = false,
 ): RunAction[] {
   const beginShift: RunAction = { t: 'beginShift', at: 0, ...(assists ? { assists } : {}) };
   const begun = stepRun(run, beginShift, { content, ctx }).state;
@@ -242,15 +244,19 @@ function shiftActions(
     // A soul the bot knows belongs where a favour asks for souls from goes where the favour asks instead.
     const favour = right ? favours.find((f) => f.left > 0 && f.r.from === c.expect.dest) : undefined;
     if (favour) favour.left--;
-    // A bot that takes bribes takes what a story soul offers (docs/tech-spec.md §47), as a choice, not a slip.
+    // A bot that takes bribes takes what a story soul offers (docs/tech-spec.md §47), as a choice, not a slip; one
+    // that grants pleas gives a story soul the stamp it asks for (docs/tech-spec.md §51).
     const offer = bribes ? storyOffer(content, c) : null;
+    const plea = pleas ? storyPlea(content, c) : null;
     const dest: Destination = offer
       ? offer.dest
-      : favour
-        ? favour.r.to
-        : right
-          ? c.expect.dest
-          : (rng.pick(wrongs) ?? c.expect.dest);
+      : plea
+        ? plea.dest
+        : favour
+          ? favour.r.to
+          : right
+            ? c.expect.dest
+            : (rng.pick(wrongs) ?? c.expect.dest);
     // Judging a soul right includes what must be done to it first (from Day 8, clipping long nails),
     // unless the bot means to leave these nails for Naglfar.
     const procedures = c.expect.procedures ?? [];
@@ -361,6 +367,8 @@ export interface SimOptions {
   readonly promote?: boolean;
   /** Whether the bot takes what story souls offer for a wrong stamp (docs/tech-spec.md §47); it never does unless told. */
   readonly bribes?: boolean;
+  /** Whether the bot grants what story souls plead for (docs/tech-spec.md §51); it never does unless told. */
+  readonly pleas?: boolean;
   /** Whether the run is played under the oath (docs/tech-spec.md §49): fines from the first mistake. */
   readonly oath?: boolean;
 }
@@ -412,6 +420,7 @@ export function simulateRun(
       options.paceS,
       serve,
       options.bribes,
+      options.pleas,
     );
     for (const a of actions) {
       run = stepRun(run, a, { content, ctx }).state;

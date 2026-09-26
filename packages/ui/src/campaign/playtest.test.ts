@@ -142,6 +142,20 @@ describe('the playtest report', () => {
     expect(lines.slice(1).filter((l) => l.includes('bribe'))).toEqual([]);
   });
 
+  it('says when a soul sent wrong was a stamp a story soul pleaded for (docs/tech-spec.md §51)', () => {
+    const save = played('playtest-wrong', 1, wrong);
+    const first = (l: DayLedger): DayLedger => ({
+      ...l,
+      mistakes: (l.mistakes ?? []).map((x, i) => (i === 0 ? { ...x, pled: true as const } : x)),
+    });
+    const pled: RunSave = { ...save, mornings: save.mornings.map((m) => ({ ...m, ledger: m.ledger.map(first) })) };
+    const lines = report(pled)
+      .split('\n')
+      .filter((l) => l.startsWith('- Day 1: stamped'));
+    expect(lines[0]).toMatch(/ A plea granted\.$/);
+    expect(lines.slice(1).filter((l) => l.includes('plea'))).toEqual([]);
+  });
+
   it('counts the mistakes of a day filed before they were itemised', () => {
     const save = played('playtest-old', 1, wrong);
     const old: RunSave = {
