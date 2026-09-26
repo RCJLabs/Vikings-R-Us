@@ -341,6 +341,30 @@ describe('the playtest report', () => {
     expect(report(woven)).toContain('woven: weave.sea');
   });
 
+  it('tells of the last battle once fought: the order, and each front as it went (docs/tech-spec.md §54)', () => {
+    // The last day's night, the horn, and the hosts sent with the shore first.
+    let save = scenarioSave(content, 'playtest-battle', 20, ENGINE_MAJOR, 'night');
+    let run = resumeSave(save, content, ENGINE_MAJOR).run;
+    for (const a of [{ t: 'endNight' }, { t: 'marshal', order: ['front.ship'] }] as RunAction[]) {
+      const next = stepRun(run, a, { content, ctx: runContext(content, run) }).state;
+      // Left at the horn, the report says where the run stands, and there's no battle to tell of yet.
+      if (a.t === 'marshal') {
+        expect(report(save)).toContain('- **Now:** Day 20, sending the hosts to the fronts');
+        expect(report(save)).not.toContain('### Ragnarök');
+      }
+      save = recordAction(save, run, a, next);
+      run = next;
+    }
+    const text = report(save);
+    expect(text).toContain(
+      '### Ragnarök\n\nHeld in this order: front.ship, then front.wolf, then front.fire, then front.gate.',
+    );
+    for (const f of run.battle?.fronts ?? []) {
+      expect(text).toContain(`- ${f.id}: ${f.held ? 'held' : 'fell'}, ${f.strength} against ${f.foe} (`);
+    }
+    expect(text).toContain('- **Ending:**');
+  });
+
   it('tells of each promotion offered and what was made of it, and the days worked at each rank', () => {
     // Days 1-3 judged rightly: Day 4 brings the first offer.
     let save = scenarioSave(content, 'playtest-rank', 4, ENGINE_MAJOR);

@@ -61,7 +61,7 @@ if (cmd === 'campaign') {
     `campaign sim: ${target}, ${seeds} runs per policy${noFines ? ', no fines' : ''}${pace !== undefined ? `, ${pace}s a soul` : ''}${serve ? `, serving ${serve}` : ''}${promote ? ', taking promotions' : ''}${bribes ? ', taking bribes' : ''}${weave ? `, woven: ${weave}` : ''}, ${((performance.now() - started) / 1000).toFixed(1)}s`,
   );
   console.log(
-    `judging    night          story      demoted  family lost  rings (mean / min)  upgrades   host${pace !== undefined ? '  left / died   Hel  Odin' : ''}${serve ? '  met/asked  Odin Freyja   Hel Clerk' : ''}${promote ? '  days at rank' : ''}  endings`,
+    `judging    night          story      demoted  family lost  rings (mean / min)  upgrades  fronts${pace !== undefined ? '  left / died   Hel  Odin' : ''}${serve ? '  met/asked  Odin Freyja   Hel Clerk' : ''}${promote ? '  days at rank' : ''}  endings`,
   );
   for (const r of reports) {
     const pct = (n: number) => `${((n * 100) / r.runs).toFixed(1)}%`.padStart(6);
@@ -74,7 +74,7 @@ if (cmd === 'campaign') {
         pct(r.familyLost).padStart(11),
         `${r.meanRings.toFixed(1)} / ${r.minRings}`.padStart(18),
         r.meanUpgrades.toFixed(1).padStart(9),
-        r.meanRagnarok.toFixed(0).padStart(6),
+        (r.meanFronts === null ? '-' : r.meanFronts.toFixed(1)).padStart(7),
         ...(pace !== undefined
           ? [
               `${r.meanLeft.toFixed(1)} / ${r.meanDied.toFixed(1)}`.padStart(12),

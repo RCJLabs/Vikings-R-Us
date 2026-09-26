@@ -31,6 +31,7 @@ import {
   stepShift,
   type Verdict,
 } from '../shift/shift';
+import { type Battle, battleDue, fight } from './battle';
 import {
   dayContext,
   daySpecFor,
@@ -55,6 +56,7 @@ import {
   type LineSoul,
   type RequestSettled,
   type RunState,
+  readsBattle,
   stateValue,
 } from './state';
 import { drawWeave, underWeave } from './weave';
@@ -63,7 +65,8 @@ import { drawWeave, underWeave } from './weave';
  * The campaign's day loop (docs/tech-spec.md §4):
  *   morning -> beginShift -> shift -> audit -> endAudit -> night -> endNight -> next morning
  * Scenes (morning and night) arrive as `scene` actions carrying their effects,
- * which the story layer computes from the player's choices.
+ * which the story layer computes from the player's choices. After the last night, in builds that have one, comes the
+ * last battle (docs/tech-spec.md §54): ragnarok -> marshal -> ending.
  */
 
 export type RunAction =
@@ -93,7 +96,9 @@ export type RunAction =
   /** The morning's promotion taken or declined (docs/tech-spec.md §44). */
   | { readonly t: 'promotion'; readonly accept: boolean }
   /** At night, back down a rank. */
-  | { readonly t: 'stepDown' };
+  | { readonly t: 'stepDown' }
+  /** The hosts sent to the fronts (docs/tech-spec.md §54): the order the fronts are to be held in. */
+  | { readonly t: 'marshal'; readonly order: readonly string[] };
 
 export type RunEvent =
   | { readonly e: 'shift'; readonly event: ShiftEvent }
@@ -107,6 +112,9 @@ export type RunEvent =
   | { readonly e: 'appealed'; readonly heard: AppealHeard }
   | { readonly e: 'promotion'; readonly rank: number; readonly taken: boolean }
   | { readonly e: 'steppedDown'; readonly rank: number }
+  /** The horn: the last night is over, and the hosts wait for their fronts (docs/tech-spec.md §54). */
+  | { readonly e: 'horn' }
+  | { readonly e: 'fought'; readonly battle: Battle }
   | { readonly e: 'rejected'; readonly reason: string };
 
 export interface RunEnv {
@@ -414,7 +422,7 @@ function chooseAppeal(
 }
 
 /** Moves a soul from one hall to another in the run's counts (Ragnarök's host is made of them). */
-function moveSoul(run: RunState, appeal: Appeal, to: Destination): Pick<RunState, 'sent' | 'einherjar'> {
+function moveSoul(run: RunState, appeal: Appeal, to: Destination): Pick<RunState, 'sent' | 'einherjar' | 'misfits'> {
   const sent: Partial<Record<Destination, number>> = { ...run.sent };
   sent[appeal.stamped] = Math.max(0, (sent[appeal.stamped] ?? 0) - 1);
   sent[to] = (sent[to] ?? 0) + 1;
@@ -422,7 +430,12 @@ function moveSoul(run: RunState, appeal: Appeal, to: Destination): Pick<RunState
   const kind = appeal.worthy ? 'worthy' : 'unworthy';
   if (appeal.stamped === 'VALHALLA') einherjar[kind] = Math.max(0, einherjar[kind] - 1);
   if (to === 'VALHALLA') einherjar[kind] += 1;
-  return { sent, einherjar };
+  // A soul in the wrong hall leaves it, and one sent to a wrong hall joins it as a misfit (docs/tech-spec.md §54).
+  const expected = appeal.case.expect.dest;
+  const misfits: Partial<Record<Destination, number>> = { ...run.misfits };
+  if (appeal.stamped !== expected) misfits[appeal.stamped] = Math.max(0, (misfits[appeal.stamped] ?? 0) - 1);
+  if (to !== expected) misfits[to] = (misfits[to] ?? 0) + 1;
+  return { sent, einherjar, misfits };
 }
 
 /**
@@ -850,6 +863,11 @@ function audit(
   // A soul given to a god whose request was done in full is that god's now, and doesn't appeal: righting it would
   // keep the reward without its cost.
   const given = (v: Verdict) => requests.some((r) => r.met && v.expected === r.from && v.stamped === r.to);
+  // Souls sent to a hall they didn't belong in, but for those given: at Ragnarök they break and run (§54).
+  const misfits: Partial<Record<Destination, number>> = { ...run.misfits };
+  for (const v of shift.verdicts) {
+    if (v.stamped !== null && v.stamped !== v.expected && !given(v)) misfits[v.stamped] = (misfits[v.stamped] ?? 0) + 1;
+  }
   const appeal = chooseAppeal(run, shift, campaign, costs, fined, given);
   const asked = drawRequests(run, env, line?.carried ?? []);
   const promotion = promote(run, env, wrong === 0 && unjudged === 0);
@@ -863,6 +881,7 @@ function audit(
       einherjar,
       sent,
       naglfar,
+      ...(Object.keys(misfits).length > 0 ? { misfits } : {}),
       ledger: [...run.ledger, ledger],
       ...(appeal ? { appeal } : {}),
       ...(line && line.carried.length > 0 ? { waiting: line.carried } : {}),
@@ -1127,12 +1146,58 @@ export function hostMarks(content: Content): StateMark[] {
   return stateMarks(content, 'ragnarok');
 }
 
-/** The first ending whose condition holds, or the finale after the last playable day. */
+/** What an ending asks of the last battle (docs/tech-spec.md §54): so many fronts held, at least or at most, and which. */
+export interface BattleMark {
+  readonly ending: string;
+  readonly atLeast?: number;
+  readonly atMost?: number;
+  /** Fronts it needs held. */
+  readonly held: readonly string[];
+}
+
+/**
+ * What the reachable endings ask of the last battle, in their order: none in builds without one. Only conditions every
+ * part of which must hold count (`all`), as with `stateMarks`.
+ */
+export function battleMarks(content: Content): BattleMark[] {
+  const marks: BattleMark[] = [];
+  for (const e of reachableEndings(content)) {
+    if (!e.when || !readsBattle(e.when)) continue;
+    let atLeast: number | undefined;
+    let atMost: number | undefined;
+    const held: string[] = [];
+    const walk = (p: StatePred): void => {
+      if ('all' in p) for (const q of p.all) walk(q);
+      else if ('state' in p && p.state === 'fronts') {
+        atLeast = p.gte ?? atLeast;
+        atMost = p.lte ?? atMost;
+      } else if ('state' in p && p.state.startsWith('front.') && (p.gte ?? 0) >= 1) held.push(p.state);
+    };
+    walk(e.when);
+    marks.push({
+      ending: e.id,
+      ...(atLeast !== undefined ? { atLeast } : {}),
+      ...(atMost !== undefined ? { atMost } : {}),
+      held,
+    });
+  }
+  return marks;
+}
+
+/**
+ * The first ending whose condition holds, or the finale after the last playable day. Before the last battle is fought
+ * (docs/tech-spec.md §54), only the endings checked before any that reads it can hold, and there's no finale yet:
+ * the battle comes first.
+ */
 export function endingFor(run: RunState, content: Content): string | null {
   const campaign = campaignOf(content);
-  const hit = [...campaign.endings]
-    .sort((a, b) => a.order - b.order)
-    .find((e) => e.when !== undefined && evalState(e.when, run));
+  const sorted = [...campaign.endings].sort((a, b) => a.order - b.order);
+  if (battleDue(run, content)) {
+    const first = sorted.findIndex((e) => e.when !== undefined && readsBattle(e.when));
+    const before = first < 0 ? sorted : sorted.slice(0, first);
+    return before.find((e) => e.when !== undefined && evalState(e.when, run))?.id ?? null;
+  }
+  const hit = sorted.find((e) => e.when !== undefined && evalState(e.when, run));
   if (hit) return hit.id;
   if (run.slice && campaign.slice) return run.day >= campaign.slice.day ? campaign.slice.finale : null;
   return run.day >= campaign.lastDay ? campaign.finale : null;
@@ -1174,6 +1239,21 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
     return {
       state: { ...rest, ...(rank > 1 ? { rank: rank - 1 } : {}), clean: 0, ledger },
       events: [{ e: 'steppedDown', rank }],
+    };
+  }
+
+  if (action.t === 'marshal') {
+    const def = campaignOf(env.content).ragnarok;
+    if (run.phase !== 'ragnarok' || !def) return reject(run, 'there is no battle to fight');
+    const battle = fight(run, def, action.order);
+    const fought: RunState = { ...run, battle };
+    const ending = endingFor(fought, env.content) ?? campaignOf(env.content).finale;
+    return {
+      state: { ...fought, phase: 'ending', ending },
+      events: [
+        { e: 'fought', battle },
+        { e: 'ended', ending },
+      ],
     };
   }
 
@@ -1264,6 +1344,11 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       if (ending) {
         events.push({ e: 'ended', ending });
         return { state: { ...after, phase: 'ending', ending, shift: null, bills: null }, events };
+      }
+      // The last night is over and no ending came first: the horn, and the hosts wait for their fronts (§54).
+      if (battleDue(after, env.content)) {
+        events.push({ e: 'horn' });
+        return { state: { ...after, phase: 'ragnarok', shift: null, bills: null }, events };
       }
       const next = nextMorning(after, campaignOf(env.content));
       events.push({ e: 'dayBegins', day: next.day });

@@ -152,6 +152,24 @@ slice:
     flags: { slice: 1, ulf_shipyard: 1 }
 # Checked every night, lowest order first; the demo's demoted (10) and alone (20) come before these.
 # Faction endings wait for Ragnarök (Day 20's night); Naglfar can sail from Day 18.
+# The last battle (docs/tech-spec.md §54): after the last night, the hosts go to the fronts, in the order the player
+# sets. A host is the souls sent to one hall: at its own front each soul sent there rightly counts 2, and each sent
+# there by mistake (to Valhalla, the unworthy) breaks and runs, costing it 1; anywhere else a soul counts 1. The
+# drowned fight only at sea. The foes are tuned on the campaign sims: experts hold all four about half the time, a
+# competent run three (with a choice of which to lose), a novice's one. The words are DRAFT.
+ragnarok:
+  text: ragnarok.text
+  hosts:
+    - { id: host.einherjar, name: host.einherjar, hall: VALHALLA, front: front.wolf }
+    - { id: host.freyja, name: host.freyja, hall: FOLKVANGR, front: front.fire }
+    - { id: host.hel, name: host.hel, hall: HEL, front: front.gate }
+    - { id: host.ran, name: host.ran, hall: RAN, front: front.ship, only: true }
+  fronts:
+    - { id: front.wolf, name: front.wolf, text: front.wolf.text, held: front.wolf.held, fell: front.wolf.fell, foe: 100 }
+    - { id: front.fire, name: front.fire, text: front.fire.text, held: front.fire.held, fell: front.fire.fell, foe: 70 }
+    - { id: front.gate, name: front.gate, text: front.gate.text, held: front.gate.held, fell: front.gate.fell, foe: 130 }
+    # Naglfar's crew: every soul sent on with its nails long is one more aboard.
+    - { id: front.ship, name: front.ship, text: front.ship.text, held: front.ship.held, fell: front.ship.fell, foe: 35, perNail: 2 }
 endings:
   - id: ending.naglfar
     order: 100
@@ -160,7 +178,7 @@ endings:
     text: ending.naglfar.text
   - id: ending.rebirth
     order: 200
-    when: { all: [{ state: day, gte: 20 }, { state: flags.wood, gte: 1 }, { state: flags.truth, gte: 3 }, { state: ragnarok, gte: 260 }, { state: family.home, gte: 1 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: flags.wood, gte: 1 }, { state: flags.truth, gte: 3 }, { state: front.fire, gte: 1 }, { state: fronts, gte: 3 }, { state: family.home, gte: 1 }] }
     title: ending.rebirth.title
     text: ending.rebirth.text
   - id: ending.smuggled
@@ -177,22 +195,22 @@ endings:
   # the story comes short without her requests (0 and 2 runs of 12, expert), and reaches it with one (12 and 11).
   - id: ending.hel
     order: 500
-    when: { all: [{ state: day, gte: 20 }, { state: lead.hel, gte: 1 }, { state: standing.hel, gte: 8 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: lead.hel, gte: 1 }, { state: standing.hel, gte: 8 }, { state: front.gate, gte: 1 }] }
     title: ending.hel.title
     text: ending.hel.text
   - id: ending.freyja
     order: 510
-    when: { all: [{ state: day, gte: 20 }, { state: lead.freyja, gte: 1 }, { state: standing.freyja, gte: 8 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: lead.freyja, gte: 1 }, { state: standing.freyja, gte: 8 }, { state: front.fire, gte: 1 }] }
     title: ending.freyja.title
     text: ending.freyja.text
   - id: ending.odin
     order: 520
-    when: { all: [{ state: day, gte: 20 }, { state: lead.odin, gte: 1 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: lead.odin, gte: 1 }, { state: front.wolf, gte: 1 }] }
     title: ending.odin.title
     text: ending.odin.text
   - id: ending.wolf
     order: 990
-    when: { all: [{ state: day, gte: 20 }, { state: ragnarok, lte: 240 }] }
+    when: { all: [{ state: day, gte: 20 }, { state: fronts, lte: 1 }] }
     title: ending.wolf.title
     text: ending.wolf.text
   - { id: ending.lastStand, order: 1000, title: ending.lastStand.title, text: ending.lastStand.text }

@@ -8,6 +8,7 @@ import {
 } from '../content/types';
 import type { CaseSpec } from '../gen/types';
 import type { Assists, ShiftState } from '../shift/shift';
+import type { Battle } from './battle';
 import type { DayGrade } from './grade';
 
 /**
@@ -188,7 +189,8 @@ export interface DayLedger {
   };
 }
 
-export type RunPhase = 'morning' | 'shift' | 'audit' | 'night' | 'ending';
+/** `ragnarok`: after the last night, the hosts wait to be sent to the fronts (docs/tech-spec.md §54). */
+export type RunPhase = 'morning' | 'shift' | 'audit' | 'night' | 'ragnarok' | 'ending';
 
 export interface RunState {
   readonly v: 1;
@@ -208,6 +210,13 @@ export interface RunState {
   readonly sent?: Readonly<Partial<Record<Destination, number>>>;
   /** Souls sent on with nails that should have been cut: Naglfar's progress (absent before M7). */
   readonly naglfar?: number;
+  /**
+   * Souls sent to each hall that belonged elsewhere (docs/tech-spec.md §54), but for those a god asked for and got in
+   * full: at Ragnarök they break and run. Absent in runs begun before it was kept, and when there are none.
+   */
+  readonly misfits?: Readonly<Partial<Record<Destination, number>>>;
+  /** The last battle, once it's been fought (docs/tech-spec.md §54). */
+  readonly battle?: Battle;
   readonly family: readonly FamilyMember[];
   readonly upgrades: readonly string[];
   /** Story memory across days. Integers only (Ink reads them). */
@@ -344,11 +353,16 @@ export function factionsMet(run: RunState): Faction[] {
  * `day`, `rings`, `debtNights`, `standing.<faction>`, `lead.<faction>`,
  * `einherjar.worthy`, `einherjar.unworthy`, `sent.<DESTINATION>`, `naglfar`,
  * `ragnarok`, `flags.<name>`, `family.well`, `family.sick`, `family.home`
- * (not gone) and `family.gone`.
+ * (not gone) and `family.gone`; and after the last battle (docs/tech-spec.md §54), `fronts` (how many held) and
+ * `front.<name>` (1 if the front of that id held). Before it, both read 0.
  */
 export function stateValue(run: RunState, path: string): number {
   const [head, key] = path.split('.', 2) as [string, string | undefined];
   switch (head) {
+    case 'fronts':
+      return run.battle?.fronts.filter((f) => f.held).length ?? 0;
+    case 'front':
+      return run.battle?.fronts.some((f) => f.id === path && f.held) ? 1 : 0;
     case 'lead':
       return standingLead(run, key as Faction);
     case 'sent':
@@ -405,4 +419,9 @@ export function predPaths(p: StatePred): string[] {
 
 /** Paths a StatePred may use (the content linter checks endings against it). */
 export const STATE_PATHS =
-  /^(day|rings|debtNights|naglfar|ragnarok|oath|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;
+  /^(day|rings|debtNights|naglfar|ragnarok|oath|fronts|front\.[A-Za-z0-9_]+|(standing|lead)\.(odin|freyja|hel|loki|clerk)|einherjar\.(worthy|unworthy)|sent\.(VALHALLA|FOLKVANGR|HEL|RAN|RETURN|DETAIN|TRANSFER)|flags\.[A-Za-z0-9_]+|family\.(well|sick|home|gone))$/;
+
+/** Whether a StatePred reads the last battle (docs/tech-spec.md §54): what it asks can't be known before it's fought. */
+export function readsBattle(p: StatePred): boolean {
+  return predPaths(p).some((path) => path === 'fronts' || path.startsWith('front.'));
+}

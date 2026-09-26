@@ -21,7 +21,7 @@ export const book = signal<SoundBook>(built);
 export const hasBeds = computed(() => Object.keys(book.value.beds).length > 0);
 
 /** The campaign's own screens: on these (and on a campaign shift) its day and ending choose the bed. */
-const CAMPAIGN_SCREENS: ReadonlySet<Screen> = new Set(['morning', 'audit', 'night', 'ending']);
+const CAMPAIGN_SCREENS: ReadonlySet<Screen> = new Set(['morning', 'audit', 'night', 'ragnarok', 'battle', 'ending']);
 
 /** The mix last worked out, for the dev build's tests. */
 const lastMix = signal<Mix | null>(null);

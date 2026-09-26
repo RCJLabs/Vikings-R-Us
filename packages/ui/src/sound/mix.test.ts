@@ -39,13 +39,19 @@ describe('the sound for each place', () => {
     expect(bedFor(at('morning'), none)).toBe('morning');
     expect(bedFor(at('night'), none)).toBe('night');
     expect(bedFor(at('ending'), none)).toBe('ending');
-    expect(Object.keys(ROLE_OF)).toHaveLength(10);
+    // The last battle (docs/tech-spec.md §54) is fought at the gate.
+    expect(bedFor(at('ragnarok'), none)).toBe('gate');
+    expect(bedFor(at('battle'), none)).toBe('gate');
+    expect(Object.keys(ROLE_OF)).toHaveLength(12);
     expect([...ROLES]).toEqual([...SOUND_ROLES]);
     expect(new Set(Object.values(ROLE_OF))).toEqual(new Set(ROLES));
   });
 
   it("takes a day's own bed for its places, and an ending's own on the ending screen", () => {
     expect(bedFor(at('shift', { day: 20 }), own)).toBe('ragnarok');
+    // So is the battle after its night, to the same music.
+    expect(bedFor(at('ragnarok', { day: 20 }), own)).toBe('ragnarok');
+    expect(bedFor(at('battle', { day: 20 }), own)).toBe('ragnarok');
     // Only the places the day names: Day 20's night is still the night.
     expect(bedFor(at('night', { day: 20 }), own)).toBe('night');
     expect(bedFor(at('shift', { day: 19 }), own)).toBe('gate');

@@ -20,12 +20,14 @@ const noteMs = (n: number): number => 4000 + 1000 * n;
 
 /**
  * What was just earned, at the top of the screen for a few seconds. Earned during a shift, it waits for the
- * screen after it: nothing covers the desk while the sun runs. It takes no clicks, and screen readers say it.
+ * screen after it: nothing covers the desk while the sun runs. Earned by the last battle, it waits for the ending,
+ * so an ending's own achievement doesn't name it before the battle's told (docs/tech-spec.md §54). It takes no
+ * clicks, and screen readers say it.
  */
 export function AchievementNote() {
   const [shown, setShown] = useState<{ readonly key: number; readonly ids: readonly string[] } | null>(null);
   const waiting = unannounced.value;
-  const onShift = screen.value === 'shift';
+  const onShift = screen.value === 'shift' || screen.value === 'ragnarok' || screen.value === 'battle';
   useEffect(() => {
     if (onShift || waiting.length === 0) return;
     unannounced.value = [];

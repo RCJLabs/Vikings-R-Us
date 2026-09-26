@@ -16,6 +16,8 @@ import {
   economyOf,
   FACTIONS,
   type Faction,
+  fight,
+  heldFronts,
   newRun,
   Rng,
   type RunAction,
@@ -82,6 +84,8 @@ export interface StoryPolicy {
   readonly later?: { readonly day: number; readonly flags: Readonly<Record<string, number>> };
   /** Long nails to leave uncut each day, on purpose (from the day Loki has the names, if `deal`). */
   readonly longNails?: { readonly perDay: number; readonly deal?: true };
+  /** The front it wants held above the others at Ragnarök (docs/tech-spec.md §54), among as many as can be. */
+  readonly front?: string;
 }
 
 /**
@@ -109,15 +113,15 @@ export const STORY_POLICIES: readonly StoryPolicy[] = [
     standing: { loki: 1 },
     longNails: { perDay: 1, deal: true },
   },
-  { name: 'rebirth', flags: { truth: 50, wood_known: 50, wood: 100, ...NO_DEALS } },
+  { name: 'rebirth', flags: { truth: 50, wood_known: 50, wood: 100, ...NO_DEALS }, front: 'front.fire' },
   { name: 'ferry', flags: { ferryman: 100, loki_deal: -100, wood: -100 } },
   { name: 'transfer', flags: { clerk_contract: 100, ...NO_DEALS, stay_home: 1 }, standing: { clerk: 10 } },
   // A god's own: everyone else's favour counts against, since the ending needs that god to lead.
-  { name: 'hel', flags: { ...NO_DEALS, stay_home: 1 }, standing: devotedTo('hel') },
-  { name: 'freyja', flags: { ...NO_DEALS, stay_home: 1 }, standing: devotedTo('freyja') },
-  { name: 'odin', flags: { ...NO_DEALS, stay_home: 1 }, standing: devotedTo('odin') },
+  { name: 'hel', flags: { ...NO_DEALS, stay_home: 1 }, standing: devotedTo('hel'), front: 'front.gate' },
+  { name: 'freyja', flags: { ...NO_DEALS, stay_home: 1 }, standing: devotedTo('freyja'), front: 'front.fire' },
+  { name: 'odin', flags: { ...NO_DEALS, stay_home: 1 }, standing: devotedTo('odin'), front: 'front.wolf' },
   // Leaves nails long every day and gives Loki the names, then takes them back before the ship can
-  // sail early: the host goes to Ragnarök short.
+  // sail early: Naglfar's crew is too many for the drowned, and the shore falls at Ragnarök (docs/tech-spec.md §54).
   {
     name: 'wolf',
     flags: { loki_deal: 100 },
@@ -125,6 +129,24 @@ export const STORY_POLICIES: readonly StoryPolicy[] = [
     longNails: { perDay: 2 },
   },
 ];
+
+/**
+ * The order a bot holds the fronts in at Ragnarök (docs/tech-spec.md §54): of every order, one that holds the most
+ * fronts, and among those one that holds `prefer`; the first such in the content's order.
+ */
+export function botOrder(run: RunState, content: Content, prefer?: string): string[] {
+  const def = campaignOf(content).ragnarok;
+  if (!def) return [];
+  const orders = (ids: readonly string[]): string[][] =>
+    ids.length <= 1 ? [ids.slice()] : ids.flatMap((id) => orders(ids.filter((x) => x !== id)).map((o) => [id, ...o]));
+  let best: { order: string[]; score: number } | undefined;
+  for (const order of orders(def.fronts.map((f) => f.id))) {
+    const held = heldFronts(fight(run, def, order));
+    const score = held.length * 2 + (prefer !== undefined && held.includes(prefer) ? 1 : 0);
+    if (!best || score > best.score) best = { order, score };
+  }
+  return best?.order ?? [];
+}
 
 export function storyPolicy(name: string): StoryPolicy {
   const p = STORY_POLICIES.find((s) => s.name === name);
@@ -330,10 +352,15 @@ export interface RunResult {
   readonly ledgerOk: boolean;
   /** The host's strength at the end (docs/m7-design.md). */
   readonly ragnarok: number;
+  /** The fronts held at Ragnarök (docs/tech-spec.md §54), when the run got that far. */
+  readonly fronts: readonly string[] | null;
   /** Rings the story's choices gained or cost over the run. */
   readonly storyRings: number;
   /** Souls sent on with their nails long. */
   readonly naglfar: number;
+  /** The einherjar at the end, worthy and not, and the souls sent to each hall: the hosts at Ragnarök. */
+  readonly einherjar: RunState['einherjar'];
+  readonly sent: Readonly<Partial<Record<Destination, number>>>;
   readonly standing: Readonly<Record<Faction, number>>;
   /** Every day's accounts. */
   readonly ledger: readonly DayLedger[];
@@ -397,7 +424,8 @@ export function simulateRun(
   const note = (moment: AchievementMoment) => {
     if (defs.length > 0) earned.push(...earnedAt(defs, moment, (id) => earned.includes(id)));
   };
-  for (let guard = 0; guard < lastDay + 1 && run.phase !== 'ending'; guard++) {
+  // Day by day to the ending, or to the last battle (docs/tech-spec.md §54), fought below.
+  for (let guard = 0; guard < lastDay + 1 && run.phase !== 'ending' && run.phase !== 'ragnarok'; guard++) {
     const ctx = runContext(content, run);
     const start = run.rings;
     if (options.scenes) run = playStory(run, content, ctx, options.scenes, 'morning', policy);
@@ -462,6 +490,12 @@ export function simulateRun(
     sickNights += run.family.filter((m) => m.status === 'sick').length;
     note({ at: 'run', run });
   }
+  // The horn (docs/tech-spec.md §54): the bot sends the hosts where it can hold the most, its god's front among them.
+  if (run.phase === 'ragnarok') {
+    const env = { content, ctx: runContext(content, run) };
+    run = stepRun(run, { t: 'marshal', order: botOrder(run, content, policy.front) }, env).state;
+    note({ at: 'run', run });
+  }
   if (run.ending) note({ at: 'ending', ending: run.ending });
   return {
     ending: run.ending,
@@ -473,8 +507,11 @@ export function simulateRun(
     sickNights,
     ledgerOk,
     ragnarok: ragnarokStrength(run),
+    fronts: run.battle ? heldFronts(run.battle) : null,
     storyRings,
     naglfar: run.naglfar ?? 0,
+    einherjar: run.einherjar,
+    sent: run.sent ?? {},
     standing: run.standing,
     ledger: run.ledger,
     leftAtDusk: run.ledger.reduce(
@@ -497,6 +534,9 @@ export interface PolicyReport {
   readonly minRings: number;
   readonly meanUpgrades: number;
   readonly meanRagnarok: number;
+  /** Fronts held at Ragnarök, in runs that got there (docs/tech-spec.md §54): the mean, and how many runs held each count. */
+  readonly meanFronts: number | null;
+  readonly frontsHeld: Readonly<Record<number, number>>;
   readonly meanStoryRings: number;
   readonly meanNaglfar: number;
   readonly meanStanding: Readonly<Record<Faction, number>>;
@@ -557,6 +597,12 @@ export function simulateCampaign(
           minRings: Math.min(...results.map((r) => r.rings)),
           meanUpgrades: mean(results.map((r) => r.upgrades)),
           meanRagnarok: mean(results.map((r) => r.ragnarok)),
+          ...(() => {
+            const fought = results.flatMap((r) => (r.fronts ? [r.fronts.length] : []));
+            const frontsHeld: Record<number, number> = {};
+            for (const n of fought) frontsHeld[n] = (frontsHeld[n] ?? 0) + 1;
+            return { meanFronts: fought.length > 0 ? mean(fought) : null, frontsHeld };
+          })(),
           meanStoryRings: mean(results.map((r) => r.storyRings)),
           meanNaglfar: mean(results.map((r) => r.naglfar)),
           meanStanding: Object.fromEntries(
@@ -584,6 +630,7 @@ export function simulateCampaign(
  * A scenario jumper for tests (docs/build-plan.md §11): a save on the morning
  * of `day`, with every earlier soul judged rightly and every bill paid; or, `at`
  * night, on that day's night, its souls judged rightly and its scene still to play.
+ * A day past the last is the ending, after the last battle where the build has one.
  */
 export function scenarioSave(
   content: Content,
@@ -611,6 +658,11 @@ export function scenarioSave(
     apply({ t: 'endAudit' });
   };
   while (run.day < day && run.phase !== 'ending') {
+    // Past the last day: the last battle (docs/tech-spec.md §54), its fronts held in the order they're listed.
+    if (run.phase === 'ragnarok') {
+      apply({ t: 'marshal', order: [] });
+      break;
+    }
     shift();
     apply({ t: 'endNight' });
   }

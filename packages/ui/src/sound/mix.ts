@@ -22,6 +22,9 @@ export const ROLE_OF: Readonly<Record<Screen, Role>> = {
   audit: 'tally',
   morning: 'morning',
   night: 'night',
+  // The last battle (docs/tech-spec.md §54) is fought at the gate, to the last day's own bed.
+  ragnarok: 'gate',
+  battle: 'gate',
   ending: 'ending',
 };
 
