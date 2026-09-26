@@ -175,3 +175,69 @@ describe('a jarl’s bribe (docs/tech-spec.md §47)', () => {
     expect(text('scene.d13.night', 13, {})).not.toContain('jarl');
   });
 });
+
+describe('Ragna and the hill (docs/tech-spec.md §50)', () => {
+  const scenes = loadScenes('dev-full');
+  const env = (day: number, flags: Record<string, number>, mother = 'well') => ({
+    seed: 1,
+    day,
+    rings: 50,
+    flags,
+    standing: { odin: 0, freyja: 0, hel: 0, loki: 0, clerk: 0 },
+    family: { mother, brother: 'well', sister: 'well' },
+  });
+  const play = (id: string, day: number, flags: Record<string, number>, choices: number[], mother = 'well') => {
+    const json = scenes[id];
+    if (!json) throw new Error(`no ${id}`);
+    return playScene(json, env(day, flags, mother), choices);
+  };
+  const text = (f: ReturnType<typeof play>) => f.lines.map((l) => l.text).join('\n');
+
+  it('offers the hill on Night 10: carried up at dawn for the morning’s sun, or not; silver comes back', () => {
+    // The clerk's choice comes first; then the hill: fly, silver, rest.
+    const fly = play('scene.d10.night', 10, {}, [0, 0]);
+    expect(fly.done).toBe(true);
+    expect(fly.effects).toEqual(expect.arrayContaining([{ sun: -120 }, { flag: 'ragna_hill', set: 1 }]));
+    const silver = play('scene.d10.night', 10, {}, [0, 1]);
+    expect(silver.done).toBe(false);
+    expect(text(silver)).toContain("The hill doesn't come down.");
+    expect(silver.choices.map((c) => c.text)).toEqual(['Fly her up at dawn.', 'Let her rest until the thaw.']);
+    expect(silver.effects.some((e) => 'rings' in e)).toBe(false);
+    const rest = play('scene.d10.night', 10, {}, [0, 2]);
+    expect(rest.effects).toEqual(expect.arrayContaining([{ flag: 'ragna_waits', set: 1 }]));
+    expect(rest.effects.some((e) => 'sun' in e)).toBe(false);
+    // Nobody asks if she's gone already.
+    expect(play('scene.d10.night', 10, {}, [0], 'gone').done).toBe(true);
+  });
+
+  it('gives one more chance on Night 13, at a higher price, and loses her if refused', () => {
+    expect(play('scene.d13.night', 13, {}, []).choices[0]?.text).not.toBe('Fly her up at dawn.');
+    const again = play('scene.d13.night', 13, { ragna_waits: 1 }, [0]);
+    expect(again.effects).toEqual(expect.arrayContaining([{ sun: -180 }, { flag: 'ragna_hill', set: 2 }]));
+    const refused = play('scene.d13.night', 13, { ragna_waits: 1 }, [1]);
+    expect(refused.effects).toEqual(
+      expect.arrayContaining([
+        { flag: 'ragna_refused', set: 1 },
+        { family: 'mother', becomes: 'gone' },
+      ]),
+    );
+    expect(text(play('scene.d14.night', 14, { ragna_refused: 1 }, []))).toContain('crossed my bridge');
+    expect(text(play('scene.d14.night', 14, {}, []))).not.toContain('crossed my bridge');
+  });
+
+  it('is remembered: the mornings after, and her letter on Night 15', () => {
+    expect(text(play('scene.d11.morning', 11, { ragna_hill: 1 }, []))).toContain('Eir');
+    expect(text(play('scene.d11.morning', 11, {}, []))).not.toContain('Eir');
+    expect(text(play('scene.d14.morning', 14, { ragna_hill: 2 }, []))).toContain('Eir');
+    expect(text(play('scene.d14.morning', 14, { ragna_hill: 1 }, []))).not.toContain('Eir');
+    expect(text(play('scene.d15.night', 15, { ragna_hill: 1 }, []))).toContain('My chest is quiet');
+  });
+
+  it('is taken by the bots: they give the morning’s sun, and she stays', () => {
+    const content = loadContent('dev-full');
+    const r = simulateRun(content, 'hill-0', bot('expert'), 'payAll', { story: storyPolicy('plain'), scenes });
+    expect(r.ledger.find((l) => l.day === 11)?.dawnS).toBe(-120);
+    expect(r.ledger.filter((l) => l.dawnS !== undefined).map((l) => l.day)).toEqual([11]);
+    expect(r.familyLost).toBe(0);
+  }, 120_000);
+});

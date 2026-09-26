@@ -70,7 +70,13 @@ function effectChips(effects: readonly Effect[], w: Words): string {
         if (e.set !== undefined && e.set !== 1) return `<span class="fx fx-flag">sets ${f} to ${e.set}</span>`;
         return `<span class="fx fx-flag">sets ${f}</span>`;
       }
-      return `<span class="fx fx-family">${w.person(e.family)} ${e.becomes === 'sick' ? 'falls sick' : 'gets well'}</span>`;
+      if ('sun' in e) {
+        const s = Math.abs(e.sun);
+        const time = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+        return `<span class="fx fx-sun">Next shift's sun ${e.sun < 0 ? '-' : '+'}${time}</span>`;
+      }
+      const change = { sick: 'falls sick', well: 'gets well', gone: 'is gone (dies, or goes to relatives)' }[e.becomes];
+      return `<span class="fx fx-family">${w.person(e.family)} ${change}</span>`;
     })
     .join(' ');
 }

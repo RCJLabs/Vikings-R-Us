@@ -1,7 +1,34 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
 EXTERNAL flag(name)
-You are almost asleep when something taps on the shutter: three taps, a pause, then a fourth, as if it has lost count.
+EXTERNAL home(id)
+{ flag("ragna_waits") && not flag("ragna_hill") && home("mother"): -> hill }
+-> muninn
+
+// Ragna's chest, the last chance (docs/tech-spec.md §50): the hill at first light, or she won't see another.
+=== hill ===
+{
+- home("brother") && not flag("ulf_shipyard"):
+  The first raven of the night is from home, in Ulf's hand, and it's short.
+  "Mother's worse. She coughed until the lamp went out, and after. The healer sat with her till dusk, and on her way out she said it plainly: the hill at first light, or she won't see another." # speaker: ulf
+  "She says not to tell you. I'm telling you." # speaker: ulf
+- else:
+  The first raven of the night is from home, in a big slanting hand you don't know.
+  "This is Bera, from next door. Your mother's worse. The healer sat with her till dusk, and on her way out she said it plainly: the hill at first light, or she won't see another." # speaker: bera
+  "She says not to tell you. I'm telling you." # speaker: bera
+}
+* [Fly her up at dawn.]
+  # fx: sun -180
+  # fx: flag ragna_hill = 2
+  You write one line, and send the raven back with it before it has had its supper: "Have her at the door."
+* [You can't. Not now.]
+  # fx: flag ragna_refused
+  # fx: family mother gone
+  You write that you can't. It takes three tries before it looks like your hand. You don't send it for a long while, and when the raven finally goes, it goes slowly.
+- -> muninn
+
+=== muninn ===
+You are almost asleep when something taps on the shutter: three taps, a pause, then a fourth, as if it has lost count. # beat
 It's Muninn. He hops in, settles on the end of your cot and looks at you for a long time.
 "I remember you," he says. "I think." # speaker: muninn
 "I remember the seeress. He woke her in her grave, you know, and made her sit up and tell him how it ends." # speaker: muninn

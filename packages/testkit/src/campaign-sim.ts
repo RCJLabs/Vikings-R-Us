@@ -83,9 +83,13 @@ export interface StoryPolicy {
   readonly longNails?: { readonly perDay: number; readonly deal?: true };
 }
 
-/** Every policy counts a ring spent in a scene as 1, and making a sick child well as 20. */
+/**
+ * Every policy counts a ring spent in a scene as 1, making a sick child well as 20, and losing someone at home as
+ * -200. Sun given to home at dawn counts nothing: bots have sun to spare (docs/tech-spec.md §50).
+ */
 const RING = 1;
 const HEALED = 20;
+const LOST = -200;
 
 function devotedTo(god: Faction): Record<Faction, number> {
   return Object.fromEntries(FACTIONS.map((f) => [f, f === god ? 10 : -3])) as Record<Faction, number>;
@@ -135,7 +139,7 @@ export function scorePath(path: ScenePath, run: RunState, policy: StoryPolicy): 
     if ('rings' in e) score += RING * e.rings;
     else if ('standing' in e) score += (policy.standing?.[e.standing] ?? 0) * e.by;
     else if ('flag' in e) flags[e.flag] = e.set ?? (flags[e.flag] ?? 0) + (e.inc ?? 0);
-    else if (e.becomes === 'well') score += HEALED;
+    else if ('becomes' in e) score += e.becomes === 'well' ? HEALED : e.becomes === 'gone' ? LOST : 0;
   }
   const worths = policy.later && run.day >= policy.later.day ? policy.later.flags : (policy.flags ?? {});
   for (const [f, w] of Object.entries(worths)) score += w * ((flags[f] ?? 0) - (run.flags[f] ?? 0));
@@ -564,9 +568,16 @@ export function simulateCampaign(
 
 /**
  * A scenario jumper for tests (docs/build-plan.md §11): a save on the morning
- * of `day`, with every earlier soul judged rightly and every bill paid.
+ * of `day`, with every earlier soul judged rightly and every bill paid; or, `at`
+ * night, on that day's night, its souls judged rightly and its scene still to play.
  */
-export function scenarioSave(content: Content, seed: string, day: number, engine: number): RunSave {
+export function scenarioSave(
+  content: Content,
+  seed: string,
+  day: number,
+  engine: number,
+  at: 'morning' | 'night' = 'morning',
+): RunSave {
   let save = startSave(content, seed, engine);
   let run = save.mornings[0] as RunState;
   const apply = (action: RunAction) => {
@@ -575,7 +586,7 @@ export function scenarioSave(content: Content, seed: string, day: number, engine
     save = recordAction(save, run, action, next);
     run = next;
   };
-  while (run.day < day && run.phase !== 'ending') {
+  const shift = () => {
     apply({ t: 'beginShift', at: 0 });
     let at = 0;
     for (const c of run.shift?.cases ?? []) {
@@ -584,7 +595,12 @@ export function scenarioSave(content: Content, seed: string, day: number, engine
       apply({ t: 'shift', action: { t: 'send', at } });
     }
     apply({ t: 'endAudit' });
+  };
+  while (run.day < day && run.phase !== 'ending') {
+    shift();
     apply({ t: 'endNight' });
   }
+  // The night of `day`, its scene still to play.
+  if (at === 'night' && run.phase === 'morning') shift();
   return save;
 }

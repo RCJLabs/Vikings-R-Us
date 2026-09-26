@@ -1,5 +1,11 @@
 # draft
 // FIRST DRAFT (M7): rewrite or sign off. Voice: docs/voice.md. Flags: docs/story-drafts.md.
+EXTERNAL flag(name)
+// Home at dawn (docs/tech-spec.md §50): Ragna carried up the hill before sunrise.
+{ flag("ragna_hill") == 1:
+  You come down over the falls in the grey before sunrise with the wind in your cloak. Your mother is at the top of the hill behind you, among nine women who smell of sage and smoke. One of them, Eir, took both her hands as if she'd been expecting her.
+  The queue is already halfway down the path when you land. Skögul looks at the sun, then at you, and pushes your stamp across the table.
+}
 Skögul has a heap of tally sticks on the table and is sorting them into two piles with the tip of her knife.
 "Saga tallies. The family carves one for the grave: how they died, what they did, whose sword. The dead bring them up the path like a letter of introduction." # speaker: skogul
 "Until now a tally's been nearly as good as a raven. Now somebody's forging them." # speaker: skogul

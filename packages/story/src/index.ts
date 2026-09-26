@@ -107,7 +107,8 @@ const FACTIONS = new Set(['odin', 'freyja', 'hel', 'loki', 'clerk']);
  * Parses one `fx:` tag:
  *   fx: rings -5            fx: standing freyja +1
  *   fx: flag owes_loki      fx: flag thorvald +1      fx: flag deals = 2
- *   fx: family sister sick  fx: family sister well
+ *   fx: family sister sick  fx: family sister well    fx: family mother gone
+ *   fx: sun -120            (seconds of sun on the next shift: docs/tech-spec.md §50)
  * Returns null for tags that aren't effects, and throws on a malformed one.
  */
 export function parseFx(tag: string): Effect | null {
@@ -134,8 +135,11 @@ export function parseFx(tag: string): Effect | null {
       break;
     }
     case 'family':
-      if (parts.length !== 3 || !a || (b !== 'sick' && b !== 'well')) break;
+      if (parts.length !== 3 || !a || (b !== 'sick' && b !== 'well' && b !== 'gone')) break;
       return { family: a, becomes: b };
+    case 'sun':
+      if (parts.length !== 2) break;
+      return { sun: int(a) };
   }
   throw new Error(`malformed effect tag "${tag}"`);
 }
@@ -166,11 +170,22 @@ export function playScene(json: string | object, env: SceneEnv, choices: readonl
   const lines: SceneLine[] = [];
   const effects: Effect[] = [];
   let pending: Effect[] = [];
+  /** What happened since the last choice goes with the last line before the next one, the end, or a `# beat`. */
+  const settle = () => {
+    const last = lines[lines.length - 1];
+    if (pending.length > 0 && last)
+      lines[lines.length - 1] = { ...last, effects: [...(last.effects ?? []), ...pending] };
+    effects.push(...pending);
+    pending = [];
+  };
   let i = 0;
   for (;;) {
     while (story.canContinue) {
       const text = (story.Continue() ?? '').trim();
       const tags = story.currentTags ?? [];
+      // A `# beat` line starts a new part of the scene, such as a letter after a choice (docs/tech-spec.md §50):
+      // what came before it keeps its note there.
+      if (text && tags.some((t) => t.trim() === 'beat')) settle();
       for (const t of tags) {
         const fx = parseFx(t);
         if (fx) pending.push(fx);
@@ -180,11 +195,7 @@ export function playScene(json: string | object, env: SceneEnv, choices: readonl
         lines.push({ text, tags, ...(speaker ? { speaker } : {}) });
       }
     }
-    // What happened since the last choice goes with the last line before the next one (or the end).
-    const last = lines[lines.length - 1];
-    if (pending.length > 0 && last) lines[lines.length - 1] = { ...last, effects: pending };
-    effects.push(...pending);
-    pending = [];
+    settle();
     const open = story.currentChoices;
     if (open.length === 0) return { draft, lines, choices: [], effects, done: true };
     const offered = open.map((c) => choiceOf(c, env));

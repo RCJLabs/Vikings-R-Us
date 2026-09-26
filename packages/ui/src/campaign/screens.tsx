@@ -125,6 +125,14 @@ function standingNotes(effects: readonly Effect[] | undefined, day: number): str
     .map(([f, n]) => t('ui.remember', { name: factionName(f, day), change: signed(n) }));
 }
 
+/** Seconds of sun a trip home at dawn gives or takes on the next shift (docs/tech-spec.md §50), in `effects`. */
+const sunOf = (effects: readonly Effect[] | undefined) =>
+  (effects ?? []).reduce((s, e) => s + ('sun' in e ? e.sun : 0), 0);
+
+/** "2:00 less sun tomorrow": what an option's trip home at dawn does to the next shift, today's in the morning. */
+const sunText = (s: number, when: 'today' | 'tomorrow') =>
+  t(s < 0 ? 'ui.scene.sunLess' : 'ui.scene.sunMore', { time: clockText(Math.abs(s) * 1000), when });
+
 /** Where the player stands with each power they've had dealings with, on one line. */
 function StandingStrip({ run }: { run: RunState }) {
   const met = factionsMet(run);
@@ -600,7 +608,18 @@ function SlotsScreen() {
 // ---------- scenes ----------
 
 /** A scene's lines as played so far, each followed by notes of whom it moved. */
-function SceneLines({ lines, day, prefix }: { lines: readonly SceneLine[]; day: number; prefix: string }) {
+function SceneLines({
+  lines,
+  day,
+  prefix,
+  when,
+}: {
+  lines: readonly SceneLine[];
+  day: number;
+  prefix: string;
+  /** Which shift a trip home at dawn lands on, for its note; none in the journal or Story Mode. */
+  when?: 'today' | 'tomorrow';
+}) {
   return (
     <>
       {lines.flatMap((line, i) => [
@@ -617,6 +636,13 @@ function SceneLines({ lines, day, prefix }: { lines: readonly SceneLine[]; day: 
             {note}
           </p>
         )),
+        ...(when && sunOf(line.effects) !== 0
+          ? [
+              <p key={`${prefix}:${i}:sun`} class="scene__note" data-testid="scene-sun-note">
+                {`${sunText(sunOf(line.effects), when)}.`}
+              </p>,
+            ]
+          : []),
       ])}
     </>
   );
@@ -630,6 +656,19 @@ function Leaves({ n, floor }: { n: number | null; floor: number }) {
       {' '}
       <span class={`scene__cost${n < floor ? ' is-debt' : ''}`} data-testid="scene-leaves">
         ({t('ui.scene.leaves', { n })})
+      </span>
+    </>
+  );
+}
+
+/** What an option's trip home at dawn does to the next shift's sun (docs/tech-spec.md §50). */
+function SunCost({ s, when }: { s: number; when: 'today' | 'tomorrow' }) {
+  if (s === 0) return null;
+  return (
+    <>
+      {' '}
+      <span class="scene__cost" data-testid="scene-sun">
+        ({sunText(s, when)})
       </span>
     </>
   );
@@ -669,6 +708,11 @@ function SceneView({ id, run, onDone }: { id: string; run: RunState; onDone?: ()
   const leaves = (i: number) =>
     now && run.phase === 'night' ? outlookAfter(playScene(json, env, [...choices, i]).effects).night.rings : null;
   const floor = campaignOf(gameContent).debtFloor;
+  // A trip home at dawn (docs/tech-spec.md §50) lands on today's shift in the morning, else on tomorrow's. Story
+  // Mode has no sun to lose.
+  const when = run.story ? undefined : run.phase === 'morning' ? 'today' : 'tomorrow';
+  const sunAfter = (i: number) =>
+    when && !frame.done ? sunOf(playScene(json, env, [...choices, i]).effects) - sunOf(frame.effects) : 0;
   return (
     <section ref={section} class="card scene" data-testid="scene" data-scene={id}>
       {frame.draft ? (
@@ -676,7 +720,7 @@ function SceneView({ id, run, onDone }: { id: string; run: RunState; onDone?: ()
           {t('ui.campaign.draft')}
         </p>
       ) : null}
-      <SceneLines lines={frame.lines} day={run.day} prefix={String(choices.length)} />
+      <SceneLines lines={frame.lines} day={run.day} prefix={String(choices.length)} when={when} />
       {now ? (
         <p class="scene__purse" data-testid="scene-purse">
           {t('ui.scene.purse', {
@@ -731,6 +775,7 @@ function SceneView({ id, run, onDone }: { id: string; run: RunState; onDone?: ()
               >
                 {c.text}
                 <Leaves n={c.rings !== undefined ? leaves(i) : null} floor={floor} />
+                <SunCost s={when ? sunAfter(i) : 0} when={when ?? 'tomorrow'} />
               </button>
             ),
           )
@@ -1011,6 +1056,13 @@ function Morning() {
                 ? t('ui.campaign.untimed')
                 : t('ui.campaign.sun', { time: clockText(atSunSpeed(sunS * 1000, assists.sunPct)) })}
             </p>
+            {!run.story && run.dawnS ? (
+              <p class="muted" data-testid="dawn-note">
+                {t(run.dawnS < 0 ? 'ui.campaign.dawnLess' : 'ui.campaign.dawnMore', {
+                  time: clockText(Math.abs(run.dawnS) * 1000),
+                })}
+              </p>
+            ) : null}
             <p class="muted" data-testid="tonight-bills">
               {t('ui.campaign.tonightBills', { n: tonight })}
             </p>

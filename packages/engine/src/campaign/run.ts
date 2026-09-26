@@ -195,7 +195,10 @@ export function factionKey(content: Content, faction: Faction, day: number): str
   return alias?.name ?? `faction.${faction}`;
 }
 
-/** The upgrades' combined effect on today's shift. */
+/** The least sun a campaign shift has, whatever a trip home at dawn takes (docs/tech-spec.md §50). */
+export const MIN_SUN_S = 120;
+
+/** The upgrades' combined effect on today's shift, with the gods' favours and any trip home at dawn. */
 export function shiftMods(run: RunState, content: Content): ShiftMods {
   const owned = campaignOf(content).shop.filter((u) => run.upgrades.includes(u.id));
   const toolCostS: Record<string, number> = {};
@@ -216,10 +219,15 @@ export function shiftMods(run: RunState, content: Content): ShiftMods {
     else if ('freeQuestions' in e) freeQuestions += e.freeQuestions;
     else if ('finePct' in e) finePct = Math.min(finePct ?? e.finePct, e.finePct);
   }
+  // A trip home at dawn (docs/tech-spec.md §50), chosen in a scene, but never the whole day: the gate keeps
+  // MIN_SUN_S of it at least.
+  sunS += run.dawnS ?? 0;
+  const daySun = content.days.find((d) => d.day === run.day)?.sunS;
+  if (daySun !== undefined) sunS = Math.max(sunS, MIN_SUN_S - daySun);
   return {
     ...(Object.keys(toolCostS).length > 0 ? { toolCostS } : {}),
     ...(questionS !== undefined ? { questionS } : {}),
-    ...(sunS > 0 ? { sunS } : {}),
+    ...(sunS !== 0 ? { sunS } : {}),
     ...(freeQuestions > 0 ? { freeQuestions } : {}),
     ...(finePct !== undefined ? { finePct } : {}),
   };
@@ -764,6 +772,7 @@ function audit(
     ...(requests.length > 0 ? { requests } : {}),
     ...(favours.length > 0 ? { favours } : {}),
     ...(run.rank ? { rank: run.rank } : {}),
+    ...(run.dawnS ? { dawnS: run.dawnS } : {}),
     // The day's grade (docs/tech-spec.md §49): Story Mode has no sun and no fines, so no grade either.
     ...(run.story ? {} : { grade: dayGrade(shift, env.ctx) }),
     ...(run.answered ? { offer: run.answered } : {}),
@@ -778,7 +787,8 @@ function audit(
   const appeal = chooseAppeal(run, shift, campaign, costs, fined, given);
   const asked = drawRequests(run, env, line?.carried ?? []);
   const promotion = promote(run, env, wrong === 0 && unjudged === 0);
-  const { appealHeard: _, appeal: __, waiting: ___, requests: ____, answered: _____, ...rest } = run;
+  // The day's trip home is filed with the day (a night scene's is for tomorrow, and comes after this).
+  const { appealHeard: _, appeal: __, waiting: ___, requests: ____, answered: _____, dawnS: ______, ...rest } = run;
   return {
     run: {
       ...rest,
@@ -798,10 +808,11 @@ function audit(
   };
 }
 
-function applyEffects(run: RunState, effects: readonly Effect[], events: RunEvent[]): RunState {
+function applyEffects(run: RunState, effects: readonly Effect[], events: RunEvent[], content?: Content): RunState {
   let r = run;
   for (const e of effects) {
     if ('rings' in e) r = { ...r, rings: r.rings + e.rings, storyRings: r.storyRings + e.rings };
+    else if ('sun' in e) r = { ...r, dawnS: (r.dawnS ?? 0) + e.sun };
     else if ('standing' in e) {
       r = {
         ...r,
@@ -814,11 +825,20 @@ function applyEffects(run: RunState, effects: readonly Effect[], events: RunEven
     } else if ('family' in e) {
       const m = r.family.find((x) => x.id === e.family);
       if (!m || m.status === 'gone' || m.status === e.becomes) continue;
+      if (e.becomes === 'gone') {
+        // An adult dies; a child goes to relatives (docs/build-plan.md §1). Without the content, as a preview: died.
+        const def = content ? campaignOf(content).family.find((f) => f.id === e.family) : undefined;
+        const gone = def && !def.adult ? 'left' : 'died';
+        r = { ...r, family: r.family.map((x) => (x.id === e.family ? { ...x, status: 'gone', gone } : x)) };
+        events.push({ e: 'family', id: e.family, change: gone });
+        continue;
+      }
+      const becomes = e.becomes;
       r = {
         ...r,
-        family: r.family.map((x) => (x.id === e.family ? { ...x, status: e.becomes, sickNights: 0 } : x)),
+        family: r.family.map((x) => (x.id === e.family ? { ...x, status: becomes, sickNights: 0 } : x)),
       };
-      events.push({ e: 'family', id: e.family, change: e.becomes });
+      events.push({ e: 'family', id: e.family, change: becomes });
     }
   }
   return r;
@@ -918,8 +938,8 @@ export function nightOutlook(run: RunState, env: RunEnv, bills: Bills = run.bill
 }
 
 /** The run as `effects` would leave it (a scene's option, say), for previews: rings, standing, flags and family. */
-export function withEffects(run: RunState, effects: readonly Effect[]): RunState {
-  return applyEffects(run, effects, []);
+export function withEffects(run: RunState, effects: readonly Effect[], content?: Content): RunState {
+  return applyEffects(run, effects, [], content);
 }
 
 /** Tonight's upkeep: bills paid or skipped, and what that does to the family. */
@@ -1066,7 +1086,7 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       const pending = [...(run.pending ?? []), ...action.effects];
       return { state: { ...run, scenes: [...run.scenes, action.id], pending }, events };
     }
-    const r = applyEffects({ ...run, scenes: [...run.scenes, action.id] }, action.effects, events);
+    const r = applyEffects({ ...run, scenes: [...run.scenes, action.id] }, action.effects, events, env.content);
     return { state: r, events };
   }
 
@@ -1136,7 +1156,7 @@ export function stepRun(run: RunState, action: RunAction, env: RunEnv): { state:
       const news: RunEvent[] = [];
       // The story souls' stamps, and the scenes played at the desk (docs/tech-spec.md §46).
       const { pending = [], ...audited } = { ...a.run, flags: a.flags, phase: 'audit' as const };
-      const withStory = applyEffects(audited, [...storyEffects(r.state, env.content), ...pending], news);
+      const withStory = applyEffects(audited, [...storyEffects(r.state, env.content), ...pending], news, env.content);
       // The audit files the story's standing since the last audit beside today's mistakes, so they add up.
       const ledger: DayLedger = { ...a.ledger, story: withStory.storyStanding ?? {} };
       events.push({ e: 'audited', ledger }, ...news);

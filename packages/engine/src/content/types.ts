@@ -532,7 +532,13 @@ export type Effect =
   | { readonly rings: number }
   | { readonly standing: Faction; readonly by: number }
   | { readonly flag: string; readonly set?: number; readonly inc?: number }
-  | { readonly family: string; readonly becomes: 'sick' | 'well' };
+  /** Someone at home falls sick, gets well, or is gone (an adult dies; a child goes to relatives). */
+  | { readonly family: string; readonly becomes: 'sick' | 'well' | 'gone' }
+  /**
+   * Seconds of sun on the next shift the run begins (docs/tech-spec.md §50): a morning scene's lands on that day's
+   * shift, a night scene's on the next day's. Negative for time spent at home, at dawn.
+   */
+  | { readonly sun: number };
 
 export interface FamilyDef {
   readonly id: string;

@@ -155,6 +155,8 @@ export interface DayLedger {
   readonly favours?: readonly string[];
   /** The rank the day was worked at (docs/tech-spec.md §44), when there was one. */
   readonly rank?: number;
+  /** Seconds of sun the day gave to home, at dawn (docs/tech-spec.md §50): negative. */
+  readonly dawnS?: number;
   /** The day's grade (docs/tech-spec.md §49); absent in Story Mode, and in saves from before grades. */
   readonly grade?: DayGrade;
   /** The morning's promotion, offered and taken or not. */
@@ -219,6 +221,11 @@ export interface RunState {
   readonly ending: string | null;
   /** Story Mode: no sun and no fines. */
   readonly story: boolean;
+  /**
+   * Seconds of sun the next shift gains or loses (docs/tech-spec.md §50): a trip home at dawn, chosen in a scene.
+   * The shift takes it as it begins, and the day's audit files it and clears it.
+   */
+  readonly dawnS?: number;
   /**
    * The oath, sworn at the start of the run (docs/tech-spec.md §49): no hints, no replays, and fines from the
    * first mistake. Never with Story Mode.

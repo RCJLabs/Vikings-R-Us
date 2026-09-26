@@ -249,6 +249,15 @@ function favours(p: PlaytestInput): string[] {
   return ['### Favours', '', ...(lines.length > 0 ? lines : ['None yet.'])];
 }
 
+/** Sun each day gave to home at dawn (docs/tech-spec.md §50), as the audit filed it. */
+function home(p: PlaytestInput): string[] {
+  const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const lines = p.run.ledger.flatMap((l) =>
+    l.dawnS ? [`- Day ${l.day}: ${clock(Math.abs(l.dawnS))} ${l.dawnS < 0 ? 'less' : 'more'} sun, for home.`] : [],
+  );
+  return ['### Home at dawn', '', ...(lines.length > 0 ? lines : ['None.'])];
+}
+
 /** Promotion (docs/tech-spec.md §44): each offer and what was made of it, the days at each rank, and steps down. */
 function ranks(p: PlaytestInput): string[] {
   const defs = p.content.campaign?.promotion?.ranks ?? [];
@@ -330,6 +339,8 @@ export function playtestReport(p: PlaytestInput): string {
     ...requests(p),
     '',
     ...favours(p),
+    '',
+    ...home(p),
     '',
     ...ranks(p),
     '',

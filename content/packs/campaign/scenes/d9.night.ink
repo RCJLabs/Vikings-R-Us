@@ -54,6 +54,6 @@ Your mother's letter is short.
 // The jarl's rings (docs/tech-spec.md §47), if you took them at the desk today.
 === jarl ===
 { flag("jarl_bribe"):
-  You count the jarl's thirty rings into the pot with the rest. They look exactly like the others. You'd hoped they wouldn't.
+  You count the jarl's thirty rings into the pot with the rest. They look exactly like the others. You'd hoped they wouldn't. # beat
 }
 -> END

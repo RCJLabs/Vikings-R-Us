@@ -19,7 +19,7 @@ export interface ShiftMods {
   /** Replacement sun costs, in seconds, for tools (including turning the body over). */
   readonly toolCostS?: Readonly<Partial<Record<ToolId, number>>>;
   readonly questionS?: number;
-  /** Extra sun for the whole shift. */
+  /** Extra sun for the whole shift; less (negative) when the day began at home (docs/tech-spec.md §50). */
   readonly sunS?: number;
   /** Questions that cost no sun: the day's first ones (a god's favour, docs/tech-spec.md §43). */
   readonly freeQuestions?: number;
